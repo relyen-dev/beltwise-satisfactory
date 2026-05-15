@@ -45,6 +45,21 @@ export interface ProductionPlanResult {
   warnings: PlanWarning[];
 }
 
+export function createEmptyProductionPlanResult(): ProductionPlanResult {
+  return {
+    status: 'optimal',
+    recipeRates: {},
+    rawInputs: {},
+    externalInputs: {},
+    itemFlows: [],
+    outputs: {},
+    surplus: {},
+    machineUsage: [],
+    powerMw: 0,
+    warnings: [],
+  };
+}
+
 export interface ProductionGraph {
   nodes: ProductionGraphNode[];
   edges: ProductionGraphEdge[];

@@ -7,15 +7,13 @@ import {
   type PlannerProject,
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
-import { type ProductionSolverAdapter } from '@beltwise/solver';
+import { type ProductionPlanInput } from '@beltwise/solver';
 import { selectPlannerSolveInput, type PlannerSolveInput } from './planner-solve-input';
+import { PlannerProductionSolverService } from './planner-production-solver.service';
 import {
   PLANNER_SOLVE_DEBOUNCE_MS,
-  PLANNER_SOLVE_RUNNER,
-  PLANNER_SOLVER_ADAPTER_FACTORY,
   PlannerSolveScheduler,
   PlannerSolverService,
-  type PlannerSolveRunner,
 } from './planner-solver.service';
 
 const NOW = '2026-05-12T00:00:00.000Z';
@@ -60,11 +58,11 @@ describe('PlannerSolverService', () => {
   });
 
   it('returns an empty solved result without calling the solver for projects without targets', () => {
-    const { runnerCalls, service } = createSolverHarness();
+    const { service, solveCalls } = createSolverHarness();
 
     service.requestSolve(createSolveInput(createProject([])));
 
-    expect(runnerCalls).toEqual([]);
+    expect(solveCalls).toEqual([]);
     expect(service.solveStatus()).toBe('solved');
     expect(service.solveError()).toBeNull();
     expect(service.solveResult()).toMatchObject({
@@ -74,9 +72,9 @@ describe('PlannerSolverService', () => {
     });
   });
 
-  it('debounces solve requests and reuses one solver adapter instance', async () => {
+  it('debounces solve requests and sends the latest input to the solver', async () => {
     vi.useFakeTimers();
-    const { adapters, runnerCalls, service } = createSolverHarness();
+    const { service, solveCalls } = createSolverHarness();
     const first = createSolveInput(createProject([{ itemId: 'Desc_IronPlate_C' }]));
     const second = createSolveInput(createProject([{ itemId: 'Desc_Wire_C' }]));
 
@@ -84,24 +82,21 @@ describe('PlannerSolverService', () => {
     service.requestSolve(second);
 
     vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS - 1);
-    expect(runnerCalls).toEqual([]);
+    expect(solveCalls).toEqual([]);
 
     vi.advanceTimersByTime(1);
     await flushPromises();
 
-    expect(runnerCalls).toHaveLength(1);
-    expect(runnerCalls[0]?.input.project.targets[0]?.itemId).toBe('Desc_Wire_C');
-    expect(adapters).toHaveLength(1);
-    expect(runnerCalls[0]?.adapter).toBe(adapters[0]);
+    expect(solveCalls).toHaveLength(1);
+    expect(solveCalls[0]?.project.targets[0]?.itemId).toBe('Desc_Wire_C');
     expect(service.solveStatus()).toBe('solved');
 
     service.requestSolve(first);
     vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
     await flushPromises();
 
-    expect(runnerCalls).toHaveLength(2);
-    expect(adapters).toHaveLength(1);
-    expect(runnerCalls[1]?.adapter).toBe(adapters[0]);
+    expect(solveCalls).toHaveLength(2);
+    expect(solveCalls[1]?.project.targets[0]?.itemId).toBe('Desc_IronPlate_C');
   });
 
   it('ignores stale solve results after a newer solve has been requested', async () => {
@@ -109,14 +104,14 @@ describe('PlannerSolverService', () => {
     const firstSolve = createDeferred<ProductionPlanResult>();
     const secondSolve = createDeferred<ProductionPlanResult>();
     const pendingSolves = [firstSolve, secondSolve];
-    const runner: PlannerSolveRunner = () => {
+    const solve: PlannerSolveFunction = () => {
       const pendingSolve = pendingSolves.shift();
       if (!pendingSolve) {
         throw new Error('Unexpected solve request');
       }
       return pendingSolve.promise;
     };
-    const { service } = createSolverHarness({ runner });
+    const { service } = createSolverHarness({ solve });
 
     service.requestSolve(createSolveInput(createProject([{ itemId: 'Desc_IronPlate_C' }])));
     vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
@@ -135,8 +130,8 @@ describe('PlannerSolverService', () => {
 
   it('captures solver failures on the current request', async () => {
     vi.useFakeTimers();
-    const runner: PlannerSolveRunner = () => Promise.reject(new Error('LP failed'));
-    const { service } = createSolverHarness({ runner });
+    const solve: PlannerSolveFunction = () => Promise.reject(new Error('LP failed'));
+    const { service } = createSolverHarness({ solve });
 
     service.requestSolve(createSolveInput(createProject([{ itemId: 'Desc_IronPlate_C' }])));
     vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
@@ -150,38 +145,37 @@ describe('PlannerSolverService', () => {
 
 function createSolverHarness(
   options: {
-    runner?: PlannerSolveRunner;
+    solve?: PlannerSolveFunction;
   } = {},
 ): {
-  adapters: ProductionSolverAdapter[];
-  runnerCalls: RunnerCall[];
   service: PlannerSolverService;
+  solveCalls: ProductionPlanInput[];
 } {
-  const adapters: ProductionSolverAdapter[] = [];
-  const runnerCalls: RunnerCall[] = [];
-  const runner: PlannerSolveRunner =
-    options.runner ??
-    ((input, adapter) => {
-      runnerCalls.push({ input, adapter });
+  const solveCalls: ProductionPlanInput[] = [];
+  const solve: PlannerSolveFunction =
+    options.solve ??
+    ((input) => {
+      solveCalls.push(input);
       return Promise.resolve(createResult());
     });
-  const adapterFactory = (): ProductionSolverAdapter => {
-    const adapter = createAdapter(`adapter-${adapters.length + 1}`);
-    adapters.push(adapter);
-    return adapter;
+  const productionSolver: Pick<PlannerProductionSolverService, 'solve'> = {
+    solve: (input) => {
+      if (options.solve) {
+        solveCalls.push(input);
+      }
+      return solve(input);
+    },
   };
   const injector = Injector.create({
     providers: [
       PlannerSolverService,
-      { provide: PLANNER_SOLVE_RUNNER, useValue: runner },
-      { provide: PLANNER_SOLVER_ADAPTER_FACTORY, useValue: adapterFactory },
+      { provide: PlannerProductionSolverService, useValue: productionSolver },
     ],
   });
 
   return {
-    adapters,
-    runnerCalls,
     service: injector.get(PlannerSolverService),
+    solveCalls,
   };
 }
 
@@ -210,13 +204,6 @@ function createSolveInput(project: PlannerProject): PlannerSolveInput {
     throw new Error('Expected planner solve input');
   }
   return input;
-}
-
-function createAdapter(id: string): ProductionSolverAdapter {
-  return {
-    id,
-    solve: () => Promise.resolve(createResult()),
-  };
 }
 
 function createResult(overrides: Partial<ProductionPlanResult> = {}): ProductionPlanResult {
@@ -254,7 +241,4 @@ async function flushPromises(): Promise<void> {
   await Promise.resolve();
 }
 
-interface RunnerCall {
-  adapter: ProductionSolverAdapter;
-  input: Parameters<PlannerSolveRunner>[0];
-}
+type PlannerSolveFunction = (input: ProductionPlanInput) => Promise<ProductionPlanResult>;
