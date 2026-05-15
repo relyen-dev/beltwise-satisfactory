@@ -8,14 +8,16 @@ import {
   untracked,
 } from '@angular/core';
 import type { GameDataset } from '@beltwise/game-data';
-import { PLANNER_STORAGE_SCHEMA_VERSION, type PlannerProject } from '@beltwise/planner-core';
-import { PlannerPersistenceService, type StoredPlannerState } from './planner-persistence.service';
+import type { PlannerProject } from '@beltwise/planner-core';
+import { PlannerPersistenceService, type LoadedPlannerState } from './planner-persistence.service';
+
+export { createStoredPlannerState } from './planner-persistence.service';
 
 export interface PlannerPersistenceCoordinatorBinding {
   readonly dataset: Signal<GameDataset | null>;
   readonly projects: Signal<PlannerProject[]>;
   readonly activeProjectId: Signal<string | undefined>;
-  readonly initializeFromStoredState: (state: StoredPlannerState) => void;
+  readonly initializeFromStoredState: (state: LoadedPlannerState) => void;
   readonly initializeStarterProject: (dataset: GameDataset) => void;
 }
 
@@ -56,7 +58,7 @@ export class PlannerPersistenceCoordinatorService {
     );
   }
 
-  public loadInitialState(dataset: GameDataset): StoredPlannerState | null {
+  public loadInitialState(dataset: GameDataset): LoadedPlannerState | null {
     return this.persistence.load(dataset);
   }
 
@@ -64,7 +66,7 @@ export class PlannerPersistenceCoordinatorService {
     if (projects.length === 0) {
       return;
     }
-    this.persistence.save(createStoredPlannerState(projects, activeProjectId));
+    this.persistence.saveProjects(projects, activeProjectId);
   }
 
   private initializePlannerState(
@@ -79,20 +81,4 @@ export class PlannerPersistenceCoordinatorService {
       binding.initializeStarterProject(dataset);
     }
   }
-}
-
-export function createStoredPlannerState(
-  projects: PlannerProject[],
-  activeProjectId: string | undefined,
-): StoredPlannerState {
-  return activeProjectId === undefined
-    ? {
-        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-        projects,
-      }
-    : {
-        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-        activeProjectId,
-        projects,
-      };
 }

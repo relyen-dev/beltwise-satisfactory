@@ -1,13 +1,17 @@
 import { Injector } from '@angular/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
-import { PLANNER_STORAGE_SCHEMA_VERSION, type PlannerProject } from '@beltwise/planner-core';
+import {
+  createPlannerProject,
+  PLANNER_STORAGE_SCHEMA_VERSION,
+  type PlannerProject,
+} from '@beltwise/planner-core';
 import {
   PLANNER_PERSISTENCE_STORAGE,
   PlannerPersistenceService,
   createBrowserPlannerPersistenceStorage,
+  createStoredPlannerState,
   type PlannerPersistenceStorage,
-  type StoredPlannerState,
 } from './planner-persistence.service';
 import { plannerRelevantMachineIds } from './planner-domain.helpers';
 
@@ -77,7 +81,7 @@ describe('PlannerPersistenceService', () => {
     expect(state).toBeNull();
   });
 
-  it('returns null when saved planner state uses a different schema version', () => {
+  it('returns null when saved planner state uses an unknown future schema version', () => {
     const rawState: unknown = {
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION + 1,
       projects: [rawPlannerProject()],
@@ -115,12 +119,7 @@ describe('PlannerPersistenceService', () => {
 
       expect(defaultStorage).toBeNull();
       expect(defaultService.load(tinySatisfactoryDataset)).toBeNull();
-      expect(() =>
-        defaultService.save({
-          schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-          projects: [],
-        }),
-      ).not.toThrow();
+      expect(() => defaultService.saveProjects([], undefined)).not.toThrow();
     } finally {
       if (originalLocalStorage) {
         Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
@@ -131,29 +130,39 @@ describe('PlannerPersistenceService', () => {
   });
 
   it('does not throw when browser storage rejects writes', () => {
-    const state: StoredPlannerState = {
-      schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-      projects: [],
-    };
-
     const failingService = createPersistenceService(
       new ThrowingStorage({ setFailure: new Error('Quota exceeded') }),
     );
 
-    expect(() => failingService.save(state)).not.toThrow();
-    expect(() => createPersistenceService(null).save(state)).not.toThrow();
+    expect(() => failingService.saveProjects([], undefined)).not.toThrow();
+    expect(() => createPersistenceService(null).saveProjects([], undefined)).not.toThrow();
   });
 
   it('writes saved planner state JSON to storage', () => {
-    const state: StoredPlannerState = {
-      schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-      activeProjectId: 'project-a',
-      projects: [],
-    };
+    const project = createDomainPlannerProject();
+    const state = createStoredPlannerState([project], project.id);
 
-    service.save(state);
+    service.saveProjects([project], project.id);
 
     expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(state));
+  });
+
+  it('writes only the explicit stored project DTO fields', () => {
+    const project = createDomainPlannerProject();
+    const projectWithDerivedState = {
+      ...project,
+      solverResult: { status: 'optimal' },
+      targets: project.targets.map((target) => ({
+        ...target,
+        solvedAmountPerMinute: 999,
+      })),
+    };
+
+    service.saveProjects([projectWithDerivedState], project.id);
+
+    const savedProject = firstSavedProject(storage);
+    expect(savedProject['solverResult']).toBeUndefined();
+    expect(firstSavedTarget(savedProject)['solvedAmountPerMinute']).toBeUndefined();
   });
 
   it('loads valid projects when other saved project records are malformed', () => {
@@ -171,7 +180,46 @@ describe('PlannerPersistenceService', () => {
     expect(state?.projects.map((project) => project.id)).toEqual(['valid-project']);
   });
 
-  it('hydrates project configuration independently when loading saved planner state', () => {
+  it('migrates v1 planner state to the current loaded shape', () => {
+    const rawState: unknown = {
+      schemaVersion: 1,
+      activeProjectId: 'missing-project',
+      projects: [
+        rawPlannerProject({
+          id: 'project-from-v1',
+          solverResult: { status: 'optimal' },
+          buildState: {
+            locked: true,
+            nodeStates: {
+              'recipe:Recipe_IronPlate_C': {
+                done: true,
+              },
+            },
+          },
+        }),
+      ],
+    };
+
+    storage.setItem(STORAGE_KEY, JSON.stringify(rawState));
+
+    const state = service.load(tinySatisfactoryDataset);
+
+    expect(state?.schemaVersion).toBe(PLANNER_STORAGE_SCHEMA_VERSION);
+    expect(state?.activeProjectId).toBe('project-from-v1');
+    const project = loadedProject(state?.projects, 'project-from-v1');
+    expect(project.buildState).toEqual({
+      planLocked: true,
+      nodeLayoutLocked: false,
+      nodeStates: {
+        'recipe:Recipe_IronPlate_C': {
+          done: true,
+        },
+      },
+    });
+    expect('solverResult' in project).toBe(false);
+  });
+
+  it('loads current-version project configuration independently', () => {
     const rawState: unknown = {
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
       activeProjectId: 'project-a',
@@ -256,6 +304,7 @@ describe('PlannerPersistenceService', () => {
 
     const state = service.load(tinySatisfactoryDataset);
 
+    expect(state?.schemaVersion).toBe(PLANNER_STORAGE_SCHEMA_VERSION);
     expect(state?.activeProjectId).toBe('project-a');
     const projectA = loadedProject(state?.projects, 'project-a');
     const projectB = loadedProject(state?.projects, 'project-b');
@@ -482,4 +531,46 @@ function rawPlannerProject(overrides: Record<string, unknown> = {}): Record<stri
     graphLayout: { nodePositions: {} },
     ...overrides,
   };
+}
+
+function createDomainPlannerProject(): PlannerProject {
+  return createPlannerProject({
+    id: 'project-a',
+    name: 'Project A',
+    dataset: tinySatisfactoryDataset,
+    now: '2026-05-12T00:00:00.000Z',
+    targets: [
+      {
+        id: 'target-a',
+        itemId: 'Desc_IronPlate_C',
+        mode: 'fixed',
+        amountPerMinute: 20,
+        sortOrder: 0,
+      },
+    ],
+  });
+}
+
+function firstSavedProject(storage: MemoryStorage): Record<string, unknown> {
+  const rawValue = storage.getItem(STORAGE_KEY);
+  if (!rawValue) {
+    throw new Error('Expected saved planner state');
+  }
+
+  const state = JSON.parse(rawValue) as Record<string, unknown>;
+  const projects = state['projects'];
+  if (!Array.isArray(projects) || projects.length === 0) {
+    throw new Error('Expected at least one saved project');
+  }
+
+  return projects[0] as Record<string, unknown>;
+}
+
+function firstSavedTarget(project: Record<string, unknown>): Record<string, unknown> {
+  const targets = project['targets'];
+  if (!Array.isArray(targets) || targets.length === 0) {
+    throw new Error('Expected at least one saved target');
+  }
+
+  return targets[0] as Record<string, unknown>;
 }
