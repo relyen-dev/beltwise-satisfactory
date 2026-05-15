@@ -1,8 +1,7 @@
-import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
-import { type ItemId, type RecipeId } from '@beltwise/game-data';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { type GameDataset, type ItemId, type RecipeId } from '@beltwise/game-data';
 import {
   createStableId,
-  PLANNER_STORAGE_SCHEMA_VERSION,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type GraphLayoutState,
@@ -12,24 +11,21 @@ import {
   type ProductTarget,
   type ProductionGraph,
   type ProductionGraphNode,
-  type ProductionPlanResult,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import {
-  createEmptyProductionPlanResult,
-  HighsProductionSolverAdapter,
-  solveProductionPlan,
-  type ProductionSolverAdapter,
-} from '@beltwise/solver';
 import { DatasetService } from './dataset.service';
 import { createStarterProject, defaultResourceCapPerMinute } from './planner-domain.helpers';
-import { PlannerPersistenceService } from './planner-persistence.service';
+import {
+  PlannerPersistenceCoordinatorService,
+  type PlannerPersistenceCoordinatorBinding,
+} from './planner-persistence-coordinator.service';
+import { type StoredPlannerState } from './planner-persistence.service';
 import * as projectMutations from './planner-project-mutations';
 import {
   equalPlannerSolveInputs,
   selectPlannerSolveInput as selectPlannerSolveInputForStore,
-  type PlannerSolveInput,
 } from './planner-solve-input';
+import { PlannerSolverService } from './planner-solver.service';
 import {
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
@@ -50,9 +46,14 @@ export {
   selectPlannerSolveInput,
 } from './planner-solve-input';
 export type { PlannerSolveInput, PlannerSolveKey } from './planner-solve-input';
+export {
+  PLANNER_SOLVE_DEBOUNCE_MS,
+  PlannerSolveScheduler,
+  PlannerSolverService,
+} from './planner-solver.service';
+export type { SolveStatus } from './planner-solver.service';
 
 export type ConfigurationTab = 'plan' | 'recipes' | 'inputs' | 'resources' | 'machines' | 'display';
-export type SolveStatus = 'idle' | 'solving' | 'solved' | 'error';
 export type WorkbenchFocusMode = 'open-plan' | 'focus-graph';
 
 export interface WorkbenchFocusRequest {
@@ -61,46 +62,12 @@ export interface WorkbenchFocusRequest {
   sequence: number;
 }
 
-interface ScheduledPlannerSolve {
-  solveInput: PlannerSolveInput;
-  serial: number;
-}
-
-export const PLANNER_SOLVE_DEBOUNCE_MS = 150;
-
-export class PlannerSolveScheduler<TInput> {
-  private pendingTimeout: ReturnType<typeof setTimeout> | undefined;
-
-  public constructor(private readonly delayMs: number) {}
-
-  public schedule(input: TInput, callback: (input: TInput) => void): void {
-    this.cancel();
-    this.pendingTimeout = setTimeout(() => {
-      this.pendingTimeout = undefined;
-      callback(input);
-    }, this.delayMs);
-  }
-
-  public cancel(): void {
-    if (this.pendingTimeout === undefined) {
-      return;
-    }
-    clearTimeout(this.pendingTimeout);
-    this.pendingTimeout = undefined;
-  }
-}
-
 @Injectable({ providedIn: 'root' })
 export class PlannerStoreService {
   private readonly datasetService = inject(DatasetService);
-  private readonly persistence = inject(PlannerPersistenceService);
-  private initialized = false;
-  private solveSerial = 0;
+  private readonly persistenceCoordinator = inject(PlannerPersistenceCoordinatorService);
+  private readonly solver = inject(PlannerSolverService);
   private focusRequestSequence = 0;
-  private solverAdapter: ProductionSolverAdapter | undefined;
-  private readonly solveScheduler = new PlannerSolveScheduler<ScheduledPlannerSolve>(
-    PLANNER_SOLVE_DEBOUNCE_MS,
-  );
 
   public readonly dataset = this.datasetService.dataset;
   public readonly datasetError = this.datasetService.loadError;
@@ -110,9 +77,9 @@ export class PlannerStoreService {
   public readonly workbenchFocusRequest = signal<WorkbenchFocusRequest | null>(null);
   public readonly selectedGraphNodeId = signal<string | null>(null);
   public readonly recipeSearch = signal('');
-  public readonly solveStatus = signal<SolveStatus>('idle');
-  public readonly solveError = signal<string | null>(null);
-  public readonly solveResult = signal<ProductionPlanResult | null>(null);
+  public readonly solveStatus = this.solver.solveStatus;
+  public readonly solveError = this.solver.solveError;
+  public readonly solveResult = this.solver.solveResult;
 
   public readonly activeProject = computed(() => {
     const activeId = this.activeProjectId();
@@ -204,69 +171,8 @@ export class PlannerStoreService {
   });
 
   public constructor() {
-    effect(() => {
-      const dataset = this.dataset();
-      if (dataset && !this.initialized) {
-        this.initialized = true;
-        const stored = this.persistence.load(dataset);
-        if (stored && stored.projects.length > 0) {
-          this.projects.set(stored.projects);
-          const activeProject =
-            stored.projects.find((project) => project.id === stored.activeProjectId) ??
-            stored.projects[0];
-          if (activeProject) {
-            this.activateProject(activeProject, projectFocusMode(activeProject));
-          }
-        } else {
-          const starter = createStarterProject(dataset);
-          this.projects.set([starter]);
-          this.activateProject(starter, 'open-plan');
-        }
-      }
-    });
-
-    effect(() => {
-      const solveInput = this.solveInput();
-      if (!solveInput) {
-        this.cancelPendingSolve();
-        return;
-      }
-
-      const serial = ++this.solveSerial;
-      this.solveError.set(null);
-
-      if (solveInput.project.targets.length === 0) {
-        this.solveScheduler.cancel();
-        this.solveResult.set(createEmptyProductionPlanResult());
-        this.solveStatus.set('solved');
-        return;
-      }
-
-      this.solveStatus.set('solving');
-      this.solveScheduler.schedule({ solveInput, serial }, (scheduledSolve) =>
-        this.runScheduledSolve(scheduledSolve),
-      );
-    });
-
-    effect(() => {
-      const projects = this.projects();
-      const activeProjectId = this.activeProjectId();
-      if (!this.initialized || projects.length === 0) {
-        return;
-      }
-      const storedState =
-        activeProjectId === undefined
-          ? {
-              schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-              projects,
-            }
-          : {
-              schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-              activeProjectId,
-              projects,
-            };
-      untracked(() => this.persistence.save(storedState));
-    });
+    this.persistenceCoordinator.connect(this.createPersistenceBinding());
+    this.solver.connect(this.solveInput);
   }
 
   public selectProject(projectId: string): void {
@@ -347,7 +253,9 @@ export class PlannerStoreService {
     if (this.planLocked()) {
       return;
     }
-    this.updateActiveProject((project) => projectMutations.setTargetItem(project, targetId, itemId));
+    this.updateActiveProject((project) =>
+      projectMutations.setTargetItem(project, targetId, itemId),
+    );
   }
 
   public updateTargetMode(targetId: string, mode: ProductTarget['mode']): void {
@@ -626,42 +534,33 @@ export class PlannerStoreService {
     });
   }
 
-  private runScheduledSolve({ solveInput, serial }: ScheduledPlannerSolve): void {
-    void solveProductionPlan(
-      { dataset: solveInput.dataset, project: solveInput.project },
-      this.getSolverAdapter(),
-    )
-      .then((result) => {
-        if (serial !== this.solveSerial) {
-          return;
-        }
-        this.solveResult.set(result);
-        this.solveStatus.set('solved');
-      })
-      .catch((error: unknown) => {
-        if (serial !== this.solveSerial) {
-          return;
-        }
-        this.solveResult.set(null);
-        this.solveError.set(error instanceof Error ? error.message : 'Solving failed');
-        this.solveStatus.set('error');
-      });
+  private createPersistenceBinding(): PlannerPersistenceCoordinatorBinding {
+    return {
+      dataset: this.dataset,
+      projects: this.projects,
+      activeProjectId: this.activeProjectId,
+      initializeFromStoredState: (state) => this.initializeFromStoredState(state),
+      initializeStarterProject: (dataset) => this.initializeStarterProject(dataset),
+    };
   }
 
-  private cancelPendingSolve(): void {
-    this.solveSerial += 1;
-    this.solveScheduler.cancel();
+  private initializeFromStoredState(state: StoredPlannerState): void {
+    this.projects.set(state.projects);
+    const activeProject =
+      state.projects.find((project) => project.id === state.activeProjectId) ?? state.projects[0];
+    if (activeProject) {
+      this.activateProject(activeProject, projectFocusMode(activeProject));
+    }
   }
 
-  private getSolverAdapter(): ProductionSolverAdapter {
-    this.solverAdapter ??= new HighsProductionSolverAdapter();
-    return this.solverAdapter;
+  private initializeStarterProject(dataset: GameDataset): void {
+    const starter = createStarterProject(dataset);
+    this.projects.set([starter]);
+    this.activateProject(starter, 'open-plan');
   }
 
   private setGraphNodeDone(nodeId: string, done: boolean): void {
-    this.updateActiveProject((project) =>
-      projectMutations.setGraphNodeDone(project, nodeId, done),
-    );
+    this.updateActiveProject((project) => projectMutations.setGraphNodeDone(project, nodeId, done));
   }
 }
 

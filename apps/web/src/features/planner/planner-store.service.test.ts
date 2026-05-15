@@ -1,12 +1,20 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import '@angular/compiler';
+import { Injector, runInInjectionContext, signal, type Signal } from '@angular/core';
+import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createPlannerProject,
+  PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
+  type ProductionPlanResult,
   type ProductTarget,
 } from '@beltwise/planner-core';
-import { selectPlannerSolveInput, type PlannerSolveKey } from './planner-solve-input';
-import { PlannerSolveScheduler } from './planner-store.service';
+import { DatasetService } from './dataset.service';
+import type { PlannerPersistenceCoordinatorBinding } from './planner-persistence-coordinator.service';
+import { PlannerPersistenceCoordinatorService } from './planner-persistence-coordinator.service';
+import { selectPlannerSolveInput, type PlannerSolveInput } from './planner-solve-input';
+import { PlannerSolverService, type SolveStatus } from './planner-solver.service';
+import { PlannerStoreService } from './planner-store.service';
 
 const NOW = '2026-05-12T00:00:00.000Z';
 
@@ -186,37 +194,40 @@ describe('selectPlannerSolveInput', () => {
   });
 });
 
-describe('PlannerSolveScheduler', () => {
-  afterEach(() => {
-    vi.useRealTimers();
+describe('PlannerStoreService', () => {
+  it('initializes a starter project through the persistence coordinator facade', () => {
+    const { store, connectedSolveInput } = createStoreHarness((binding) => {
+      binding.initializeStarterProject(tinySatisfactoryDataset);
+    });
+
+    const activeProject = store.activeProject();
+    const solveInput = connectedSolveInput?.();
+
+    expect(store.projects()).toHaveLength(1);
+    expect(activeProject?.name).toBe('Starter factory');
+    expect(store.activeProjectId()).toBe(activeProject?.id);
+    expect(store.workbenchFocusRequest()).toMatchObject({
+      projectId: activeProject?.id,
+      mode: 'open-plan',
+    });
+    expect(solveInput?.project.id).toBe(activeProject?.id);
   });
 
-  it('coalesces rapid solve inputs into the latest scheduled solve', () => {
-    vi.useFakeTimers();
-    const scheduler = new PlannerSolveScheduler<PlannerSolveKey>(50);
-    const solvedKeys: PlannerSolveKey[] = [];
+  it('keeps graph focus when a stored active project already has targets', () => {
+    const project = createProject();
+    const { store } = createStoreHarness((binding) => {
+      binding.initializeFromStoredState({
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeProjectId: project.id,
+        projects: [project],
+      });
+    });
 
-    scheduler.schedule('first', (key) => solvedKeys.push(key));
-    scheduler.schedule('second', (key) => solvedKeys.push(key));
-    scheduler.schedule('third', (key) => solvedKeys.push(key));
-
-    vi.advanceTimersByTime(49);
-    expect(solvedKeys).toEqual([]);
-
-    vi.advanceTimersByTime(1);
-    expect(solvedKeys).toEqual(['third']);
-  });
-
-  it('can cancel a pending solve before the debounce delay completes', () => {
-    vi.useFakeTimers();
-    const scheduler = new PlannerSolveScheduler<PlannerSolveKey>(50);
-    const solvedKeys: PlannerSolveKey[] = [];
-
-    scheduler.schedule('pending', (key) => solvedKeys.push(key));
-    scheduler.cancel();
-    vi.advanceTimersByTime(50);
-
-    expect(solvedKeys).toEqual([]);
+    expect(store.activeProjectId()).toBe(project.id);
+    expect(store.workbenchFocusRequest()).toMatchObject({
+      projectId: project.id,
+      mode: 'focus-graph',
+    });
   });
 });
 
@@ -252,4 +263,39 @@ function firstTarget(project: PlannerProject): ProductTarget {
     throw new Error('Expected a target');
   }
   return target;
+}
+
+function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorBinding) => void): {
+  connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  store: PlannerStoreService;
+} {
+  let connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  const datasetService: Pick<DatasetService, 'dataset' | 'loadError'> = {
+    dataset: signal<GameDataset | null>(tinySatisfactoryDataset),
+    loadError: signal<string | null>(null),
+  };
+  const persistenceCoordinator: Pick<PlannerPersistenceCoordinatorService, 'connect'> = {
+    connect: initialize,
+  };
+  const solver: Pick<
+    PlannerSolverService,
+    'connect' | 'solveError' | 'solveResult' | 'solveStatus'
+  > = {
+    connect: (solveInput) => {
+      connectedSolveInput = solveInput;
+    },
+    solveError: signal<string | null>(null),
+    solveResult: signal<ProductionPlanResult | null>(null),
+    solveStatus: signal<SolveStatus>('idle'),
+  };
+  const injector = Injector.create({
+    providers: [
+      { provide: DatasetService, useValue: datasetService },
+      { provide: PlannerPersistenceCoordinatorService, useValue: persistenceCoordinator },
+      { provide: PlannerSolverService, useValue: solver },
+    ],
+  });
+  const store = runInInjectionContext(injector, () => new PlannerStoreService());
+
+  return { connectedSolveInput, store };
 }
