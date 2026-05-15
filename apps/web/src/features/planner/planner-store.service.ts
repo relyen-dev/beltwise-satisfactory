@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal, type OnDestroy } from '@angular/core';
 import { type GameDataset, type ItemId, type RecipeId } from '@beltwise/game-data';
 import {
   createStableId,
@@ -27,6 +27,8 @@ import {
 } from './planner-solve-input';
 import { PlannerSolverService } from './planner-solver.service';
 import {
+  buildProductionGraphFromInput,
+  equalProductionGraphInputs,
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
   selectGraphNode,
@@ -34,7 +36,7 @@ import {
   selectGraphNodeState,
   selectItemOptions,
   selectMachineRows,
-  selectProductionGraph,
+  selectProductionGraphInput,
   selectRecipeRows,
   selectResourceRows,
 } from './planner-store.selectors';
@@ -56,18 +58,27 @@ export type { SolveStatus } from './planner-solver.service';
 export type ConfigurationTab = 'plan' | 'recipes' | 'inputs' | 'resources' | 'machines' | 'display';
 export type WorkbenchFocusMode = 'open-plan' | 'focus-graph';
 
+export const GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS = 150;
+
 export interface WorkbenchFocusRequest {
   projectId: string;
   mode: WorkbenchFocusMode;
   sequence: number;
 }
 
+interface PendingGraphNodePositionCommit {
+  projectId: string;
+  positions: GraphLayoutState['nodePositions'];
+  timeout: ReturnType<typeof setTimeout> | null;
+}
+
 @Injectable({ providedIn: 'root' })
-export class PlannerStoreService {
+export class PlannerStoreService implements OnDestroy {
   private readonly datasetService = inject(DatasetService);
   private readonly persistenceCoordinator = inject(PlannerPersistenceCoordinatorService);
   private readonly solver = inject(PlannerSolverService);
   private focusRequestSequence = 0;
+  private pendingGraphNodePositionCommit: PendingGraphNodePositionCommit | null = null;
 
   public readonly dataset = this.datasetService.dataset;
   public readonly datasetError = this.datasetService.loadError;
@@ -140,11 +151,14 @@ export class PlannerStoreService {
     this.recipeRows().filter((row) => row.recipe.isAlternate),
   );
 
+  private readonly productionGraphInput = computed(
+    () => selectProductionGraphInput(this.dataset(), this.activeProject(), this.solveResult()),
+    { equal: equalProductionGraphInputs },
+  );
+
   public readonly graph = computed<ProductionGraph | null>(() => {
-    const dataset = this.dataset();
-    const project = this.activeProject();
-    const result = this.solveResult();
-    return selectProductionGraph(dataset, project, result);
+    const input = this.productionGraphInput();
+    return input ? buildProductionGraphFromInput(input) : null;
   });
 
   public readonly planLocked = computed(() => this.activeProject()?.buildState.planLocked ?? false);
@@ -175,7 +189,16 @@ export class PlannerStoreService {
     this.solver.connect(this.solveInput);
   }
 
+  public ngOnDestroy(): void {
+    this.flushPendingGraphNodePositions();
+  }
+
+  public flushGraphNodePositions(): void {
+    this.flushPendingGraphNodePositions();
+  }
+
   public selectProject(projectId: string): void {
+    this.flushPendingGraphNodePositions();
     const project = this.projects().find((candidate) => candidate.id === projectId);
     if (!project) {
       return;
@@ -184,6 +207,7 @@ export class PlannerStoreService {
   }
 
   public createProject(): void {
+    this.flushPendingGraphNodePositions();
     const dataset = this.dataset();
     if (!dataset) {
       return;
@@ -194,6 +218,7 @@ export class PlannerStoreService {
   }
 
   public duplicateProject(): void {
+    this.flushPendingGraphNodePositions();
     const project = this.activeProject();
     if (!project) {
       return;
@@ -208,6 +233,7 @@ export class PlannerStoreService {
   }
 
   public deleteProject(): void {
+    this.flushPendingGraphNodePositions();
     const activeId = this.activeProjectId();
     if (!activeId || this.projects().length <= 1) {
       return;
@@ -415,15 +441,18 @@ export class PlannerStoreService {
     if (this.nodeLayoutLocked()) {
       return;
     }
-    this.updateActiveProject((project) =>
-      projectMutations.setGraphNodePosition(project, nodeId, position),
-    );
+    const project = this.activeProject();
+    if (!project) {
+      return;
+    }
+    this.queueGraphNodePosition(project, nodeId, position);
   }
 
   public resetGraphLayout(): void {
     if (this.nodeLayoutLocked()) {
       return;
     }
+    this.clearPendingGraphNodePositions();
     this.updateActiveProject(projectMutations.resetGraphLayout);
   }
 
@@ -511,6 +540,7 @@ export class PlannerStoreService {
   }
 
   private updateActiveProject(mapper: (project: PlannerProject) => PlannerProject): void {
+    this.flushPendingGraphNodePositions();
     const activeId = this.activeProjectId();
     if (!activeId) {
       return;
@@ -545,6 +575,7 @@ export class PlannerStoreService {
   }
 
   private initializeFromStoredState(state: LoadedPlannerState): void {
+    this.clearPendingGraphNodePositions();
     this.projects.set(state.projects);
     const activeProject =
       state.projects.find((project) => project.id === state.activeProjectId) ?? state.projects[0];
@@ -554,6 +585,7 @@ export class PlannerStoreService {
   }
 
   private initializeStarterProject(dataset: GameDataset): void {
+    this.clearPendingGraphNodePositions();
     const starter = createStarterProject(dataset);
     this.projects.set([starter]);
     this.activateProject(starter, 'open-plan');
@@ -561,6 +593,89 @@ export class PlannerStoreService {
 
   private setGraphNodeDone(nodeId: string, done: boolean): void {
     this.updateActiveProject((project) => projectMutations.setGraphNodeDone(project, nodeId, done));
+  }
+
+  private queueGraphNodePosition(
+    project: PlannerProject,
+    nodeId: string,
+    position: { x: number; y: number },
+  ): void {
+    if (this.pendingGraphNodePositionCommit?.projectId !== project.id) {
+      this.flushPendingGraphNodePositions();
+    }
+
+    const pending = this.pendingGraphNodePositionCommit ?? {
+      projectId: project.id,
+      positions: {},
+      timeout: null,
+    };
+    const comparisonPosition =
+      pending.positions[nodeId] ?? project.graphLayout.nodePositions[nodeId];
+    if (comparisonPosition?.x === position.x && comparisonPosition.y === position.y) {
+      return;
+    }
+
+    pending.positions[nodeId] = position;
+    this.pendingGraphNodePositionCommit = pending;
+    this.schedulePendingGraphNodePositionCommit(pending);
+  }
+
+  private schedulePendingGraphNodePositionCommit(
+    pending: PendingGraphNodePositionCommit,
+  ): void {
+    if (pending.timeout !== null) {
+      clearTimeout(pending.timeout);
+    }
+    pending.timeout = setTimeout(() => {
+      this.flushPendingGraphNodePositions();
+    }, GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
+  }
+
+  private flushPendingGraphNodePositions(): void {
+    const pending = this.pendingGraphNodePositionCommit;
+    if (!pending) {
+      return;
+    }
+    if (pending.timeout !== null) {
+      clearTimeout(pending.timeout);
+    }
+    this.pendingGraphNodePositionCommit = null;
+    this.updateProjectById(pending.projectId, (project) =>
+      projectMutations.setGraphNodePositions(project, pending.positions),
+    );
+  }
+
+  private clearPendingGraphNodePositions(): void {
+    const pending = this.pendingGraphNodePositionCommit;
+    if (pending && pending.timeout !== null) {
+      clearTimeout(pending.timeout);
+    }
+    this.pendingGraphNodePositionCommit = null;
+  }
+
+  private updateProjectById(
+    projectId: string,
+    mapper: (project: PlannerProject) => PlannerProject,
+  ): void {
+    const now = new Date().toISOString();
+    this.projects.update((projects) => {
+      let changed = false;
+      const nextProjects = projects.map((project) => {
+        if (project.id !== projectId) {
+          return project;
+        }
+        const nextProject = mapper(project);
+        if (nextProject === project) {
+          return project;
+        }
+        changed = true;
+        return {
+          ...nextProject,
+          updatedAt: now,
+        };
+      });
+      return changed ? nextProjects : projects;
+    });
   }
 }
 

@@ -301,13 +301,36 @@ export function setGraphNodePosition(
   nodeId: string,
   position: { x: number; y: number },
 ): PlannerProject {
+  return setGraphNodePositions(project, { [nodeId]: position });
+}
+
+export function setGraphNodePositions(
+  project: PlannerProject,
+  positions: Readonly<Record<string, { x: number; y: number }>>,
+): PlannerProject {
+  let changed = false;
+  const nodePositions: GraphLayoutState['nodePositions'] = {
+    ...project.graphLayout.nodePositions,
+  };
+
+  for (const [nodeId, position] of Object.entries(positions)) {
+    const current = project.graphLayout.nodePositions[nodeId];
+    if (current?.x === position.x && current.y === position.y) {
+      continue;
+    }
+    changed = true;
+    nodePositions[nodeId] = position;
+  }
+
+  if (!changed) {
+    return project;
+  }
+
   return {
     ...project,
     graphLayout: {
-      nodePositions: {
-        ...project.graphLayout.nodePositions,
-        [nodeId]: position,
-      },
+      ...project.graphLayout,
+      nodePositions,
     },
   };
 }

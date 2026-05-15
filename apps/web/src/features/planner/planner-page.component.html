@@ -194,6 +194,7 @@
           (nodeSelectionToggled)="store.toggleGraphNodeSelection($event)"
           (nodeDoneToggled)="store.toggleGraphNodeDone($event)"
           (nodeMoved)="store.setGraphNodePosition($event.nodeId, $event.position)"
+          (nodeMoveEnded)="store.flushGraphNodePositions()"
         />
       </section>
 

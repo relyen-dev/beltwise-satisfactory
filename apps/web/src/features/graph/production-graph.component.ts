@@ -9,8 +9,9 @@ import {
 import { CommonModule } from '@angular/common';
 import type { GameDataset } from '@beltwise/game-data';
 import {
+  applyGraphLayout,
   createDefaultGraphDisplaySettings,
-  toGraphRendererModel,
+  toDefaultGraphRendererModel,
   type GraphLayoutState,
   type GraphDisplaySettings,
   type ProductionGraph,
@@ -69,6 +70,7 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly nodeNotes = input<Readonly<Record<string, string>>>({});
   public readonly interactionLocked = input(false);
   public readonly nodeMoved = output<{ nodeId: string; position: { x: number; y: number } }>();
+  public readonly nodeMoveEnded = output<void>();
   public readonly nodeSelectionSet = output<string | null>();
   public readonly nodeSelectionToggled = output<string>();
   public readonly nodeDoneToggled = output<string>();
@@ -81,13 +83,18 @@ export class ProductionGraphComponent implements OnDestroy {
   private clearImmediateSelectionSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingNodeDeselectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  public readonly flowModel = computed(() => {
+  private readonly defaultRendererModel = computed(() => {
     const graph = this.graph();
-    if (!graph) {
+    return graph ? toDefaultGraphRendererModel(graph) : null;
+  });
+
+  public readonly flowModel = computed(() => {
+    const defaultRendererModel = this.defaultRendererModel();
+    if (!defaultRendererModel) {
       return null;
     }
 
-    const flowModel = toFoblexFlowModel(toGraphRendererModel(graph, this.layout()), {
+    const flowModel = toFoblexFlowModel(applyGraphLayout(defaultRendererModel, this.layout()), {
       dataset: this.dataset(),
       displaySettings: this.displaySettings(),
     });
@@ -166,7 +173,11 @@ export class ProductionGraphComponent implements OnDestroy {
   public handleNodePointerUp(nodeId: string, event: PointerEvent): void {
     const start = this.nodePointerStarts.get(nodeId);
     this.nodePointerStarts.delete(nodeId);
-    if (!start || this.movedNodeIds.delete(nodeId)) {
+    if (this.movedNodeIds.delete(nodeId)) {
+      this.nodeMoveEnded.emit();
+      return;
+    }
+    if (!start) {
       return;
     }
 
