@@ -3,20 +3,16 @@ import {
   effect,
   inject,
   Injectable,
-  InjectionToken,
   Injector,
   signal,
   type Signal,
 } from '@angular/core';
-import { type ProductionPlanResult } from '@beltwise/planner-core';
 import {
   createEmptyProductionPlanResult,
-  HighsProductionSolverAdapter,
-  solveProductionPlan,
-  type ProductionPlanInput,
-  type ProductionSolverAdapter,
-} from '@beltwise/solver';
+  type ProductionPlanResult,
+} from '@beltwise/planner-core';
 import { type PlannerSolveInput } from './planner-solve-input';
+import { PlannerProductionSolverService } from './planner-production-solver.service';
 
 export type SolveStatus = 'idle' | 'solving' | 'solved' | 'error';
 
@@ -49,37 +45,12 @@ export class PlannerSolveScheduler<TInput> {
   }
 }
 
-export type PlannerSolveRunner = (
-  input: ProductionPlanInput,
-  adapter: ProductionSolverAdapter,
-) => Promise<ProductionPlanResult>;
-
-export const PLANNER_SOLVE_RUNNER = new InjectionToken<PlannerSolveRunner>(
-  'Beltwise planner solve runner',
-  {
-    providedIn: 'root',
-    factory: () => (input, adapter) => solveProductionPlan(input, adapter),
-  },
-);
-
-export type PlannerSolverAdapterFactory = () => ProductionSolverAdapter;
-
-export const PLANNER_SOLVER_ADAPTER_FACTORY = new InjectionToken<PlannerSolverAdapterFactory>(
-  'Beltwise planner solver adapter factory',
-  {
-    providedIn: 'root',
-    factory: () => () => new HighsProductionSolverAdapter(),
-  },
-);
-
 @Injectable({ providedIn: 'root' })
 export class PlannerSolverService {
   private readonly injector = inject(Injector);
-  private readonly solveRunner = inject(PLANNER_SOLVE_RUNNER);
-  private readonly createSolverAdapter = inject(PLANNER_SOLVER_ADAPTER_FACTORY);
+  private readonly productionSolver = inject(PlannerProductionSolverService);
   private solveEffect: EffectRef | undefined;
   private solveSerial = 0;
-  private solverAdapter: ProductionSolverAdapter | undefined;
   private readonly solveScheduler = new PlannerSolveScheduler<ScheduledPlannerSolve>(
     PLANNER_SOLVE_DEBOUNCE_MS,
   );
@@ -118,10 +89,8 @@ export class PlannerSolverService {
   }
 
   private runScheduledSolve({ solveInput, serial }: ScheduledPlannerSolve): void {
-    void this.solveRunner(
-      { dataset: solveInput.dataset, project: solveInput.project },
-      this.getSolverAdapter(),
-    )
+    void this.productionSolver
+      .solve({ dataset: solveInput.dataset, project: solveInput.project })
       .then((result) => {
         if (serial !== this.solveSerial) {
           return;
@@ -142,10 +111,5 @@ export class PlannerSolverService {
   private cancelPendingSolve(): void {
     this.solveSerial += 1;
     this.solveScheduler.cancel();
-  }
-
-  private getSolverAdapter(): ProductionSolverAdapter {
-    this.solverAdapter ??= this.createSolverAdapter();
-    return this.solverAdapter;
   }
 }
