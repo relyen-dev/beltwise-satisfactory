@@ -6,7 +6,7 @@
   "scripts": {
     "start": "ng serve --host 127.0.0.1 --port 4200",
     "build": "ng build",
-    "test": "echo Web package smoke tests are covered by build for this first scaffold.",
+    "test": "npm --prefix ../.. run test:web",
     "typecheck": "ng build --configuration development"
   },
   "dependencies": {
