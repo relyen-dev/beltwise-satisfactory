@@ -70,6 +70,7 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly nodeNotes = input<Readonly<Record<string, string>>>({});
   public readonly interactionLocked = input(false);
   public readonly nodeMoved = output<{ nodeId: string; position: { x: number; y: number } }>();
+  public readonly nodeMoveEnded = output<void>();
   public readonly nodeSelectionSet = output<string | null>();
   public readonly nodeSelectionToggled = output<string>();
   public readonly nodeDoneToggled = output<string>();
@@ -172,7 +173,11 @@ export class ProductionGraphComponent implements OnDestroy {
   public handleNodePointerUp(nodeId: string, event: PointerEvent): void {
     const start = this.nodePointerStarts.get(nodeId);
     this.nodePointerStarts.delete(nodeId);
-    if (!start || this.movedNodeIds.delete(nodeId)) {
+    if (this.movedNodeIds.delete(nodeId)) {
+      this.nodeMoveEnded.emit();
+      return;
+    }
+    if (!start) {
       return;
     }
 

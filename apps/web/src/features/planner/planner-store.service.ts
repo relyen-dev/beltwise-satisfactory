@@ -193,6 +193,10 @@ export class PlannerStoreService implements OnDestroy {
     this.flushPendingGraphNodePositions();
   }
 
+  public flushGraphNodePositions(): void {
+    this.flushPendingGraphNodePositions();
+  }
+
   public selectProject(projectId: string): void {
     this.flushPendingGraphNodePositions();
     const project = this.projects().find((candidate) => candidate.id === projectId);

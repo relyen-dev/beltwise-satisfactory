@@ -239,13 +239,7 @@ describe('PlannerStoreService', () => {
 
   it('coalesces graph node position commits without changing solve-relevant state', () => {
     vi.useFakeTimers();
-    const { store, connectedSolveInput } = createStoreHarness((binding) => {
-      binding.initializeFromStoredState({
-        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-        activeProjectId: 'project-a',
-        projects: [createProject()],
-      });
-    });
+    const { store, connectedSolveInput } = createInitializedStore();
     const originalSolveKey = connectedSolveInput?.()?.key;
     expect(originalSolveKey).toBeDefined();
 
@@ -263,6 +257,80 @@ describe('PlannerStoreService', () => {
       'recipe:Recipe_IronPlate_C': { x: 30, y: 40 },
     });
     expect(connectedSolveInput?.()?.key).toBe(originalSolveKey);
+  });
+
+  it('flushes pending graph node positions on drag-end commits', () => {
+    vi.useFakeTimers();
+    const { store } = createInitializedStore();
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 10, y: 20 });
+    store.flushGraphNodePositions();
+
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 10, y: 20 },
+    });
+
+    vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 10, y: 20 },
+    });
+  });
+
+  it('flushes pending graph node positions before switching projects', () => {
+    vi.useFakeTimers();
+    const projectA = createProject();
+    const projectB: PlannerProject = { ...createProject(), id: 'project-b', name: 'Factory B' };
+    const { store } = createInitializedStore([projectA, projectB], projectA.id);
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 11, y: 22 });
+    store.selectProject(projectB.id);
+
+    expect(store.activeProjectId()).toBe(projectB.id);
+    expect(
+      store.projects().find((project) => project.id === projectA.id)?.graphLayout.nodePositions,
+    ).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 11, y: 22 },
+    });
+  });
+
+  it('clears pending graph node positions when resetting layout', () => {
+    vi.useFakeTimers();
+    const { store } = createInitializedStore();
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 15, y: 25 });
+    store.resetGraphLayout();
+    vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
+
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({});
+  });
+
+  it('flushes pending graph node positions before other project mutations', () => {
+    vi.useFakeTimers();
+    const { store } = createInitializedStore();
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 17, y: 27 });
+    store.renameProject('Renamed factory');
+
+    expect(store.activeProject()).toMatchObject({
+      name: 'Renamed factory',
+      graphLayout: {
+        nodePositions: {
+          'recipe:Recipe_IronPlate_C': { x: 17, y: 27 },
+        },
+      },
+    });
+  });
+
+  it('flushes pending graph node positions on destroy', () => {
+    vi.useFakeTimers();
+    const { store } = createInitializedStore();
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 19, y: 29 });
+    store.ngOnDestroy();
+
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 19, y: 29 },
+    });
   });
 });
 
@@ -298,6 +366,22 @@ function firstTarget(project: PlannerProject): ProductTarget {
     throw new Error('Expected a target');
   }
   return target;
+}
+
+function createInitializedStore(
+  projects: PlannerProject[] = [createProject()],
+  activeProjectId = projects[0]?.id,
+): {
+  connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  store: PlannerStoreService;
+} {
+  return createStoreHarness((binding) => {
+    binding.initializeFromStoredState({
+      schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+      activeProjectId,
+      projects,
+    });
+  });
 }
 
 function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorBinding) => void): {

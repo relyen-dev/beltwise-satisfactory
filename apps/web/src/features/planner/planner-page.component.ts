@@ -84,6 +84,12 @@ export class PlannerPageComponent {
     this.workPanelOpen.set(false);
   }
 
+  @HostListener('window:beforeunload')
+  @HostListener('window:pagehide')
+  public flushGraphNodePositionsBeforeUnload(): void {
+    this.store.flushGraphNodePositions();
+  }
+
   @HostListener('document:keydown.escape', ['$event'])
   public clearGraphSelectionFromKeyboard(event: KeyboardEvent): void {
     if (!this.store.selectedGraphNodeId() || isEditableKeyboardTarget(event.target)) {
