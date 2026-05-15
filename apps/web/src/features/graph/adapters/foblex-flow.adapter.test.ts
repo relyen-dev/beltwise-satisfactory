@@ -1,5 +1,6 @@
 import '@angular/compiler';
 import { describe, expect, it } from 'vitest';
+import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import type {
   GraphDisplaySettings,
   GraphEdgeStyle,
@@ -72,6 +73,52 @@ describe('toFoblexFlowModel edge style mapping', () => {
   });
 });
 
+describe('toFoblexFlowModel adapter composition', () => {
+  it('wires transport labels into node tooltip output split lines', () => {
+    const flowModel = toFoblexFlowModel(
+      {
+        nodes: [fixtureMachineNode('recipe:plate')],
+        edges: [
+          fixtureRendererEdge('left-edge', 'recipe:plate', 'left-target', 30),
+          fixtureRendererEdge('right-edge', 'recipe:plate', 'right-target', 90),
+        ],
+      },
+      {
+        dataset: transportDataset(),
+        displaySettings: {
+          maxBeltTier: 1,
+          maxPipeTier: 2,
+          rateDecimalPlaces: 2,
+          edgeStyle: 'straight',
+          showTransportLabels: true,
+          animateFlowLines: true,
+        },
+      },
+    );
+
+    expect(flowModel.edges[1]?.labelLines.transportLines).toBe('2x Mk.1 belts');
+    expect(flowModel.nodes[0]?.tooltip?.stats).toEqual(['4x Constructor', 'Recipe cycles 30/min']);
+    expect(flowModel.nodes[0]?.tooltip?.outputs).toEqual([
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '30/min',
+        transportLines: '1x Mk.1 belt',
+        machineCount: '1',
+      },
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '90/min',
+        transportLines: '2x Mk.1 belts',
+        machineCount: '3',
+      },
+    ]);
+  });
+});
+
+function transportDataset(): GameDataset {
+  return tinySatisfactoryDataset;
+}
+
 function modelOptions(edgeStyle: GraphEdgeStyle): {
   dataset: null;
   displaySettings: GraphDisplaySettings;
@@ -85,6 +132,23 @@ function modelOptions(edgeStyle: GraphEdgeStyle): {
       edgeStyle,
       showTransportLabels: true,
       animateFlowLines: true,
+    },
+  };
+}
+
+function fixtureMachineNode(id: string): GraphRendererModel['nodes'][number] {
+  return {
+    id,
+    kind: 'recipe',
+    position: { x: 0, y: 0 },
+    data: {
+      id,
+      kind: 'recipe',
+      label: 'Iron Plate',
+      subtitle: 'Constructor',
+      amountPerMinute: 30,
+      machineDisplayName: 'Constructor',
+      machineCount: 4,
     },
   };
 }
@@ -112,19 +176,20 @@ function fixtureRendererEdge(
   id: string,
   sourceNodeId: string,
   targetNodeId: string,
+  amountPerMinute = 60,
 ): GraphRendererModel['edges'][number] {
   return {
     id,
     sourceNodeId,
     targetNodeId,
-    label: 'Iron Ore 60/min',
+    label: `Iron Plate ${amountPerMinute}/min`,
     data: {
       id,
       sourceNodeId,
       targetNodeId,
-      itemId: 'Desc_IronOre_C',
-      label: 'Iron Ore 60/min',
-      amountPerMinute: 60,
+      itemId: 'Desc_IronPlate_C',
+      label: `Iron Plate ${amountPerMinute}/min`,
+      amountPerMinute,
     },
   };
 }
