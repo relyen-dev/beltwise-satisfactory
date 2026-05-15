@@ -12,6 +12,7 @@
     "build": "npm --workspace @beltwise/game-data run build && npm --workspace @beltwise/planner-core run build && npm --workspace @beltwise/solver run build && npm --workspace @beltwise/extract-satisfactory-data run build && npm --workspace @beltwise/web run build",
     "dev": "npm --workspace @beltwise/web run start",
     "test": "vitest run --config vitest.config.mjs",
+    "test:web": "vitest run --config vitest.config.mjs apps/web/src",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "data:extract": "npm --workspace @beltwise/game-data run build && npm --workspace @beltwise/extract-satisfactory-data run start --",
     "extract:data": "npm --workspace @beltwise/game-data run build && npm --workspace @beltwise/extract-satisfactory-data run start --",

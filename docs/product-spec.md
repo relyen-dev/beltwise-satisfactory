@@ -231,7 +231,6 @@ beltwise-satisfactory/
   package.json
   angular.json
   tsconfig.base.json
-  eslint.config.js
   prettier.config.js
   apps/
     web/

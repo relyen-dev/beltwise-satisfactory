@@ -24,6 +24,18 @@ Run all package tests:
 npm.cmd test
 ```
 
+Run focused web app tests:
+
+```powershell
+npm.cmd run test:web
+```
+
+Run workspace typechecks:
+
+```powershell
+npm.cmd run typecheck
+```
+
 Build everything:
 
 ```powershell
@@ -63,7 +75,7 @@ docs                             architecture, ADRs, RFCs, and product notes
 - Keep `planner-core` graph and project models renderer-neutral.
 - Persist user configuration, not solver output.
 - Add focused tests when changing parser, solver, resource-limit, or graph-model behavior.
-- Run `npm.cmd test` and `npm.cmd run build` before handing off meaningful changes.
+- Run `npm.cmd test`, `npm.cmd run typecheck`, and `npm.cmd run build` before handing off meaningful changes.
 - If a sandboxed run of `npm.cmd test` fails while loading `vitest.config.mjs` with `Access is denied`, rerun the same command with the appropriate permissions before changing test configuration.
 
 ## Solver WASM Asset

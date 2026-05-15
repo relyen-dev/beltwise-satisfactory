@@ -87,9 +87,11 @@ docs                             Architecture and data notes
 
 ```powershell
 npm.cmd test
+npm.cmd run test:web
+npm.cmd run typecheck
 ```
 
-Vitest covers the tuple parser, docs normalization, LP model builder, HiGHS adapter, production solver behavior, persistence hydration, and graph conversion. The Angular app is checked by `npm.cmd run build`.
+Vitest covers the tuple parser, docs normalization, LP model builder, HiGHS adapter, production solver behavior, persistence hydration, graph conversion, and focused web app tests. `npm.cmd run test:web` runs just the web app Vitest coverage. The Angular app is also checked by `npm.cmd run build`.
 
 ## Data Extraction
 
