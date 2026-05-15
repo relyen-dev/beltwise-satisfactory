@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import { createPlannerProject, type PlannerProject } from '@beltwise/planner-core';
 import {
+  buildMachineUsage,
   buildProductionLpModel,
   DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS,
   rawInputVariable,
@@ -33,6 +34,38 @@ function fixtureProject(): PlannerProject {
         sortOrder: 1
       }
     ]
+  };
+}
+
+function variablePowerMachineDataset(): GameDataset {
+  const ironPlateRecipe = tinySatisfactoryDataset.recipes['Recipe_IronPlate_C'];
+  if (!ironPlateRecipe) {
+    throw new Error('Fixture is missing Recipe_IronPlate_C.');
+  }
+
+  return {
+    ...tinySatisfactoryDataset,
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_FastVariableConstructor_C: {
+        id: 'Build_FastVariableConstructor_C',
+        className: 'Build_FastVariableConstructor_C',
+        displayName: 'Fast Variable Constructor',
+        type: 'variablePowerManufacturer',
+        powerRangeMw: {
+          min: 20,
+          max: 40
+        },
+        manufacturingSpeed: 2
+      }
+    },
+    recipes: {
+      ...tinySatisfactoryDataset.recipes,
+      Recipe_IronPlate_C: {
+        ...ironPlateRecipe,
+        producedIn: ['Build_FastVariableConstructor_C', 'Build_ConstructorMk1_C']
+      }
+    }
   };
 }
 
@@ -91,6 +124,42 @@ describe('buildProductionLpModel', () => {
     expect(model.objective.coefficients[recipeVariable('Recipe_IronIngot_C')]).toBe(0);
     expect(model.objective.coefficients[recipeVariable('Recipe_IronPlate_C')]).toBe(0);
     expect(model.objective.coefficients[recipeVariable('Recipe_IronRod_C')]).toBe(0);
+  });
+
+  it('uses the same machine math for LP objective coefficients and reported usage', () => {
+    const dataset = variablePowerMachineDataset();
+    const project = fixtureProject();
+    project.objectiveProfile.machineCountWeight = 3;
+    project.objectiveProfile.powerWeight = 5;
+    const model = buildProductionLpModel({
+      dataset,
+      project
+    });
+    const oneRateUsage = buildMachineUsage(dataset, project, {
+      Recipe_IronPlate_C: 1
+    })[0];
+    const recipeVar = recipeVariable('Recipe_IronPlate_C');
+    const recipeActivityStage = model.objectiveStages.find(
+      (stage) => stage.name === 'recipe-activity',
+    );
+    const powerStage = model.objectiveStages.find((stage) => stage.name === 'power');
+
+    expect(oneRateUsage).toBeDefined();
+    if (!oneRateUsage || !recipeActivityStage || !powerStage) {
+      throw new Error('Expected fixture usage and objective stages to exist.');
+    }
+
+    expect(oneRateUsage.machineId).toBe('Build_FastVariableConstructor_C');
+    expect(oneRateUsage.machineCount).toBeCloseTo(0.05, 10);
+    expect(oneRateUsage.powerMw).toBeCloseTo(1.5, 10);
+    expect(recipeActivityStage.objective.coefficients[recipeVar] ?? 0).toBeCloseTo(
+      project.objectiveProfile.machineCountWeight * oneRateUsage.machineCount + 0.000001,
+      10,
+    );
+    expect(powerStage.objective.coefficients[recipeVar] ?? 0).toBeCloseTo(
+      project.objectiveProfile.powerWeight * oneRateUsage.powerMw,
+      10,
+    );
   });
 });
 
