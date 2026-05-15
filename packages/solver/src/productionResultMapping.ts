@@ -1,4 +1,4 @@
-import type { GameDataset, ItemId, Machine, Recipe, RecipeId } from '@beltwise/game-data';
+import type { GameDataset, ItemId, Recipe, RecipeId } from '@beltwise/game-data';
 import type {
   ItemFlow,
   ItemFlowEndpoint,
@@ -9,6 +9,7 @@ import type {
 } from '@beltwise/planner-core';
 import type { LinearSolverResult } from './SolverAdapter';
 import type { ProductionLpModel, ProductionPlanInput } from './lpModel';
+import { machineCountPerRecipeRate, machinePowerMw, selectRecipeMachine } from './machineLogic';
 
 const EPSILON = 0.000001;
 const RELATIVE_RECIPE_NOISE_FACTOR = 0.00001;
@@ -77,10 +78,9 @@ export function buildMachineUsage(
     .map(([recipeId, recipeRatePerMinute]) => {
       const recipe = dataset.recipes[recipeId];
       const machine = recipe ? selectRecipeMachine(dataset, project, recipe) : undefined;
-      const durationSeconds = recipe?.durationSeconds ?? 60;
-      const executionsPerMachinePerMinute = 60 / durationSeconds;
-      const machineSpeed = machine?.manufacturingSpeed ?? 1;
-      const machineCount = recipeRatePerMinute / executionsPerMachinePerMinute / machineSpeed;
+      const machineCount = recipe
+        ? recipeRatePerMinute * machineCountPerRecipeRate(recipe, machine)
+        : 0;
       return {
         recipeId,
         machineId: machine?.id ?? 'unknown-machine',
@@ -464,30 +464,6 @@ function isDownstreamRecipe(
   }
 
   return false;
-}
-
-function selectRecipeMachine(
-  dataset: GameDataset,
-  project: ProductionPlanInput['project'],
-  recipe: Recipe,
-): Machine | undefined {
-  const machineId =
-    recipe.producedIn.find((candidate) => dataset.machines[candidate] && project.machineOverrides[candidate]?.enabled !== false) ??
-    recipe.producedIn.find((candidate) => dataset.machines[candidate]);
-  return machineId ? dataset.machines[machineId] : undefined;
-}
-
-function machinePowerMw(machine: Machine | undefined): number {
-  if (!machine) {
-    return 0;
-  }
-  if (machine.powerMw !== undefined) {
-    return machine.powerMw;
-  }
-  if (machine.powerRangeMw) {
-    return (machine.powerRangeMw.min + machine.powerRangeMw.max) / 2;
-  }
-  return 0;
 }
 
 function sumItemAmount(amounts: ReadonlyArray<{ itemId: ItemId; amount: number }>, itemId: ItemId): number {
