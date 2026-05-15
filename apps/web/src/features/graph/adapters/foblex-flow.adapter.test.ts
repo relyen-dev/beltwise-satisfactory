@@ -1,128 +1,36 @@
 import '@angular/compiler';
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
-import type { GraphRendererModel } from '@beltwise/planner-core';
-import { EFConnectableSide, EFConnectionConnectableSide } from '@foblex/flow';
+import type {
+  GraphDisplaySettings,
+  GraphEdgeStyle,
+  GraphRendererModel,
+} from '@beltwise/planner-core';
+import { EFConnectionConnectableSide } from '@foblex/flow';
 import {
-  FOBLEX_CONNECTION_BUILDERS,
   FOBLEX_CURVED_EDGE_CONNECTION_TYPE,
+  FOBLEX_EDGE_LABEL_POSITION,
+  FOBLEX_RECIPROCAL_EDGE_CONNECTION_TYPE,
+  FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION,
+  FOBLEX_STRAIGHT_EDGE_CONNECTION_TYPE,
   toFoblexFlowModel,
 } from './foblex-flow.adapter';
 
-describe('toFoblexFlowModel transport display', () => {
-  it('adds belt and pipe counts from configured max transport tiers', () => {
-    const model = fixtureRendererModel();
-
-    const flowModel = toFoblexFlowModel(model, {
-      dataset: transportDataset(),
-      displaySettings: {
-        maxBeltTier: 5,
-        maxPipeTier: 2,
-        rateDecimalPlaces: 3,
-        edgeStyle: 'straight',
-        showTransportLabels: true,
-        animateFlowLines: true,
+describe('toFoblexFlowModel edge style mapping', () => {
+  it('maps straight edges to the default Foblex straight connection type', () => {
+    const flowModel = toFoblexFlowModel(
+      {
+        nodes: [],
+        edges: [fixtureRendererEdge('edge', 'source', 'target')],
       },
-    });
+      modelOptions('straight'),
+    );
 
-    const beltEdge = flowModel.edges.find((edge) => edge.id === 'belt-edge');
-    const pipeEdge = flowModel.edges.find((edge) => edge.id === 'pipe-edge');
-
-    expect(beltEdge?.transport).toEqual({
-      kind: 'belt',
-      lineCount: 2,
-      tierLabel: 'Mk.5',
-    });
-    expect(beltEdge?.labelLines.transportLines).toBe('2x Mk.5 belts');
-    expect(pipeEdge?.transport).toEqual({
-      kind: 'pipe',
-      lineCount: 2,
-      tierLabel: 'Mk.2',
-    });
-    expect(pipeEdge?.labelLines.transportLines).toBe('2x Mk.2 pipes');
+    expect(flowModel.edges[0]?.connectionType).toBe(FOBLEX_STRAIGHT_EDGE_CONNECTION_TYPE);
+    expect(flowModel.edges[0]?.labelPosition).toBe(FOBLEX_EDGE_LABEL_POSITION);
   });
 
-  it('can keep transport counts off the visible edge label', () => {
-    const model = fixtureRendererModel();
-
-    const flowModel = toFoblexFlowModel(model, {
-      dataset: transportDataset(),
-      displaySettings: {
-        maxBeltTier: 6,
-        maxPipeTier: 2,
-        rateDecimalPlaces: 3,
-        edgeStyle: 'straight',
-        showTransportLabels: false,
-        animateFlowLines: false,
-      },
-    });
-
-    expect(flowModel.edges[0]?.transport.kind).toBe('belt');
-    expect(flowModel.edges[0]?.labelLines.transportLines).toBeUndefined();
-  });
-
-  it('formats machine multipliers with the configured rate precision', () => {
-    const model: GraphRendererModel = {
-      nodes: [
-        {
-          id: 'recipe:rotor',
-          kind: 'recipe',
-          position: { x: 0, y: 0 },
-          data: {
-            id: 'recipe:rotor',
-            kind: 'recipe',
-            label: 'Alternate: Copper Rotor',
-            subtitle: '2.963x Assembler',
-            recipeId: 'Recipe_Alternate_CopperRotor_C',
-            amountPerMinute: 11.1111,
-            machineDisplayName: 'Assembler',
-            machineCount: 2.96345,
-          },
-        },
-      ],
-      edges: [],
-    };
-
-    const flowModel = toFoblexFlowModel(model, {
-      dataset: transportDataset(),
-      displaySettings: {
-        maxBeltTier: 6,
-        maxPipeTier: 2,
-        rateDecimalPlaces: 4,
-        edgeStyle: 'straight',
-        showTransportLabels: true,
-        animateFlowLines: true,
-      },
-    });
-
-    expect(flowModel.nodes[0]?.tooltip?.stats).toEqual([
-      '2.9634x Assembler',
-      'Recipe cycles 11.1111/min',
-    ]);
-  });
-
-  it('switches normal edges to perpendicular curves for curved edge style', () => {
-    const model = fixtureRendererModel();
-
-    const flowModel = toFoblexFlowModel(model, {
-      dataset: transportDataset(),
-      displaySettings: {
-        maxBeltTier: 6,
-        maxPipeTier: 2,
-        rateDecimalPlaces: 3,
-        edgeStyle: 'curved',
-        showTransportLabels: true,
-        animateFlowLines: true,
-      },
-    });
-
-    expect(flowModel.edges.map((edge) => edge.connectionType)).toEqual([
-      FOBLEX_CURVED_EDGE_CONNECTION_TYPE,
-      FOBLEX_CURVED_EDGE_CONNECTION_TYPE,
-    ]);
-  });
-
-  it('uses node-rectangle side hints for curved edge endpoint tangents', () => {
+  it('maps curved edges to perpendicular curves with node-rectangle side hints', () => {
     const model: GraphRendererModel = {
       nodes: [
         fixtureRendererNode('source', { x: 0, y: 220 }),
@@ -131,113 +39,117 @@ describe('toFoblexFlowModel transport display', () => {
       edges: [fixtureRendererEdge('edge', 'source', 'target')],
     };
 
-    const flowModel = toFoblexFlowModel(model, {
-      dataset: transportDataset(),
-      displaySettings: {
-        maxBeltTier: 6,
-        maxPipeTier: 2,
-        rateDecimalPlaces: 3,
-        edgeStyle: 'curved',
-        showTransportLabels: true,
-        animateFlowLines: true,
-      },
-    });
+    const flowModel = toFoblexFlowModel(model, modelOptions('curved'));
 
+    expect(flowModel.edges[0]?.connectionType).toBe(FOBLEX_CURVED_EDGE_CONNECTION_TYPE);
     expect(flowModel.edges[0]?.outputSide).toBe(EFConnectionConnectableSide.TOP);
     expect(flowModel.edges[0]?.inputSide).toBe(EFConnectionConnectableSide.BOTTOM);
   });
 
-  it('builds curved edges as two-segment S curves', () => {
-    const builder = FOBLEX_CONNECTION_BUILDERS[FOBLEX_CURVED_EDGE_CONNECTION_TYPE];
-    if (!builder) {
-      throw new Error('Curved edge builder must be registered');
-    }
+  it('maps reciprocal edge pairs to reciprocal arcs with reciprocal label positions', () => {
+    const flowModel = toFoblexFlowModel(
+      {
+        nodes: [],
+        edges: [
+          fixtureRendererEdge('forward-edge', 'source', 'target'),
+          fixtureRendererEdge('return-edge', 'target', 'source'),
+        ],
+      },
+      modelOptions('curved'),
+    );
 
-    const response = builder.handle({
-      source: { x: 0, y: 0 },
-      sourceSide: EFConnectableSide.RIGHT,
-      target: { x: 200, y: 100 },
-      targetSide: EFConnectableSide.LEFT,
-      radius: 0,
-      offset: 0,
-      waypoints: [],
-    });
-
-    expect(response.path.match(/\bC\b/g)).toHaveLength(2);
-    expect(response.path).toContain('100 50 C 100 100');
-    expect(response.points).toHaveLength(25);
+    expect(flowModel.edges.map((edge) => edge.connectionType)).toEqual([
+      FOBLEX_RECIPROCAL_EDGE_CONNECTION_TYPE,
+      FOBLEX_RECIPROCAL_EDGE_CONNECTION_TYPE,
+    ]);
+    expect(flowModel.edges.map((edge) => edge.labelPosition)).toEqual([
+      FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION,
+      FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION,
+    ]);
+    expect(flowModel.edges.map((edge) => edge.outputSide)).toEqual([
+      EFConnectionConnectableSide.DEFAULT,
+      EFConnectionConnectableSide.DEFAULT,
+    ]);
   });
+});
 
-  it('keeps mixed-side curved edges as two-segment S curves', () => {
-    const builder = FOBLEX_CONNECTION_BUILDERS[FOBLEX_CURVED_EDGE_CONNECTION_TYPE];
-    if (!builder) {
-      throw new Error('Curved edge builder must be registered');
-    }
+describe('toFoblexFlowModel adapter composition', () => {
+  it('wires transport labels into node tooltip output split lines', () => {
+    const flowModel = toFoblexFlowModel(
+      {
+        nodes: [fixtureMachineNode('recipe:plate')],
+        edges: [
+          fixtureRendererEdge('left-edge', 'recipe:plate', 'left-target', 30),
+          fixtureRendererEdge('right-edge', 'recipe:plate', 'right-target', 90),
+        ],
+      },
+      {
+        dataset: transportDataset(),
+        displaySettings: {
+          maxBeltTier: 1,
+          maxPipeTier: 2,
+          rateDecimalPlaces: 2,
+          edgeStyle: 'straight',
+          showTransportLabels: true,
+          animateFlowLines: true,
+        },
+      },
+    );
 
-    const response = builder.handle({
-      source: { x: 0, y: 0 },
-      sourceSide: EFConnectableSide.RIGHT,
-      target: { x: 180, y: 120 },
-      targetSide: EFConnectableSide.TOP,
-      radius: 0,
-      offset: 0,
-      waypoints: [],
-    });
-
-    expect(response.path.match(/\bC\b/g)).toHaveLength(2);
-    expect(response.path).toContain('90 60 C');
-    expect(response.points).toHaveLength(25);
+    expect(flowModel.edges[1]?.labelLines.transportLines).toBe('2x Mk.1 belts');
+    expect(flowModel.nodes[0]?.tooltip?.stats).toEqual(['4x Constructor', 'Recipe cycles 30/min']);
+    expect(flowModel.nodes[0]?.tooltip?.outputs).toEqual([
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '30/min',
+        transportLines: '1x Mk.1 belt',
+        machineCount: '1',
+      },
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '90/min',
+        transportLines: '2x Mk.1 belts',
+        machineCount: '3',
+      },
+    ]);
   });
 });
 
 function transportDataset(): GameDataset {
+  return tinySatisfactoryDataset;
+}
+
+function modelOptions(edgeStyle: GraphEdgeStyle): {
+  dataset: null;
+  displaySettings: GraphDisplaySettings;
+} {
   return {
-    ...tinySatisfactoryDataset,
-    items: {
-      ...tinySatisfactoryDataset.items,
-      Desc_Water_C: {
-        id: 'Desc_Water_C',
-        className: 'Desc_Water_C',
-        displayName: 'Water',
-        form: 'liquid',
-      },
+    dataset: null,
+    displaySettings: {
+      maxBeltTier: 6,
+      maxPipeTier: 2,
+      rateDecimalPlaces: 3,
+      edgeStyle,
+      showTransportLabels: true,
+      animateFlowLines: true,
     },
   };
 }
 
-function fixtureRendererModel(): GraphRendererModel {
+function fixtureMachineNode(id: string): GraphRendererModel['nodes'][number] {
   return {
-    nodes: [],
-    edges: [
-      {
-        id: 'belt-edge',
-        sourceNodeId: 'source',
-        targetNodeId: 'target',
-        label: 'Plastic 900/min',
-        data: {
-          id: 'belt-edge',
-          sourceNodeId: 'source',
-          targetNodeId: 'target',
-          itemId: 'Desc_IronPlate_C',
-          label: 'Plastic 900/min',
-          amountPerMinute: 900,
-        },
-      },
-      {
-        id: 'pipe-edge',
-        sourceNodeId: 'source',
-        targetNodeId: 'target',
-        label: 'Water 800/min',
-        data: {
-          id: 'pipe-edge',
-          sourceNodeId: 'source',
-          targetNodeId: 'target',
-          itemId: 'Desc_Water_C',
-          label: 'Water 800/min',
-          amountPerMinute: 800,
-        },
-      },
-    ],
+    id,
+    kind: 'recipe',
+    position: { x: 0, y: 0 },
+    data: {
+      id,
+      kind: 'recipe',
+      label: 'Iron Plate',
+      subtitle: 'Constructor',
+      amountPerMinute: 30,
+      machineDisplayName: 'Constructor',
+      machineCount: 4,
+    },
   };
 }
 
@@ -264,19 +176,20 @@ function fixtureRendererEdge(
   id: string,
   sourceNodeId: string,
   targetNodeId: string,
+  amountPerMinute = 60,
 ): GraphRendererModel['edges'][number] {
   return {
     id,
     sourceNodeId,
     targetNodeId,
-    label: 'Iron Ore 60/min',
+    label: `Iron Plate ${amountPerMinute}/min`,
     data: {
       id,
       sourceNodeId,
       targetNodeId,
-      itemId: 'Desc_IronOre_C',
-      label: 'Iron Ore 60/min',
-      amountPerMinute: 60,
+      itemId: 'Desc_IronPlate_C',
+      label: `Iron Plate ${amountPerMinute}/min`,
+      amountPerMinute,
     },
   };
 }
