@@ -9,8 +9,9 @@ import {
 import { CommonModule } from '@angular/common';
 import type { GameDataset } from '@beltwise/game-data';
 import {
+  applyGraphLayout,
   createDefaultGraphDisplaySettings,
-  toGraphRendererModel,
+  toDefaultGraphRendererModel,
   type GraphLayoutState,
   type GraphDisplaySettings,
   type ProductionGraph,
@@ -81,13 +82,18 @@ export class ProductionGraphComponent implements OnDestroy {
   private clearImmediateSelectionSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingNodeDeselectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  public readonly flowModel = computed(() => {
+  private readonly defaultRendererModel = computed(() => {
     const graph = this.graph();
-    if (!graph) {
+    return graph ? toDefaultGraphRendererModel(graph) : null;
+  });
+
+  public readonly flowModel = computed(() => {
+    const defaultRendererModel = this.defaultRendererModel();
+    if (!defaultRendererModel) {
       return null;
     }
 
-    const flowModel = toFoblexFlowModel(toGraphRendererModel(graph, this.layout()), {
+    const flowModel = toFoblexFlowModel(applyGraphLayout(defaultRendererModel, this.layout()), {
       dataset: this.dataset(),
       displaySettings: this.displaySettings(),
     });

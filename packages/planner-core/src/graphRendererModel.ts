@@ -40,10 +40,14 @@ export function toGraphRendererModel(
   graph: ProductionGraph,
   layoutState: GraphLayoutState,
 ): GraphRendererModel {
+  return applyGraphLayout(toDefaultGraphRendererModel(graph), layoutState);
+}
+
+export function toDefaultGraphRendererModel(graph: ProductionGraph): GraphRendererModel {
   const defaultPositions = defaultPositionsForGraph(graph);
 
   const nodes = graph.nodes.map((node) => {
-    const position = layoutState.nodePositions[node.id] ?? defaultPositions[node.id] ?? {
+    const position = defaultPositions[node.id] ?? {
       x: GRAPH_LAYOUT_MARGIN,
       y: GRAPH_LAYOUT_MARGIN
     };
@@ -65,6 +69,19 @@ export function toGraphRendererModel(
       targetNodeId: edge.targetNodeId,
       label: edge.label,
       data: edge
+    }))
+  };
+}
+
+export function applyGraphLayout(
+  model: GraphRendererModel,
+  layoutState: GraphLayoutState,
+): GraphRendererModel {
+  return {
+    ...model,
+    nodes: model.nodes.map((node) => ({
+      ...node,
+      position: layoutState.nodePositions[node.id] ?? node.position
     }))
   };
 }

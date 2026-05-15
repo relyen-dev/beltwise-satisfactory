@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
+  applyGraphLayout,
   buildProductionGraph,
+  toDefaultGraphRendererModel,
   toGraphRendererModel,
   type GraphRendererModel,
   type ProductionGraph,
@@ -243,6 +245,70 @@ describe('production graph conversion', () => {
     expect(resource.x).toBeLessThan(ingot.x);
     expect(ingot.x).toBeLessThan(plate.x);
     expect(plate.x).toBeLessThan(output.x);
+  });
+
+  it('keeps default layout stable while overlaying manual positions', () => {
+    const graph: ProductionGraph = {
+      nodes: [
+        {
+          id: 'resource:Desc_OreIron_C',
+          kind: 'resource',
+          label: 'Iron Ore',
+          subtitle: '45/min input'
+        },
+        {
+          id: 'recipe:Recipe_IronIngot_C',
+          kind: 'recipe',
+          label: 'Iron Ingot',
+          subtitle: '1.5x Smelter'
+        },
+        {
+          id: 'output:target-ingot',
+          kind: 'output',
+          label: 'Iron Ingot',
+          subtitle: '45/min target'
+        }
+      ],
+      edges: [
+        {
+          id: 'resource:Desc_OreIron_C->recipe:Recipe_IronIngot_C:Desc_OreIron_C',
+          sourceNodeId: 'resource:Desc_OreIron_C',
+          targetNodeId: 'recipe:Recipe_IronIngot_C',
+          itemId: 'Desc_OreIron_C',
+          label: 'Iron Ore 45/min',
+          amountPerMinute: 45
+        },
+        {
+          id: 'recipe:Recipe_IronIngot_C->output:target-ingot:Desc_IngotIron_C',
+          sourceNodeId: 'recipe:Recipe_IronIngot_C',
+          targetNodeId: 'output:target-ingot',
+          itemId: 'Desc_IngotIron_C',
+          label: 'Iron Ingot 45/min',
+          amountPerMinute: 45
+        }
+      ]
+    };
+
+    const defaultRenderer = toDefaultGraphRendererModel(graph);
+    const repeatedDefaultRenderer = toDefaultGraphRendererModel(graph);
+    const manualRenderer = applyGraphLayout(defaultRenderer, {
+      nodePositions: {
+        'recipe:Recipe_IronIngot_C': { x: 999, y: 123 }
+      }
+    });
+
+    expect(defaultRenderer).toEqual(repeatedDefaultRenderer);
+    expect(nodePosition(manualRenderer, 'recipe:Recipe_IronIngot_C')).toEqual({
+      x: 999,
+      y: 123
+    });
+    expect(nodePosition(defaultRenderer, 'recipe:Recipe_IronIngot_C')).toEqual(
+      nodePosition(repeatedDefaultRenderer, 'recipe:Recipe_IronIngot_C'),
+    );
+    expect(nodePosition(defaultRenderer, 'recipe:Recipe_IronIngot_C')).not.toEqual({
+      x: 999,
+      y: 123
+    });
   });
 
   it('keeps reciprocal production edges from locking default layout', () => {

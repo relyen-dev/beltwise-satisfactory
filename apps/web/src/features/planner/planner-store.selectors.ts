@@ -12,6 +12,8 @@ import {
   type ProductionGraph,
   type ProductionGraphNode,
   type ProductionPlanResult,
+  type ProductTarget,
+  type RateDecimalPlaces,
 } from '@beltwise/planner-core';
 import {
   defaultResourceCapPerMinute,
@@ -44,6 +46,13 @@ export interface RecipeRow {
   recipe: Recipe;
   enabled: boolean;
   machineName: string;
+}
+
+export interface ProductionGraphInput {
+  dataset: GameDataset;
+  result: ProductionPlanResult;
+  targets: ProductTarget[];
+  rateDecimalPlaces: RateDecimalPlaces;
 }
 
 export function selectItemOptions(dataset: GameDataset | null): Item[] {
@@ -118,11 +127,47 @@ export function selectProductionGraph(
   project: PlannerProject | null,
   result: ProductionPlanResult | null,
 ): ProductionGraph | null {
+  const input = selectProductionGraphInput(dataset, project, result);
+  return input ? buildProductionGraphFromInput(input) : null;
+}
+
+export function selectProductionGraphInput(
+  dataset: GameDataset | null,
+  project: PlannerProject | null,
+  result: ProductionPlanResult | null,
+): ProductionGraphInput | null {
   return dataset && project && result
-    ? buildProductionGraph(dataset, solveReadyProject(project, dataset).targets, result, {
+    ? {
+        dataset,
+        result,
+        targets: solveReadyProject(project, dataset).targets,
         rateDecimalPlaces: project.graphDisplay.rateDecimalPlaces,
-      })
+      }
     : null;
+}
+
+export function buildProductionGraphFromInput(input: ProductionGraphInput): ProductionGraph {
+  return buildProductionGraph(input.dataset, input.targets, input.result, {
+    rateDecimalPlaces: input.rateDecimalPlaces,
+  });
+}
+
+export function equalProductionGraphInputs(
+  left: ProductionGraphInput | null,
+  right: ProductionGraphInput | null,
+): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (!left || !right) {
+    return false;
+  }
+  return (
+    left.dataset === right.dataset &&
+    left.result === right.result &&
+    left.rateDecimalPlaces === right.rateDecimalPlaces &&
+    equalProductionGraphTargets(left.targets, right.targets)
+  );
 }
 
 export function selectCompletedGraphNodeIds(project: PlannerProject | null): ReadonlySet<string> {
@@ -173,4 +218,21 @@ export function selectGraphNodeState(
 
 function isDefined<TValue>(value: TValue | undefined): value is TValue {
   return value !== undefined;
+}
+
+function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((target, index) => {
+    const other = right[index];
+    return (
+      other !== undefined &&
+      target.id === other.id &&
+      target.itemId === other.itemId &&
+      target.mode === other.mode &&
+      target.amountPerMinute === other.amountPerMinute &&
+      target.sortOrder === other.sortOrder
+    );
+  });
 }

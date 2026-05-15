@@ -1,6 +1,6 @@
 import '@angular/compiler';
 import { Injector, runInInjectionContext, signal, type Signal } from '@angular/core';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createPlannerProject,
@@ -14,9 +14,16 @@ import type { PlannerPersistenceCoordinatorBinding } from './planner-persistence
 import { PlannerPersistenceCoordinatorService } from './planner-persistence-coordinator.service';
 import { selectPlannerSolveInput, type PlannerSolveInput } from './planner-solve-input';
 import { PlannerSolverService, type SolveStatus } from './planner-solver.service';
-import { PlannerStoreService } from './planner-store.service';
+import {
+  GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS,
+  PlannerStoreService,
+} from './planner-store.service';
 
 const NOW = '2026-05-12T00:00:00.000Z';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('selectPlannerSolveInput', () => {
   it('keeps the solve key stable for display, layout, build state, and rename changes', () => {
@@ -228,6 +235,34 @@ describe('PlannerStoreService', () => {
       projectId: project.id,
       mode: 'focus-graph',
     });
+  });
+
+  it('coalesces graph node position commits without changing solve-relevant state', () => {
+    vi.useFakeTimers();
+    const { store, connectedSolveInput } = createStoreHarness((binding) => {
+      binding.initializeFromStoredState({
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeProjectId: 'project-a',
+        projects: [createProject()],
+      });
+    });
+    const originalSolveKey = connectedSolveInput?.()?.key;
+    expect(originalSolveKey).toBeDefined();
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 10, y: 20 });
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 30, y: 40 });
+
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({});
+
+    vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS - 1);
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({});
+
+    vi.advanceTimersByTime(1);
+
+    expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 30, y: 40 },
+    });
+    expect(connectedSolveInput?.()?.key).toBe(originalSolveKey);
   });
 });
 
