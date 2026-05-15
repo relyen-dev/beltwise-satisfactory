@@ -9,11 +9,7 @@ import {
 } from '@angular/core';
 import type { GameDataset } from '@beltwise/game-data';
 import type { PlannerProject } from '@beltwise/planner-core';
-import {
-  createStoredPlannerState,
-  PlannerPersistenceService,
-  type LoadedPlannerState,
-} from './planner-persistence.service';
+import { PlannerPersistenceService, type LoadedPlannerState } from './planner-persistence.service';
 
 export { createStoredPlannerState } from './planner-persistence.service';
 
@@ -70,7 +66,7 @@ export class PlannerPersistenceCoordinatorService {
     if (projects.length === 0) {
       return;
     }
-    this.persistence.save(createStoredPlannerState(projects, activeProjectId));
+    this.persistence.saveProjects(projects, activeProjectId);
   }
 
   private initializePlannerState(

@@ -19,7 +19,7 @@ import {
   PlannerPersistenceCoordinatorService,
   type PlannerPersistenceCoordinatorBinding,
 } from './planner-persistence-coordinator.service';
-import { type StoredPlannerState } from './planner-persistence.service';
+import { type LoadedPlannerState } from './planner-persistence.service';
 import * as projectMutations from './planner-project-mutations';
 import {
   equalPlannerSolveInputs,
@@ -544,7 +544,7 @@ export class PlannerStoreService {
     };
   }
 
-  private initializeFromStoredState(state: StoredPlannerState): void {
+  private initializeFromStoredState(state: LoadedPlannerState): void {
     this.projects.set(state.projects);
     const activeProject =
       state.projects.find((project) => project.id === state.activeProjectId) ?? state.projects[0];

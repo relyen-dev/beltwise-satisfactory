@@ -12,7 +12,6 @@ import {
   createBrowserPlannerPersistenceStorage,
   createStoredPlannerState,
   type PlannerPersistenceStorage,
-  type StoredPlannerState,
 } from './planner-persistence.service';
 import { plannerRelevantMachineIds } from './planner-domain.helpers';
 
@@ -120,12 +119,7 @@ describe('PlannerPersistenceService', () => {
 
       expect(defaultStorage).toBeNull();
       expect(defaultService.load(tinySatisfactoryDataset)).toBeNull();
-      expect(() =>
-        defaultService.save({
-          schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-          projects: [],
-        }),
-      ).not.toThrow();
+      expect(() => defaultService.saveProjects([], undefined)).not.toThrow();
     } finally {
       if (originalLocalStorage) {
         Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
@@ -136,27 +130,19 @@ describe('PlannerPersistenceService', () => {
   });
 
   it('does not throw when browser storage rejects writes', () => {
-    const state: StoredPlannerState = {
-      schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-      projects: [],
-    };
-
     const failingService = createPersistenceService(
       new ThrowingStorage({ setFailure: new Error('Quota exceeded') }),
     );
 
-    expect(() => failingService.save(state)).not.toThrow();
-    expect(() => createPersistenceService(null).save(state)).not.toThrow();
+    expect(() => failingService.saveProjects([], undefined)).not.toThrow();
+    expect(() => createPersistenceService(null).saveProjects([], undefined)).not.toThrow();
   });
 
   it('writes saved planner state JSON to storage', () => {
-    const state: StoredPlannerState = {
-      schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
-      activeProjectId: 'project-a',
-      projects: [],
-    };
+    const project = createDomainPlannerProject();
+    const state = createStoredPlannerState([project], project.id);
 
-    service.save(state);
+    service.saveProjects([project], project.id);
 
     expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(state));
   });
@@ -172,7 +158,7 @@ describe('PlannerPersistenceService', () => {
       })),
     };
 
-    service.save(createStoredPlannerState([projectWithDerivedState], project.id));
+    service.saveProjects([projectWithDerivedState], project.id);
 
     const savedProject = firstSavedProject(storage);
     expect(savedProject['solverResult']).toBeUndefined();

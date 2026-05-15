@@ -170,7 +170,14 @@ export class PlannerPersistenceService {
     };
   }
 
-  public save(state: StoredPlannerState): void {
+  public saveProjects(
+    projects: readonly PlannerProject[],
+    activeProjectId: string | undefined,
+  ): void {
+    this.saveStoredState(createStoredPlannerState(projects, activeProjectId));
+  }
+
+  private saveStoredState(state: StoredPlannerState): void {
     if (!this.storage) {
       return;
     }
