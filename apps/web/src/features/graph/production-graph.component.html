@@ -1,0 +1,164 @@
+@if (flowModel(); as flow) {
+  <f-flow class="beltwise-flow" fDraggable>
+    <f-canvas
+      fZoom
+      [fZoomMinimum]="graphZoomMinimum"
+      [fZoomMaximum]="graphZoomMaximum"
+      [fZoomStep]="graphZoomStep"
+    >
+      @for (edge of flow.edges; track edge.id) {
+        <f-connection
+          [fConnectionId]="edge.id"
+          [fOutputId]="outputId(edge.sourceNodeId)"
+          [fInputId]="inputId(edge.targetNodeId)"
+          [fType]="edge.connectionType"
+          [fBehavior]="edge.connectionBehavior"
+          [fOutputSide]="edge.outputSide"
+          [fInputSide]="edge.inputSide"
+          [fSelectionDisabled]="true"
+          [fReassignDisabled]="true"
+          [class.graph-edge--focused]="isEdgeFocused(edge.id)"
+          [class.graph-edge--dimmed]="isEdgeDimmed(edge.id)"
+          [class.graph-edge--done]="isEdgeDone(edge)"
+          [class.graph-edge--belt]="edge.transport.kind === 'belt'"
+          [class.graph-edge--pipe]="edge.transport.kind === 'pipe'"
+          [class.graph-edge--animated]="displaySettings().animateFlowLines && !isEdgeDone(edge)"
+        >
+          <svg
+            fMarker
+            type="end"
+            width="14"
+            height="14"
+            refX="13"
+            refY="7"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+            viewBox="0 0 14 14"
+            style="display: none"
+          >
+            <path d="M 1.5 2 L 13 7 L 1.5 12 Z"></path>
+          </svg>
+          <span
+            fConnectionContent
+            [position]="edge.labelPosition"
+            [offset]="edge.labelOffset"
+            align="none"
+            class="edge-label"
+            [class.edge-label--focused]="isEdgeFocused(edge.id)"
+            [class.edge-label--dimmed]="isEdgeDimmed(edge.id)"
+            [class.edge-label--done]="isEdgeDone(edge)"
+            [class.edge-label--belt]="edge.transport.kind === 'belt'"
+            [class.edge-label--pipe]="edge.transport.kind === 'pipe'"
+          >
+            <span class="edge-label__item">{{ edge.labelLines.itemName }}</span>
+            @if (edge.labelLines.amountPerMinute) {
+              <span class="edge-label__rate">{{ edge.labelLines.amountPerMinute }}</span>
+            }
+            @if (edge.labelLines.transportLines) {
+              <span class="edge-label__transport">{{ edge.labelLines.transportLines }}</span>
+            }
+          </span>
+        </f-connection>
+      }
+
+      @for (node of flow.nodes; track node.id) {
+        <div
+          fNode
+          fDragHandle
+          fNodeInput
+          fNodeOutput
+          [fNodeId]="node.id"
+          [fNodePosition]="node.position"
+          [fNodeSize]="node.size"
+          [fNodeDraggingDisabled]="interactionLocked()"
+          [fNodeSelectionDisabled]="true"
+          [fInputId]="inputId(node.id)"
+          [fOutputId]="outputId(node.id)"
+          [fOutputMultiple]="true"
+          class="production-node"
+          tabindex="0"
+          [class.production-node--resource]="node.kind === 'resource'"
+          [class.production-node--external-input]="node.kind === 'externalInput'"
+          [class.production-node--recipe]="node.kind === 'recipe'"
+          [class.production-node--output]="node.kind === 'output'"
+          [class.production-node--byproduct]="node.kind === 'byproduct'"
+          [class.production-node--selected]="isNodeSelected(node.id)"
+          [class.production-node--focused]="isNodeFocused(node.id)"
+          [class.production-node--dimmed]="isNodeDimmed(node.id)"
+          [class.production-node--done]="isNodeDone(node.id)"
+          [class.production-node--noted]="nodeNote(node.id).length > 0"
+          [attr.aria-pressed]="isNodeSelected(node.id)"
+          (pointerdown)="handleNodePointerDown(node.id, $event)"
+          (pointerup)="handleNodePointerUp(node.id, $event)"
+          (dblclick)="handleNodeDoubleClick(node.id, $event)"
+          (fNodePositionChange)="handleNodePosition(node.id, $event)"
+        >
+          <div class="node-kicker">{{ node.kind }}</div>
+          <div class="node-title">{{ node.data.label }}</div>
+          @if (!node.data.machineDisplayName) {
+            <div class="node-subtitle">{{ node.data.subtitle }}</div>
+          }
+          @if (node.data.machineDisplayName) {
+            <div class="node-meta">
+              {{ node.data.machineDisplayName }}
+              @if (node.data.machineCount) {
+                <span>{{ formatMachineCount(node.data.machineCount) }}x</span>
+              }
+            </div>
+          }
+          <div class="node-badges" aria-hidden="true">
+            @if (isNodeDone(node.id)) {
+              <span class="node-badge node-badge--done">Done</span>
+            }
+            @if (nodeNote(node.id)) {
+              <span class="node-badge">Note</span>
+            }
+          </div>
+          @if (node.tooltip) {
+            <div class="node-tooltip" role="tooltip">
+              <div class="node-tooltip__title">{{ node.tooltip.title }}</div>
+              @for (stat of node.tooltip.stats; track tooltipStatKey(stat, $index)) {
+                <div class="node-tooltip__stat">{{ stat }}</div>
+              }
+              @if (node.tooltip.inputs.length > 0) {
+                <div class="node-tooltip__section">Inputs</div>
+                @for (input of node.tooltip.inputs; track tooltipFlowKey(input, 'input', $index)) {
+                  <div class="node-tooltip__flow">
+                    <span>{{ input.itemName }}</span>
+                    <strong>{{ input.amountPerMinute }}</strong>
+                  </div>
+                }
+              }
+              @if (node.tooltip.outputs.length > 0) {
+                <div class="node-tooltip__section">Outputs</div>
+                @for (
+                  output of node.tooltip.outputs;
+                  track tooltipFlowKey(output, 'output', $index)
+                ) {
+                  <div class="node-tooltip__flow">
+                    <span>{{ output.itemName }}</span>
+                    <strong>
+                      {{ output.amountPerMinute }}
+                      @if (output.machineCount) {
+                        <em>({{ output.machineCount }}x)</em>
+                      }
+                    </strong>
+                  </div>
+                }
+              }
+              @if (nodeNote(node.id)) {
+                <div class="node-tooltip__section">Note</div>
+                <div class="node-tooltip__note">{{ nodeNote(node.id) }}</div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </f-canvas>
+  </f-flow>
+} @else {
+  <div class="empty-graph">
+    <strong>Add a product target to build a plan.</strong>
+    <span>The production graph will appear here when the plan has an output.</span>
+  </div>
+}

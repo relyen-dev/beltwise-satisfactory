@@ -1,0 +1,36 @@
+@if (store.selectedGraphNode(); as selectedNode) {
+  <section class="selected-node-panel" aria-label="Selected graph node">
+    <div class="selected-node-heading">
+      <div>
+        <span>{{ selectedNode.kind }}</span>
+        <h3>{{ selectedNode.label }}</h3>
+      </div>
+      <button
+        type="button"
+        title="Clear selected node"
+        aria-label="Clear selected node"
+        (click)="store.clearSelectedGraphNode()"
+      >
+        Clear
+      </button>
+    </div>
+
+    <label class="check-row selected-node-done">
+      <input
+        type="checkbox"
+        [ngModel]="store.selectedGraphNodeState().done === true"
+        (ngModelChange)="store.setSelectedGraphNodeDone($event)"
+      />
+      <span>Done</span>
+    </label>
+
+    <label class="selected-node-note">
+      <span>Node note</span>
+      <textarea
+        rows="4"
+        [ngModel]="store.selectedGraphNodeState().note ?? ''"
+        (ngModelChange)="store.setSelectedGraphNodeNote($event)"
+      ></textarea>
+    </label>
+  </section>
+}

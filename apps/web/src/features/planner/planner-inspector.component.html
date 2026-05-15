@@ -1,0 +1,52 @@
+<div class="panel-heading">
+  <div>
+    <h2>Inspector</h2>
+    <span>Solver output is recalculated, not saved</span>
+  </div>
+</div>
+
+<bw-selected-node-inspector />
+
+@if (store.solveError()) {
+  <div class="warning-block" role="alert">{{ store.solveError() }}</div>
+}
+
+@if (store.solveResult(); as result) {
+  <div class="metric-grid">
+    <div>
+      <span>Status</span>
+      <strong>{{ result.status }}</strong>
+    </div>
+    <div>
+      <span>Power</span>
+      <strong>{{ result.powerMw | number: '1.0-1' }} MW</strong>
+    </div>
+    <div>
+      <span>Recipes</span>
+      <strong>{{ result.machineUsage.length }}</strong>
+    </div>
+    <div>
+      <span>Raw inputs</span>
+      <strong>{{ (result.rawInputs | keyvalue).length }}</strong>
+    </div>
+  </div>
+
+  <h3>Machines</h3>
+  <div class="machine-usage-list">
+    @for (usage of result.machineUsage; track usage.recipeId) {
+      <div class="usage-row">
+        <span>{{ usage.recipeDisplayName }}</span>
+        <strong>{{ usage.machineCount | number: '1.1-2' }}x {{ usage.machineDisplayName }}</strong>
+      </div>
+    }
+  </div>
+
+  @if (result.warnings.length > 0) {
+    <h3>Warnings</h3>
+    <div class="warning-list">
+      @for (warning of result.warnings; track warning.code + warning.message) {
+        <div class="warning-block">{{ warning.message }}</div>
+      }
+    </div>
+  }
+}

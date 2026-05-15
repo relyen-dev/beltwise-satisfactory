@@ -1,0 +1,255 @@
+<div class="planner-shell">
+  <header class="app-bar">
+    <div class="brand-block">
+      <div class="wordmark">Beltwise</div>
+      <div class="tagline">Unofficial local-first factory planner for Satisfactory</div>
+    </div>
+
+    @if (store.activeProject(); as project) {
+      <div class="project-strip" aria-label="Project controls">
+        <label class="project-control">
+          <span>Project</span>
+          <select
+            class="project-select"
+            aria-label="Active project"
+            [ngModel]="project.id"
+            (ngModelChange)="store.selectProject($event)"
+          >
+            @for (candidate of store.projects(); track candidate.id) {
+              <option [value]="candidate.id">{{ candidate.name }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="project-control project-control--name">
+          <span>Name</span>
+          <input
+            class="project-name"
+            aria-label="Project name"
+            [ngModel]="project.name"
+            (ngModelChange)="store.renameProject($event)"
+          />
+        </label>
+
+        <div class="project-actions" aria-label="Project actions">
+          <button
+            type="button"
+            title="Create project"
+            aria-label="Create project"
+            (click)="store.createProject()"
+          >
+            New
+          </button>
+          <button
+            type="button"
+            title="Duplicate project"
+            aria-label="Duplicate project"
+            (click)="store.duplicateProject()"
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            title="Delete project"
+            aria-label="Delete project"
+            (click)="store.deleteProject()"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <div class="status-strip" aria-label="Solve status and global actions">
+        <div
+          class="solve-pill"
+          [class.solve-pill--error]="store.solveResult()?.status === 'infeasible'"
+        >
+          <span>{{ store.solveStatus() }}</span>
+          @if (store.solveResult(); as result) {
+            <strong>{{ result.status }}</strong>
+            <span>{{ result.powerMw | number: '1.0-1' }} MW</span>
+          }
+        </div>
+        <button type="button" title="Open active work panel" (click)="workPanelOpen.set(true)">
+          Open {{ activeSectionLabel() }}
+        </button>
+        <button
+          type="button"
+          class="lock-toggle"
+          [class.lock-toggle--locked]="project.buildState.planLocked"
+          [title]="
+            project.buildState.planLocked
+              ? 'Unlock plan and allow solver configuration edits'
+              : 'Lock plan to prevent solver configuration edits'
+          "
+          [attr.aria-pressed]="project.buildState.planLocked"
+          (click)="store.setPlanLocked(!project.buildState.planLocked)"
+        >
+          {{ project.buildState.planLocked ? 'Unlock plan' : 'Lock plan' }}
+        </button>
+        <button
+          type="button"
+          class="lock-toggle"
+          [class.lock-toggle--locked]="project.buildState.nodeLayoutLocked"
+          [title]="
+            project.buildState.nodeLayoutLocked
+              ? 'Unlock graph node movement'
+              : 'Lock graph node movement'
+          "
+          [attr.aria-pressed]="project.buildState.nodeLayoutLocked"
+          (click)="store.setNodeLayoutLocked(!project.buildState.nodeLayoutLocked)"
+        >
+          {{ project.buildState.nodeLayoutLocked ? 'Unlock nodes' : 'Lock nodes' }}
+        </button>
+        <button
+          type="button"
+          title="Reset manual node positions"
+          [disabled]="project.buildState.nodeLayoutLocked"
+          (click)="store.resetGraphLayout()"
+        >
+          Reset layout
+        </button>
+        <button
+          type="button"
+          title="Toggle inspector"
+          (click)="inspectorOpen.set(!inspectorOpen())"
+        >
+          {{ inspectorOpen() ? 'Hide inspector' : 'Show inspector' }}
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (store.datasetError()) {
+    <section class="load-error" role="alert">{{ store.datasetError() }}</section>
+  } @else if (!store.dataset()) {
+    <section class="loading-panel">Loading generated planner data...</section>
+  } @else if (store.activeProject(); as project) {
+    <main class="workspace-body" [class.workspace-body--panel-open]="workPanelOpen()">
+      <nav class="section-rail" aria-label="Planner workspace sections">
+        @for (tab of tabs; track tab.id) {
+          <button
+            type="button"
+            class="rail-button"
+            [class.is-active]="store.activeConfigTab() === tab.id && workPanelOpen()"
+            [attr.aria-current]="
+              store.activeConfigTab() === tab.id && workPanelOpen() ? 'page' : null
+            "
+            (click)="openSection(tab.id)"
+          >
+            <span class="rail-mark">{{ tab.label.slice(0, 1) }}</span>
+            <span>{{ tab.label }}</span>
+          </button>
+        }
+
+        <button
+          type="button"
+          class="rail-button rail-button--graph"
+          title="Close work panel and focus graph"
+          aria-label="Close work panel and focus graph"
+          (click)="closeWorkPanel()"
+        >
+          <span class="rail-mark">G</span>
+          <span>Graph</span>
+        </button>
+      </nav>
+
+      <section class="graph-stage" aria-label="Production graph">
+        <div class="graph-toolbar">
+          <div>
+            <strong>Graph</strong>
+            @if (workPanelOpen()) {
+              <span>{{ activeSectionLabel() }} workbench open</span>
+            } @else {
+              <span>Full canvas focus</span>
+            }
+          </div>
+          <div class="graph-toolbar__actions">
+            @if (store.selectedGraphNode()) {
+              <button
+                type="button"
+                title="Clear selected graph node (Esc)"
+                aria-label="Clear selected graph node"
+                (click)="store.clearSelectedGraphNode()"
+              >
+                Clear selection
+              </button>
+            }
+            <button type="button" (click)="workPanelOpen.set(!workPanelOpen())">
+              {{ workPanelOpen() ? 'Collapse panel' : 'Open panel' }}
+            </button>
+          </div>
+        </div>
+
+        <bw-production-graph
+          [graph]="store.graph()"
+          [dataset]="store.dataset()"
+          [layout]="project.graphLayout"
+          [displaySettings]="project.graphDisplay"
+          [selectedNodeId]="store.selectedGraphNodeId()"
+          [completedNodeIds]="store.completedGraphNodeIds()"
+          [nodeNotes]="store.graphNodeNotes()"
+          [interactionLocked]="store.nodeLayoutLocked()"
+          (nodeSelectionSet)="store.setGraphNodeSelection($event)"
+          (nodeSelectionToggled)="store.toggleGraphNodeSelection($event)"
+          (nodeDoneToggled)="store.toggleGraphNodeDone($event)"
+          (nodeMoved)="store.setGraphNodePosition($event.nodeId, $event.position)"
+        />
+      </section>
+
+      @if (workPanelOpen()) {
+        <section
+          class="work-panel"
+          [class.work-panel--recipes]="store.activeConfigTab() === 'recipes'"
+          [attr.aria-label]="activeSectionLabel() + ' work panel'"
+        >
+          <div class="work-panel-header">
+            <div>
+              <span class="panel-kicker">Workbench</span>
+              <h2>{{ activeSectionLabel() }}</h2>
+            </div>
+            <button
+              type="button"
+              title="Close work panel"
+              aria-label="Close work panel"
+              (click)="closeWorkPanel()"
+            >
+              Close
+            </button>
+          </div>
+
+          @switch (store.activeConfigTab()) {
+            @case ('plan') {
+              <bw-planner-targets-section />
+            }
+            @case ('recipes') {
+              <bw-planner-recipes-section />
+            }
+            @case ('inputs') {
+              <bw-planner-inputs-section />
+            }
+            @case ('resources') {
+              <bw-planner-resources-section />
+            }
+            @case ('machines') {
+              <bw-planner-machines-section />
+            }
+            @case ('display') {
+              <bw-planner-display-section />
+            }
+          }
+        </section>
+      }
+
+      @if (inspectorOpen()) {
+        <aside class="inspector-panel" aria-label="Plan inspector">
+          <bw-planner-inspector />
+        </aside>
+      }
+    </main>
+  }
+
+  <footer class="app-footer">
+    Beltwise is unofficial and not affiliated with Coffee Stain Studios.
+  </footer>
+</div>

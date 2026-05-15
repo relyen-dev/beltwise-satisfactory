@@ -1,0 +1,117 @@
+<section class="work-section work-section--recipes">
+  <div class="section-heading">
+    <div>
+      <h3>Recipe Selection</h3>
+      <span>Base recipes start enabled. Alternates start disabled per project.</span>
+    </div>
+  </div>
+
+  <div class="recipe-toolbar">
+    <label class="search-field">
+      <span class="sr-only">Search recipes</span>
+      <input
+        placeholder="Search recipes"
+        [ngModel]="store.recipeSearch()"
+        (ngModelChange)="store.recipeSearch.set($event)"
+      />
+    </label>
+  </div>
+
+  <div class="recipe-columns">
+    <section class="recipe-group" aria-labelledby="base-recipes-title">
+      @let baseRows = store.baseRecipeRows();
+      <div class="recipe-group-header">
+        <div>
+          <h4 id="base-recipes-title">Base recipes</h4>
+          <span>{{ baseRows.length }} shown</span>
+        </div>
+        <div class="section-actions recipe-group-actions">
+          <button
+            type="button"
+            [disabled]="store.planLocked()"
+            (click)="store.setRecipeGroupEnabled(false, true)"
+          >
+            Enable all base
+          </button>
+          <button
+            type="button"
+            [disabled]="store.planLocked()"
+            (click)="store.setRecipeGroupEnabled(false, false)"
+          >
+            Disable all base
+          </button>
+        </div>
+      </div>
+
+      <div class="recipe-list" aria-label="Base recipes">
+        @if (baseRows.length === 0) {
+          <div class="recipe-empty">No base recipes match the search.</div>
+        } @else {
+          @for (row of baseRows; track row.recipe.id) {
+            <label class="recipe-row">
+              <input
+                type="checkbox"
+                [ngModel]="row.enabled"
+                [disabled]="store.planLocked()"
+                (ngModelChange)="store.setRecipeEnabled(row.recipe.id, $event)"
+              />
+              <span class="recipe-copy">
+                <span class="recipe-name">{{ row.recipe.displayName }}</span>
+                <span class="recipe-machine">{{ row.machineName }}</span>
+              </span>
+              <span class="recipe-chip">base</span>
+            </label>
+          }
+        }
+      </div>
+    </section>
+
+    <section class="recipe-group" aria-labelledby="alternate-recipes-title">
+      @let alternateRows = store.alternateRecipeRows();
+      <div class="recipe-group-header">
+        <div>
+          <h4 id="alternate-recipes-title">Alternate recipes</h4>
+          <span>{{ alternateRows.length }} shown</span>
+        </div>
+        <div class="section-actions recipe-group-actions">
+          <button
+            type="button"
+            [disabled]="store.planLocked()"
+            (click)="store.setRecipeGroupEnabled(true, true)"
+          >
+            Enable all alternates
+          </button>
+          <button
+            type="button"
+            [disabled]="store.planLocked()"
+            (click)="store.setRecipeGroupEnabled(true, false)"
+          >
+            Disable all alternates
+          </button>
+        </div>
+      </div>
+
+      <div class="recipe-list" aria-label="Alternate recipes">
+        @if (alternateRows.length === 0) {
+          <div class="recipe-empty">No alternate recipes match the search.</div>
+        } @else {
+          @for (row of alternateRows; track row.recipe.id) {
+            <label class="recipe-row">
+              <input
+                type="checkbox"
+                [ngModel]="row.enabled"
+                [disabled]="store.planLocked()"
+                (ngModelChange)="store.setRecipeEnabled(row.recipe.id, $event)"
+              />
+              <span class="recipe-copy">
+                <span class="recipe-name">{{ row.recipe.displayName }}</span>
+                <span class="recipe-machine">{{ row.machineName }}</span>
+              </span>
+              <span class="recipe-chip recipe-chip--alt">alternate</span>
+            </label>
+          }
+        }
+      </div>
+    </section>
+  </div>
+</section>

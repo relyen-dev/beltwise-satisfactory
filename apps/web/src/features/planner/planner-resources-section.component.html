@@ -1,0 +1,86 @@
+<section class="work-section work-section--resources">
+  <div class="section-heading">
+    <div>
+      <h3>Raw Resource Availability</h3>
+      <span>Map resource caps for this project. External factory inputs live in Inputs.</span>
+    </div>
+    <div class="section-actions resource-actions">
+      <button type="button" [disabled]="store.planLocked()" (click)="store.resetAllResources()">
+        Reset all to map limits
+      </button>
+      <button
+        type="button"
+        [disabled]="store.planLocked()"
+        (click)="store.setAllResourcesEnabled(false)"
+      >
+        Disable all
+      </button>
+      <button
+        type="button"
+        [disabled]="store.planLocked()"
+        (click)="store.setAllResourcesEnabled(true)"
+      >
+        Enable all
+      </button>
+    </div>
+  </div>
+
+  <div class="resource-grid" aria-label="Raw resource caps">
+    @for (row of store.resourceRows(); track row.resource.itemId) {
+      <div
+        class="resource-row"
+        [class.resource-row--disabled]="!row.enabled"
+        [class.resource-row--custom]="row.isCustom"
+      >
+        <label class="resource-toggle">
+          <input
+            type="checkbox"
+            [attr.aria-label]="'Enable ' + row.resource.displayName"
+            [ngModel]="row.enabled"
+            [disabled]="store.planLocked()"
+            (ngModelChange)="store.setResourceEnabled(row.resource.itemId, $event)"
+          />
+        </label>
+
+        <div class="resource-copy">
+          <div class="resource-title-line">
+            <span class="resource-name">{{ row.resource.displayName }}</span>
+            @if (row.isCustom) {
+              <span class="resource-marker">custom</span>
+            }
+            @if (!row.enabled) {
+              <span class="resource-marker resource-marker--off">disabled</span>
+            }
+          </div>
+          <span class="resource-meta">
+            Map {{ row.baselineCapLabel }} &middot; Effective {{ row.effectiveCapLabel }}
+          </span>
+        </div>
+
+        <label class="resource-cap">
+          <span class="sr-only">{{ row.resource.displayName }} max per minute</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Unlimited"
+            [ngModel]="row.capInputValue"
+            [disabled]="store.planLocked()"
+            (ngModelChange)="setResourceCap(row.resource.itemId, $event)"
+          />
+          <span>/ min</span>
+        </label>
+
+        <button
+          type="button"
+          title="Reset to map limit"
+          [attr.aria-label]="'Reset ' + row.resource.displayName + ' to map limit'"
+          [disabled]="store.planLocked()"
+          (click)="store.resetResource(row.resource.itemId)"
+        >
+          Reset
+        </button>
+      </div>
+    }
+  </div>
+</section>

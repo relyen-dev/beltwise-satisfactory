@@ -1,0 +1,88 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>Graph Display</h3>
+      <span>Per-project graph presentation</span>
+    </div>
+  </div>
+
+  @if (store.activeProject(); as project) {
+    <div class="display-settings-grid" aria-label="Graph display settings">
+      <label class="display-setting-card">
+        <span class="display-setting-card__label">Max belt</span>
+        <select
+          [ngModel]="project.graphDisplay.maxBeltTier"
+          (ngModelChange)="store.setMaxBeltTier($event)"
+        >
+          @for (tier of beltTierOptions; track tier.value) {
+            <option [ngValue]="tier.value">
+              {{ tier.label }} &middot; {{ tier.capacityLabel }}
+            </option>
+          }
+        </select>
+      </label>
+
+      <label class="display-setting-card">
+        <span class="display-setting-card__label">Max pipe</span>
+        <select
+          [ngModel]="project.graphDisplay.maxPipeTier"
+          (ngModelChange)="store.setMaxPipeTier($event)"
+        >
+          @for (tier of pipeTierOptions; track tier.value) {
+            <option [ngValue]="tier.value">
+              {{ tier.label }} &middot; {{ tier.capacityLabel }}
+            </option>
+          }
+        </select>
+      </label>
+
+      <label class="display-setting-card">
+        <span class="display-setting-card__label">Rate precision</span>
+        <select
+          [ngModel]="project.graphDisplay.rateDecimalPlaces"
+          (ngModelChange)="store.setRateDecimalPlaces($event)"
+        >
+          @for (option of rateDecimalOptions; track option.value) {
+            <option [ngValue]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="display-setting-card">
+        <span class="display-setting-card__label">Edge style</span>
+        <select
+          [ngModel]="project.graphDisplay.edgeStyle"
+          (ngModelChange)="store.setGraphEdgeStyle($event)"
+        >
+          @for (option of edgeStyleOptions; track option.value) {
+            <option [ngValue]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="display-setting-card display-setting-card--check">
+        <span>
+          <strong>Transport counts</strong>
+          <em>Belt and pipe counts on flow labels</em>
+        </span>
+        <input
+          type="checkbox"
+          [ngModel]="project.graphDisplay.showTransportLabels"
+          (ngModelChange)="store.setShowTransportLabels($event)"
+        />
+      </label>
+
+      <label class="display-setting-card display-setting-card--check">
+        <span>
+          <strong>Flow animation</strong>
+          <em>Subtle motion on graph arrows</em>
+        </span>
+        <input
+          type="checkbox"
+          [ngModel]="project.graphDisplay.animateFlowLines"
+          (ngModelChange)="store.setAnimateFlowLines($event)"
+        />
+      </label>
+    </div>
+  }
+</section>

@@ -1,0 +1,36 @@
+{
+  "assumptions": [
+    "Fixture limits for the first Beltwise scaffold.",
+    "Real static map resource totals belong in a later curated dataset."
+  ],
+  "gameVersionLabel": "fixture",
+  "id": "satisfactory-fixture-baseline",
+  "limits": {
+    "Desc_OreCopper_C": {
+      "extractorAssumption": {
+        "beltOrPipeLimited": false,
+        "clockPercent": 100,
+        "machineId": "Build_MinerMk1_C"
+      },
+      "itemId": "Desc_OreCopper_C",
+      "maxPerMinute": 300,
+      "nodeCounts": {
+        "normal": 10
+      },
+      "source": "manual-map-count"
+    },
+    "Desc_OreIron_C": {
+      "extractorAssumption": {
+        "beltOrPipeLimited": false,
+        "clockPercent": 100,
+        "machineId": "Build_MinerMk1_C"
+      },
+      "itemId": "Desc_OreIron_C",
+      "maxPerMinute": 600,
+      "nodeCounts": {
+        "normal": 20
+      },
+      "source": "manual-map-count"
+    }
+  }
+}

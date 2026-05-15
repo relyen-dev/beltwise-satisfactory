@@ -1,0 +1,106 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>Production Targets</h3>
+      <span>{{ configuredTargetCount() }} configured outputs solved together</span>
+    </div>
+    <button
+      type="button"
+      class="primary-action"
+      title="Add product target"
+      aria-label="Add product target"
+      [disabled]="store.planLocked()"
+      (click)="store.addTarget()"
+    >
+      Add product
+    </button>
+  </div>
+
+  @let targetRows = targets();
+  @if (targetRows.length === 0) {
+    <div class="empty-state empty-state--action">
+      <span>Add a product target to build a plan.</span>
+      <button
+        type="button"
+        class="primary-action"
+        title="Add product target"
+        aria-label="Add product target"
+        [disabled]="store.planLocked()"
+        (click)="store.addTarget()"
+      >
+        Add product
+      </button>
+    </div>
+  } @else {
+    <div class="target-table" role="table" aria-label="Production target rows">
+      <div class="target-row target-row--head" role="row">
+        <span>Item</span>
+        <span>Mode</span>
+        <span>Rate / min</span>
+        <span>Actions</span>
+      </div>
+
+      @for (target of targetRows; track target.id) {
+        <div
+          class="target-row"
+          [class.target-row--needs-item]="target.itemId.length === 0"
+          role="row"
+        >
+          <div class="target-item-picker">
+            <bw-target-item-picker
+              [items]="store.itemOptions()"
+              [selectedItemId]="target.itemId"
+              [disabled]="store.planLocked()"
+              (itemSelected)="updateTargetItem(target.id, $event)"
+            />
+          </div>
+
+          <label>
+            <span class="sr-only">Target mode</span>
+            <select
+              [ngModel]="target.mode"
+              [disabled]="store.planLocked()"
+              (ngModelChange)="store.updateTargetMode(target.id, $event)"
+            >
+              <option value="fixed">Fixed</option>
+              <option value="maximize">Maximize</option>
+            </select>
+          </label>
+
+          <label>
+            <span class="sr-only">Amount per minute</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              [disabled]="target.mode === 'maximize' || store.planLocked()"
+              [ngModel]="target.amountPerMinute ?? 0"
+              (ngModelChange)="updateTargetAmount(target.id, $event)"
+            />
+          </label>
+
+          <div class="row-tools">
+            <button
+              type="button"
+              title="Duplicate target"
+              aria-label="Duplicate target"
+              [disabled]="store.planLocked()"
+              (click)="store.duplicateTarget(target)"
+            >
+              Duplicate
+            </button>
+            <button
+              type="button"
+              title="Remove target"
+              aria-label="Remove target"
+              [disabled]="store.planLocked()"
+              (click)="store.removeTarget(target.id)"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</section>

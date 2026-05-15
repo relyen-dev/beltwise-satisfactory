@@ -1,0 +1,66 @@
+<div
+  class="target-item-combobox"
+  [class.target-item-combobox--open]="isOpen()"
+>
+  <button
+    #triggerButton
+    type="button"
+    class="target-item-combobox__trigger"
+    [disabled]="disabled()"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-controls]="listboxId"
+    aria-haspopup="listbox"
+    (click)="toggleDropdown()"
+    (keydown)="handleTriggerKeydown($event)"
+  >
+    <span
+      class="target-item-combobox__value"
+      [class.target-item-combobox__value--placeholder]="selectedItem() === null"
+    >
+      {{ selectedLabel() }}
+    </span>
+    <span class="target-item-combobox__chevron" aria-hidden="true">v</span>
+  </button>
+
+  @if (isOpen()) {
+    <div class="target-item-combobox__panel">
+      <label class="sr-only" [for]="searchInputId">{{ searchLabel() }}</label>
+      <input
+        #searchInput
+        class="target-item-combobox__search"
+        type="search"
+        autocomplete="off"
+        [placeholder]="searchPlaceholder()"
+        [id]="searchInputId"
+        [ngModel]="searchQuery()"
+        [attr.aria-controls]="listboxId"
+        [attr.aria-activedescendant]="activeOptionId()"
+        (ngModelChange)="updateSearch($event)"
+        (keydown)="handleSearchKeydown($event)"
+      />
+
+      <div class="target-item-combobox__list" role="listbox" [id]="listboxId">
+        @let options = pickerOptions();
+        @if (options.length === 0) {
+          <div class="target-item-combobox__empty">No matching items</div>
+        } @else {
+          @for (option of options; track option.id) {
+            <button
+              type="button"
+              role="option"
+              class="target-item-combobox__option"
+              [id]="optionId($index)"
+              [class.target-item-combobox__option--active]="$index === activeIndex()"
+              [class.target-item-combobox__option--selected]="isSelected(option.id)"
+              [attr.aria-selected]="isSelected(option.id)"
+              (pointerenter)="activeIndex.set($index)"
+              (click)="selectItem(option.id)"
+            >
+              {{ option.displayName }}
+            </button>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

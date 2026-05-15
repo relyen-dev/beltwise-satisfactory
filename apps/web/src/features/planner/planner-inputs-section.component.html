@@ -1,0 +1,74 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>External Inputs</h3>
+      <span>Items supplied by another factory, available up to the rate entered</span>
+    </div>
+    <button
+      type="button"
+      class="primary-action"
+      title="Add external input"
+      aria-label="Add external input"
+      [disabled]="!canAddInput()"
+      (click)="addDraftInput()"
+    >
+      Add input
+    </button>
+  </div>
+
+  @let rows = inputRows();
+  @if (rows.length === 0) {
+    <div class="empty-state">Add items supplied by another factory.</div>
+  } @else {
+    <div class="input-table" role="table" aria-label="External input rows">
+      <div class="input-row input-row--head" role="row">
+        <span>Item</span>
+        <span>Available / min</span>
+        <span>Actions</span>
+      </div>
+
+      @for (row of rows; track row.id) {
+        <div
+          class="input-row"
+          [class.input-row--needs-item]="row.itemId.length === 0"
+          role="row"
+        >
+          <div class="target-item-picker">
+            <bw-target-item-picker
+              [items]="store.itemOptions()"
+              [selectedItemId]="row.itemId"
+              [disabled]="store.planLocked()"
+              [allowEmptySelection]="false"
+              searchLabel="Search external input items"
+              (itemSelected)="updateInputItem(row, $event)"
+            />
+          </div>
+
+          <label>
+            <span class="sr-only">External input amount per minute</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              [ngModel]="row.amountPerMinute"
+              [disabled]="store.planLocked()"
+              (ngModelChange)="updateInputAmount(row, $event)"
+            />
+          </label>
+
+          <div class="row-tools">
+            <button
+              type="button"
+              title="Remove external input"
+              aria-label="Remove external input"
+              [disabled]="store.planLocked()"
+              (click)="removeInput(row)"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</section>

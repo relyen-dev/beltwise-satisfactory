@@ -1,0 +1,26 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>Recipe Machines</h3>
+      <span>Machines shown here can affect recipe solving for this project.</span>
+    </div>
+  </div>
+  @let rows = store.machineRows();
+  @if (rows.length === 0) {
+    <div class="empty-state">No recipe-solving machines are available in this dataset.</div>
+  } @else {
+    <div class="compact-list compact-list--wide">
+      @for (row of rows; track row.machine.id) {
+        <label class="compact-row compact-row--check">
+          <span>{{ row.machine.displayName }}</span>
+          <input
+            type="checkbox"
+            [ngModel]="row.enabled"
+            [disabled]="store.planLocked()"
+            (ngModelChange)="store.setMachineEnabled(row.machine.id, $event)"
+          />
+        </label>
+      }
+    </div>
+  }
+</section>
