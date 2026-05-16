@@ -88,7 +88,13 @@ describe('planner store selectors', () => {
       'Constructor',
       'Smelter',
     ]);
-    expect(rows.find((row) => row.machine.id === 'Build_ConstructorMk1_C')?.enabled).toBe(false);
+    expect(rows.find((row) => row.machine.id === 'Build_ConstructorMk1_C')).toMatchObject({
+      enabled: false,
+      powerLabel: '4 MW',
+      stateLabel: 'Off',
+      toggleLabel: 'Constructor machine availability',
+      typeLabel: 'Manufacturer',
+    });
     expect(rows.some((row) => row.machine.id === 'Build_MinerMk1_C')).toBe(false);
   });
 
@@ -132,6 +138,8 @@ describe('planner store selectors', () => {
     expect(rows.find((row) => row.recipe.id === 'Recipe_IronPlate_C')).toMatchObject({
       enabled: false,
       machineName: 'Constructor',
+      stateLabel: 'Off',
+      toggleLabel: 'Iron Plate recipe availability',
     });
     expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')?.machineName).toBe(
       'Unknown machine',

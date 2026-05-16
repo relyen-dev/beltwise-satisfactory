@@ -275,44 +275,204 @@
 }
 
 .planner-shell
-  :is(.recipe-list, .compact-list, .resource-grid, .machine-usage-list, .warning-list) {
+  :is(
+    .recipe-list,
+    .config-toggle-list,
+    .compact-list,
+    .resource-grid,
+    .machine-usage-list,
+    .warning-list
+  ) {
   display: grid;
   gap: 7px;
 }
 
-.planner-shell .recipe-row {
+.planner-shell .config-toggle-row {
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--space-2);
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 9px;
   align-items: center;
   min-width: 0;
-  min-height: 48px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
+  min-height: 52px;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, black);
   border-radius: var(--radius-sm);
-  background: var(--color-panel-raised);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-panel-raised) 78%, black),
+    var(--color-panel-raised)
+  );
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
 }
 
-.planner-shell .recipe-copy {
+.planner-shell .config-toggle-row::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: transparent;
+  content: '';
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.planner-shell .config-toggle-row:not(.config-toggle-row--locked):hover {
+  border-color: color-mix(in srgb, var(--color-accent) 46%, var(--color-border));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-accent) 10%, var(--color-panel-raised)),
+    var(--color-panel-raised)
+  );
+}
+
+.planner-shell .config-toggle-row:focus-within {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+.planner-shell .config-toggle-row--enabled {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-accent) 16%, var(--color-panel-raised)) 0%,
+    color-mix(in srgb, var(--color-accent) 6%, var(--color-panel-raised)) 46%,
+    var(--color-panel-raised) 100%
+  );
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.planner-shell .config-toggle-row--enabled::before {
+  background: var(--color-accent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+
+.planner-shell .config-toggle-row--disabled {
+  border-color: color-mix(in srgb, var(--color-border) 78%, black);
+  background: color-mix(in srgb, var(--color-panel-raised) 70%, black);
+  color: var(--color-text-muted);
+}
+
+.planner-shell .config-toggle-row--locked {
+  cursor: not-allowed;
+}
+
+.planner-shell .config-toggle-row__control {
+  position: absolute;
+  width: 1px;
+  min-height: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+.planner-shell .config-toggle-row__indicator {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-text-muted) 58%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel) 82%, black);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-panel-raised) 80%, black);
+}
+
+.planner-shell .config-toggle-row__indicator::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+  content: '';
+}
+
+.planner-shell .config-toggle-row--enabled .config-toggle-row__indicator {
+  border-color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 26%, var(--color-panel));
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--color-panel-raised) 80%, black),
+    0 0 12px color-mix(in srgb, var(--color-accent) 42%, transparent);
+}
+
+.planner-shell .config-toggle-row--enabled .config-toggle-row__indicator::after {
+  background: var(--color-accent-strong);
+}
+
+.planner-shell .config-toggle-row__copy {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
-.planner-shell :is(.recipe-name, .compact-row span, .usage-row span) {
+.planner-shell .config-toggle-row__title {
+  color: var(--color-text);
+  font-weight: 750;
+}
+
+.planner-shell .config-toggle-row--disabled .config-toggle-row__title {
+  color: color-mix(in srgb, var(--color-text) 78%, var(--color-text-muted));
+}
+
+.planner-shell .config-toggle-row__meta {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.planner-shell
+  :is(.config-toggle-row__title, .config-toggle-row__meta, .compact-row span, .usage-row span) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.planner-shell .config-toggle-row__badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.planner-shell .config-toggle-row__state {
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 54%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent-strong);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.planner-shell .config-toggle-row__state--off {
+  border-color: color-mix(in srgb, var(--color-text-muted) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel) 62%, black);
+  color: var(--color-text-muted);
+}
+
 .planner-shell .recipe-chip {
-  justify-self: start;
+  flex: 0 0 auto;
   padding: 2px 7px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-text-muted);
   font-size: 11px;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
@@ -321,12 +481,30 @@
   color: var(--color-power);
 }
 
-.planner-shell .recipe-machine {
-  color: var(--color-text-muted);
-  font-size: 12px;
+.planner-shell .machine-row {
+  min-height: 58px;
+}
+
+.planner-shell .machine-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   overflow: hidden;
+}
+
+.planner-shell .machine-meta__chip {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.planner-shell .machine-meta__chip--power {
+  color: color-mix(in srgb, var(--color-power) 78%, var(--color-text));
 }
 
 .planner-shell .recipe-empty {
@@ -453,7 +631,7 @@
   white-space: nowrap;
 }
 
-.planner-shell .compact-list--wide {
+.planner-shell :is(.compact-list--wide, .config-toggle-list--wide) {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
@@ -644,7 +822,7 @@
 }
 
 @media (max-width: 820px) {
-  .planner-shell :is(.target-row, .input-row, .recipe-row) {
+  .planner-shell :is(.target-row, .input-row) {
     grid-template-columns: 1fr;
   }
 
@@ -656,6 +834,15 @@
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .planner-shell .config-toggle-row {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+
+  .planner-shell .config-toggle-row__badges {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 
   .planner-shell .resource-row {

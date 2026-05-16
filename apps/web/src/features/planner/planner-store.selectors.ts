@@ -40,12 +40,18 @@ export interface ExternalInputRow {
 export interface MachineRow {
   machine: Machine;
   enabled: boolean;
+  powerLabel: string | null;
+  stateLabel: string;
+  toggleLabel: string;
+  typeLabel: string;
 }
 
 export interface RecipeRow {
   recipe: Recipe;
   enabled: boolean;
   machineName: string;
+  stateLabel: string;
+  toggleLabel: string;
 }
 
 export interface ProductionGraphInput {
@@ -100,10 +106,17 @@ export function selectMachineRows(dataset: GameDataset, project: PlannerProject)
     .map((machineId) => dataset.machines[machineId])
     .filter(isDefined)
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
-    .map((machine) => ({
-      machine,
-      enabled: project.machineOverrides[machine.id]?.enabled !== false,
-    }));
+    .map((machine) => {
+      const enabled = project.machineOverrides[machine.id]?.enabled !== false;
+      return {
+        machine,
+        enabled,
+        powerLabel: formatMachinePower(machine),
+        stateLabel: availabilityStateLabel(enabled),
+        toggleLabel: `${machine.displayName} machine availability`,
+        typeLabel: formatMachineType(machine.type),
+      };
+    });
 }
 
 export function selectRecipeRows(
@@ -115,11 +128,16 @@ export function selectRecipeRows(
   return Object.values(dataset.recipes)
     .filter((recipe) => recipe.displayName.toLowerCase().includes(normalizedSearch))
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
-    .map((recipe) => ({
-      recipe,
-      enabled: project.recipeOverrides[recipe.id]?.enabled !== false,
-      machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
-    }));
+    .map((recipe) => {
+      const enabled = project.recipeOverrides[recipe.id]?.enabled !== false;
+      return {
+        recipe,
+        enabled,
+        machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
+        stateLabel: availabilityStateLabel(enabled),
+        toggleLabel: `${recipe.displayName} recipe availability`,
+      };
+    });
 }
 
 export function selectProductionGraph(
@@ -218,6 +236,42 @@ export function selectGraphNodeState(
 
 function isDefined<TValue>(value: TValue | undefined): value is TValue {
   return value !== undefined;
+}
+
+function availabilityStateLabel(enabled: boolean): string {
+  return enabled ? 'Enabled' : 'Off';
+}
+
+function formatMachineType(type: Machine['type']): string {
+  switch (type) {
+    case 'manufacturer':
+      return 'Manufacturer';
+    case 'variablePowerManufacturer':
+      return 'Variable power';
+    case 'extractor':
+      return 'Extractor';
+    case 'resourceWellExtractor':
+      return 'Resource well';
+    case 'generator':
+      return 'Generator';
+    case 'waterPump':
+      return 'Water pump';
+    case 'unknown':
+      return 'Unknown type';
+  }
+}
+
+function formatMachinePower(machine: Machine): string | null {
+  if (machine.powerRangeMw) {
+    return `${formatPowerValue(machine.powerRangeMw.min)}-${formatPowerValue(
+      machine.powerRangeMw.max,
+    )} MW`;
+  }
+  return machine.powerMw === undefined ? null : `${formatPowerValue(machine.powerMw)} MW`;
+}
+
+function formatPowerValue(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1).replace(/\.0$/, '');
 }
 
 function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget[]): boolean {
