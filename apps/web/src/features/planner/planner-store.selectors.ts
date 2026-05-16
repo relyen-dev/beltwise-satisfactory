@@ -48,6 +48,23 @@ export interface MachineRow {
   powerLabel: string | null;
   toggleLabel: string;
   typeLabel: string;
+  usage: MachineUsageSummary | null;
+}
+
+export interface MachineUsageSummary {
+  machineCount: number;
+  powerMw: number;
+  recipeGroupCount: number;
+  machineCountLabel: string;
+  powerLabel: string;
+  recipeGroupCountLabel: string;
+}
+
+export interface MachinePanelSummary {
+  activeRecipeGroupCount: number;
+  usedMachineTypeCount: number;
+  totalMachineCountLabel: string;
+  totalPowerLabel: string;
 }
 
 export interface RecipeItemIcon {
@@ -135,8 +152,13 @@ export function selectExternalInputRows(
     .toSorted((left, right) => left.item.displayName.localeCompare(right.item.displayName));
 }
 
-export function selectMachineRows(dataset: GameDataset, project: PlannerProject): MachineRow[] {
+export function selectMachineRows(
+  dataset: GameDataset,
+  project: PlannerProject,
+  result: ProductionPlanResult | null = null,
+): MachineRow[] {
   const relevantMachineIds = plannerRelevantMachineIds(dataset);
+  const usageByMachineId = selectMachineUsageByMachineId(result);
   return Array.from(relevantMachineIds)
     .map((machineId) => dataset.machines[machineId])
     .filter(isDefined)
@@ -150,8 +172,25 @@ export function selectMachineRows(dataset: GameDataset, project: PlannerProject)
         powerLabel: formatMachinePower(machine),
         toggleLabel: `${machine.displayName} machine availability`,
         typeLabel: formatMachineType(machine.type),
+        usage: usageByMachineId.get(machine.id) ?? null,
       };
     });
+}
+
+export function selectMachinePanelSummary(
+  result: ProductionPlanResult | null,
+): MachinePanelSummary {
+  const machineUsage = result?.machineUsage ?? [];
+  const usageByMachineId = selectMachineUsageByMachineId(result);
+  const totalMachineCount = machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
+  const totalPowerMw = machineUsage.reduce((total, usage) => total + usage.powerMw, 0);
+
+  return {
+    activeRecipeGroupCount: machineUsage.length,
+    usedMachineTypeCount: usageByMachineId.size,
+    totalMachineCountLabel: `${formatPlannerNumber(totalMachineCount)}x`,
+    totalPowerLabel: `${formatPlannerNumber(totalPowerMw)} MW`,
+  };
 }
 
 export function selectRecipeRows(
@@ -312,8 +351,66 @@ function formatMachinePower(machine: Machine): string | null {
   return machine.powerMw === undefined ? null : `${formatPowerValue(machine.powerMw)} MW`;
 }
 
+function selectMachineUsageByMachineId(
+  result: ProductionPlanResult | null,
+): ReadonlyMap<MachineId, MachineUsageSummary> {
+  const summaries = new Map<
+    MachineId,
+    {
+      machineCount: number;
+      powerMw: number;
+      recipeGroupCount: number;
+    }
+  >();
+
+  for (const usage of result?.machineUsage ?? []) {
+    const machineId: MachineId = usage.machineId;
+    const existing = summaries.get(machineId);
+    if (existing) {
+      existing.machineCount += usage.machineCount;
+      existing.powerMw += usage.powerMw;
+      existing.recipeGroupCount += 1;
+      continue;
+    }
+
+    summaries.set(machineId, {
+      machineCount: usage.machineCount,
+      powerMw: usage.powerMw,
+      recipeGroupCount: 1,
+    });
+  }
+
+  return new Map(
+    Array.from(summaries.entries()).map(([machineId, summary]) => [
+      machineId,
+      {
+        ...summary,
+        machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
+        powerLabel: `${formatPlannerNumber(summary.powerMw)} MW`,
+        recipeGroupCountLabel: `${formatInteger(summary.recipeGroupCount)} ${
+          summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
+        }`,
+      },
+    ]),
+  );
+}
+
 function formatPowerValue(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1).replace(/\.0$/, '');
+}
+
+function formatInteger(value: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+function formatPlannerNumber(value: number): string {
+  const decimalPlaces = Math.abs(value) < 10 && !Number.isInteger(value) ? 3 : 2;
+  return value
+    .toLocaleString('en-US', {
+      maximumFractionDigits: decimalPlaces,
+      minimumFractionDigits: 0,
+    })
+    .replace(/^-0$/, '0');
 }
 
 function selectRecipeIconFields(
@@ -357,9 +454,7 @@ function recipeDetailLine(
     itemId,
     displayName: dataset.items[itemId]?.displayName ?? itemId,
     iconSrc: gameIconPathForItemId(itemId),
-    amountPerMinuteLabel: `${formatRecipeDetailValue(
-      (amount * 60) / recipe.durationSeconds,
-    )}/min`,
+    amountPerMinuteLabel: `${formatRecipeDetailValue((amount * 60) / recipe.durationSeconds)}/min`,
   };
 }
 
@@ -367,7 +462,10 @@ function formatRecipeDetailValue(value: number): string {
   if (Number.isInteger(value)) {
     return value.toString();
   }
-  return value.toFixed(value < 10 ? 2 : 1).replace(/0+$/, '').replace(/\.$/, '');
+  return value
+    .toFixed(value < 10 ? 2 : 1)
+    .replace(/0+$/, '')
+    .replace(/\.$/, '');
 }
 
 function isConverterResourceRecipe(dataset: GameDataset, recipe: Recipe): boolean {

@@ -59,14 +59,13 @@ export interface InspectorTargetSummary {
   amountLabel: string;
 }
 
-export interface InspectorMachineUsageRow {
-  recipeId: RecipeId;
-  recipeDisplayName: string;
+export interface InspectorMachineSummaryRow {
+  machineId: MachineId;
   machineDisplayName: string;
   machineIconSrc: string;
   machineCountLabel: string;
-  recipeRateLabel: string;
   powerLabel: string;
+  recipeGroupCountLabel: string;
 }
 
 export interface InspectorOverviewViewModel {
@@ -75,7 +74,9 @@ export interface InspectorOverviewViewModel {
   topRawInputs: InspectorItemRateRow[];
   externalInputs: InspectorItemRateRow[];
   surplus: InspectorItemRateRow[];
-  machineUsage: InspectorMachineUsageRow[];
+  machineSummary: InspectorMachineSummaryRow[];
+  machineSummaryTotalCount: number;
+  hiddenMachineSummaryCount: number;
   warnings: InspectorWarningViewModel[];
 }
 
@@ -149,6 +150,7 @@ export interface InspectorViewModel {
 }
 
 const MAX_OVERVIEW_RAW_INPUTS = 5;
+const MAX_OVERVIEW_MACHINE_ROWS = 4;
 const MIN_DISPLAY_RATE = 0.000001;
 
 export function selectInspectorViewModel(
@@ -191,6 +193,7 @@ function selectOverviewViewModel(
   const machineUsage = result?.machineUsage ?? [];
   const totalMachineCount = machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
   const rawInputRows = itemRateRows(dataset, result?.rawInputs ?? {});
+  const machineSummaryRows = summarizeMachinesByType(machineUsage);
 
   return {
     metrics: [
@@ -213,17 +216,63 @@ function selectOverviewViewModel(
       .slice(0, MAX_OVERVIEW_RAW_INPUTS),
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
     surplus: itemRateRows(dataset, result?.surplus ?? {}),
-    machineUsage: machineUsage.map((usage) => ({
-      recipeId: usage.recipeId,
-      recipeDisplayName: usage.recipeDisplayName,
-      machineDisplayName: usage.machineDisplayName,
-      machineIconSrc: gameIconPathForMachineId(usage.machineId),
-      machineCountLabel: `${formatNumber(usage.machineCount)}x`,
-      recipeRateLabel: `${formatNumber(usage.recipeRatePerMinute)}/min`,
-      powerLabel: formatPower(usage.powerMw),
-    })),
+    machineSummary: machineSummaryRows.slice(0, MAX_OVERVIEW_MACHINE_ROWS),
+    machineSummaryTotalCount: machineSummaryRows.length,
+    hiddenMachineSummaryCount: Math.max(0, machineSummaryRows.length - MAX_OVERVIEW_MACHINE_ROWS),
     warnings: warningRows(result?.warnings ?? []),
   };
+}
+
+function summarizeMachinesByType(
+  machineUsage: readonly ProductionPlanResult['machineUsage'][number][],
+): InspectorMachineSummaryRow[] {
+  const summaries = new Map<
+    MachineId,
+    {
+      machineId: MachineId;
+      machineDisplayName: string;
+      machineCount: number;
+      powerMw: number;
+      recipeGroupCount: number;
+    }
+  >();
+
+  for (const usage of machineUsage) {
+    const machineId: MachineId = usage.machineId;
+    const existing = summaries.get(machineId);
+    if (existing) {
+      existing.machineCount += usage.machineCount;
+      existing.powerMw += usage.powerMw;
+      existing.recipeGroupCount += 1;
+      continue;
+    }
+
+    summaries.set(machineId, {
+      machineId,
+      machineDisplayName: usage.machineDisplayName,
+      machineCount: usage.machineCount,
+      powerMw: usage.powerMw,
+      recipeGroupCount: 1,
+    });
+  }
+
+  return Array.from(summaries.values())
+    .toSorted(
+      (left, right) =>
+        right.machineCount - left.machineCount ||
+        right.powerMw - left.powerMw ||
+        left.machineDisplayName.localeCompare(right.machineDisplayName),
+    )
+    .map((summary) => ({
+      machineId: summary.machineId,
+      machineDisplayName: summary.machineDisplayName,
+      machineIconSrc: gameIconPathForMachineId(summary.machineId),
+      machineCountLabel: `${formatNumber(summary.machineCount)}x`,
+      powerLabel: formatPower(summary.powerMw),
+      recipeGroupCountLabel: `${formatInteger(summary.recipeGroupCount)} ${
+        summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
+      }`,
+    }));
 }
 
 function selectSelectedNodeViewModel(

@@ -58,13 +58,60 @@ describe('planner inspector selectors', () => {
         amountPerMinuteLabel: '12/min',
       },
     ]);
-    expect(viewModel?.overview?.machineUsage[0]).toMatchObject({
-      recipeDisplayName: 'Iron Plate',
-      machineDisplayName: 'Constructor',
-      machineCountLabel: '1x',
-      recipeRateLabel: '10/min',
-      powerLabel: '4 MW',
-    });
+    expect(viewModel?.overview?.machineSummary).toEqual([
+      {
+        machineId: 'Build_ConstructorMk1_C',
+        machineDisplayName: 'Constructor',
+        machineIconSrc: '/game-icons/Desc_ConstructorMk1_C.png',
+        machineCountLabel: '1.8x',
+        powerLabel: '16 MW',
+        recipeGroupCountLabel: '3 recipes',
+      },
+    ]);
+    expect(viewModel?.overview?.machineSummaryTotalCount).toBe(1);
+    expect(viewModel?.overview?.hiddenMachineSummaryCount).toBe(0);
+  });
+
+  it('summarizes overview machines by type for build planning', () => {
+    const context = createInspectorContext();
+    const result: ProductionPlanResult = {
+      ...context.result,
+      machineUsage: [
+        ...context.result.machineUsage,
+        {
+          recipeId: 'Recipe_IronIngot_C',
+          machineId: 'Build_SmelterMk1_C',
+          machineDisplayName: 'Smelter',
+          recipeDisplayName: 'Iron Ingot',
+          recipeRatePerMinute: 30,
+          machineCount: 1,
+          powerMw: 4,
+        },
+      ],
+    };
+
+    const viewModel = selectInspectorViewModel(context.dataset, context.project, result, null, {});
+
+    expect(viewModel?.overview?.machineSummary).toEqual([
+      {
+        machineId: 'Build_ConstructorMk1_C',
+        machineDisplayName: 'Constructor',
+        machineIconSrc: '/game-icons/Desc_ConstructorMk1_C.png',
+        machineCountLabel: '1.8x',
+        powerLabel: '16 MW',
+        recipeGroupCountLabel: '3 recipes',
+      },
+      {
+        machineId: 'Build_SmelterMk1_C',
+        machineDisplayName: 'Smelter',
+        machineIconSrc: '/game-icons/Desc_SmelterMk1_C.png',
+        machineCountLabel: '1x',
+        powerLabel: '4 MW',
+        recipeGroupCountLabel: '1 recipe',
+      },
+    ]);
+    expect(viewModel?.overview?.machineSummaryTotalCount).toBe(2);
+    expect(viewModel?.overview?.hiddenMachineSummaryCount).toBe(0);
   });
 
   it('builds recipe node details with machine, rate, power, ingredients, and products', () => {

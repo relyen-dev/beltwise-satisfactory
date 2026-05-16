@@ -142,28 +142,35 @@
 
       <section class="inspector-section" aria-labelledby="inspector-machines-heading">
         <div class="inspector-section-heading">
-          <h3 id="inspector-machines-heading">Machines</h3>
-          <span>{{ overview.machineUsage.length }}</span>
+          <h3 id="inspector-machines-heading">Machine Types</h3>
+          <span>{{ overview.machineSummaryTotalCount }}</span>
         </div>
-        @if (overview.machineUsage.length > 0) {
-          <div class="machine-usage-list">
-            @for (row of overview.machineUsage; track row.recipeId) {
+        @if (overview.machineSummary.length > 0) {
+          <div class="machine-usage-list machine-usage-list--compact">
+            @for (row of overview.machineSummary; track row.machineId) {
               <div class="usage-row inspector-usage-row">
-                <div class="usage-machine-line">
-                  <bw-game-icon
-                    [src]="row.machineIconSrc"
-                    [label]="row.machineDisplayName"
-                    [size]="'sm'"
-                    [kind]="'machine'"
-                    [showTitle]="true"
-                  />
-                  <span class="usage-recipe-name">{{ row.recipeDisplayName }}</span>
+                <div class="usage-machine-copy">
+                  <span class="usage-machine-line">
+                    <bw-game-icon
+                      [src]="row.machineIconSrc"
+                      [label]="row.machineDisplayName"
+                      [size]="'md'"
+                      [kind]="'machine'"
+                      [showTitle]="true"
+                    />
+                    <span class="usage-recipe-name">{{ row.machineDisplayName }}</span>
+                  </span>
+                  <span class="inspector-usage-row__meta">
+                    {{ row.recipeGroupCountLabel }} / {{ row.powerLabel }}
+                  </span>
                 </div>
-                <div class="inspector-usage-row__stats">
-                  <strong>{{ row.machineCountLabel }} {{ row.machineDisplayName }}</strong>
-                  <span>{{ row.powerLabel }} - {{ row.recipeRateLabel }} executions</span>
-                </div>
+                <strong>{{ row.machineCountLabel }}</strong>
               </div>
+            }
+            @if (overview.hiddenMachineSummaryCount > 0) {
+              <p class="inspector-list-note">
+                {{ overview.hiddenMachineSummaryCount }} more machine types in the Machines panel
+              </p>
             }
           </div>
         } @else {

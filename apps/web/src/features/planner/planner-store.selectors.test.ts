@@ -10,6 +10,7 @@ import {
   selectExternalInputRows,
   selectGraphNodeNotes,
   selectItemOptions,
+  selectMachinePanelSummary,
   selectMachineRows,
   selectMachineUsageRows,
   selectRecipeRows,
@@ -106,6 +107,64 @@ describe('planner store selectors', () => {
       '/game-icons/Desc_AssemblerMk1_C.png',
     );
     expect(rows.some((row) => row.machine.id === 'Build_MinerMk1_C')).toBe(false);
+  });
+
+  it('adds current plan usage analytics to machine rows', () => {
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {},
+      machineUsage: [
+        {
+          recipeId: 'Recipe_IronPlate_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Iron Plate',
+          recipeRatePerMinute: 10,
+          machineCount: 1,
+          powerMw: 4,
+        },
+        {
+          recipeId: 'Recipe_Wire_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Wire',
+          recipeRatePerMinute: 15,
+          machineCount: 0.5,
+          powerMw: 2,
+        },
+      ],
+      powerMw: 6,
+      warnings: [],
+    };
+
+    const rows = selectMachineRows(tinySatisfactoryDataset, createProject(), result);
+
+    expect(rows.find((row) => row.machine.id === 'Build_ConstructorMk1_C')?.usage).toEqual({
+      machineCount: 1.5,
+      powerMw: 6,
+      recipeGroupCount: 2,
+      machineCountLabel: '1.5x',
+      powerLabel: '6 MW',
+      recipeGroupCountLabel: '2 recipes',
+    });
+    expect(rows.find((row) => row.machine.id === 'Build_SmelterMk1_C')?.usage).toBeNull();
+    expect(selectMachinePanelSummary(result)).toEqual({
+      activeRecipeGroupCount: 2,
+      usedMachineTypeCount: 1,
+      totalMachineCountLabel: '1.5x',
+      totalPowerLabel: '6 MW',
+    });
+    expect(selectMachinePanelSummary(null)).toEqual({
+      activeRecipeGroupCount: 0,
+      usedMachineTypeCount: 0,
+      totalMachineCountLabel: '0x',
+      totalPowerLabel: '0 MW',
+    });
   });
 
   it('filters recipe rows by search and annotates override state and machine names', () => {
