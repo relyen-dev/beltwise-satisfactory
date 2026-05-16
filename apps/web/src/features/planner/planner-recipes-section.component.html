@@ -65,7 +65,23 @@
               <span class="config-toggle-row__indicator" aria-hidden="true"></span>
               <span class="config-toggle-row__copy">
                 <span class="config-toggle-row__title">{{ row.recipe.displayName }}</span>
-                <span class="config-toggle-row__meta">{{ row.machineName }}</span>
+                <span class="recipe-meta-line">
+                  <span class="config-toggle-row__meta">{{ row.machineName }}</span>
+                  <span class="recipe-product-icons">
+                    @for (product of row.productIcons; track $index) {
+                      <bw-game-icon
+                        [src]="product.iconSrc"
+                        [label]="product.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                    }
+                    @if (row.hiddenProductIconCount > 0) {
+                      <span class="recipe-icon-more">+{{ row.hiddenProductIconCount }}</span>
+                    }
+                  </span>
+                </span>
               </span>
               <span class="config-toggle-row__badges">
                 <span
@@ -129,7 +145,23 @@
               <span class="config-toggle-row__indicator" aria-hidden="true"></span>
               <span class="config-toggle-row__copy">
                 <span class="config-toggle-row__title">{{ row.recipe.displayName }}</span>
-                <span class="config-toggle-row__meta">{{ row.machineName }}</span>
+                <span class="recipe-meta-line">
+                  <span class="config-toggle-row__meta">{{ row.machineName }}</span>
+                  <span class="recipe-product-icons">
+                    @for (product of row.productIcons; track $index) {
+                      <bw-game-icon
+                        [src]="product.iconSrc"
+                        [label]="product.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                    }
+                    @if (row.hiddenProductIconCount > 0) {
+                      <span class="recipe-icon-more">+{{ row.hiddenProductIconCount }}</span>
+                    }
+                  </span>
+                </span>
               </span>
               <span class="config-toggle-row__badges">
                 <span

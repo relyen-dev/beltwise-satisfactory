@@ -66,6 +66,7 @@ export class PlannerStoreService implements OnDestroy {
   public readonly resourceRows: PlannerStoreViewSelectors['resourceRows'];
   public readonly externalInputRows: PlannerStoreViewSelectors['externalInputRows'];
   public readonly machineRows: PlannerStoreViewSelectors['machineRows'];
+  public readonly machineUsageRows: PlannerStoreViewSelectors['machineUsageRows'];
   public readonly recipeRows: PlannerStoreViewSelectors['recipeRows'];
   public readonly baseRecipeRows: PlannerStoreViewSelectors['baseRecipeRows'];
   public readonly alternateRecipeRows: PlannerStoreViewSelectors['alternateRecipeRows'];
@@ -125,6 +126,7 @@ export class PlannerStoreService implements OnDestroy {
     this.resourceRows = this.views.resourceRows;
     this.externalInputRows = this.views.externalInputRows;
     this.machineRows = this.views.machineRows;
+    this.machineUsageRows = this.views.machineUsageRows;
     this.recipeRows = this.views.recipeRows;
     this.baseRecipeRows = this.views.baseRecipeRows;
     this.alternateRecipeRows = this.views.alternateRecipeRows;

@@ -44,6 +44,13 @@
 
         <div class="resource-copy">
           <div class="resource-title-line">
+            <bw-game-icon
+              [src]="row.iconSrc"
+              [label]="row.resource.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
             <span class="resource-name">{{ row.resource.displayName }}</span>
             @if (row.isCustom) {
               <span class="resource-marker">custom</span>

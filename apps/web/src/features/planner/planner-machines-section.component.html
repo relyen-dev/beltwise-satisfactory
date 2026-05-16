@@ -9,7 +9,10 @@
   @if (rows.length === 0) {
     <div class="empty-state">No recipe-solving machines are available in this dataset.</div>
   } @else {
-    <div class="config-toggle-list config-toggle-list--wide" aria-label="Recipe machines">
+    <div
+      class="config-toggle-list config-toggle-list--wide config-toggle-list--machines"
+      aria-label="Recipe machines"
+    >
       @for (row of rows; track row.machine.id) {
         <label
           class="config-toggle-row machine-row"
@@ -27,7 +30,16 @@
           />
           <span class="config-toggle-row__indicator" aria-hidden="true"></span>
           <span class="config-toggle-row__copy">
-            <span class="config-toggle-row__title">{{ row.machine.displayName }}</span>
+            <span class="machine-title-line">
+              <bw-game-icon
+                [src]="row.iconSrc"
+                [label]="row.machine.displayName"
+                [size]="'md'"
+                [kind]="'machine'"
+                [showTitle]="true"
+              />
+              <span class="config-toggle-row__title">{{ row.machine.displayName }}</span>
+            </span>
             <span class="machine-meta">
               <span class="machine-meta__chip">{{ row.typeLabel }}</span>
               @if (row.powerLabel) {

@@ -13,11 +13,14 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { Item, ItemId } from '@beltwise/game-data';
+import { GameIconComponent } from './game-icon.component';
+import { gameIconPathForItemId } from './game-icon.helpers';
 import { filterItemsBySearch } from './planner-ui.helpers';
 
 interface TargetItemPickerOption {
   id: ItemId;
   displayName: string;
+  iconSrc: string | null;
 }
 
 let nextTargetItemPickerId = 0;
@@ -25,7 +28,7 @@ let nextTargetItemPickerId = 0;
 @Component({
   selector: 'bw-target-item-picker',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GameIconComponent],
   templateUrl: './target-item-picker.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -59,18 +62,24 @@ export class TargetItemPickerComponent {
     return this.selectedItem()?.displayName ?? this.emptyLabel();
   });
 
+  public readonly selectedIconSrc = computed(() => {
+    const item = this.selectedItem();
+    return item ? gameIconPathForItemId(item.id) : null;
+  });
+
   public readonly pickerOptions = computed<TargetItemPickerOption[]>(() => {
     const query = this.searchQuery();
     const itemOptions = filterItemsBySearch(this.items(), query).map((item) => ({
       id: item.id,
       displayName: item.displayName,
+      iconSrc: gameIconPathForItemId(item.id),
     }));
 
     if (query.trim().length > 0 || !this.allowEmptySelection()) {
       return itemOptions;
     }
 
-    return [{ id: '', displayName: this.emptyLabel() }, ...itemOptions];
+    return [{ id: '', displayName: this.emptyLabel(), iconSrc: null }, ...itemOptions];
   });
 
   public readonly activeOptionId = computed(() => {

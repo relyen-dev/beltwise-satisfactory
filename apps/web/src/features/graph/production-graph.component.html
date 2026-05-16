@@ -1,6 +1,7 @@
 @if (flowModel(); as flow) {
-  <f-flow class="beltwise-flow" fDraggable>
+  <f-flow class="beltwise-flow" fDraggable (fFullRendered)="handleFlowRendered()">
     <f-canvas
+      #graphCanvas
       fZoom
       [fZoomMinimum]="graphZoomMinimum"
       [fZoomMaximum]="graphZoomMaximum"
