@@ -4,8 +4,8 @@ import {
   Component,
   HostListener,
   computed,
-  effect,
   inject,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -45,7 +45,12 @@ interface ConfigurationTabDefinition {
 })
 export class PlannerPageComponent {
   public readonly store = inject(PlannerStoreService);
-  public readonly workPanelOpen = signal(false);
+  public readonly workPanelOpen = linkedSignal({
+    source: () => this.store.workbenchFocusRequest(),
+    computation: (request, previous) => {
+      return request ? request.mode === 'open-plan' : (previous?.value ?? false);
+    },
+  });
   public readonly inspectorOpen = signal(true);
   public readonly tabs: ConfigurationTabDefinition[] = [
     { id: 'plan', label: 'Plan' },
@@ -58,17 +63,6 @@ export class PlannerPageComponent {
   public readonly activeSectionLabel = computed(() => {
     return this.tabs.find((tab) => tab.id === this.store.activeConfigTab())?.label ?? 'Plan';
   });
-
-  public constructor() {
-    effect(() => {
-      const request = this.store.workbenchFocusRequest();
-      if (!request) {
-        return;
-      }
-
-      this.workPanelOpen.set(request.mode === 'open-plan');
-    });
-  }
 
   public openSection(section: ConfigurationTab): void {
     if (this.store.activeConfigTab() === section && this.workPanelOpen()) {
