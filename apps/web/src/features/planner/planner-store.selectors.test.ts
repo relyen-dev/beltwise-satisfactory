@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
-import { createPlannerProject, type PlannerProject } from '@beltwise/planner-core';
+import {
+  createPlannerProject,
+  type PlannerProject,
+  type ProductionPlanResult,
+} from '@beltwise/planner-core';
 import {
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
   selectGraphNodeNotes,
   selectItemOptions,
   selectMachineRows,
+  selectMachineUsageRows,
   selectRecipeRows,
   selectResourceRows,
 } from './planner-store.selectors';
@@ -43,6 +48,7 @@ describe('planner store selectors', () => {
 
     expect(ironOre).toMatchObject({
       enabled: false,
+      iconSrc: '/game-icons/Desc_OreIron_C.png',
       isCustom: true,
       capInputValue: 120,
       baselineCapLabel: '600/min',
@@ -50,6 +56,7 @@ describe('planner store selectors', () => {
     });
     expect(copperOre).toMatchObject({
       enabled: true,
+      iconSrc: '/game-icons/Desc_OreCopper_C.png',
       isCustom: false,
       capInputValue: 300,
       baselineCapLabel: '300/min',
@@ -90,11 +97,14 @@ describe('planner store selectors', () => {
     ]);
     expect(rows.find((row) => row.machine.id === 'Build_ConstructorMk1_C')).toMatchObject({
       enabled: false,
+      iconSrc: '/game-icons/Desc_ConstructorMk1_C.png',
       powerLabel: '4 MW',
-      stateLabel: 'Off',
       toggleLabel: 'Constructor machine availability',
       typeLabel: 'Manufacturer',
     });
+    expect(rows.find((row) => row.machine.id === 'Build_AssemblerMk1_C')?.iconSrc).toBe(
+      '/game-icons/Desc_AssemblerMk1_C.png',
+    );
     expect(rows.some((row) => row.machine.id === 'Build_MinerMk1_C')).toBe(false);
   });
 
@@ -108,7 +118,10 @@ describe('planner store selectors', () => {
           className: 'Recipe_MissingMachine_C',
           displayName: 'Iron Mystery',
           ingredients: [{ itemId: 'Desc_IngotIron_C', amount: 1 }],
-          products: [{ itemId: 'Desc_IronRod_C', amount: 1 }],
+          products: [
+            { itemId: 'Desc_IronRod_C', amount: 1 },
+            { itemId: 'Desc_Screw_C', amount: 2 },
+          ],
           durationSeconds: 4,
           producedIn: ['Build_NotPresent_C'],
           isAlternate: false,
@@ -138,12 +151,142 @@ describe('planner store selectors', () => {
     expect(rows.find((row) => row.recipe.id === 'Recipe_IronPlate_C')).toMatchObject({
       enabled: false,
       machineName: 'Constructor',
-      stateLabel: 'Off',
       toggleLabel: 'Iron Plate recipe availability',
+      productIcons: [
+        {
+          itemId: 'Desc_IronPlate_C',
+          displayName: 'Iron Plate',
+          iconSrc: '/game-icons/Desc_IronPlate_C.png',
+        },
+      ],
+      isConverterResourceRecipe: false,
+      details: {
+        durationLabel: '6s cycle',
+        ingredients: [
+          {
+            itemId: 'Desc_IngotIron_C',
+            displayName: 'Iron Ingot',
+            iconSrc: '/game-icons/Desc_IngotIron_C.png',
+            amountPerMinuteLabel: '20/min',
+          },
+        ],
+        products: [
+          {
+            itemId: 'Desc_IronPlate_C',
+            displayName: 'Iron Plate',
+            iconSrc: '/game-icons/Desc_IronPlate_C.png',
+            amountPerMinuteLabel: '10/min',
+          },
+        ],
+      },
     });
     expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')?.machineName).toBe(
       'Unknown machine',
     );
+    expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')).toMatchObject({
+      hiddenProductIconCount: 1,
+      productIcons: [
+        {
+          itemId: 'Desc_IronRod_C',
+          displayName: 'Iron Rod',
+          iconSrc: '/game-icons/Desc_IronRod_C.png',
+        },
+      ],
+    });
+  });
+
+  it('marks converter recipes that output raw resources for separate display', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      machines: {
+        ...tinySatisfactoryDataset.machines,
+        Build_Converter_C: {
+          id: 'Build_Converter_C',
+          className: 'Build_Converter_C',
+          displayName: 'Converter',
+          type: 'variablePowerManufacturer',
+          powerRangeMw: { min: 100, max: 400 },
+          manufacturingSpeed: 1,
+        },
+      },
+      recipes: {
+        ...tinySatisfactoryDataset.recipes,
+        Recipe_ConverterIronOre_C: {
+          id: 'Recipe_ConverterIronOre_C',
+          className: 'Recipe_ConverterIronOre_C',
+          displayName: 'Iron Ore (Copper)',
+          ingredients: [{ itemId: 'Desc_OreCopper_C', amount: 12 }],
+          products: [{ itemId: 'Desc_OreIron_C', amount: 12 }],
+          durationSeconds: 6,
+          producedIn: ['Build_Converter_C'],
+          isAlternate: false,
+          isHandCraftOnly: false,
+          tags: [],
+        },
+        Recipe_ConverterIronIngot_C: {
+          id: 'Recipe_ConverterIronIngot_C',
+          className: 'Recipe_ConverterIronIngot_C',
+          displayName: 'Ficsite Ingot (Iron)',
+          ingredients: [{ itemId: 'Desc_OreIron_C', amount: 12 }],
+          products: [{ itemId: 'Desc_IngotIron_C', amount: 12 }],
+          durationSeconds: 6,
+          producedIn: ['Build_Converter_C'],
+          isAlternate: false,
+          isHandCraftOnly: false,
+          tags: [],
+        },
+      },
+    };
+
+    const rows = selectRecipeRows(dataset, createProject(), 'iron');
+
+    expect(rows.find((row) => row.recipe.id === 'Recipe_ConverterIronOre_C')).toMatchObject({
+      machineName: 'Converter',
+      isConverterResourceRecipe: true,
+      productIcons: [
+        {
+          itemId: 'Desc_OreIron_C',
+          displayName: 'Iron Ore',
+          iconSrc: '/game-icons/Desc_OreIron_C.png',
+        },
+      ],
+    });
+    expect(rows.find((row) => row.recipe.id === 'Recipe_ConverterIronIngot_C')).toMatchObject({
+      isConverterResourceRecipe: false,
+    });
+  });
+
+  it('adds machine icon paths to machine usage rows without changing solver output', () => {
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {},
+      machineUsage: [
+        {
+          recipeId: 'Recipe_ReinforcedIronPlate_C',
+          machineId: 'Build_AssemblerMk1_C',
+          machineDisplayName: 'Assembler',
+          recipeDisplayName: 'Reinforced Iron Plate',
+          recipeRatePerMinute: 5,
+          machineCount: 1,
+          powerMw: 15,
+        },
+      ],
+      powerMw: 15,
+      warnings: [],
+    };
+
+    expect(selectMachineUsageRows(result)).toEqual([
+      {
+        usage: result.machineUsage[0],
+        machineIconSrc: '/game-icons/Desc_AssemblerMk1_C.png',
+      },
+    ]);
+    expect(selectMachineUsageRows(null)).toEqual([]);
   });
 
   it('selects completed node ids and non-empty graph notes', () => {

@@ -8,18 +8,9 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import * as angularCore from '@angular/core';
-import {
-  BrowserTestingModule,
-  platformBrowserTesting,
-} from '@angular/platform-browser/testing';
-import {
-  ComponentFixture,
-  TestBed,
-} from '@angular/core/testing';
-import {
-  createDefaultGraphDisplaySettings,
-  type ProductionGraph,
-} from '@beltwise/planner-core';
+import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { createDefaultGraphDisplaySettings, type ProductionGraph } from '@beltwise/planner-core';
 import { readFile } from 'node:fs/promises';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ProductionGraphComponent } from './production-graph.component';
@@ -48,6 +39,7 @@ const angularResourceApi = angularCore as typeof angularCore & {
 };
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -115,9 +107,7 @@ describe('ProductionGraphComponent', () => {
 
     expect(event.stopPropagation).toHaveBeenCalledOnce();
     expect(event.control.value).toBe('42.5');
-    expect(targetAmountChanged).toEqual([
-      { targetId: 'target-plate', amountPerMinute: 42.5 },
-    ]);
+    expect(targetAmountChanged).toEqual([{ targetId: 'target-plate', amountPerMinute: 42.5 }]);
 
     component.ngOnDestroy();
   });
@@ -220,6 +210,22 @@ describe('ProductionGraphComponent template', () => {
     expect(documentMouseDown).not.toHaveBeenCalled();
     expect(targetAmountChanged).toEqual([{ targetId: 'target-plate', amountPerMinute: 42 }]);
   });
+
+  it('fits a freshly rendered graph into the canvas', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+    const canvas = { fitToScreen: vi.fn() };
+
+    fixture.componentInstance.fitRenderedGraphIntoCanvas(canvas);
+    fixture.componentInstance.fitRenderedGraphIntoCanvas(canvas);
+    expect(canvas.fitToScreen).toHaveBeenCalledTimes(1);
+    expect(canvas.fitToScreen).toHaveBeenCalledWith({ x: 72, y: 56 }, false);
+
+    controls.graph.set(outputGraph());
+    fixture.detectChanges();
+    fixture.componentInstance.fitRenderedGraphIntoCanvas(canvas);
+
+    expect(canvas.fitToScreen).toHaveBeenCalledTimes(2);
+  });
 });
 
 function createComponentHarness(): ProductionGraphHarness {
@@ -282,9 +288,7 @@ function controlEvent(value: string): Event & {
   };
 }
 
-function outputNode(
-  data: Partial<BeltwiseFoblexFlowNode['data']> = {},
-): BeltwiseFoblexFlowNode {
+function outputNode(data: Partial<BeltwiseFoblexFlowNode['data']> = {}): BeltwiseFoblexFlowNode {
   return {
     id: 'output:target-plate',
     kind: 'output',
@@ -337,9 +341,7 @@ function installRenderedGraphInputs(
     ),
     nodeNotes: signal<ReturnType<ProductionGraphComponent['nodeNotes']>>({}),
     interactionLocked: signal<ReturnType<ProductionGraphComponent['interactionLocked']>>(false),
-    targetEditingLocked: signal<ReturnType<ProductionGraphComponent['targetEditingLocked']>>(
-      false,
-    ),
+    targetEditingLocked: signal<ReturnType<ProductionGraphComponent['targetEditingLocked']>>(false),
   };
   const inputs = component as unknown as RenderedProductionGraphInputSignals;
 
@@ -474,9 +476,7 @@ interface RenderedProductionGraphControls {
   completedNodeIds: WritableSignal<ReturnType<ProductionGraphComponent['completedNodeIds']>>;
   nodeNotes: WritableSignal<ReturnType<ProductionGraphComponent['nodeNotes']>>;
   interactionLocked: WritableSignal<ReturnType<ProductionGraphComponent['interactionLocked']>>;
-  targetEditingLocked: WritableSignal<
-    ReturnType<ProductionGraphComponent['targetEditingLocked']>
-  >;
+  targetEditingLocked: WritableSignal<ReturnType<ProductionGraphComponent['targetEditingLocked']>>;
 }
 
 interface RenderedProductionGraphInputSignals {

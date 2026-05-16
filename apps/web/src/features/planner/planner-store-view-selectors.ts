@@ -17,6 +17,7 @@ import {
   selectGraphNodeState,
   selectItemOptions,
   selectMachineRows,
+  selectMachineUsageRows,
   selectProductionGraphInput,
   selectRecipeRows,
   selectResourceRows,
@@ -38,8 +39,11 @@ export class PlannerStoreViewSelectors {
   public readonly resourceRows: Signal<ReturnType<typeof selectResourceRows>>;
   public readonly externalInputRows: Signal<ReturnType<typeof selectExternalInputRows>>;
   public readonly machineRows: Signal<ReturnType<typeof selectMachineRows>>;
+  public readonly machineUsageRows: Signal<ReturnType<typeof selectMachineUsageRows>>;
   public readonly recipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly baseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
+  public readonly standardBaseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
+  public readonly converterResourceRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly alternateRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly graph: Signal<ProductionGraph | null>;
   public readonly planLocked: Signal<boolean>;
@@ -84,6 +88,8 @@ export class PlannerStoreViewSelectors {
       return selectMachineRows(dataset, project);
     });
 
+    this.machineUsageRows = computed(() => selectMachineUsageRows(this.options.solveResult()));
+
     this.recipeRows = computed(() => {
       const dataset = this.options.dataset();
       const project = this.options.activeProject();
@@ -96,6 +102,14 @@ export class PlannerStoreViewSelectors {
 
     this.baseRecipeRows = computed(() =>
       this.recipeRows().filter((row) => !row.recipe.isAlternate),
+    );
+
+    this.standardBaseRecipeRows = computed(() =>
+      this.baseRecipeRows().filter((row) => !row.isConverterResourceRecipe),
+    );
+
+    this.converterResourceRecipeRows = computed(() =>
+      this.baseRecipeRows().filter((row) => row.isConverterResourceRecipe),
     );
 
     this.alternateRecipeRows = computed(() =>

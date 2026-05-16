@@ -1,7 +1,4 @@
-<div
-  class="target-item-combobox"
-  [class.target-item-combobox--open]="isOpen()"
->
+<div class="target-item-combobox" [class.target-item-combobox--open]="isOpen()">
   <button
     #triggerButton
     type="button"
@@ -13,6 +10,12 @@
     (click)="toggleDropdown()"
     (keydown)="handleTriggerKeydown($event)"
   >
+    <bw-game-icon
+      [src]="selectedIconSrc()"
+      [label]="selectedItem()?.displayName ?? ''"
+      [size]="'sm'"
+      [kind]="'item'"
+    />
     <span
       class="target-item-combobox__value"
       [class.target-item-combobox__value--placeholder]="selectedItem() === null"
@@ -56,7 +59,15 @@
               (pointerenter)="activeIndex.set($index)"
               (click)="selectItem(option.id)"
             >
-              {{ option.displayName }}
+              @if (option.iconSrc) {
+                <bw-game-icon
+                  [src]="option.iconSrc"
+                  [label]="option.displayName"
+                  [size]="'sm'"
+                  [kind]="'item'"
+                />
+              }
+              <span class="target-item-combobox__option-label">{{ option.displayName }}</span>
             </button>
           }
         }

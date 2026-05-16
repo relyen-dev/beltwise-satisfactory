@@ -5,6 +5,7 @@ import {
   computed,
   input,
   output,
+  viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { GameDataset } from '@beltwise/game-data';
@@ -16,7 +17,7 @@ import {
   type GraphDisplaySettings,
   type ProductionGraph,
 } from '@beltwise/planner-core';
-import { F_CONNECTION_BUILDERS, FFlowModule } from '@foblex/flow';
+import { FCanvasComponent, F_CONNECTION_BUILDERS, FFlowModule } from '@foblex/flow';
 import {
   FOBLEX_CONNECTION_BUILDERS,
   type BeltwiseFoblexFlowEdge,
@@ -34,6 +35,7 @@ const GRAPH_ZOOM_STEP = 0.12;
 const NODE_CLICK_MOVE_TOLERANCE_PX = 5;
 const NODE_DESELECTION_DELAY_MS = 300;
 const NODE_DOUBLE_CLICK_RESTORE_WINDOW_MS = 500;
+const GRAPH_AUTO_FIT_PADDING = { x: 72, y: 56 };
 
 interface GraphFocusScope {
   nodeIds: ReadonlySet<string>;
@@ -49,6 +51,8 @@ interface ImmediateSelectionSnapshot {
   nodeId: string;
   previousSelectedNodeId: string | null;
 }
+
+type CanvasFitTarget = Pick<FCanvasComponent, 'fitToScreen'>;
 
 @Component({
   selector: 'bw-production-graph',
@@ -80,9 +84,11 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly graphZoomMinimum = GRAPH_ZOOM_MINIMUM;
   public readonly graphZoomMaximum = GRAPH_ZOOM_MAXIMUM;
   public readonly graphZoomStep = GRAPH_ZOOM_STEP;
+  private readonly canvas = viewChild<FCanvasComponent>('graphCanvas');
   private readonly nodePointerStarts = new Map<string, NodePointerStart>();
   private readonly movedNodeIds = new Set<string>();
   private immediateSelectionSnapshot: ImmediateSelectionSnapshot | null = null;
+  private autoFittedGraph: ProductionGraph | null = null;
   private clearImmediateSelectionSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingNodeDeselectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -112,6 +118,21 @@ export class ProductionGraphComponent implements OnDestroy {
     }
     return buildDirectFocusScope(flow, selectedNodeId);
   });
+
+  public handleFlowRendered(): void {
+    this.fitRenderedGraphIntoCanvas(this.canvas());
+  }
+
+  public fitRenderedGraphIntoCanvas(canvas: CanvasFitTarget | undefined): void {
+    const graph = this.graph();
+    const flow = this.flowModel();
+    if (!canvas || !graph || !flow || graph === this.autoFittedGraph) {
+      return;
+    }
+
+    this.autoFittedGraph = graph;
+    canvas.fitToScreen(GRAPH_AUTO_FIT_PADDING, false);
+  }
 
   public inputId(nodeId: string): string {
     return foblexInputId(nodeId);

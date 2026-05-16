@@ -33,10 +33,22 @@
 
   <h3>Machines</h3>
   <div class="machine-usage-list">
-    @for (usage of result.machineUsage; track usage.recipeId) {
+    @for (row of store.machineUsageRows(); track row.usage.recipeId) {
       <div class="usage-row">
-        <span>{{ usage.recipeDisplayName }}</span>
-        <strong>{{ usage.machineCount | number: '1.1-2' }}x {{ usage.machineDisplayName }}</strong>
+        <span class="usage-recipe-name">{{ row.usage.recipeDisplayName }}</span>
+        <strong class="usage-machine-line">
+          <bw-game-icon
+            [src]="row.machineIconSrc"
+            [label]="row.usage.machineDisplayName"
+            [size]="'sm'"
+            [kind]="'machine'"
+            [showTitle]="true"
+          />
+          <span
+            >{{ row.usage.machineCount | number: '1.1-2' }}x
+            {{ row.usage.machineDisplayName }}</span
+          >
+        </strong>
       </div>
     }
   </div>

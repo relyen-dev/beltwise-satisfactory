@@ -1,7 +1,9 @@
 import {
   type GameDataset,
   type Item,
+  type ItemId,
   type Machine,
+  type MachineId,
   type Recipe,
   type ResourceInfo,
 } from '@beltwise/game-data';
@@ -15,6 +17,7 @@ import {
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
+import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
 import {
   defaultResourceCapPerMinute,
   formatResourceCap,
@@ -26,6 +29,7 @@ import {
 export interface ResourceRow {
   resource: ResourceInfo;
   enabled: boolean;
+  iconSrc: string;
   isCustom: boolean;
   capInputValue: number | null;
   baselineCapLabel: string;
@@ -40,17 +44,44 @@ export interface ExternalInputRow {
 export interface MachineRow {
   machine: Machine;
   enabled: boolean;
+  iconSrc: string;
   powerLabel: string | null;
-  stateLabel: string;
   toggleLabel: string;
   typeLabel: string;
+}
+
+export interface RecipeItemIcon {
+  itemId: ItemId;
+  displayName: string;
+  iconSrc: string;
+}
+
+export interface RecipeDetailLine {
+  itemId: ItemId;
+  displayName: string;
+  iconSrc: string;
+  amountPerMinuteLabel: string;
+}
+
+export interface RecipeDetails {
+  durationLabel: string;
+  ingredients: RecipeDetailLine[];
+  products: RecipeDetailLine[];
+}
+
+export interface MachineUsageRow {
+  usage: ProductionPlanResult['machineUsage'][number];
+  machineIconSrc: string;
 }
 
 export interface RecipeRow {
   recipe: Recipe;
   enabled: boolean;
   machineName: string;
-  stateLabel: string;
+  productIcons: RecipeItemIcon[];
+  hiddenProductIconCount: number;
+  isConverterResourceRecipe: boolean;
+  details: RecipeDetails;
   toggleLabel: string;
 }
 
@@ -60,6 +91,9 @@ export interface ProductionGraphInput {
   targets: ProductTarget[];
   rateDecimalPlaces: RateDecimalPlaces;
 }
+
+const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
+const MAX_RECIPE_PRODUCT_ICONS = 1;
 
 export function selectItemOptions(dataset: GameDataset | null): Item[] {
   return dataset
@@ -80,6 +114,7 @@ export function selectResourceRows(dataset: GameDataset, project: PlannerProject
       return {
         resource,
         enabled,
+        iconSrc: gameIconPathForItemId(resource.itemId),
         isCustom: override !== undefined,
         capInputValue: resourceCapInputValue(storedCapPerMinute),
         baselineCapLabel: formatResourceCap(baselineCapPerMinute),
@@ -111,8 +146,8 @@ export function selectMachineRows(dataset: GameDataset, project: PlannerProject)
       return {
         machine,
         enabled,
+        iconSrc: gameIconPathForMachineId(machine.id),
         powerLabel: formatMachinePower(machine),
-        stateLabel: availabilityStateLabel(enabled),
         toggleLabel: `${machine.displayName} machine availability`,
         typeLabel: formatMachineType(machine.type),
       };
@@ -134,10 +169,21 @@ export function selectRecipeRows(
         recipe,
         enabled,
         machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
-        stateLabel: availabilityStateLabel(enabled),
+        ...selectRecipeIconFields(dataset, recipe),
+        isConverterResourceRecipe: isConverterResourceRecipe(dataset, recipe),
+        details: selectRecipeDetails(dataset, recipe),
         toggleLabel: `${recipe.displayName} recipe availability`,
       };
     });
+}
+
+export function selectMachineUsageRows(result: ProductionPlanResult | null): MachineUsageRow[] {
+  return result
+    ? result.machineUsage.map((usage) => ({
+        usage,
+        machineIconSrc: gameIconPathForMachineId(usage.machineId),
+      }))
+    : [];
 }
 
 export function selectProductionGraph(
@@ -238,10 +284,6 @@ function isDefined<TValue>(value: TValue | undefined): value is TValue {
   return value !== undefined;
 }
 
-function availabilityStateLabel(enabled: boolean): string {
-  return enabled ? 'Enabled' : 'Off';
-}
-
 function formatMachineType(type: Machine['type']): string {
   switch (type) {
     case 'manufacturer':
@@ -272,6 +314,69 @@ function formatMachinePower(machine: Machine): string | null {
 
 function formatPowerValue(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1).replace(/\.0$/, '');
+}
+
+function selectRecipeIconFields(
+  dataset: GameDataset,
+  recipe: Recipe,
+): Pick<RecipeRow, 'productIcons' | 'hiddenProductIconCount'> {
+  const productItems = recipe.products.map((product) => recipeItemIcon(dataset, product.itemId));
+  return {
+    productIcons: productItems.slice(0, MAX_RECIPE_PRODUCT_ICONS),
+    hiddenProductIconCount: Math.max(0, productItems.length - MAX_RECIPE_PRODUCT_ICONS),
+  };
+}
+
+function recipeItemIcon(dataset: GameDataset, itemId: ItemId): RecipeItemIcon {
+  return {
+    itemId,
+    displayName: dataset.items[itemId]?.displayName ?? itemId,
+    iconSrc: gameIconPathForItemId(itemId),
+  };
+}
+
+function selectRecipeDetails(dataset: GameDataset, recipe: Recipe): RecipeDetails {
+  return {
+    durationLabel: `${formatRecipeDetailValue(recipe.durationSeconds)}s cycle`,
+    ingredients: recipe.ingredients.map((ingredient) =>
+      recipeDetailLine(dataset, recipe, ingredient.itemId, ingredient.amount),
+    ),
+    products: recipe.products.map((product) =>
+      recipeDetailLine(dataset, recipe, product.itemId, product.amount),
+    ),
+  };
+}
+
+function recipeDetailLine(
+  dataset: GameDataset,
+  recipe: Recipe,
+  itemId: ItemId,
+  amount: number,
+): RecipeDetailLine {
+  return {
+    itemId,
+    displayName: dataset.items[itemId]?.displayName ?? itemId,
+    iconSrc: gameIconPathForItemId(itemId),
+    amountPerMinuteLabel: `${formatRecipeDetailValue(
+      (amount * 60) / recipe.durationSeconds,
+    )}/min`,
+  };
+}
+
+function formatRecipeDetailValue(value: number): string {
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+  return value.toFixed(value < 10 ? 2 : 1).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function isConverterResourceRecipe(dataset: GameDataset, recipe: Recipe): boolean {
+  return (
+    !recipe.isAlternate &&
+    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
+    recipe.products.length > 0 &&
+    recipe.products.every((product) => dataset.resources[product.itemId] !== undefined)
+  );
 }
 
 function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget[]): boolean {
