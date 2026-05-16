@@ -119,7 +119,10 @@ describe('planner store selectors', () => {
           className: 'Recipe_MissingMachine_C',
           displayName: 'Iron Mystery',
           ingredients: [{ itemId: 'Desc_IngotIron_C', amount: 1 }],
-          products: [{ itemId: 'Desc_IronRod_C', amount: 1 }],
+          products: [
+            { itemId: 'Desc_IronRod_C', amount: 1 },
+            { itemId: 'Desc_Screw_C', amount: 2 },
+          ],
           durationSeconds: 4,
           producedIn: ['Build_NotPresent_C'],
           isAlternate: false,
@@ -162,6 +165,16 @@ describe('planner store selectors', () => {
     expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')?.machineName).toBe(
       'Unknown machine',
     );
+    expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')).toMatchObject({
+      hiddenProductIconCount: 1,
+      productIcons: [
+        {
+          itemId: 'Desc_IronRod_C',
+          displayName: 'Iron Rod',
+          iconSrc: '/game-icons/Desc_IronRod_C.png',
+        },
+      ],
+    });
   });
 
   it('adds machine icon paths to machine usage rows without changing solver output', () => {

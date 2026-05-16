@@ -298,7 +298,7 @@
 
 .planner-shell .recipe-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
   gap: var(--space-3);
   align-items: start;
 }
@@ -371,6 +371,11 @@
     background 140ms ease,
     box-shadow 140ms ease,
     color 140ms ease;
+}
+
+.planner-shell .recipe-row {
+  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  min-height: 60px;
 }
 
 .planner-shell .config-toggle-row::before {
@@ -473,6 +478,7 @@
 .planner-shell .config-toggle-row__copy {
   display: grid;
   gap: 4px;
+  align-self: center;
   min-width: 0;
 }
 
@@ -489,12 +495,23 @@
 
 .planner-shell .recipe-product-icons {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
+  justify-self: end;
   gap: 4px;
+  min-width: 0;
+}
+
+.planner-shell .recipe-row .recipe-product-icons {
+  align-self: center;
+  min-width: 36px;
+}
+
+.planner-shell .recipe-row .recipe-product-icons .game-icon:not(.game-icon--unavailable) {
+  background: transparent;
 }
 
 .planner-shell .config-toggle-row__title {
+  display: block;
   color: var(--color-text);
   font-weight: 750;
 }
@@ -504,6 +521,7 @@
 }
 
 .planner-shell .config-toggle-row__meta {
+  display: block;
   color: var(--color-text-muted);
   font-size: 12px;
 }
@@ -548,6 +566,15 @@
 
 .planner-shell .recipe-icon-more {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-panel) 55%, transparent);
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 750;
@@ -947,9 +974,22 @@
     grid-template-columns: 18px minmax(0, 1fr);
   }
 
+  .planner-shell .recipe-row {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+
+  .planner-shell .recipe-row .recipe-product-icons {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
   .planner-shell .config-toggle-row__badges {
     grid-column: 2;
     justify-content: flex-start;
+  }
+
+  .planner-shell .recipe-row .config-toggle-row__badges {
+    grid-column: 2 / -1;
   }
 
   .planner-shell .resource-row {

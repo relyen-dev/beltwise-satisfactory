@@ -78,7 +78,7 @@ export interface ProductionGraphInput {
   rateDecimalPlaces: RateDecimalPlaces;
 }
 
-const MAX_RECIPE_PRODUCT_ICONS = 2;
+const MAX_RECIPE_PRODUCT_ICONS = 1;
 
 export function selectItemOptions(dataset: GameDataset | null): Item[] {
   return dataset
