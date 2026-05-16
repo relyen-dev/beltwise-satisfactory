@@ -42,6 +42,8 @@ export class PlannerStoreViewSelectors {
   public readonly machineUsageRows: Signal<ReturnType<typeof selectMachineUsageRows>>;
   public readonly recipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly baseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
+  public readonly standardBaseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
+  public readonly converterResourceRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly alternateRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly graph: Signal<ProductionGraph | null>;
   public readonly planLocked: Signal<boolean>;
@@ -100,6 +102,14 @@ export class PlannerStoreViewSelectors {
 
     this.baseRecipeRows = computed(() =>
       this.recipeRows().filter((row) => !row.recipe.isAlternate),
+    );
+
+    this.standardBaseRecipeRows = computed(() =>
+      this.baseRecipeRows().filter((row) => !row.isConverterResourceRecipe),
+    );
+
+    this.converterResourceRecipeRows = computed(() =>
+      this.baseRecipeRows().filter((row) => row.isConverterResourceRecipe),
     );
 
     this.alternateRecipeRows = computed(() =>

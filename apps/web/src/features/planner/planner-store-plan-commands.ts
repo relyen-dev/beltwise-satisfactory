@@ -84,6 +84,15 @@ export class PlannerPlanCommandSlice {
     );
   }
 
+  public setRecipesEnabled(recipeIds: readonly RecipeId[], enabled: boolean): void {
+    if (this.options.planLocked() || recipeIds.length === 0) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      projectMutations.setRecipeGroupEnabled(project, recipeIds, enabled),
+    );
+  }
+
   public setRecipeGroupEnabled(isAlternate: boolean, enabled: boolean): void {
     if (this.options.planLocked()) {
       return;

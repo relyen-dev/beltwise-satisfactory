@@ -297,6 +297,7 @@
 }
 
 .planner-shell .recipe-columns {
+  container: recipe-columns / inline-size;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
   gap: var(--space-3);
@@ -333,6 +334,59 @@
 
 .planner-shell .recipe-group-actions button {
   white-space: nowrap;
+}
+
+.planner-shell .recipe-subtabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px 2px;
+}
+
+.planner-shell .recipe-subtab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-color: color-mix(in srgb, var(--color-border) 82%, black);
+  background: color-mix(in srgb, var(--color-panel-raised) 62%, black);
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.planner-shell .recipe-subtab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .recipe-subtab span:last-child {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.planner-shell .recipe-subtab--active {
+  border-color: color-mix(in srgb, var(--color-accent) 56%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 13%, var(--color-panel-raised));
+  color: var(--color-text);
+}
+
+.planner-shell .recipe-group-align-spacer {
+  display: none;
+  min-height: 32px;
+}
+
+@container recipe-columns (min-width: 1052px) {
+  .planner-shell .recipe-group-align-spacer {
+    display: block;
+  }
 }
 
 .planner-shell
@@ -503,7 +557,11 @@
 
 .planner-shell .recipe-row .recipe-product-icons {
   align-self: center;
-  min-width: 36px;
+  min-width: 40px;
+}
+
+.planner-shell .recipe-row .recipe-product-icons .game-icon--lg {
+  --game-icon-size: 36px;
 }
 
 .planner-shell .recipe-row .recipe-product-icons .game-icon:not(.game-icon--unavailable) {

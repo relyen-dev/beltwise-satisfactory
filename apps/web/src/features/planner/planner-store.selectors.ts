@@ -3,6 +3,7 @@ import {
   type Item,
   type ItemId,
   type Machine,
+  type MachineId,
   type Recipe,
   type ResourceInfo,
 } from '@beltwise/game-data';
@@ -67,7 +68,7 @@ export interface RecipeRow {
   machineName: string;
   productIcons: RecipeItemIcon[];
   hiddenProductIconCount: number;
-  stateLabel: string;
+  isConverterResourceRecipe: boolean;
   toggleLabel: string;
 }
 
@@ -78,6 +79,7 @@ export interface ProductionGraphInput {
   rateDecimalPlaces: RateDecimalPlaces;
 }
 
+const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const MAX_RECIPE_PRODUCT_ICONS = 1;
 
 export function selectItemOptions(dataset: GameDataset | null): Item[] {
@@ -156,7 +158,7 @@ export function selectRecipeRows(
         enabled,
         machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
         ...selectRecipeIconFields(dataset, recipe),
-        stateLabel: availabilityStateLabel(enabled),
+        isConverterResourceRecipe: isConverterResourceRecipe(dataset, recipe),
         toggleLabel: `${recipe.displayName} recipe availability`,
       };
     });
@@ -322,6 +324,15 @@ function recipeItemIcon(dataset: GameDataset, itemId: ItemId): RecipeItemIcon {
     displayName: dataset.items[itemId]?.displayName ?? itemId,
     iconSrc: gameIconPathForItemId(itemId),
   };
+}
+
+function isConverterResourceRecipe(dataset: GameDataset, recipe: Recipe): boolean {
+  return (
+    !recipe.isAlternate &&
+    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
+    recipe.products.length > 0 &&
+    recipe.products.every((product) => dataset.resources[product.itemId] !== undefined)
+  );
 }
 
 function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget[]): boolean {

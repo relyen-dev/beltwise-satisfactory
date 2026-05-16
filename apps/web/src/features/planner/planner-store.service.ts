@@ -69,6 +69,8 @@ export class PlannerStoreService implements OnDestroy {
   public readonly machineUsageRows: PlannerStoreViewSelectors['machineUsageRows'];
   public readonly recipeRows: PlannerStoreViewSelectors['recipeRows'];
   public readonly baseRecipeRows: PlannerStoreViewSelectors['baseRecipeRows'];
+  public readonly standardBaseRecipeRows: PlannerStoreViewSelectors['standardBaseRecipeRows'];
+  public readonly converterResourceRecipeRows: PlannerStoreViewSelectors['converterResourceRecipeRows'];
   public readonly alternateRecipeRows: PlannerStoreViewSelectors['alternateRecipeRows'];
   public readonly graph: PlannerStoreViewSelectors['graph'];
   public readonly planLocked: PlannerStoreViewSelectors['planLocked'];
@@ -129,6 +131,8 @@ export class PlannerStoreService implements OnDestroy {
     this.machineUsageRows = this.views.machineUsageRows;
     this.recipeRows = this.views.recipeRows;
     this.baseRecipeRows = this.views.baseRecipeRows;
+    this.standardBaseRecipeRows = this.views.standardBaseRecipeRows;
+    this.converterResourceRecipeRows = this.views.converterResourceRecipeRows;
     this.alternateRecipeRows = this.views.alternateRecipeRows;
     this.graph = this.views.graph;
     this.planLocked = this.views.planLocked;
@@ -196,6 +200,10 @@ export class PlannerStoreService implements OnDestroy {
 
   public setRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
     this.planCommands.setRecipeEnabled(recipeId, enabled);
+  }
+
+  public setRecipesEnabled(recipeIds: readonly RecipeId[], enabled: boolean): void {
+    this.planCommands.setRecipesEnabled(recipeIds, enabled);
   }
 
   public setRecipeGroupEnabled(isAlternate: boolean, enabled: boolean): void {

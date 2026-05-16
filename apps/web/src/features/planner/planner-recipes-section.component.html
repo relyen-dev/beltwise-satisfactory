@@ -19,7 +19,9 @@
 
   <div class="recipe-columns">
     <section class="recipe-group" aria-labelledby="base-recipes-title">
-      @let baseRows = store.baseRecipeRows();
+      @let standardBaseRows = store.standardBaseRecipeRows();
+      @let converterResourceRows = store.converterResourceRecipeRows();
+      @let baseRows = activeBaseRecipeRows();
       <div class="recipe-group-header">
         <div>
           <h4 id="base-recipes-title">Base recipes</h4>
@@ -29,23 +31,50 @@
           <button
             type="button"
             [disabled]="store.planLocked()"
-            (click)="store.setRecipeGroupEnabled(false, true)"
+            (click)="setRowsEnabled(baseRows, true)"
           >
-            Enable all base
+            Enable shown
           </button>
           <button
             type="button"
             [disabled]="store.planLocked()"
-            (click)="store.setRecipeGroupEnabled(false, false)"
+            (click)="setRowsEnabled(baseRows, false)"
           >
-            Disable all base
+            Disable shown
           </button>
         </div>
       </div>
 
+      <div class="recipe-subtabs" aria-label="Base recipe category">
+        <button
+          type="button"
+          class="recipe-subtab"
+          [class.recipe-subtab--active]="activeBaseRecipePanel() === 'standard'"
+          [attr.aria-pressed]="activeBaseRecipePanel() === 'standard' ? 'true' : 'false'"
+          (click)="activeBaseRecipePanel.set('standard')"
+        >
+          <span>Standard</span>
+          <span>{{ standardBaseRows.length }}</span>
+        </button>
+        <button
+          type="button"
+          class="recipe-subtab"
+          [class.recipe-subtab--active]="activeBaseRecipePanel() === 'converterResources'"
+          [attr.aria-pressed]="activeBaseRecipePanel() === 'converterResources' ? 'true' : 'false'"
+          (click)="activeBaseRecipePanel.set('converterResources')"
+        >
+          <span>Converter resources</span>
+          <span>{{ converterResourceRows.length }}</span>
+        </button>
+      </div>
+
       <div class="recipe-list" aria-label="Base recipes">
         @if (baseRows.length === 0) {
-          <div class="recipe-empty">No base recipes match the search.</div>
+          @if (activeBaseRecipePanel() === 'converterResources') {
+            <div class="recipe-empty">No converter resource recipes match the search.</div>
+          } @else {
+            <div class="recipe-empty">No base recipes match the search.</div>
+          }
         } @else {
           @for (row of baseRows; track row.recipe.id) {
             <label
@@ -84,12 +113,6 @@
                 }
               </span>
               <span class="config-toggle-row__badges">
-                <span
-                  class="config-toggle-row__state"
-                  [class.config-toggle-row__state--off]="!row.enabled"
-                >
-                  {{ row.stateLabel }}
-                </span>
                 <span class="recipe-chip">base</span>
               </span>
             </label>
@@ -122,6 +145,8 @@
           </button>
         </div>
       </div>
+
+      <div class="recipe-group-align-spacer" aria-hidden="true"></div>
 
       <div class="recipe-list" aria-label="Alternate recipes">
         @if (alternateRows.length === 0) {
@@ -164,12 +189,6 @@
                 }
               </span>
               <span class="config-toggle-row__badges">
-                <span
-                  class="config-toggle-row__state"
-                  [class.config-toggle-row__state--off]="!row.enabled"
-                >
-                  {{ row.stateLabel }}
-                </span>
                 <span class="recipe-chip recipe-chip--alt">alternate</span>
               </span>
             </label>

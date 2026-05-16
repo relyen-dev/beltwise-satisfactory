@@ -152,7 +152,6 @@ describe('planner store selectors', () => {
     expect(rows.find((row) => row.recipe.id === 'Recipe_IronPlate_C')).toMatchObject({
       enabled: false,
       machineName: 'Constructor',
-      stateLabel: 'Off',
       toggleLabel: 'Iron Plate recipe availability',
       productIcons: [
         {
@@ -161,6 +160,7 @@ describe('planner store selectors', () => {
           iconSrc: '/game-icons/Desc_IronPlate_C.png',
         },
       ],
+      isConverterResourceRecipe: false,
     });
     expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')?.machineName).toBe(
       'Unknown machine',
@@ -174,6 +174,67 @@ describe('planner store selectors', () => {
           iconSrc: '/game-icons/Desc_IronRod_C.png',
         },
       ],
+    });
+  });
+
+  it('marks converter recipes that output raw resources for separate display', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      machines: {
+        ...tinySatisfactoryDataset.machines,
+        Build_Converter_C: {
+          id: 'Build_Converter_C',
+          className: 'Build_Converter_C',
+          displayName: 'Converter',
+          type: 'variablePowerManufacturer',
+          powerRangeMw: { min: 100, max: 400 },
+          manufacturingSpeed: 1,
+        },
+      },
+      recipes: {
+        ...tinySatisfactoryDataset.recipes,
+        Recipe_ConverterIronOre_C: {
+          id: 'Recipe_ConverterIronOre_C',
+          className: 'Recipe_ConverterIronOre_C',
+          displayName: 'Iron Ore (Copper)',
+          ingredients: [{ itemId: 'Desc_OreCopper_C', amount: 12 }],
+          products: [{ itemId: 'Desc_OreIron_C', amount: 12 }],
+          durationSeconds: 6,
+          producedIn: ['Build_Converter_C'],
+          isAlternate: false,
+          isHandCraftOnly: false,
+          tags: [],
+        },
+        Recipe_ConverterIronIngot_C: {
+          id: 'Recipe_ConverterIronIngot_C',
+          className: 'Recipe_ConverterIronIngot_C',
+          displayName: 'Ficsite Ingot (Iron)',
+          ingredients: [{ itemId: 'Desc_OreIron_C', amount: 12 }],
+          products: [{ itemId: 'Desc_IngotIron_C', amount: 12 }],
+          durationSeconds: 6,
+          producedIn: ['Build_Converter_C'],
+          isAlternate: false,
+          isHandCraftOnly: false,
+          tags: [],
+        },
+      },
+    };
+
+    const rows = selectRecipeRows(dataset, createProject(), 'iron');
+
+    expect(rows.find((row) => row.recipe.id === 'Recipe_ConverterIronOre_C')).toMatchObject({
+      machineName: 'Converter',
+      isConverterResourceRecipe: true,
+      productIcons: [
+        {
+          itemId: 'Desc_OreIron_C',
+          displayName: 'Iron Ore',
+          iconSrc: '/game-icons/Desc_OreIron_C.png',
+        },
+      ],
+    });
+    expect(rows.find((row) => row.recipe.id === 'Recipe_ConverterIronIngot_C')).toMatchObject({
+      isConverterResourceRecipe: false,
     });
   });
 
