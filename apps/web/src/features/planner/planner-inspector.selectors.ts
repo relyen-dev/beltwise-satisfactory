@@ -8,6 +8,7 @@ import {
   type ProductTarget,
 } from '@beltwise/planner-core';
 import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
+import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
 import {
   defaultResourceCapPerMinute,
   formatResourceCap,
@@ -241,14 +242,14 @@ function selectOverviewViewModel(
     metrics: [
       metric('Solve status', result ? formatStatus(result.status) : 'No result'),
       metric('Power', result ? formatPower(result.powerMw) : '0 MW'),
-      metric('Recipes', formatInteger(machineUsage.length), 'active recipe groups'),
+      metric('Recipes', formatPlannerInteger(machineUsage.length), 'active recipe groups'),
       metric(
         'Machines',
-        `${formatNumber(totalMachineCount)}x`,
+        `${formatPlannerNumber(totalMachineCount)}x`,
         'total constructors, smelters, etc.',
       ),
-      metric('Raw inputs', formatInteger(rawInputRows.length), 'resource types'),
-      metric('Targets', formatInteger(project.targets.length), 'configured outputs'),
+      metric('Raw inputs', formatPlannerInteger(rawInputRows.length), 'resource types'),
+      metric('Targets', formatPlannerInteger(project.targets.length), 'configured outputs'),
     ],
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
@@ -309,9 +310,9 @@ function summarizeMachinesByType(
       machineId: summary.machineId,
       machineDisplayName: summary.machineDisplayName,
       machineIconSrc: gameIconPathForMachineId(summary.machineId),
-      machineCountLabel: `${formatNumber(summary.machineCount)}x`,
+      machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
       powerLabel: formatPower(summary.powerMw),
-      recipeGroupCountLabel: `${formatInteger(summary.recipeGroupCount)} ${
+      recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
         summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
       }`,
     }));
@@ -401,8 +402,10 @@ function recipeNodeDetails(
     recipeName: recipe?.displayName ?? selectedNode.label,
     machineName,
     machineIcon,
-    machineCountLabel: `${formatNumber(usage?.machineCount ?? selectedNode.machineCount ?? 0)}x`,
-    recipeRateLabel: `${formatNumber(recipeRatePerMinute)}/min`,
+    machineCountLabel: `${formatPlannerNumber(
+      usage?.machineCount ?? selectedNode.machineCount ?? 0,
+    )}x`,
+    recipeRateLabel: `${formatPlannerNumber(recipeRatePerMinute)}/min`,
     powerLabel: usage ? formatPower(usage.powerMw) : null,
     inputs:
       recipe?.ingredients.map((ingredient) =>
@@ -440,7 +443,7 @@ function resourceNodeDetails(
     effectiveCapPerMinute !== undefined &&
     !isUnlimitedResourceCap(effectiveCapPerMinute);
   const headroomLabel = finiteCap
-    ? `${formatNumber(effectiveCapPerMinute - consumedAmountPerMinute)}/min`
+    ? `${formatPlannerNumber(effectiveCapPerMinute - consumedAmountPerMinute)}/min`
     : null;
 
   return {
@@ -514,10 +517,10 @@ function outputNodeDetails(
     ),
     targetModeLabel: targetMode === 'maximize' ? 'Maximize' : 'Fixed',
     requestedAmountPerMinuteLabel:
-      fixedRequest === null ? null : `${formatNumber(fixedRequest)}/min`,
+      fixedRequest === null ? null : `${formatPlannerNumber(fixedRequest)}/min`,
     solvedAmountPerMinuteLabel:
-      maximizedOutput === null ? null : `${formatNumber(maximizedOutput)}/min`,
-    incomingAmountPerMinuteLabel: `${formatNumber(incomingAmountPerMinute)}/min`,
+      maximizedOutput === null ? null : `${formatPlannerNumber(maximizedOutput)}/min`,
+    incomingAmountPerMinuteLabel: `${formatPlannerNumber(incomingAmountPerMinute)}/min`,
     fuelPower,
   };
 }
@@ -541,7 +544,7 @@ function byproductNodeDetails(
     kind: 'byproduct',
     item: itemRateRow(dataset, itemId, surplusAmountPerMinute, 'unused surplus'),
     sinkPointsPerMinuteLabel:
-      sinkPointsPerMinute === null ? null : `${formatNumber(sinkPointsPerMinute)}/min`,
+      sinkPointsPerMinute === null ? null : `${formatPlannerNumber(sinkPointsPerMinute)}/min`,
     surplusNote: 'Unused surplus. Sink routing is not modeled yet.',
   };
 }
@@ -638,8 +641,8 @@ function targetSummary(
     modeLabel: target.mode === 'maximize' ? 'Maximize' : 'Fixed',
     amountLabel:
       target.mode === 'maximize'
-        ? `${formatNumber(amount)}/min solved`
-        : `${formatNumber(amount)}/min requested`,
+        ? `${formatPlannerNumber(amount)}/min solved`
+        : `${formatPlannerNumber(amount)}/min requested`,
   };
 }
 
@@ -722,9 +725,9 @@ function outputFuelPowerDetails(
       label: definition.generatorName,
       kind: 'machine',
     },
-    generatorCountLabel: `${formatNumber(generatorCount)}x`,
+    generatorCountLabel: `${formatPlannerNumber(generatorCount)}x`,
     grossPowerLabel: formatPower(grossPowerMw),
-    fuelPerGeneratorLabel: `${formatNumber(definition.fuelPerGeneratorPerMinute)}/min each`,
+    fuelPerGeneratorLabel: `${formatPlannerNumber(definition.fuelPerGeneratorPerMinute)}/min each`,
     waste,
     note: definition.note,
   };
@@ -812,7 +815,7 @@ function itemRateRow(
     displayName: dataset.items[itemId]?.displayName ?? itemId,
     iconSrc: gameIconPathForItemId(itemId),
     amountPerMinute,
-    amountPerMinuteLabel: `${formatNumber(amountPerMinute)}/min`,
+    amountPerMinuteLabel: `${formatPlannerNumber(amountPerMinute)}/min`,
     detail,
   };
 }
@@ -882,21 +885,7 @@ function formatStatus(status: ProductionPlanResult['status']): string {
 }
 
 function formatPower(powerMw: number): string {
-  return `${formatNumber(powerMw)} MW`;
-}
-
-function formatInteger(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-function formatNumber(value: number): string {
-  const decimalPlaces = Math.abs(value) < 10 && !Number.isInteger(value) ? 3 : 2;
-  return value
-    .toLocaleString('en-US', {
-      maximumFractionDigits: decimalPlaces,
-      minimumFractionDigits: 0,
-    })
-    .replace(/^-0$/, '0');
+  return `${formatPlannerNumber(powerMw)} MW`;
 }
 
 function sumAmounts(rows: readonly InspectorItemRateRow[]): number {

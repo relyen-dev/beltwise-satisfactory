@@ -17,6 +17,7 @@ import {
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
+import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
 import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
 import {
   defaultResourceCapPerMinute,
@@ -387,7 +388,7 @@ function selectMachineUsageByMachineId(
         ...summary,
         machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
         powerLabel: `${formatPlannerNumber(summary.powerMw)} MW`,
-        recipeGroupCountLabel: `${formatInteger(summary.recipeGroupCount)} ${
+        recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
           summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
         }`,
       },
@@ -397,20 +398,6 @@ function selectMachineUsageByMachineId(
 
 function formatPowerValue(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1).replace(/\.0$/, '');
-}
-
-function formatInteger(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-function formatPlannerNumber(value: number): string {
-  const decimalPlaces = Math.abs(value) < 10 && !Number.isInteger(value) ? 3 : 2;
-  return value
-    .toLocaleString('en-US', {
-      maximumFractionDigits: decimalPlaces,
-      minimumFractionDigits: 0,
-    })
-    .replace(/^-0$/, '0');
 }
 
 function selectRecipeIconFields(
