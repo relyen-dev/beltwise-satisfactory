@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { type GameDataset, gameDatasetSchema } from '@beltwise/game-data';
 import {
   gameIconDescriptorIdForMachineId,
   gameIconPathForItemId,
   gameIconPathForMachineId,
 } from './game-icon.helpers';
+import { plannerRelevantMachineIds } from './planner-domain.helpers';
+
+const REPO_ROOT = fileURLToPath(new URL('../../../../../', import.meta.url));
+const CURRENT_DATASET_PATH = join(REPO_ROOT, 'data/generated/satisfactory-current.json');
+const PUBLIC_GAME_ICONS_DIR = join(REPO_ROOT, 'apps/web/public/game-icons');
+const GAME_ICON_PATH_PREFIX = '/game-icons/';
 
 describe('game icon helpers', () => {
   it('builds deterministic item icon paths from item ids', () => {
@@ -23,4 +33,48 @@ describe('game icon helpers', () => {
       '/game-icons/Desc_CustomMachine_C.png',
     );
   });
+
+  it('has a public PNG for every current dataset item and planner machine icon path', () => {
+    const missingIconFiles = Array.from(requiredCurrentDatasetIconFileNames()).filter(
+      (iconFileName) => !existsSync(join(PUBLIC_GAME_ICONS_DIR, iconFileName)),
+    );
+
+    expect(missingIconFiles).toEqual([]);
+  });
+
+  it('keeps the public icon folder limited to the current dataset icon manifest', () => {
+    const requiredIconFileNames = requiredCurrentDatasetIconFileNames();
+    const extraIconFiles = readdirSync(PUBLIC_GAME_ICONS_DIR)
+      .filter((fileName) => fileName.endsWith('.png'))
+      .filter((fileName) => !requiredIconFileNames.has(fileName))
+      .sort();
+
+    expect(extraIconFiles).toEqual([]);
+  });
 });
+
+function requiredCurrentDatasetIconFileNames(): Set<string> {
+  const dataset = readCurrentDataset();
+  const iconFileNames = new Set<string>();
+
+  for (const itemId of Object.keys(dataset.items)) {
+    iconFileNames.add(iconFileNameFromPath(gameIconPathForItemId(itemId)));
+  }
+  for (const machineId of plannerRelevantMachineIds(dataset)) {
+    iconFileNames.add(iconFileNameFromPath(gameIconPathForMachineId(machineId)));
+  }
+
+  return iconFileNames;
+}
+
+function readCurrentDataset(): GameDataset {
+  return gameDatasetSchema.parse(JSON.parse(readFileSync(CURRENT_DATASET_PATH, 'utf8')));
+}
+
+function iconFileNameFromPath(iconPath: string): string {
+  if (!iconPath.startsWith(GAME_ICON_PATH_PREFIX) || !iconPath.endsWith('.png')) {
+    throw new Error(`Unexpected game icon path: ${iconPath}`);
+  }
+
+  return iconPath.slice(GAME_ICON_PATH_PREFIX.length);
+}
