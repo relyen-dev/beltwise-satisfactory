@@ -1,8 +1,5 @@
-import 'zone.js';
 import '@angular/compiler';
-import { signal, type WritableSignal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
-import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
+import { Injector, runInInjectionContext, signal, type WritableSignal } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlannerPageComponent } from './planner-page.component';
 import {
@@ -11,8 +8,6 @@ import {
   type WorkbenchFocusRequest,
 } from './planner-store.service';
 
-TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
-
 describe('PlannerPageComponent', () => {
   beforeEach(() => {
     vi.stubGlobal('HTMLElement', TestHTMLElement);
@@ -20,7 +15,6 @@ describe('PlannerPageComponent', () => {
   });
 
   afterEach(() => {
-    TestBed.resetTestingModule();
     vi.unstubAllGlobals();
   });
 
@@ -96,10 +90,10 @@ function createComponentHarness(): {
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
-  TestBed.configureTestingModule({
+  const injector = Injector.create({
     providers: [{ provide: PlannerStoreService, useValue: store }],
   });
-  const component = TestBed.runInInjectionContext(() => new PlannerPageComponent());
+  const component = runInInjectionContext(injector, () => new PlannerPageComponent());
 
   return { clearSelectedGraphNode, component, flushGraphNodePositions, store };
 }
