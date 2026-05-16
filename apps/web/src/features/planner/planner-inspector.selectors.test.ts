@@ -327,7 +327,72 @@ describe('planner inspector selectors', () => {
       generatorCountLabel: '3x',
       grossPowerLabel: '225 MW',
       fuelPerGeneratorLabel: '15/min each',
+      wastePerMinuteLabel: null,
       note: 'Gross estimate. Water logistics are not modeled here.',
+    });
+  });
+
+  it('adds nuclear waste details for uranium fuel output nodes', () => {
+    const dataset = datasetWithSinkPoints();
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-uranium-rods',
+        itemId: 'Desc_NuclearFuelRod_C',
+        mode: 'fixed',
+        amountPerMinute: 0.4,
+        sortOrder: 0,
+      },
+    ];
+    const project = createPlannerProject({
+      id: 'project-nuclear',
+      name: 'Nuclear Factory',
+      dataset,
+      targets,
+      now: NOW,
+    });
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {
+        Desc_NuclearFuelRod_C: 0.4,
+      },
+      itemFlows: [
+        {
+          itemId: 'Desc_NuclearFuelRod_C',
+          amountPerMinute: 0.4,
+          source: { kind: 'externalInput', id: 'Desc_NuclearFuelRod_C' },
+          target: { kind: 'output', id: 'target-uranium-rods' },
+        },
+      ],
+      outputs: {
+        Desc_NuclearFuelRod_C: 0.4,
+      },
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+    const graph = buildProductionGraph(dataset, targets, result);
+    const context: InspectorTestContext = {
+      dataset,
+      project,
+      result,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(context, nodeById(context, 'output:target-uranium-rods'));
+
+    if (selection.details.kind !== 'output') {
+      throw new Error('Expected output details');
+    }
+    expect(selection.details.fuelPower).toMatchObject({
+      generatorName: 'Nuclear Power Plant',
+      generatorCountLabel: '2x',
+      grossPowerLabel: '5,000 MW',
+      fuelPerGeneratorLabel: '0.2/min each',
+      wastePerMinuteLabel: '20/min',
+      note: 'Gross estimate. Water logistics are not modeled here; produces Uranium Waste.',
     });
   });
 
@@ -609,6 +674,13 @@ function datasetWithSinkPoints(): GameDataset {
         displayName: 'Coal',
         form: 'solid',
         energyValue: 300,
+      },
+      Desc_NuclearFuelRod_C: {
+        id: 'Desc_NuclearFuelRod_C',
+        className: 'Desc_NuclearFuelRod_C',
+        displayName: 'Uranium Fuel Rod',
+        form: 'solid',
+        energyValue: 750000,
       },
     },
   };

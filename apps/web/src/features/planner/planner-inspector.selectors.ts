@@ -130,6 +130,7 @@ export interface OutputFuelPowerDetails {
   generatorCountLabel: string;
   grossPowerLabel: string;
   fuelPerGeneratorLabel: string;
+  wastePerMinuteLabel: string | null;
   note: string;
 }
 
@@ -169,6 +170,7 @@ interface GeneratorFuelDefinition {
   generatorName: string;
   generatorPowerMw: number;
   fuelPerGeneratorPerMinute: number;
+  wastePerGeneratorPerMinute?: number;
   note: string;
 }
 
@@ -187,9 +189,9 @@ const GENERATOR_FUELS: Readonly<Record<ItemId, GeneratorFuelDefinition>> = {
   Desc_LiquidTurboFuel_C: fuelGeneratorFuel(7.5),
   Desc_RocketFuel_C: fuelGeneratorFuel(4.166666666666667),
   Desc_IonizedFuel_C: fuelGeneratorFuel(3),
-  Desc_NuclearFuelRod_C: nuclearGeneratorFuel(0.2),
-  Desc_PlutoniumFuelRod_C: nuclearGeneratorFuel(0.1),
-  Desc_FicsoniumFuelRod_C: nuclearGeneratorFuel(1),
+  Desc_NuclearFuelRod_C: nuclearGeneratorFuel(0.2, 10, 'Uranium Waste'),
+  Desc_PlutoniumFuelRod_C: nuclearGeneratorFuel(0.1, 1, 'Plutonium Waste'),
+  Desc_FicsoniumFuelRod_C: nuclearGeneratorFuel(1, null, null),
 };
 
 export function selectInspectorViewModel(
@@ -701,6 +703,10 @@ function outputFuelPowerDetails(
 
   const generatorCount = amountPerMinute / definition.fuelPerGeneratorPerMinute;
   const grossPowerMw = generatorCount * definition.generatorPowerMw;
+  const wastePerMinute =
+    definition.wastePerGeneratorPerMinute === undefined
+      ? null
+      : generatorCount * definition.wastePerGeneratorPerMinute;
 
   return {
     generatorName: definition.generatorName,
@@ -712,6 +718,7 @@ function outputFuelPowerDetails(
     generatorCountLabel: `${formatNumber(generatorCount)}x`,
     grossPowerLabel: formatPower(grossPowerMw),
     fuelPerGeneratorLabel: `${formatNumber(definition.fuelPerGeneratorPerMinute)}/min each`,
+    wastePerMinuteLabel: wastePerMinute === null ? null : `${formatNumber(wastePerMinute)}/min`,
     note: definition.note,
   };
 }
@@ -919,12 +926,20 @@ function fuelGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefi
   };
 }
 
-function nuclearGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
+function nuclearGeneratorFuel(
+  fuelPerGeneratorPerMinute: number,
+  wastePerGeneratorPerMinute: number | null,
+  wasteName: string | null,
+): GeneratorFuelDefinition {
   return {
     generatorId: 'Build_GeneratorNuclear_C',
     generatorName: 'Nuclear Power Plant',
     generatorPowerMw: 2500,
     fuelPerGeneratorPerMinute,
-    note: 'Gross estimate. Water logistics and nuclear byproducts are not modeled here.',
+    ...(wastePerGeneratorPerMinute === null ? {} : { wastePerGeneratorPerMinute }),
+    note:
+      wasteName === null
+        ? 'Gross estimate. Water logistics are not modeled here; Ficsonium Fuel Rods burn clean.'
+        : `Gross estimate. Water logistics are not modeled here; produces ${wasteName}.`,
   };
 }

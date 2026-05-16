@@ -287,6 +287,12 @@
                 <span>Gross power</span>
                 <strong>{{ fuelPower.grossPowerLabel }}</strong>
               </div>
+              @if (fuelPower.wastePerMinuteLabel) {
+                <div>
+                  <span>Waste</span>
+                  <strong>{{ fuelPower.wastePerMinuteLabel }}</strong>
+                </div>
+              }
             </div>
             <p class="inspector-list-note">{{ fuelPower.note }}</p>
           </div>
