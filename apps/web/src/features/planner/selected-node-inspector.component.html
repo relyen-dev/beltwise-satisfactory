@@ -260,6 +260,37 @@
             <strong>{{ selectedNode.details.incomingAmountPerMinuteLabel }}</strong>
           </div>
         </div>
+        @if (selectedNode.details.fuelPower; as fuelPower) {
+          <div class="inspector-subsection">
+            <div class="inspector-section-heading">
+              <h4>Fuel Power</h4>
+              <span>Gross</span>
+            </div>
+            <div class="inspector-list">
+              <div class="inspector-row">
+                <bw-game-icon
+                  [src]="fuelPower.generatorIcon.src"
+                  [label]="fuelPower.generatorIcon.label"
+                  [size]="'sm'"
+                  [kind]="fuelPower.generatorIcon.kind"
+                  [showTitle]="true"
+                />
+                <span class="inspector-row__copy">
+                  <strong>{{ fuelPower.generatorName }}</strong>
+                  <span>{{ fuelPower.fuelPerGeneratorLabel }}</span>
+                </span>
+                <span class="inspector-row__value">{{ fuelPower.generatorCountLabel }}</span>
+              </div>
+            </div>
+            <div class="inspector-fact-list">
+              <div>
+                <span>Gross power</span>
+                <strong>{{ fuelPower.grossPowerLabel }}</strong>
+              </div>
+            </div>
+            <p class="inspector-list-note">{{ fuelPower.note }}</p>
+          </div>
+        }
       </section>
     }
     @case ('byproduct') {

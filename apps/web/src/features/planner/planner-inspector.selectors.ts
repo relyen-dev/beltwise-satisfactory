@@ -121,6 +121,16 @@ export interface OutputNodeDetails {
   requestedAmountPerMinuteLabel: string | null;
   solvedAmountPerMinuteLabel: string | null;
   incomingAmountPerMinuteLabel: string;
+  fuelPower: OutputFuelPowerDetails | null;
+}
+
+export interface OutputFuelPowerDetails {
+  generatorName: string;
+  generatorIcon: InspectorIcon;
+  generatorCountLabel: string;
+  grossPowerLabel: string;
+  fuelPerGeneratorLabel: string;
+  note: string;
 }
 
 export interface ByproductNodeDetails {
@@ -153,6 +163,34 @@ export interface InspectorViewModel {
 const MAX_OVERVIEW_RAW_INPUTS = 5;
 const MAX_OVERVIEW_MACHINE_ROWS = 4;
 const MIN_DISPLAY_RATE = 0.000001;
+
+interface GeneratorFuelDefinition {
+  generatorId: MachineId;
+  generatorName: string;
+  generatorPowerMw: number;
+  fuelPerGeneratorPerMinute: number;
+  note: string;
+}
+
+const GENERATOR_FUELS: Readonly<Record<ItemId, GeneratorFuelDefinition>> = {
+  Desc_Leaves_C: biomassGeneratorFuel(120),
+  Desc_Wood_C: biomassGeneratorFuel(18),
+  Desc_Mycelia_C: biomassGeneratorFuel(90),
+  Desc_GenericBiomass_C: biomassGeneratorFuel(10),
+  Desc_Biofuel_C: biomassGeneratorFuel(4),
+  Desc_PackagedBiofuel_C: biomassGeneratorFuel(2.4),
+  Desc_Coal_C: coalGeneratorFuel(15),
+  Desc_CompactedCoal_C: coalGeneratorFuel(7.142857142857143),
+  Desc_PetroleumCoke_C: coalGeneratorFuel(25),
+  Desc_LiquidBiofuel_C: fuelGeneratorFuel(20),
+  Desc_LiquidFuel_C: fuelGeneratorFuel(20),
+  Desc_LiquidTurboFuel_C: fuelGeneratorFuel(7.5),
+  Desc_RocketFuel_C: fuelGeneratorFuel(4.166666666666667),
+  Desc_IonizedFuel_C: fuelGeneratorFuel(3),
+  Desc_NuclearFuelRod_C: nuclearGeneratorFuel(0.2),
+  Desc_PlutoniumFuelRod_C: nuclearGeneratorFuel(0.1),
+  Desc_FicsoniumFuelRod_C: nuclearGeneratorFuel(1),
+};
 
 export function selectInspectorViewModel(
   dataset: GameDataset | null,
@@ -461,6 +499,7 @@ function outputNodeDetails(
     targetMode === 'maximize'
       ? (maximizedOutput ?? incomingAmountPerMinute)
       : (selectedNode.amountPerMinute ?? incomingAmountPerMinute);
+  const fuelPower = outputFuelPowerDetails(itemId, displayAmountPerMinute);
 
   return {
     kind: 'output',
@@ -476,6 +515,7 @@ function outputNodeDetails(
     solvedAmountPerMinuteLabel:
       maximizedOutput === null ? null : `${formatNumber(maximizedOutput)}/min`,
     incomingAmountPerMinuteLabel: `${formatNumber(incomingAmountPerMinute)}/min`,
+    fuelPower,
   };
 }
 
@@ -650,6 +690,32 @@ function flowRowKey(
   ].join(':');
 }
 
+function outputFuelPowerDetails(
+  itemId: ItemId,
+  amountPerMinute: number,
+): OutputFuelPowerDetails | null {
+  const definition = GENERATOR_FUELS[itemId];
+  if (!definition || amountPerMinute <= MIN_DISPLAY_RATE) {
+    return null;
+  }
+
+  const generatorCount = amountPerMinute / definition.fuelPerGeneratorPerMinute;
+  const grossPowerMw = generatorCount * definition.generatorPowerMw;
+
+  return {
+    generatorName: definition.generatorName,
+    generatorIcon: {
+      src: gameIconPathForMachineId(definition.generatorId),
+      label: definition.generatorName,
+      kind: 'machine',
+    },
+    generatorCountLabel: `${formatNumber(generatorCount)}x`,
+    grossPowerLabel: formatPower(grossPowerMw),
+    fuelPerGeneratorLabel: `${formatNumber(definition.fuelPerGeneratorPerMinute)}/min each`,
+    note: definition.note,
+  };
+}
+
 function endpointMatchesNode(
   endpoint: ItemFlowEndpoint,
   selectedNode: ProductionGraphNode,
@@ -821,4 +887,44 @@ function formatNumber(value: number): string {
 
 function sumAmounts(rows: readonly InspectorItemRateRow[]): number {
   return rows.reduce((total, row) => total + row.amountPerMinute, 0);
+}
+
+function biomassGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
+  return {
+    generatorId: 'Build_GeneratorBiomass_Automated_C',
+    generatorName: 'Biomass Burner',
+    generatorPowerMw: 30,
+    fuelPerGeneratorPerMinute,
+    note: 'Gross estimate. Biomass Burners scale fuel burn to grid demand.',
+  };
+}
+
+function coalGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
+  return {
+    generatorId: 'Build_GeneratorCoal_C',
+    generatorName: 'Coal-Powered Generator',
+    generatorPowerMw: 75,
+    fuelPerGeneratorPerMinute,
+    note: 'Gross estimate. Water logistics are not modeled here.',
+  };
+}
+
+function fuelGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
+  return {
+    generatorId: 'Build_GeneratorFuel_C',
+    generatorName: 'Fuel-Powered Generator',
+    generatorPowerMw: 250,
+    fuelPerGeneratorPerMinute,
+    note: 'Gross estimate. Pipe throughput and generator nodes are not modeled here.',
+  };
+}
+
+function nuclearGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
+  return {
+    generatorId: 'Build_GeneratorNuclear_C',
+    generatorName: 'Nuclear Power Plant',
+    generatorPowerMw: 2500,
+    fuelPerGeneratorPerMinute,
+    note: 'Gross estimate. Water logistics and nuclear byproducts are not modeled here.',
+  };
 }

@@ -263,6 +263,74 @@ describe('planner inspector selectors', () => {
     });
   });
 
+  it('adds fuel power potential for fuel output nodes', () => {
+    const dataset = datasetWithSinkPoints();
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-coal',
+        itemId: 'Desc_Coal_C',
+        mode: 'fixed',
+        amountPerMinute: 45,
+        sortOrder: 0,
+      },
+    ];
+    const project = createPlannerProject({
+      id: 'project-fuel',
+      name: 'Fuel Factory',
+      dataset,
+      targets,
+      now: NOW,
+    });
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {
+        Desc_Coal_C: 45,
+      },
+      externalInputs: {},
+      itemFlows: [
+        {
+          itemId: 'Desc_Coal_C',
+          amountPerMinute: 45,
+          source: { kind: 'resource', id: 'Desc_Coal_C' },
+          target: { kind: 'output', id: 'target-coal' },
+        },
+      ],
+      outputs: {
+        Desc_Coal_C: 45,
+      },
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+    const graph = buildProductionGraph(dataset, targets, result);
+    const context: InspectorTestContext = {
+      dataset,
+      project,
+      result,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(context, nodeById(context, 'output:target-coal'));
+
+    if (selection.details.kind !== 'output') {
+      throw new Error('Expected output details');
+    }
+    expect(selection.details.fuelPower).toMatchObject({
+      generatorName: 'Coal-Powered Generator',
+      generatorIcon: {
+        src: '/game-icons/Desc_GeneratorCoal_C.png',
+        label: 'Coal-Powered Generator',
+        kind: 'machine',
+      },
+      generatorCountLabel: '3x',
+      grossPowerLabel: '225 MW',
+      fuelPerGeneratorLabel: '15/min each',
+      note: 'Gross estimate. Water logistics are not modeled here.',
+    });
+  });
+
   it('uses target-specific flows for duplicate output target items', () => {
     const context = createInspectorContext();
     const targets: ProductTarget[] = [
@@ -534,6 +602,13 @@ function datasetWithSinkPoints(): GameDataset {
       Desc_Screw_C: {
         ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
         sinkPoints: 2,
+      },
+      Desc_Coal_C: {
+        id: 'Desc_Coal_C',
+        className: 'Desc_Coal_C',
+        displayName: 'Coal',
+        form: 'solid',
+        energyValue: 300,
       },
     },
   };
