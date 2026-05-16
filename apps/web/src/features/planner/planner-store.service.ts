@@ -66,6 +66,7 @@ export class PlannerStoreService implements OnDestroy {
   public readonly resourceRows: PlannerStoreViewSelectors['resourceRows'];
   public readonly externalInputRows: PlannerStoreViewSelectors['externalInputRows'];
   public readonly machineRows: PlannerStoreViewSelectors['machineRows'];
+  public readonly machinePanelSummary: PlannerStoreViewSelectors['machinePanelSummary'];
   public readonly machineUsageRows: PlannerStoreViewSelectors['machineUsageRows'];
   public readonly recipeRows: PlannerStoreViewSelectors['recipeRows'];
   public readonly baseRecipeRows: PlannerStoreViewSelectors['baseRecipeRows'];
@@ -80,6 +81,7 @@ export class PlannerStoreService implements OnDestroy {
   public readonly graphDisplaySettings: PlannerStoreViewSelectors['graphDisplaySettings'];
   public readonly selectedGraphNode: PlannerStoreViewSelectors['selectedGraphNode'];
   public readonly selectedGraphNodeState: PlannerStoreViewSelectors['selectedGraphNodeState'];
+  public readonly inspectorViewModel: PlannerStoreViewSelectors['inspectorViewModel'];
 
   public constructor() {
     this.workspace = new PlannerWorkspaceSlice({
@@ -128,6 +130,7 @@ export class PlannerStoreService implements OnDestroy {
     this.resourceRows = this.views.resourceRows;
     this.externalInputRows = this.views.externalInputRows;
     this.machineRows = this.views.machineRows;
+    this.machinePanelSummary = this.views.machinePanelSummary;
     this.machineUsageRows = this.views.machineUsageRows;
     this.recipeRows = this.views.recipeRows;
     this.baseRecipeRows = this.views.baseRecipeRows;
@@ -142,6 +145,7 @@ export class PlannerStoreService implements OnDestroy {
     this.graphDisplaySettings = this.views.graphDisplaySettings;
     this.selectedGraphNode = this.views.selectedGraphNode;
     this.selectedGraphNodeState = this.views.selectedGraphNodeState;
+    this.inspectorViewModel = this.views.inspectorViewModel;
 
     this.connections.connect(this.persistenceCoordinator, this.solver);
   }

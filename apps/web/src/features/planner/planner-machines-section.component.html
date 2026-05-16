@@ -5,6 +5,27 @@
       <span>Machines shown here can affect recipe solving for this project.</span>
     </div>
   </div>
+  @let summary = store.machinePanelSummary();
+  @if (summary.activeRecipeGroupCount > 0) {
+    <div class="machine-plan-summary" aria-label="Current plan machine usage">
+      <div>
+        <span>Total machines</span>
+        <strong>{{ summary.totalMachineCountLabel }}</strong>
+      </div>
+      <div>
+        <span>Machine types</span>
+        <strong>{{ summary.usedMachineTypeCount }}</strong>
+      </div>
+      <div>
+        <span>Recipe groups</span>
+        <strong>{{ summary.activeRecipeGroupCount }}</strong>
+      </div>
+      <div>
+        <span>Power</span>
+        <strong>{{ summary.totalPowerLabel }}</strong>
+      </div>
+    </div>
+  }
   @let rows = store.machineRows();
   @if (rows.length === 0) {
     <div class="empty-state">No recipe-solving machines are available in this dataset.</div>
@@ -51,6 +72,13 @@
               }
             </span>
           </span>
+          @if (row.usage) {
+            <span class="machine-usage-summary">
+              <span>Current plan</span>
+              <strong>{{ row.usage.machineCountLabel }}</strong>
+              <span>{{ row.usage.powerLabel }} / {{ row.usage.recipeGroupCountLabel }}</span>
+            </span>
+          }
         </label>
       }
     </div>

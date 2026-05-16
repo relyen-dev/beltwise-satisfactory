@@ -16,12 +16,14 @@ import {
   selectGraphNodeNotes,
   selectGraphNodeState,
   selectItemOptions,
+  selectMachinePanelSummary,
   selectMachineRows,
   selectMachineUsageRows,
   selectProductionGraphInput,
   selectRecipeRows,
   selectResourceRows,
 } from './planner-store.selectors';
+import { selectInspectorViewModel } from './planner-inspector.selectors';
 
 interface PlannerStoreViewSelectorOptions {
   readonly dataset: Signal<GameDataset | null>;
@@ -39,6 +41,7 @@ export class PlannerStoreViewSelectors {
   public readonly resourceRows: Signal<ReturnType<typeof selectResourceRows>>;
   public readonly externalInputRows: Signal<ReturnType<typeof selectExternalInputRows>>;
   public readonly machineRows: Signal<ReturnType<typeof selectMachineRows>>;
+  public readonly machinePanelSummary: Signal<ReturnType<typeof selectMachinePanelSummary>>;
   public readonly machineUsageRows: Signal<ReturnType<typeof selectMachineUsageRows>>;
   public readonly recipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly baseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
@@ -53,6 +56,7 @@ export class PlannerStoreViewSelectors {
   public readonly graphDisplaySettings: Signal<PlannerProject['graphDisplay'] | null>;
   public readonly selectedGraphNode: Signal<ProductionGraphNode | null>;
   public readonly selectedGraphNodeState: Signal<GraphNodeBuildState>;
+  public readonly inspectorViewModel: Signal<ReturnType<typeof selectInspectorViewModel>>;
 
   public constructor(options: PlannerStoreViewSelectorOptions) {
     this.options = options;
@@ -85,8 +89,12 @@ export class PlannerStoreViewSelectors {
       if (!dataset || !project) {
         return [];
       }
-      return selectMachineRows(dataset, project);
+      return selectMachineRows(dataset, project, this.options.solveResult());
     });
+
+    this.machinePanelSummary = computed(() =>
+      selectMachinePanelSummary(this.options.solveResult()),
+    );
 
     this.machineUsageRows = computed(() => selectMachineUsageRows(this.options.solveResult()));
 
@@ -153,6 +161,16 @@ export class PlannerStoreViewSelectors {
 
     this.selectedGraphNodeState = computed<GraphNodeBuildState>(() => {
       return selectGraphNodeState(this.options.activeProject(), this.options.selectedGraphNodeId());
+    });
+
+    this.inspectorViewModel = computed(() => {
+      return selectInspectorViewModel(
+        this.options.dataset(),
+        this.options.activeProject(),
+        this.options.solveResult(),
+        this.selectedGraphNode(),
+        this.selectedGraphNodeState(),
+      );
     });
   }
 }
