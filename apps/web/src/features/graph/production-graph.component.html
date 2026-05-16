@@ -64,7 +64,6 @@
       @for (node of flow.nodes; track node.id) {
         <div
           fNode
-          fDragHandle
           fNodeInput
           fNodeOutput
           [fNodeId]="node.id"
@@ -88,32 +87,70 @@
           [class.production-node--done]="isNodeDone(node.id)"
           [class.production-node--noted]="nodeNote(node.id).length > 0"
           [attr.aria-pressed]="isNodeSelected(node.id)"
-          (pointerdown)="handleNodePointerDown(node.id, $event)"
-          (pointerup)="handleNodePointerUp(node.id, $event)"
-          (dblclick)="handleNodeDoubleClick(node.id, $event)"
           (fNodePositionChange)="handleNodePosition(node.id, $event)"
         >
-          <div class="node-kicker">{{ node.kind }}</div>
-          <div class="node-title">{{ node.data.label }}</div>
-          @if (!node.data.machineDisplayName) {
-            <div class="node-subtitle">{{ node.data.subtitle }}</div>
-          }
-          @if (node.data.machineDisplayName) {
-            <div class="node-meta">
-              {{ node.data.machineDisplayName }}
-              @if (node.data.machineCount) {
-                <span>{{ formatMachineCount(node.data.machineCount) }}x</span>
+          <div
+            fDragHandle
+            class="node-drag-surface"
+            (pointerdown)="handleNodePointerDown(node.id, $event)"
+            (pointerup)="handleNodePointerUp(node.id, $event)"
+            (dblclick)="handleNodeDoubleClick(node.id, $event)"
+          >
+            <div class="node-kicker">{{ node.kind }}</div>
+            <div class="node-title">{{ node.data.label }}</div>
+            @if (isFixedOutputTarget(node) && !shouldShowTargetAmountInput(node)) {
+              <div class="node-target-rate-display">
+                <strong class="node-target-rate-display__amount">{{
+                  targetAmountDisplayValue(node)
+                }}</strong>
+                <span class="node-target-rate-display__unit">/min target</span>
+              </div>
+            } @else if (!node.data.machineDisplayName && !shouldShowTargetAmountInput(node)) {
+              <div class="node-subtitle">{{ node.data.subtitle }}</div>
+            }
+            @if (node.data.machineDisplayName) {
+              <div class="node-meta">
+                {{ node.data.machineDisplayName }}
+                @if (node.data.machineCount) {
+                  <span>{{ formatMachineCount(node.data.machineCount) }}x</span>
+                }
+              </div>
+            }
+            <div class="node-badges" aria-hidden="true">
+              @if (isNodeDone(node.id)) {
+                <span class="node-badge node-badge--done">Done</span>
+              }
+              @if (nodeNote(node.id)) {
+                <span class="node-badge">Note</span>
               }
             </div>
-          }
-          <div class="node-badges" aria-hidden="true">
-            @if (isNodeDone(node.id)) {
-              <span class="node-badge node-badge--done">Done</span>
-            }
-            @if (nodeNote(node.id)) {
-              <span class="node-badge">Note</span>
-            }
           </div>
+          @if (shouldShowTargetAmountInput(node)) {
+            <label
+              class="node-target-rate"
+              title="Update target rate"
+              (pointerdown)="stopNodeControlEvent($event)"
+              (pointerup)="stopNodeControlEvent($event)"
+              (mousedown)="stopNodeControlEvent($event)"
+              (mouseup)="stopNodeControlEvent($event)"
+              (touchstart)="stopNodeControlEvent($event)"
+              (touchend)="stopNodeControlEvent($event)"
+              (click)="stopNodeControlEvent($event)"
+              (dblclick)="stopNodeControlEvent($event)"
+            >
+              <input
+                class="node-target-rate__input"
+                type="text"
+                inputmode="decimal"
+                [attr.aria-label]="'Target amount per minute for ' + node.data.label"
+                [value]="targetAmountInputValue(node)"
+                (blur)="handleTargetAmountChange(node, $event)"
+                (keydown.enter)="commitTargetAmount(node, $event)"
+                (keydown.escape)="resetTargetAmountInput(node, $event)"
+              />
+              <span class="node-target-rate__unit">/min target</span>
+            </label>
+          }
           @if (node.tooltip) {
             <div class="node-tooltip" role="tooltip">
               <div class="node-tooltip__title">{{ node.tooltip.title }}</div>

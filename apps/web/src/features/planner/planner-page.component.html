@@ -190,11 +190,13 @@
           [completedNodeIds]="store.completedGraphNodeIds()"
           [nodeNotes]="store.graphNodeNotes()"
           [interactionLocked]="store.nodeLayoutLocked()"
+          [targetEditingLocked]="store.planLocked()"
           (nodeSelectionSet)="store.setGraphNodeSelection($event)"
           (nodeSelectionToggled)="store.toggleGraphNodeSelection($event)"
           (nodeDoneToggled)="store.toggleGraphNodeDone($event)"
           (nodeMoved)="store.setGraphNodePosition($event.nodeId, $event.position)"
           (nodeMoveEnded)="store.flushGraphNodePositions()"
+          (targetAmountChanged)="store.updateTargetAmount($event.targetId, $event.amountPerMinute)"
         />
       </section>
 

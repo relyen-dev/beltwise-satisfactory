@@ -39,6 +39,18 @@ The app should stay unofficial and clearly separate from Coffee Stain/FICSIT bra
 - Add tests for parser and solver behavior when changing those areas.
 - Avoid broad rewrites when a focused change will do.
 
+## Branch Strategy
+
+- Prefer intent-based branch prefixes over actor/tool prefixes. Use `feature/`, `refactor/`, `bugfix/`, `docs/`, `chore/`, or `test/` rather than `codex/`.
+- Use `feature/` for user-visible capabilities or product behavior, such as `feature/graph-output-target-edit`.
+- Use `refactor/` for structure-only changes with no intended behavior change.
+- Use `bugfix/` for defect fixes, regressions, and incorrect behavior.
+- Use `docs/` for documentation-only changes.
+- Use `chore/` for repository maintenance, dependency updates, build tooling, and cleanup that should not affect runtime behavior.
+- Use `test/` for test-only coverage improvements.
+- Keep branch names lowercase, hyphenated, and scoped to one purpose. Rename the branch if the work's primary intent changes.
+- Branch from an up-to-date `main` when practical, and avoid mixing unrelated feature, refactor, and cleanup work in one branch.
+
 ## UX Direction
 
 - The graph canvas is the main planning surface.

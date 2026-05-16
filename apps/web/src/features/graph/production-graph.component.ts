@@ -21,6 +21,7 @@ import {
   FOBLEX_CONNECTION_BUILDERS,
   type BeltwiseFoblexFlowEdge,
   type BeltwiseFoblexFlowModel,
+  type BeltwiseFoblexFlowNode,
   foblexInputId,
   foblexOutputId,
   formatDisplayDecimalValue,
@@ -69,11 +70,13 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly completedNodeIds = input<ReadonlySet<string>>(new Set<string>());
   public readonly nodeNotes = input<Readonly<Record<string, string>>>({});
   public readonly interactionLocked = input(false);
+  public readonly targetEditingLocked = input(false);
   public readonly nodeMoved = output<{ nodeId: string; position: { x: number; y: number } }>();
   public readonly nodeMoveEnded = output<void>();
   public readonly nodeSelectionSet = output<string | null>();
   public readonly nodeSelectionToggled = output<string>();
   public readonly nodeDoneToggled = output<string>();
+  public readonly targetAmountChanged = output<{ targetId: string; amountPerMinute: number }>();
   public readonly graphZoomMinimum = GRAPH_ZOOM_MINIMUM;
   public readonly graphZoomMaximum = GRAPH_ZOOM_MAXIMUM;
   public readonly graphZoomStep = GRAPH_ZOOM_STEP;
@@ -148,6 +151,67 @@ export class ProductionGraphComponent implements OnDestroy {
 
   public nodeNote(nodeId: string): string {
     return this.nodeNotes()[nodeId] ?? '';
+  }
+
+  public isFixedOutputTarget(node: BeltwiseFoblexFlowNode): boolean {
+    return node.kind === 'output' && node.data.targetMode === 'fixed';
+  }
+
+  public isEditableOutputTarget(node: BeltwiseFoblexFlowNode): boolean {
+    return (
+      this.isFixedOutputTarget(node) &&
+      node.data.targetId !== undefined &&
+      !this.targetEditingLocked()
+    );
+  }
+
+  public targetAmountInputValue(node: BeltwiseFoblexFlowNode): string {
+    return formatTargetAmountInputValue(node.data.amountPerMinute);
+  }
+
+  public targetAmountDisplayValue(node: BeltwiseFoblexFlowNode): string {
+    return formatDisplayDecimalValue(
+      node.data.amountPerMinute,
+      this.displaySettings().rateDecimalPlaces,
+    );
+  }
+
+  public shouldShowTargetAmountInput(node: BeltwiseFoblexFlowNode): boolean {
+    return this.isEditableOutputTarget(node) && this.isNodeSelected(node.id);
+  }
+
+  public handleTargetAmountChange(node: BeltwiseFoblexFlowNode, event: Event): void {
+    event.stopPropagation();
+    const control = eventControlTarget(event);
+    const targetId = node.data.targetId;
+    if (!control || !targetId || !this.isEditableOutputTarget(node)) {
+      return;
+    }
+
+    const amountPerMinute = parseTargetAmount(control.value);
+    control.value = formatTargetAmountInputValue(amountPerMinute);
+    if (amountPerMinute === normalizeTargetAmount(node.data.amountPerMinute)) {
+      return;
+    }
+    this.targetAmountChanged.emit({ targetId, amountPerMinute });
+  }
+
+  public commitTargetAmount(node: BeltwiseFoblexFlowNode, event: Event): void {
+    event.preventDefault();
+    this.handleTargetAmountChange(node, event);
+  }
+
+  public stopNodeControlEvent(event: Event): void {
+    event.stopPropagation();
+  }
+
+  public resetTargetAmountInput(node: BeltwiseFoblexFlowNode, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const control = eventControlTarget(event);
+    if (control) {
+      control.value = this.targetAmountInputValue(node);
+    }
   }
 
   public formatMachineCount(machineCount: number | undefined): string {
@@ -279,4 +343,35 @@ function buildDirectFocusScope(
   }
 
   return { nodeIds, edgeIds };
+}
+
+interface GraphControlTarget extends EventTarget {
+  value: string;
+}
+
+function eventControlTarget(event: Event): GraphControlTarget | null {
+  return isGraphControlTarget(event.target) ? event.target : null;
+}
+
+function isGraphControlTarget(target: EventTarget | null): target is GraphControlTarget {
+  if (target === null) {
+    return false;
+  }
+  const candidate = target as { value?: unknown };
+  return typeof candidate.value === 'string';
+}
+
+function parseTargetAmount(value: string): number {
+  const parsed = Number(value.replace(/,/g, ''));
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function formatTargetAmountInputValue(amountPerMinute: number | undefined): string {
+  return normalizeTargetAmount(amountPerMinute).toString();
+}
+
+function normalizeTargetAmount(amountPerMinute: number | undefined): number {
+  return amountPerMinute !== undefined && Number.isFinite(amountPerMinute)
+    ? Math.max(0, amountPerMinute)
+    : 0;
 }

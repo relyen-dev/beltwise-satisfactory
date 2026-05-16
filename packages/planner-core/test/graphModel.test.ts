@@ -101,6 +101,11 @@ describe('production graph conversion', () => {
 
     expect(graph.nodes.map((node) => node.id)).toContain('output:target-plate');
     expect(graph.nodes.map((node) => node.id)).toContain('output:target-rod');
+    expect(graph.nodes.find((node) => node.id === 'output:target-plate')).toMatchObject({
+      targetId: 'target-plate',
+      targetMode: 'fixed',
+      amountPerMinute: 25
+    });
     expect(graph.nodes.find((node) => node.id === 'recipe:Recipe_IronPlate_C')?.subtitle).toContain(
       'Constructor',
     );
