@@ -327,7 +327,7 @@ describe('planner inspector selectors', () => {
       generatorCountLabel: '3x',
       grossPowerLabel: '225 MW',
       fuelPerGeneratorLabel: '15/min each',
-      wastePerMinuteLabel: null,
+      waste: null,
       note: 'Gross estimate. Water logistics are not modeled here.',
     });
   });
@@ -391,8 +391,14 @@ describe('planner inspector selectors', () => {
       generatorCountLabel: '2x',
       grossPowerLabel: '5,000 MW',
       fuelPerGeneratorLabel: '0.2/min each',
-      wastePerMinuteLabel: '20/min',
-      note: 'Gross estimate. Water logistics are not modeled here; produces Uranium Waste.',
+      waste: {
+        itemId: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        iconSrc: '/game-icons/Desc_NuclearWaste_C.png',
+        amountPerMinuteLabel: '20/min',
+        detail: 'nuclear byproduct',
+      },
+      note: 'Gross estimate. Water logistics are not modeled here; nuclear byproducts are shown for planning.',
     });
   });
 
@@ -681,6 +687,18 @@ function datasetWithSinkPoints(): GameDataset {
         displayName: 'Uranium Fuel Rod',
         form: 'solid',
         energyValue: 750000,
+      },
+      Desc_NuclearWaste_C: {
+        id: 'Desc_NuclearWaste_C',
+        className: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        form: 'solid',
+      },
+      Desc_PlutoniumWaste_C: {
+        id: 'Desc_PlutoniumWaste_C',
+        className: 'Desc_PlutoniumWaste_C',
+        displayName: 'Plutonium Waste',
+        form: 'solid',
       },
     },
   };

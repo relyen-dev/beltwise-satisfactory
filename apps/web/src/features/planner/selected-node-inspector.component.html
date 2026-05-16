@@ -281,18 +281,28 @@
                 </span>
                 <span class="inspector-row__value">{{ fuelPower.generatorCountLabel }}</span>
               </div>
+              @if (fuelPower.waste; as waste) {
+                <div class="inspector-row">
+                  <bw-game-icon
+                    [src]="waste.iconSrc"
+                    [label]="waste.displayName"
+                    [size]="'sm'"
+                    [kind]="'item'"
+                    [showTitle]="true"
+                  />
+                  <span class="inspector-row__copy">
+                    <strong>{{ waste.displayName }}</strong>
+                    <span>{{ waste.detail }}</span>
+                  </span>
+                  <span class="inspector-row__value">{{ waste.amountPerMinuteLabel }}</span>
+                </div>
+              }
             </div>
             <div class="inspector-fact-list">
               <div>
                 <span>Gross power</span>
                 <strong>{{ fuelPower.grossPowerLabel }}</strong>
               </div>
-              @if (fuelPower.wastePerMinuteLabel) {
-                <div>
-                  <span>Waste</span>
-                  <strong>{{ fuelPower.wastePerMinuteLabel }}</strong>
-                </div>
-              }
             </div>
             <p class="inspector-list-note">{{ fuelPower.note }}</p>
           </div>

@@ -130,7 +130,7 @@ export interface OutputFuelPowerDetails {
   generatorCountLabel: string;
   grossPowerLabel: string;
   fuelPerGeneratorLabel: string;
-  wastePerMinuteLabel: string | null;
+  waste: InspectorItemRateRow | null;
   note: string;
 }
 
@@ -170,6 +170,7 @@ interface GeneratorFuelDefinition {
   generatorName: string;
   generatorPowerMw: number;
   fuelPerGeneratorPerMinute: number;
+  wasteItemId?: ItemId;
   wastePerGeneratorPerMinute?: number;
   note: string;
 }
@@ -189,8 +190,8 @@ const GENERATOR_FUELS: Readonly<Record<ItemId, GeneratorFuelDefinition>> = {
   Desc_LiquidTurboFuel_C: fuelGeneratorFuel(7.5),
   Desc_RocketFuel_C: fuelGeneratorFuel(4.166666666666667),
   Desc_IonizedFuel_C: fuelGeneratorFuel(3),
-  Desc_NuclearFuelRod_C: nuclearGeneratorFuel(0.2, 10, 'Uranium Waste'),
-  Desc_PlutoniumFuelRod_C: nuclearGeneratorFuel(0.1, 1, 'Plutonium Waste'),
+  Desc_NuclearFuelRod_C: nuclearGeneratorFuel(0.2, 'Desc_NuclearWaste_C', 10),
+  Desc_PlutoniumFuelRod_C: nuclearGeneratorFuel(0.1, 'Desc_PlutoniumWaste_C', 1),
   Desc_FicsoniumFuelRod_C: nuclearGeneratorFuel(1, null, null),
 };
 
@@ -501,7 +502,7 @@ function outputNodeDetails(
     targetMode === 'maximize'
       ? (maximizedOutput ?? incomingAmountPerMinute)
       : (selectedNode.amountPerMinute ?? incomingAmountPerMinute);
-  const fuelPower = outputFuelPowerDetails(itemId, displayAmountPerMinute);
+  const fuelPower = outputFuelPowerDetails(dataset, itemId, displayAmountPerMinute);
 
   return {
     kind: 'output',
@@ -693,6 +694,7 @@ function flowRowKey(
 }
 
 function outputFuelPowerDetails(
+  dataset: GameDataset,
   itemId: ItemId,
   amountPerMinute: number,
 ): OutputFuelPowerDetails | null {
@@ -703,10 +705,15 @@ function outputFuelPowerDetails(
 
   const generatorCount = amountPerMinute / definition.fuelPerGeneratorPerMinute;
   const grossPowerMw = generatorCount * definition.generatorPowerMw;
-  const wastePerMinute =
-    definition.wastePerGeneratorPerMinute === undefined
+  const waste =
+    definition.wasteItemId === undefined || definition.wastePerGeneratorPerMinute === undefined
       ? null
-      : generatorCount * definition.wastePerGeneratorPerMinute;
+      : itemRateRow(
+          dataset,
+          definition.wasteItemId,
+          generatorCount * definition.wastePerGeneratorPerMinute,
+          'nuclear byproduct',
+        );
 
   return {
     generatorName: definition.generatorName,
@@ -718,7 +725,7 @@ function outputFuelPowerDetails(
     generatorCountLabel: `${formatNumber(generatorCount)}x`,
     grossPowerLabel: formatPower(grossPowerMw),
     fuelPerGeneratorLabel: `${formatNumber(definition.fuelPerGeneratorPerMinute)}/min each`,
-    wastePerMinuteLabel: wastePerMinute === null ? null : `${formatNumber(wastePerMinute)}/min`,
+    waste,
     note: definition.note,
   };
 }
@@ -928,18 +935,19 @@ function fuelGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefi
 
 function nuclearGeneratorFuel(
   fuelPerGeneratorPerMinute: number,
+  wasteItemId: ItemId | null,
   wastePerGeneratorPerMinute: number | null,
-  wasteName: string | null,
 ): GeneratorFuelDefinition {
   return {
     generatorId: 'Build_GeneratorNuclear_C',
     generatorName: 'Nuclear Power Plant',
     generatorPowerMw: 2500,
     fuelPerGeneratorPerMinute,
+    ...(wasteItemId === null ? {} : { wasteItemId }),
     ...(wastePerGeneratorPerMinute === null ? {} : { wastePerGeneratorPerMinute }),
     note:
-      wasteName === null
+      wasteItemId === null
         ? 'Gross estimate. Water logistics are not modeled here; Ficsonium Fuel Rods burn clean.'
-        : `Gross estimate. Water logistics are not modeled here; produces ${wasteName}.`,
+        : 'Gross estimate. Water logistics are not modeled here; nuclear byproducts are shown for planning.',
   };
 }

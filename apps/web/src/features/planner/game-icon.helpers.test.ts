@@ -14,6 +14,12 @@ const REPO_ROOT = fileURLToPath(new URL('../../../../../', import.meta.url));
 const CURRENT_DATASET_PATH = join(REPO_ROOT, 'data/generated/satisfactory-current.json');
 const PUBLIC_GAME_ICONS_DIR = join(REPO_ROOT, 'apps/web/public/game-icons');
 const GAME_ICON_PATH_PREFIX = '/game-icons/';
+const APP_REFERENCED_MACHINE_ICON_IDS = [
+  'Build_GeneratorBiomass_Automated_C',
+  'Build_GeneratorCoal_C',
+  'Build_GeneratorFuel_C',
+  'Build_GeneratorNuclear_C',
+] as const;
 
 describe('game icon helpers', () => {
   it('builds deterministic item icon paths from item ids', () => {
@@ -61,6 +67,9 @@ function requiredCurrentDatasetIconFileNames(): Set<string> {
     iconFileNames.add(iconFileNameFromPath(gameIconPathForItemId(itemId)));
   }
   for (const machineId of plannerRelevantMachineIds(dataset)) {
+    iconFileNames.add(iconFileNameFromPath(gameIconPathForMachineId(machineId)));
+  }
+  for (const machineId of APP_REFERENCED_MACHINE_ICON_IDS) {
     iconFileNames.add(iconFileNameFromPath(gameIconPathForMachineId(machineId)));
   }
 
