@@ -39,9 +39,13 @@ type AngularResourceResolver = (
 
 let angularTestingEnvironmentInitialized = false;
 
-const resolveComponentResources = angularCore['\u0275resolveComponentResources'] as (
-  resourceResolver: AngularResourceResolver,
-) => Promise<void>;
+// Vitest does not have Angular CLI's resource loader, so external template/style
+// standalone components must be resolved before TestBed imports them.
+const angularResourceApi = angularCore as typeof angularCore & {
+  readonly ɵresolveComponentResources?: (
+    resourceResolver: AngularResourceResolver,
+  ) => Promise<void>;
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -163,7 +167,7 @@ describe('ProductionGraphComponent', () => {
 describe('ProductionGraphComponent template', () => {
   beforeAll(async () => {
     await installDomGlobals();
-    await resolveComponentResources(loadAngularComponentResource);
+    await resolveExternalComponentResources();
     if (!angularTestingEnvironmentInitialized) {
       TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
       angularTestingEnvironmentInitialized = true;
@@ -424,6 +428,18 @@ async function installDomGlobals(): Promise<void> {
       animationFrames.delete(animationFrameId);
     }
   });
+}
+
+async function resolveExternalComponentResources(): Promise<void> {
+  const resolveComponentResources = angularResourceApi.ɵresolveComponentResources;
+  if (typeof resolveComponentResources !== 'function') {
+    throw new Error(
+      'Angular component resource resolver is unavailable. Update the graph template test ' +
+        'resource-loading setup for this Angular version before importing external-template ' +
+        'standalone components into TestBed.',
+    );
+  }
+  await resolveComponentResources(loadAngularComponentResource);
 }
 
 async function loadAngularComponentResource(url: string): Promise<string> {
