@@ -73,6 +73,7 @@ export interface ProductionGraphNode {
   itemId?: ItemId;
   recipeId?: RecipeId;
   targetId?: string;
+  targetMode?: ProductTarget['mode'];
   amountPerMinute?: number;
   machineDisplayName?: string;
   machineCount?: number;
@@ -164,6 +165,7 @@ export function buildProductionGraph(
           : `${formatRate(amountPerMinute, rateDecimalPlaces)}/min target`,
       itemId: target.itemId,
       targetId: target.id,
+      targetMode: target.mode,
       amountPerMinute
     });
   }
