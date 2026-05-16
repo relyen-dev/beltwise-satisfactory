@@ -29,15 +29,17 @@
             (ngModelChange)="store.setMachineEnabled(row.machine.id, $event)"
           />
           <span class="config-toggle-row__indicator" aria-hidden="true"></span>
+          <span class="machine-icon-slot">
+            <bw-game-icon
+              [src]="row.iconSrc"
+              [label]="row.machine.displayName"
+              [size]="'lg'"
+              [kind]="'machine'"
+              [showTitle]="true"
+            />
+          </span>
           <span class="config-toggle-row__copy">
             <span class="machine-title-line">
-              <bw-game-icon
-                [src]="row.iconSrc"
-                [label]="row.machine.displayName"
-                [size]="'md'"
-                [kind]="'machine'"
-                [showTitle]="true"
-              />
               <span class="config-toggle-row__title">{{ row.machine.displayName }}</span>
             </span>
             <span class="machine-meta">
@@ -47,14 +49,6 @@
                   {{ row.powerLabel }}
                 </span>
               }
-            </span>
-          </span>
-          <span class="config-toggle-row__badges">
-            <span
-              class="config-toggle-row__state"
-              [class.config-toggle-row__state--off]="!row.enabled"
-            >
-              {{ row.stateLabel }}
             </span>
           </span>
         </label>

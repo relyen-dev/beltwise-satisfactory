@@ -430,6 +430,12 @@
 .planner-shell .recipe-row {
   grid-template-columns: 18px minmax(0, 1fr) auto auto;
   min-height: 60px;
+  overflow: visible;
+}
+
+.planner-shell .recipe-row:hover,
+.planner-shell .recipe-row:focus-within {
+  z-index: 20;
 }
 
 .planner-shell .config-toggle-row::before {
@@ -655,8 +661,107 @@
   color: var(--color-power);
 }
 
+.planner-shell .recipe-detail-tooltip {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 10px;
+  left: 48px;
+  z-index: 30;
+  display: block;
+  min-width: 230px;
+  max-width: 420px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: rgba(22, 27, 30, 0.97);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.36);
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.28;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    visibility 120ms ease;
+  visibility: hidden;
+}
+
+.planner-shell .recipe-row:hover .recipe-detail-tooltip,
+.planner-shell .recipe-row:focus-within .recipe-detail-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.planner-shell .recipe-detail-tooltip__title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .recipe-detail-tooltip__stat {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+}
+
+.planner-shell .recipe-detail-tooltip__section {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.planner-shell .recipe-detail-tooltip__flow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.planner-shell .recipe-detail-tooltip__flow span:not(.game-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .recipe-detail-tooltip__flow strong {
+  flex: 0 0 auto;
+  font-weight: 750;
+}
+
 .planner-shell .machine-row {
-  min-height: 58px;
+  grid-template-columns: 18px 42px minmax(0, 1fr);
+  min-height: 66px;
+  gap: 10px;
+}
+
+.planner-shell .machine-icon-slot {
+  display: inline-grid;
+  align-self: center;
+  justify-self: center;
+  place-items: center;
+  width: 42px;
+  min-width: 42px;
+}
+
+.planner-shell .machine-icon-slot .game-icon--lg {
+  --game-icon-size: 38px;
+}
+
+.planner-shell .machine-row .game-icon--machine:not(.game-icon--unavailable) {
+  background: transparent;
 }
 
 .planner-shell .machine-meta {

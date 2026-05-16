@@ -99,7 +99,6 @@ describe('planner store selectors', () => {
       enabled: false,
       iconSrc: '/game-icons/Desc_ConstructorMk1_C.png',
       powerLabel: '4 MW',
-      stateLabel: 'Off',
       toggleLabel: 'Constructor machine availability',
       typeLabel: 'Manufacturer',
     });
@@ -161,6 +160,25 @@ describe('planner store selectors', () => {
         },
       ],
       isConverterResourceRecipe: false,
+      details: {
+        durationLabel: '6s cycle',
+        ingredients: [
+          {
+            itemId: 'Desc_IngotIron_C',
+            displayName: 'Iron Ingot',
+            iconSrc: '/game-icons/Desc_IngotIron_C.png',
+            amountPerMinuteLabel: '20/min',
+          },
+        ],
+        products: [
+          {
+            itemId: 'Desc_IronPlate_C',
+            displayName: 'Iron Plate',
+            iconSrc: '/game-icons/Desc_IronPlate_C.png',
+            amountPerMinuteLabel: '10/min',
+          },
+        ],
+      },
     });
     expect(rows.find((row) => row.recipe.id === 'Recipe_MissingMachine_C')?.machineName).toBe(
       'Unknown machine',

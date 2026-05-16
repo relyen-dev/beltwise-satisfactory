@@ -115,6 +115,42 @@
               <span class="config-toggle-row__badges">
                 <span class="recipe-chip">base</span>
               </span>
+              <span class="recipe-detail-tooltip" role="tooltip">
+                <span class="recipe-detail-tooltip__title">{{ row.recipe.displayName }}</span>
+                <span class="recipe-detail-tooltip__stat">
+                  {{ row.machineName }} · {{ row.details.durationLabel }}
+                </span>
+                @if (row.details.ingredients.length > 0) {
+                  <span class="recipe-detail-tooltip__section">Inputs</span>
+                  @for (ingredient of row.details.ingredients; track ingredient.itemId) {
+                    <span class="recipe-detail-tooltip__flow">
+                      <bw-game-icon
+                        [src]="ingredient.iconSrc"
+                        [label]="ingredient.displayName"
+                        [size]="'xs'"
+                        [kind]="'item'"
+                      />
+                      <span>{{ ingredient.displayName }}</span>
+                      <strong>{{ ingredient.amountPerMinuteLabel }}</strong>
+                    </span>
+                  }
+                }
+                @if (row.details.products.length > 0) {
+                  <span class="recipe-detail-tooltip__section">Outputs</span>
+                  @for (product of row.details.products; track product.itemId) {
+                    <span class="recipe-detail-tooltip__flow">
+                      <bw-game-icon
+                        [src]="product.iconSrc"
+                        [label]="product.displayName"
+                        [size]="'xs'"
+                        [kind]="'item'"
+                      />
+                      <span>{{ product.displayName }}</span>
+                      <strong>{{ product.amountPerMinuteLabel }}</strong>
+                    </span>
+                  }
+                }
+              </span>
             </label>
           }
         }
@@ -190,6 +226,42 @@
               </span>
               <span class="config-toggle-row__badges">
                 <span class="recipe-chip recipe-chip--alt">alternate</span>
+              </span>
+              <span class="recipe-detail-tooltip" role="tooltip">
+                <span class="recipe-detail-tooltip__title">{{ row.recipe.displayName }}</span>
+                <span class="recipe-detail-tooltip__stat">
+                  {{ row.machineName }} · {{ row.details.durationLabel }}
+                </span>
+                @if (row.details.ingredients.length > 0) {
+                  <span class="recipe-detail-tooltip__section">Inputs</span>
+                  @for (ingredient of row.details.ingredients; track ingredient.itemId) {
+                    <span class="recipe-detail-tooltip__flow">
+                      <bw-game-icon
+                        [src]="ingredient.iconSrc"
+                        [label]="ingredient.displayName"
+                        [size]="'xs'"
+                        [kind]="'item'"
+                      />
+                      <span>{{ ingredient.displayName }}</span>
+                      <strong>{{ ingredient.amountPerMinuteLabel }}</strong>
+                    </span>
+                  }
+                }
+                @if (row.details.products.length > 0) {
+                  <span class="recipe-detail-tooltip__section">Outputs</span>
+                  @for (product of row.details.products; track product.itemId) {
+                    <span class="recipe-detail-tooltip__flow">
+                      <bw-game-icon
+                        [src]="product.iconSrc"
+                        [label]="product.displayName"
+                        [size]="'xs'"
+                        [kind]="'item'"
+                      />
+                      <span>{{ product.displayName }}</span>
+                      <strong>{{ product.amountPerMinuteLabel }}</strong>
+                    </span>
+                  }
+                }
               </span>
             </label>
           }

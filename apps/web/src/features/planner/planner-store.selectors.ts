@@ -46,7 +46,6 @@ export interface MachineRow {
   enabled: boolean;
   iconSrc: string;
   powerLabel: string | null;
-  stateLabel: string;
   toggleLabel: string;
   typeLabel: string;
 }
@@ -55,6 +54,19 @@ export interface RecipeItemIcon {
   itemId: ItemId;
   displayName: string;
   iconSrc: string;
+}
+
+export interface RecipeDetailLine {
+  itemId: ItemId;
+  displayName: string;
+  iconSrc: string;
+  amountPerMinuteLabel: string;
+}
+
+export interface RecipeDetails {
+  durationLabel: string;
+  ingredients: RecipeDetailLine[];
+  products: RecipeDetailLine[];
 }
 
 export interface MachineUsageRow {
@@ -69,6 +81,7 @@ export interface RecipeRow {
   productIcons: RecipeItemIcon[];
   hiddenProductIconCount: number;
   isConverterResourceRecipe: boolean;
+  details: RecipeDetails;
   toggleLabel: string;
 }
 
@@ -135,7 +148,6 @@ export function selectMachineRows(dataset: GameDataset, project: PlannerProject)
         enabled,
         iconSrc: gameIconPathForMachineId(machine.id),
         powerLabel: formatMachinePower(machine),
-        stateLabel: availabilityStateLabel(enabled),
         toggleLabel: `${machine.displayName} machine availability`,
         typeLabel: formatMachineType(machine.type),
       };
@@ -159,6 +171,7 @@ export function selectRecipeRows(
         machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
         ...selectRecipeIconFields(dataset, recipe),
         isConverterResourceRecipe: isConverterResourceRecipe(dataset, recipe),
+        details: selectRecipeDetails(dataset, recipe),
         toggleLabel: `${recipe.displayName} recipe availability`,
       };
     });
@@ -271,10 +284,6 @@ function isDefined<TValue>(value: TValue | undefined): value is TValue {
   return value !== undefined;
 }
 
-function availabilityStateLabel(enabled: boolean): string {
-  return enabled ? 'Enabled' : 'Off';
-}
-
 function formatMachineType(type: Machine['type']): string {
   switch (type) {
     case 'manufacturer':
@@ -324,6 +333,41 @@ function recipeItemIcon(dataset: GameDataset, itemId: ItemId): RecipeItemIcon {
     displayName: dataset.items[itemId]?.displayName ?? itemId,
     iconSrc: gameIconPathForItemId(itemId),
   };
+}
+
+function selectRecipeDetails(dataset: GameDataset, recipe: Recipe): RecipeDetails {
+  return {
+    durationLabel: `${formatRecipeDetailValue(recipe.durationSeconds)}s cycle`,
+    ingredients: recipe.ingredients.map((ingredient) =>
+      recipeDetailLine(dataset, recipe, ingredient.itemId, ingredient.amount),
+    ),
+    products: recipe.products.map((product) =>
+      recipeDetailLine(dataset, recipe, product.itemId, product.amount),
+    ),
+  };
+}
+
+function recipeDetailLine(
+  dataset: GameDataset,
+  recipe: Recipe,
+  itemId: ItemId,
+  amount: number,
+): RecipeDetailLine {
+  return {
+    itemId,
+    displayName: dataset.items[itemId]?.displayName ?? itemId,
+    iconSrc: gameIconPathForItemId(itemId),
+    amountPerMinuteLabel: `${formatRecipeDetailValue(
+      (amount * 60) / recipe.durationSeconds,
+    )}/min`,
+  };
+}
+
+function formatRecipeDetailValue(value: number): string {
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+  return value.toFixed(value < 10 ? 2 : 1).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function isConverterResourceRecipe(dataset: GameDataset, recipe: Recipe): boolean {
