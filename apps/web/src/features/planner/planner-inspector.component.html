@@ -1,64 +1,189 @@
 <div class="panel-heading">
   <div>
     <h2>Inspector</h2>
-    <span>Solver output is recalculated, not saved</span>
+    <span>Context follows graph selection</span>
   </div>
 </div>
-
-<bw-selected-node-inspector />
 
 @if (store.solveError()) {
   <div class="warning-block" role="alert">{{ store.solveError() }}</div>
 }
 
-@if (store.solveResult(); as result) {
-  <div class="metric-grid">
-    <div>
-      <span>Status</span>
-      <strong>{{ result.status }}</strong>
-    </div>
-    <div>
-      <span>Power</span>
-      <strong>{{ result.powerMw | number: '1.0-1' }} MW</strong>
-    </div>
-    <div>
-      <span>Recipes</span>
-      <strong>{{ result.machineUsage.length }}</strong>
-    </div>
-    <div>
-      <span>Raw inputs</span>
-      <strong>{{ (result.rawInputs | keyvalue).length }}</strong>
-    </div>
-  </div>
-
-  <h3>Machines</h3>
-  <div class="machine-usage-list">
-    @for (row of store.machineUsageRows(); track row.usage.recipeId) {
-      <div class="usage-row">
-        <span class="usage-recipe-name">{{ row.usage.recipeDisplayName }}</span>
-        <strong class="usage-machine-line">
-          <bw-game-icon
-            [src]="row.machineIconSrc"
-            [label]="row.usage.machineDisplayName"
-            [size]="'sm'"
-            [kind]="'machine'"
-            [showTitle]="true"
-          />
-          <span
-            >{{ row.usage.machineCount | number: '1.1-2' }}x
-            {{ row.usage.machineDisplayName }}</span
-          >
-        </strong>
+@if (store.inspectorViewModel(); as vm) {
+  @if (vm.mode === 'selected') {
+    <bw-selected-node-inspector />
+  } @else {
+    @if (vm.overview; as overview) {
+      <div class="metric-grid inspector-metric-grid" aria-label="Plan metrics">
+        @for (metric of overview.metrics; track metric.label) {
+          <div>
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+            @if (metric.detail) {
+              <em>{{ metric.detail }}</em>
+            }
+          </div>
+        }
       </div>
-    }
-  </div>
 
-  @if (result.warnings.length > 0) {
-    <h3>Warnings</h3>
-    <div class="warning-list">
-      @for (warning of result.warnings; track warning.code + warning.message) {
-        <div class="warning-block">{{ warning.message }}</div>
+      <section class="inspector-section" aria-labelledby="inspector-targets-heading">
+        <div class="inspector-section-heading">
+          <h3 id="inspector-targets-heading">Targets</h3>
+          <span>{{ overview.targets.length }}</span>
+        </div>
+        @if (overview.targets.length > 0) {
+          <div class="inspector-list">
+            @for (target of overview.targets; track target.targetId) {
+              <div class="inspector-row">
+                <bw-game-icon
+                  [src]="target.iconSrc"
+                  [label]="target.displayName"
+                  [size]="'sm'"
+                  [kind]="'item'"
+                  [showTitle]="true"
+                />
+                <span class="inspector-row__copy">
+                  <strong>{{ target.displayName }}</strong>
+                  <span>{{ target.modeLabel }}</span>
+                </span>
+                <span class="inspector-row__value">{{ target.amountLabel }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="inspector-empty">No output targets configured.</p>
+        }
+      </section>
+
+      <section class="inspector-section" aria-labelledby="inspector-raw-heading">
+        <div class="inspector-section-heading">
+          <h3 id="inspector-raw-heading">Top Raw Inputs</h3>
+          <span>{{ overview.topRawInputs.length }}</span>
+        </div>
+        @if (overview.topRawInputs.length > 0) {
+          <div class="inspector-list">
+            @for (row of overview.topRawInputs; track row.itemId) {
+              <div class="inspector-row">
+                <bw-game-icon
+                  [src]="row.iconSrc"
+                  [label]="row.displayName"
+                  [size]="'sm'"
+                  [kind]="'item'"
+                  [showTitle]="true"
+                />
+                <span class="inspector-row__copy">
+                  <strong>{{ row.displayName }}</strong>
+                  @if (row.detail) {
+                    <span>{{ row.detail }}</span>
+                  }
+                </span>
+                <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="inspector-empty">No raw resource draw in the current solution.</p>
+        }
+      </section>
+
+      @if (overview.externalInputs.length > 0) {
+        <section class="inspector-section" aria-labelledby="inspector-external-heading">
+          <div class="inspector-section-heading">
+            <h3 id="inspector-external-heading">External Inputs</h3>
+            <span>{{ overview.externalInputs.length }}</span>
+          </div>
+          <div class="inspector-list">
+            @for (row of overview.externalInputs; track row.itemId) {
+              <div class="inspector-row">
+                <bw-game-icon
+                  [src]="row.iconSrc"
+                  [label]="row.displayName"
+                  [size]="'sm'"
+                  [kind]="'item'"
+                  [showTitle]="true"
+                />
+                <span class="inspector-row__copy">
+                  <strong>{{ row.displayName }}</strong>
+                  <span>supplied externally</span>
+                </span>
+                <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+              </div>
+            }
+          </div>
+        </section>
       }
-    </div>
+
+      @if (overview.surplus.length > 0) {
+        <section class="inspector-section" aria-labelledby="inspector-surplus-heading">
+          <div class="inspector-section-heading">
+            <h3 id="inspector-surplus-heading">Surplus</h3>
+            <span>{{ overview.surplus.length }}</span>
+          </div>
+          <div class="inspector-list">
+            @for (row of overview.surplus; track row.itemId) {
+              <div class="inspector-row">
+                <bw-game-icon
+                  [src]="row.iconSrc"
+                  [label]="row.displayName"
+                  [size]="'sm'"
+                  [kind]="'item'"
+                  [showTitle]="true"
+                />
+                <span class="inspector-row__copy">
+                  <strong>{{ row.displayName }}</strong>
+                  <span>unused byproduct</span>
+                </span>
+                <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="inspector-section" aria-labelledby="inspector-machines-heading">
+        <div class="inspector-section-heading">
+          <h3 id="inspector-machines-heading">Machines</h3>
+          <span>{{ overview.machineUsage.length }}</span>
+        </div>
+        @if (overview.machineUsage.length > 0) {
+          <div class="machine-usage-list">
+            @for (row of overview.machineUsage; track row.recipeId) {
+              <div class="usage-row inspector-usage-row">
+                <div class="usage-machine-line">
+                  <bw-game-icon
+                    [src]="row.machineIconSrc"
+                    [label]="row.machineDisplayName"
+                    [size]="'sm'"
+                    [kind]="'machine'"
+                    [showTitle]="true"
+                  />
+                  <span class="usage-recipe-name">{{ row.recipeDisplayName }}</span>
+                </div>
+                <div class="inspector-usage-row__stats">
+                  <strong>{{ row.machineCountLabel }} {{ row.machineDisplayName }}</strong>
+                  <span>{{ row.powerLabel }} - {{ row.recipeRateLabel }} executions</span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="inspector-empty">No active machines in the current solution.</p>
+        }
+      </section>
+
+      @if (overview.warnings.length > 0) {
+        <section class="inspector-section" aria-labelledby="inspector-warnings-heading">
+          <div class="inspector-section-heading">
+            <h3 id="inspector-warnings-heading">Warnings</h3>
+            <span>{{ overview.warnings.length }}</span>
+          </div>
+          <div class="warning-list">
+            @for (warning of overview.warnings; track warning.code + warning.message) {
+              <div class="warning-block">{{ warning.message }}</div>
+            }
+          </div>
+        </section>
+      }
+    }
   }
 }

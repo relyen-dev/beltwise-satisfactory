@@ -1,9 +1,22 @@
-@if (store.selectedGraphNode(); as selectedNode) {
+@if (store.inspectorViewModel()?.selection; as selectedNode) {
   <section class="selected-node-panel" aria-label="Selected graph node">
     <div class="selected-node-heading">
-      <div>
-        <span>{{ selectedNode.kind }}</span>
-        <h3>{{ selectedNode.label }}</h3>
+      <div class="selected-node-title">
+        @if (selectedNode.icon) {
+          <bw-game-icon
+            [src]="selectedNode.icon.src"
+            [label]="selectedNode.icon.label"
+            [size]="'lg'"
+            [kind]="selectedNode.icon.kind"
+            [decorative]="false"
+            [showTitle]="true"
+          />
+        }
+        <div>
+          <span>{{ selectedNode.kindLabel }}</span>
+          <h3>{{ selectedNode.label }}</h3>
+          <p>{{ selectedNode.subtitle }}</p>
+        </div>
       </div>
       <button
         type="button"
@@ -18,7 +31,7 @@
     <label class="check-row selected-node-done">
       <input
         type="checkbox"
-        [ngModel]="store.selectedGraphNodeState().done === true"
+        [ngModel]="selectedNode.state.done === true"
         (ngModelChange)="store.setSelectedGraphNodeDone($event)"
       />
       <span>Done</span>
@@ -28,9 +41,327 @@
       <span>Node note</span>
       <textarea
         rows="4"
-        [ngModel]="store.selectedGraphNodeState().note ?? ''"
+        [ngModel]="selectedNode.state.note ?? ''"
         (ngModelChange)="store.setSelectedGraphNodeNote($event)"
       ></textarea>
     </label>
   </section>
+
+  <div class="metric-grid inspector-metric-grid" aria-label="Selected node metrics">
+    @for (metric of selectedNode.metrics; track metric.label) {
+      <div>
+        <span>{{ metric.label }}</span>
+        <strong>{{ metric.value }}</strong>
+        @if (metric.detail) {
+          <em>{{ metric.detail }}</em>
+        }
+      </div>
+    }
+  </div>
+
+  @switch (selectedNode.details.kind) {
+    @case ('recipe') {
+      <section class="inspector-section" aria-labelledby="selected-recipe-heading">
+        <div class="inspector-section-heading">
+          <h3 id="selected-recipe-heading">Recipe</h3>
+          @if (selectedNode.details.machineIcon) {
+            <bw-game-icon
+              [src]="selectedNode.details.machineIcon.src"
+              [label]="selectedNode.details.machineIcon.label"
+              [size]="'sm'"
+              [kind]="'machine'"
+              [showTitle]="true"
+            />
+          }
+        </div>
+        <div class="inspector-fact-list">
+          <div>
+            <span>Recipe</span>
+            <strong>{{ selectedNode.details.recipeName }}</strong>
+          </div>
+          <div>
+            <span>Machine</span>
+            <strong
+              >{{ selectedNode.details.machineCountLabel }}
+              {{ selectedNode.details.machineName }}</strong
+            >
+          </div>
+          <div>
+            <span>Executions</span>
+            <strong>{{ selectedNode.details.recipeRateLabel }}</strong>
+          </div>
+          @if (selectedNode.details.powerLabel) {
+            <div>
+              <span>Power</span>
+              <strong>{{ selectedNode.details.powerLabel }}</strong>
+            </div>
+          }
+        </div>
+
+        <div class="inspector-subsection">
+          <h4>Inputs</h4>
+          @if (selectedNode.details.inputs.length > 0) {
+            <div class="inspector-list">
+              @for (row of selectedNode.details.inputs; track row.itemId) {
+                <div class="inspector-row">
+                  <bw-game-icon
+                    [src]="row.iconSrc"
+                    [label]="row.displayName"
+                    [size]="'sm'"
+                    [kind]="'item'"
+                    [showTitle]="true"
+                  />
+                  <span class="inspector-row__copy">
+                    <strong>{{ row.displayName }}</strong>
+                    @if (row.detail) {
+                      <span>{{ row.detail }}</span>
+                    }
+                  </span>
+                  <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="inspector-empty">No recipe inputs.</p>
+          }
+        </div>
+
+        <div class="inspector-subsection">
+          <h4>Outputs</h4>
+          @if (selectedNode.details.outputs.length > 0) {
+            <div class="inspector-list">
+              @for (row of selectedNode.details.outputs; track row.itemId) {
+                <div class="inspector-row">
+                  <bw-game-icon
+                    [src]="row.iconSrc"
+                    [label]="row.displayName"
+                    [size]="'sm'"
+                    [kind]="'item'"
+                    [showTitle]="true"
+                  />
+                  <span class="inspector-row__copy">
+                    <strong>{{ row.displayName }}</strong>
+                    @if (row.detail) {
+                      <span>{{ row.detail }}</span>
+                    }
+                  </span>
+                  <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="inspector-empty">No recipe outputs.</p>
+          }
+        </div>
+      </section>
+    }
+    @case ('resource') {
+      <section class="inspector-section" aria-labelledby="selected-resource-heading">
+        <div class="inspector-section-heading">
+          <h3 id="selected-resource-heading">Resource</h3>
+          <span>{{ selectedNode.details.capSourceLabel }}</span>
+        </div>
+        <div class="inspector-list">
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="selectedNode.details.item.iconSrc"
+              [label]="selectedNode.details.item.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ selectedNode.details.item.displayName }}</strong>
+              <span>{{ selectedNode.details.item.detail }}</span>
+            </span>
+            <span class="inspector-row__value">{{
+              selectedNode.details.item.amountPerMinuteLabel
+            }}</span>
+          </div>
+        </div>
+        <div class="inspector-fact-list">
+          <div>
+            <span>Effective cap</span>
+            <strong>{{ selectedNode.details.capLabel }}</strong>
+          </div>
+          @if (selectedNode.details.headroomLabel) {
+            <div>
+              <span>Headroom</span>
+              <strong>{{ selectedNode.details.headroomLabel }}</strong>
+            </div>
+          }
+        </div>
+      </section>
+    }
+    @case ('externalInput') {
+      <section class="inspector-section" aria-labelledby="selected-external-heading">
+        <div class="inspector-section-heading">
+          <h3 id="selected-external-heading">External Input</h3>
+        </div>
+        <div class="inspector-list">
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="selectedNode.details.item.iconSrc"
+              [label]="selectedNode.details.item.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ selectedNode.details.item.displayName }}</strong>
+              <span>{{ selectedNode.details.sourceNote }}</span>
+            </span>
+            <span class="inspector-row__value">{{
+              selectedNode.details.item.amountPerMinuteLabel
+            }}</span>
+          </div>
+        </div>
+      </section>
+    }
+    @case ('output') {
+      <section class="inspector-section" aria-labelledby="selected-output-heading">
+        <div class="inspector-section-heading">
+          <h3 id="selected-output-heading">Output Target</h3>
+          <span>{{ selectedNode.details.targetModeLabel }}</span>
+        </div>
+        <div class="inspector-list">
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="selectedNode.details.item.iconSrc"
+              [label]="selectedNode.details.item.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ selectedNode.details.item.displayName }}</strong>
+              <span>{{ selectedNode.details.item.detail }}</span>
+            </span>
+            <span class="inspector-row__value">{{
+              selectedNode.details.incomingAmountPerMinuteLabel
+            }}</span>
+          </div>
+        </div>
+        <div class="inspector-fact-list">
+          @if (selectedNode.details.requestedAmountPerMinuteLabel) {
+            <div>
+              <span>Requested</span>
+              <strong>{{ selectedNode.details.requestedAmountPerMinuteLabel }}</strong>
+            </div>
+          }
+          @if (selectedNode.details.solvedAmountPerMinuteLabel) {
+            <div>
+              <span>Solved</span>
+              <strong>{{ selectedNode.details.solvedAmountPerMinuteLabel }}</strong>
+            </div>
+          }
+          <div>
+            <span>Incoming flow</span>
+            <strong>{{ selectedNode.details.incomingAmountPerMinuteLabel }}</strong>
+          </div>
+        </div>
+      </section>
+    }
+    @case ('byproduct') {
+      <section class="inspector-section" aria-labelledby="selected-byproduct-heading">
+        <div class="inspector-section-heading">
+          <h3 id="selected-byproduct-heading">Surplus</h3>
+        </div>
+        <div class="inspector-list">
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="selectedNode.details.item.iconSrc"
+              [label]="selectedNode.details.item.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ selectedNode.details.item.displayName }}</strong>
+              <span>{{ selectedNode.details.surplusNote }}</span>
+            </span>
+            <span class="inspector-row__value">{{
+              selectedNode.details.item.amountPerMinuteLabel
+            }}</span>
+          </div>
+        </div>
+        @if (selectedNode.details.sinkPointsPerMinuteLabel) {
+          <div class="inspector-fact-list">
+            <div>
+              <span>Potential sink points</span>
+              <strong>{{ selectedNode.details.sinkPointsPerMinuteLabel }}</strong>
+            </div>
+          </div>
+        }
+      </section>
+    }
+  }
+
+  @if (selectedNode.incomingFlows.length > 0) {
+    <section class="inspector-section" aria-labelledby="selected-incoming-heading">
+      <div class="inspector-section-heading">
+        <h3 id="selected-incoming-heading">Incoming Flow</h3>
+        <span>{{ selectedNode.incomingFlows.length }}</span>
+      </div>
+      <div class="inspector-list">
+        @for (flow of selectedNode.incomingFlows; track flow.itemId + flow.endpointLabel) {
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="flow.iconSrc"
+              [label]="flow.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ flow.displayName }}</strong>
+              <span>from {{ flow.endpointLabel }}</span>
+            </span>
+            <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (selectedNode.outgoingFlows.length > 0) {
+    <section class="inspector-section" aria-labelledby="selected-outgoing-heading">
+      <div class="inspector-section-heading">
+        <h3 id="selected-outgoing-heading">Outgoing Flow</h3>
+        <span>{{ selectedNode.outgoingFlows.length }}</span>
+      </div>
+      <div class="inspector-list">
+        @for (flow of selectedNode.outgoingFlows; track flow.itemId + flow.endpointLabel) {
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="flow.iconSrc"
+              [label]="flow.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ flow.displayName }}</strong>
+              <span>to {{ flow.endpointLabel }}</span>
+            </span>
+            <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (selectedNode.warnings.length > 0) {
+    <section class="inspector-section" aria-labelledby="selected-warnings-heading">
+      <div class="inspector-section-heading">
+        <h3 id="selected-warnings-heading">Related Warnings</h3>
+        <span>{{ selectedNode.warnings.length }}</span>
+      </div>
+      <div class="warning-list">
+        @for (warning of selectedNode.warnings; track warning.code + warning.message) {
+          <div class="warning-block">{{ warning.message }}</div>
+        }
+      </div>
+    </section>
+  }
 }

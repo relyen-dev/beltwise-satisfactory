@@ -80,6 +80,7 @@ export class PlannerStoreService implements OnDestroy {
   public readonly graphDisplaySettings: PlannerStoreViewSelectors['graphDisplaySettings'];
   public readonly selectedGraphNode: PlannerStoreViewSelectors['selectedGraphNode'];
   public readonly selectedGraphNodeState: PlannerStoreViewSelectors['selectedGraphNodeState'];
+  public readonly inspectorViewModel: PlannerStoreViewSelectors['inspectorViewModel'];
 
   public constructor() {
     this.workspace = new PlannerWorkspaceSlice({
@@ -142,6 +143,7 @@ export class PlannerStoreService implements OnDestroy {
     this.graphDisplaySettings = this.views.graphDisplaySettings;
     this.selectedGraphNode = this.views.selectedGraphNode;
     this.selectedGraphNodeState = this.views.selectedGraphNodeState;
+    this.inspectorViewModel = this.views.inspectorViewModel;
 
     this.connections.connect(this.persistenceCoordinator, this.solver);
   }

@@ -22,6 +22,7 @@ import {
   selectRecipeRows,
   selectResourceRows,
 } from './planner-store.selectors';
+import { selectInspectorViewModel } from './planner-inspector.selectors';
 
 interface PlannerStoreViewSelectorOptions {
   readonly dataset: Signal<GameDataset | null>;
@@ -53,6 +54,7 @@ export class PlannerStoreViewSelectors {
   public readonly graphDisplaySettings: Signal<PlannerProject['graphDisplay'] | null>;
   public readonly selectedGraphNode: Signal<ProductionGraphNode | null>;
   public readonly selectedGraphNodeState: Signal<GraphNodeBuildState>;
+  public readonly inspectorViewModel: Signal<ReturnType<typeof selectInspectorViewModel>>;
 
   public constructor(options: PlannerStoreViewSelectorOptions) {
     this.options = options;
@@ -153,6 +155,16 @@ export class PlannerStoreViewSelectors {
 
     this.selectedGraphNodeState = computed<GraphNodeBuildState>(() => {
       return selectGraphNodeState(this.options.activeProject(), this.options.selectedGraphNodeId());
+    });
+
+    this.inspectorViewModel = computed(() => {
+      return selectInspectorViewModel(
+        this.options.dataset(),
+        this.options.activeProject(),
+        this.options.solveResult(),
+        this.selectedGraphNode(),
+        this.selectedGraphNodeState(),
+      );
     });
   }
 }
