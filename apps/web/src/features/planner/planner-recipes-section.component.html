@@ -48,18 +48,34 @@
           <div class="recipe-empty">No base recipes match the search.</div>
         } @else {
           @for (row of baseRows; track row.recipe.id) {
-            <label class="recipe-row">
+            <label
+              class="config-toggle-row recipe-row"
+              [class.config-toggle-row--enabled]="row.enabled"
+              [class.config-toggle-row--disabled]="!row.enabled"
+              [class.config-toggle-row--locked]="store.planLocked()"
+            >
               <input
+                class="config-toggle-row__control"
                 type="checkbox"
                 [ngModel]="row.enabled"
                 [disabled]="store.planLocked()"
+                [attr.aria-label]="row.toggleLabel"
                 (ngModelChange)="store.setRecipeEnabled(row.recipe.id, $event)"
               />
-              <span class="recipe-copy">
-                <span class="recipe-name">{{ row.recipe.displayName }}</span>
-                <span class="recipe-machine">{{ row.machineName }}</span>
+              <span class="config-toggle-row__indicator" aria-hidden="true"></span>
+              <span class="config-toggle-row__copy">
+                <span class="config-toggle-row__title">{{ row.recipe.displayName }}</span>
+                <span class="config-toggle-row__meta">{{ row.machineName }}</span>
               </span>
-              <span class="recipe-chip">base</span>
+              <span class="config-toggle-row__badges">
+                <span
+                  class="config-toggle-row__state"
+                  [class.config-toggle-row__state--off]="!row.enabled"
+                >
+                  {{ row.stateLabel }}
+                </span>
+                <span class="recipe-chip">base</span>
+              </span>
             </label>
           }
         }
@@ -96,18 +112,34 @@
           <div class="recipe-empty">No alternate recipes match the search.</div>
         } @else {
           @for (row of alternateRows; track row.recipe.id) {
-            <label class="recipe-row">
+            <label
+              class="config-toggle-row recipe-row"
+              [class.config-toggle-row--enabled]="row.enabled"
+              [class.config-toggle-row--disabled]="!row.enabled"
+              [class.config-toggle-row--locked]="store.planLocked()"
+            >
               <input
+                class="config-toggle-row__control"
                 type="checkbox"
                 [ngModel]="row.enabled"
                 [disabled]="store.planLocked()"
+                [attr.aria-label]="row.toggleLabel"
                 (ngModelChange)="store.setRecipeEnabled(row.recipe.id, $event)"
               />
-              <span class="recipe-copy">
-                <span class="recipe-name">{{ row.recipe.displayName }}</span>
-                <span class="recipe-machine">{{ row.machineName }}</span>
+              <span class="config-toggle-row__indicator" aria-hidden="true"></span>
+              <span class="config-toggle-row__copy">
+                <span class="config-toggle-row__title">{{ row.recipe.displayName }}</span>
+                <span class="config-toggle-row__meta">{{ row.machineName }}</span>
               </span>
-              <span class="recipe-chip recipe-chip--alt">alternate</span>
+              <span class="config-toggle-row__badges">
+                <span
+                  class="config-toggle-row__state"
+                  [class.config-toggle-row__state--off]="!row.enabled"
+                >
+                  {{ row.stateLabel }}
+                </span>
+                <span class="recipe-chip recipe-chip--alt">alternate</span>
+              </span>
             </label>
           }
         }

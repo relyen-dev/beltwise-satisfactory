@@ -9,16 +9,42 @@
   @if (rows.length === 0) {
     <div class="empty-state">No recipe-solving machines are available in this dataset.</div>
   } @else {
-    <div class="compact-list compact-list--wide">
+    <div class="config-toggle-list config-toggle-list--wide" aria-label="Recipe machines">
       @for (row of rows; track row.machine.id) {
-        <label class="compact-row compact-row--check">
-          <span>{{ row.machine.displayName }}</span>
+        <label
+          class="config-toggle-row machine-row"
+          [class.config-toggle-row--enabled]="row.enabled"
+          [class.config-toggle-row--disabled]="!row.enabled"
+          [class.config-toggle-row--locked]="store.planLocked()"
+        >
           <input
+            class="config-toggle-row__control"
             type="checkbox"
             [ngModel]="row.enabled"
             [disabled]="store.planLocked()"
+            [attr.aria-label]="row.toggleLabel"
             (ngModelChange)="store.setMachineEnabled(row.machine.id, $event)"
           />
+          <span class="config-toggle-row__indicator" aria-hidden="true"></span>
+          <span class="config-toggle-row__copy">
+            <span class="config-toggle-row__title">{{ row.machine.displayName }}</span>
+            <span class="machine-meta">
+              <span class="machine-meta__chip">{{ row.typeLabel }}</span>
+              @if (row.powerLabel) {
+                <span class="machine-meta__chip machine-meta__chip--power">
+                  {{ row.powerLabel }}
+                </span>
+              }
+            </span>
+          </span>
+          <span class="config-toggle-row__badges">
+            <span
+              class="config-toggle-row__state"
+              [class.config-toggle-row__state--off]="!row.enabled"
+            >
+              {{ row.stateLabel }}
+            </span>
+          </span>
         </label>
       }
     </div>
