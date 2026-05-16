@@ -332,7 +332,7 @@
   );
 }
 
-.planner-shell .config-toggle-row:has(.config-toggle-row__control:focus-visible) {
+.planner-shell .config-toggle-row:focus-within {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }
