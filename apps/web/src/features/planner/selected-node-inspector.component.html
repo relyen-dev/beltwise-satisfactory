@@ -304,7 +304,7 @@
         <span>{{ selectedNode.incomingFlows.length }}</span>
       </div>
       <div class="inspector-list">
-        @for (flow of selectedNode.incomingFlows; track flow.itemId + flow.endpointLabel) {
+        @for (flow of selectedNode.incomingFlows; track flow.flowKey) {
           <div class="inspector-row">
             <bw-game-icon
               [src]="flow.iconSrc"
@@ -315,7 +315,7 @@
             />
             <span class="inspector-row__copy">
               <strong>{{ flow.displayName }}</strong>
-              <span>from {{ flow.endpointLabel }}</span>
+              <span>from {{ flow.endpointKindLabel }}: {{ flow.endpointLabel }}</span>
             </span>
             <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
           </div>
@@ -331,7 +331,7 @@
         <span>{{ selectedNode.outgoingFlows.length }}</span>
       </div>
       <div class="inspector-list">
-        @for (flow of selectedNode.outgoingFlows; track flow.itemId + flow.endpointLabel) {
+        @for (flow of selectedNode.outgoingFlows; track flow.flowKey) {
           <div class="inspector-row">
             <bw-game-icon
               [src]="flow.iconSrc"
@@ -342,7 +342,7 @@
             />
             <span class="inspector-row__copy">
               <strong>{{ flow.displayName }}</strong>
-              <span>to {{ flow.endpointLabel }}</span>
+              <span>to {{ flow.endpointKindLabel }}: {{ flow.endpointLabel }}</span>
             </span>
             <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
           </div>

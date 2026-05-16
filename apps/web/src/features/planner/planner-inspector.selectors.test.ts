@@ -156,6 +156,74 @@ describe('planner inspector selectors', () => {
     ]);
   });
 
+  it('builds stable flow keys and endpoint kind labels for duplicate item flows', () => {
+    const context = createInspectorContext();
+    const result: ProductionPlanResult = {
+      ...context.result,
+      externalInputs: {
+        ...context.result.externalInputs,
+        Desc_OreIron_C: 5,
+      },
+      itemFlows: [
+        ...context.result.itemFlows.filter(
+          (flow) =>
+            !(
+              flow.itemId === 'Desc_OreIron_C' &&
+              flow.target.kind === 'recipe' &&
+              flow.target.id === 'Recipe_IronPlate_C'
+            ),
+        ),
+        {
+          itemId: 'Desc_OreIron_C',
+          amountPerMinute: 70,
+          source: { kind: 'resource', id: 'Desc_OreIron_C' },
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+        },
+        {
+          itemId: 'Desc_OreIron_C',
+          amountPerMinute: 5,
+          source: { kind: 'externalInput', id: 'Desc_OreIron_C' },
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+        },
+      ],
+    };
+    const graph = buildProductionGraph(context.dataset, context.project.targets, result);
+    const duplicateContext: InspectorTestContext = {
+      ...context,
+      result,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(
+      duplicateContext,
+      nodeById(duplicateContext, 'recipe:Recipe_IronPlate_C'),
+    );
+    const ironOreFlows = selection.incomingFlows.filter((flow) => flow.itemId === 'Desc_OreIron_C');
+
+    expect(new Set(ironOreFlows.map((flow) => flow.flowKey)).size).toBe(2);
+    expect(
+      ironOreFlows.map((flow) => ({
+        flowKey: flow.flowKey,
+        endpointKindLabel: flow.endpointKindLabel,
+        endpointLabel: flow.endpointLabel,
+        amountPerMinuteLabel: flow.amountPerMinuteLabel,
+      })),
+    ).toEqual([
+      {
+        flowKey: 'incoming:Desc_OreIron_C:resource:Desc_OreIron_C:recipe:Recipe_IronPlate_C',
+        endpointKindLabel: 'Resource',
+        endpointLabel: 'Iron Ore',
+        amountPerMinuteLabel: '70/min',
+      },
+      {
+        flowKey: 'incoming:Desc_OreIron_C:externalInput:Desc_OreIron_C:recipe:Recipe_IronPlate_C',
+        endpointKindLabel: 'External input',
+        endpointLabel: 'Iron Ore',
+        amountPerMinuteLabel: '5/min',
+      },
+    ]);
+  });
+
   it('builds resource node details with usage, cap source, and remaining headroom', () => {
     const context = createInspectorContext();
     const node = nodeById(context, 'resource:Desc_OreIron_C');

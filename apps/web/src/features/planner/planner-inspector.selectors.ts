@@ -46,6 +46,7 @@ export interface InspectorItemRateRow {
 }
 
 export interface InspectorFlowRow extends InspectorItemRateRow {
+  flowKey: string;
   endpointKindLabel: string;
   endpointLabel: string;
 }
@@ -627,11 +628,26 @@ function flowRows(
       const endpoint = direction === 'incoming' ? flow.source : flow.target;
       return {
         ...itemRateRow(dataset, flow.itemId, flow.amountPerMinute, null),
+        flowKey: flowRowKey(flow, direction),
         endpointKindLabel: endpointKindLabel(endpoint.kind),
         endpointLabel: endpointDisplayName(dataset, project, endpoint),
       };
     })
     .toSorted((left, right) => right.amountPerMinute - left.amountPerMinute);
+}
+
+function flowRowKey(
+  flow: ProductionPlanResult['itemFlows'][number],
+  direction: 'incoming' | 'outgoing',
+): string {
+  return [
+    direction,
+    flow.itemId,
+    flow.source.kind,
+    flow.source.id,
+    flow.target.kind,
+    flow.target.id,
+  ].join(':');
 }
 
 function endpointMatchesNode(
