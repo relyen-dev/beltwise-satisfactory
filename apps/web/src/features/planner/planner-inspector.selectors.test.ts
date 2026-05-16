@@ -195,6 +195,80 @@ describe('planner inspector selectors', () => {
     });
   });
 
+  it('uses target-specific flows for duplicate output target items', () => {
+    const context = createInspectorContext();
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-wire-fixed',
+        itemId: 'Desc_Wire_C',
+        mode: 'fixed',
+        amountPerMinute: 20,
+        sortOrder: 0,
+      },
+      {
+        id: 'target-wire-maximize',
+        itemId: 'Desc_Wire_C',
+        mode: 'maximize',
+        sortOrder: 1,
+      },
+    ];
+    const project: PlannerProject = {
+      ...context.project,
+      targets,
+    };
+    const result: ProductionPlanResult = {
+      ...context.result,
+      itemFlows: [
+        ...context.result.itemFlows.filter(
+          (flow) => flow.target.kind !== 'output' || flow.itemId !== 'Desc_Wire_C',
+        ),
+        {
+          itemId: 'Desc_Wire_C',
+          amountPerMinute: 20,
+          source: { kind: 'recipe', id: 'Recipe_Wire_C' },
+          target: { kind: 'output', id: 'target-wire-fixed' },
+        },
+        {
+          itemId: 'Desc_Wire_C',
+          amountPerMinute: 55,
+          source: { kind: 'recipe', id: 'Recipe_Wire_C' },
+          target: { kind: 'output', id: 'target-wire-maximize' },
+        },
+      ],
+      outputs: {
+        ...context.result.outputs,
+        Desc_Wire_C: 75,
+      },
+    };
+    const graph = buildProductionGraph(context.dataset, targets, result);
+    const duplicateContext: InspectorTestContext = {
+      dataset: context.dataset,
+      project,
+      result,
+      nodes: graph.nodes,
+    };
+
+    const overview = selectInspectorViewModel(context.dataset, project, result, null, {});
+    const selection = selectSelection(
+      duplicateContext,
+      nodeById(duplicateContext, 'output:target-wire-maximize'),
+    );
+
+    expect(overview?.overview?.targets.map((target) => target.amountLabel)).toEqual([
+      '20/min requested',
+      '55/min solved',
+    ]);
+    if (selection.details.kind !== 'output') {
+      throw new Error('Expected output details');
+    }
+    expect(selection.details.item.amountPerMinuteLabel).toBe('55/min');
+    expect(selection.details).toMatchObject({
+      targetModeLabel: 'Maximize',
+      solvedAmountPerMinuteLabel: '55/min',
+      incomingAmountPerMinuteLabel: '55/min',
+    });
+  });
+
   it('builds external input node details with supplied item and rate', () => {
     const context = createInspectorContext();
     const node = nodeById(context, 'external-input:Desc_IngotIron_C');

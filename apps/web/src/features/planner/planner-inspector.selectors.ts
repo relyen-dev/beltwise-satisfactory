@@ -447,19 +447,26 @@ function outputNodeDetails(
     targetMode === 'fixed'
       ? (target?.amountPerMinute ?? selectedNode.amountPerMinute ?? incomingAmountPerMinute)
       : null;
+  const targetFlowAmountPerMinute =
+    selectedNode.targetId && result ? incomingAmountPerMinute : null;
   const maximizedOutput =
     targetMode === 'maximize'
-      ? (selectedNode.amountPerMinute ??
+      ? (targetFlowAmountPerMinute ??
+        selectedNode.amountPerMinute ??
         (itemId ? result?.outputs[itemId] : undefined) ??
         incomingAmountPerMinute)
       : null;
+  const displayAmountPerMinute =
+    targetMode === 'maximize'
+      ? (maximizedOutput ?? incomingAmountPerMinute)
+      : (selectedNode.amountPerMinute ?? incomingAmountPerMinute);
 
   return {
     kind: 'output',
     item: itemRateRow(
       dataset,
       itemId,
-      selectedNode.amountPerMinute ?? incomingAmountPerMinute,
+      displayAmountPerMinute,
       targetMode === 'maximize' ? 'maximized output' : 'requested output',
     ),
     targetModeLabel: targetMode === 'maximize' ? 'Maximize' : 'Fixed',
@@ -573,7 +580,9 @@ function targetSummary(
 ): InspectorTargetSummary {
   const item = dataset.items[target.itemId];
   const amount =
-    target.mode === 'fixed' ? (target.amountPerMinute ?? 0) : (result?.outputs[target.itemId] ?? 0);
+    target.mode === 'fixed'
+      ? (target.amountPerMinute ?? 0)
+      : (outputAmountForTarget(result, target.id) ?? result?.outputs[target.itemId] ?? 0);
   const displayName =
     target.itemId.length > 0 ? (item?.displayName ?? target.itemId) : 'Choose an item';
 
@@ -588,6 +597,19 @@ function targetSummary(
         ? `${formatNumber(amount)}/min solved`
         : `${formatNumber(amount)}/min requested`,
   };
+}
+
+function outputAmountForTarget(
+  result: ProductionPlanResult | null,
+  targetId: string | undefined,
+): number | null {
+  if (!result || !targetId) {
+    return null;
+  }
+
+  return result.itemFlows
+    .filter((flow) => flow.target.kind === 'output' && flow.target.id === targetId)
+    .reduce((total, flow) => total + flow.amountPerMinute, 0);
 }
 
 function flowRows(
