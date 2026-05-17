@@ -25,12 +25,10 @@
           <label class="project-control session-control--name">
             <span>Session name</span>
             <input
-              #sessionNameInput
               class="project-name"
               aria-label="Session name"
               [ngModel]="session.name"
-              (change)="store.renameSession(sessionNameInput.value)"
-              (keydown.enter)="store.renameSession(sessionNameInput.value)"
+              (ngModelChange)="store.renameSession($event)"
             />
           </label>
 

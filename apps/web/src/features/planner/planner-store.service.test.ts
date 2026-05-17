@@ -341,7 +341,9 @@ describe('PlannerStoreService', () => {
       projectB.id,
     ]);
 
-    store.renameSession('Rocky Desert');
+    store.renameSession(' Rocky Desert ');
+    expect(store.activeSession()?.name).toBe('Rocky Desert');
+    store.renameSession('   ');
     expect(store.activeSession()?.name).toBe('Rocky Desert');
 
     store.selectSession(sessionB.id);
@@ -391,6 +393,25 @@ describe('PlannerStoreService', () => {
     expect(store.activeSessionId()).toBe(sessionA.id);
     expect(store.activeProjectId()).toBe(projectA.id);
     expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectA.id]);
+  });
+
+  it('updates the session active project without touching the session timestamp', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const sessionA = createSession([projectA, projectB], projectB.id, 'session-a');
+    const { store } = createInitializedStore(
+      [projectA, projectB],
+      projectB.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA],
+      sessionA.id,
+    );
+
+    store.selectProject(projectA.id);
+
+    const updatedSession = store.sessions().find((session) => session.id === sessionA.id);
+    expect(updatedSession?.activeProjectId).toBe(projectA.id);
+    expect(updatedSession?.updatedAt).toBe(sessionA.updatedAt);
   });
 
   it('creates new projects from user defaults without mutating existing projects', () => {

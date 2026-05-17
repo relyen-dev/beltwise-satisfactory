@@ -4,7 +4,6 @@ import {
   hydratePlannerProject,
   hydratePlannerUserDefaults,
   PLANNER_STORAGE_SCHEMA_VERSION,
-  uniqueStrings,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type GraphNodeBuildState,
@@ -20,6 +19,7 @@ import {
   type RecipeOverride,
   type ResourceOverride,
 } from './plan';
+import { uniqueStrings } from './internal/uniqueStrings';
 
 export type PlannerStorageSchemaVersion = typeof PLANNER_STORAGE_SCHEMA_VERSION;
 
@@ -391,12 +391,7 @@ function hydrateStoredSessions(
     .map((session) => decodeStoredPlannerSession(session, dataset, projectIds))
     .filter((session): session is PlannerSession => session !== null);
 
-  return ensureAllProjectsBelongToSessions(
-    hydratedSessions,
-    projects,
-    dataset,
-    storedActiveProjectId,
-  );
+  return ensureAllProjectsBelongToSessions(hydratedSessions, projects, storedActiveProjectId);
 }
 
 function decodeStoredPlannerSession(
@@ -424,7 +419,7 @@ function decodeStoredPlannerSession(
   const activeProjectId = readString(session['activeProjectId']) ?? projectIds[0];
   return createPlannerSession({
     id,
-    name: readString(session['name']) ?? 'Restored session',
+    name: readString(session['name']) ?? `Restored session ${id}`,
     datasetId: readString(session['datasetId']) ?? dataset.id,
     createdAt,
     updatedAt: readString(session['updatedAt']) ?? createdAt,
@@ -436,11 +431,10 @@ function decodeStoredPlannerSession(
 function ensureAllProjectsBelongToSessions(
   sessions: readonly PlannerSession[],
   projects: readonly PlannerProject[],
-  dataset: GameDataset,
   storedActiveProjectId: string | undefined,
 ): PlannerSession[] {
   if (sessions.length === 0) {
-    return createDefaultSessionForProjects(projects, dataset.id, storedActiveProjectId);
+    return createDefaultSessionForProjects(projects, storedActiveProjectId);
   }
 
   const assignedProjectIds = new Set(sessions.flatMap((session) => session.projectIds));
@@ -524,11 +518,7 @@ function normalizeSessionsForStorage(
     .filter((session): session is PlannerSession => session !== null);
 
   if (normalizedSessions.length === 0) {
-    const firstProject = projects[0];
-    if (firstProject === undefined) {
-      return [];
-    }
-    return createDefaultSessionForProjects(projects, firstProject.datasetId, activeProjectId);
+    return createDefaultSessionForProjects(projects, activeProjectId);
   }
 
   const assignedProjectIds = new Set(normalizedSessions.flatMap((session) => session.projectIds));
@@ -585,10 +575,10 @@ function normalizeSessionForStorage(
 
 function createDefaultSessionForProjects(
   projects: readonly PlannerProject[],
-  datasetId: string,
   activeProjectId: string | undefined,
 ): PlannerSession[] {
-  if (projects.length === 0) {
+  const firstProject = projects[0];
+  if (firstProject === undefined) {
     return [];
   }
 
@@ -601,7 +591,7 @@ function createDefaultSessionForProjects(
   const session = createPlannerSession({
     id: DEFAULT_SESSION_ID,
     name: DEFAULT_SESSION_NAME,
-    datasetId,
+    datasetId: firstProject.datasetId,
     projectIds,
     ...(activeId !== undefined ? { activeProjectId: activeId } : {}),
     now: createdAt,

@@ -114,7 +114,11 @@ export class PlannerWorkspaceSlice {
       return;
     }
 
-    const project = createStarterProject(dataset, 'Plan 1', this.requireUserDefaults(dataset));
+    const project = createStarterProject(
+      dataset,
+      createNextPlanName([]),
+      this.requireUserDefaults(dataset),
+    );
     const session = createPlannerSession({
       name: createUniqueSessionName(this.sessions().map((candidate) => candidate.name)),
       datasetId: dataset.id,
@@ -136,7 +140,7 @@ export class PlannerWorkspaceSlice {
     }
     const project = createStarterProject(
       dataset,
-      `Plan ${this.activeSessionProjects().length + 1}`,
+      createNextPlanName(this.activeSessionProjects()),
       this.requireUserDefaults(dataset),
     );
     this.projects.update((projects) => [...projects, project]);
@@ -184,16 +188,17 @@ export class PlannerWorkspaceSlice {
       if (!dataset) {
         return;
       }
+      const remainingSessionProjects = sessionProjects.filter((project) => project.id !== activeId);
       const replacement = createStarterProject(
         dataset,
-        'Plan 1',
+        createNextPlanName(remainingSessionProjects),
         this.requireUserDefaults(dataset),
       );
       this.projects.update((projects) => [
         ...projects.filter((project) => project.id !== activeId),
         replacement,
       ]);
-      this.replaceProjectInSession(activeId, replacement, activeSession.id);
+      this.replaceProjectInActiveSession(activeId, replacement, activeSession.id);
       this.activateProject(replacement, 'open-plan', activeSession.id);
       return;
     }
@@ -213,14 +218,19 @@ export class PlannerWorkspaceSlice {
 
   public renameSession(name: string): void {
     const activeSessionId = this.activeSessionId();
-    if (!activeSessionId) {
+    const trimmedName = name.trim();
+    if (!activeSessionId || trimmedName.length === 0) {
       return;
     }
-    this.touchSession(activeSessionId, (session, now) => ({
-      ...session,
-      name,
-      updatedAt: now,
-    }));
+    this.touchSession(activeSessionId, (session, now) =>
+      session.name === trimmedName
+        ? session
+        : {
+            ...session,
+            name: trimmedName,
+            updatedAt: now,
+          },
+    );
   }
 
   public initializeFromStoredState(state: LoadedPlannerState): void {
@@ -372,47 +382,32 @@ export class PlannerWorkspaceSlice {
     }));
   }
 
-  private replaceProjectInSession(
+  private replaceProjectInActiveSession(
     projectId: string,
     replacementProject: PlannerProject,
     activeSessionId: string,
   ): void {
     const now = new Date().toISOString();
     this.sessions.update((sessions) =>
-      sessions.flatMap((session) => {
+      sessions.map((session) => {
         if (session.id !== activeSessionId) {
-          const projectIds = session.projectIds.filter((candidate) => candidate !== projectId);
-          if (projectIds.length === 0) {
-            return [];
-          }
-          if (projectIds.length === session.projectIds.length) {
-            return [session];
-          }
-          const activeProjectId =
-            session.activeProjectId === projectId ? projectIds[0] : session.activeProjectId;
-          return [
-            {
-              ...session,
-              projectIds,
-              ...(activeProjectId !== undefined ? { activeProjectId } : {}),
-              updatedAt: now,
-            },
-          ];
+          return session;
         }
 
-        const projectIds = uniqueProjectIds(
+        const replacedProjectIds = uniqueProjectIds(
           session.projectIds.map((candidate) =>
             candidate === projectId ? replacementProject.id : candidate,
           ),
         );
-        return [
-          {
-            ...session,
-            projectIds: projectIds.length > 0 ? projectIds : [replacementProject.id],
-            activeProjectId: replacementProject.id,
-            updatedAt: now,
-          },
-        ];
+        const projectIds = replacedProjectIds.includes(replacementProject.id)
+          ? replacedProjectIds
+          : [...replacedProjectIds, replacementProject.id];
+        return {
+          ...session,
+          projectIds,
+          activeProjectId: replacementProject.id,
+          updatedAt: now,
+        };
       }),
     );
   }
@@ -448,18 +443,22 @@ export class PlannerWorkspaceSlice {
   }
 
   private setSessionActiveProject(sessionId: string, projectId: string): void {
-    this.touchSession(sessionId, (session, now) => {
-      if (!session.projectIds.includes(projectId)) {
-        return session;
-      }
-      if (session.activeProjectId === projectId) {
-        return session;
-      }
-      return {
-        ...session,
-        activeProjectId: projectId,
-        updatedAt: now,
-      };
+    this.sessions.update((sessions) => {
+      let changed = false;
+      const nextSessions = sessions.map((session) => {
+        if (session.id !== sessionId || !session.projectIds.includes(projectId)) {
+          return session;
+        }
+        if (session.activeProjectId === projectId) {
+          return session;
+        }
+        changed = true;
+        return {
+          ...session,
+          activeProjectId: projectId,
+        };
+      });
+      return changed ? nextSessions : sessions;
     });
   }
 
@@ -468,9 +467,20 @@ export class PlannerWorkspaceSlice {
     mapper: (session: PlannerSession, now: string) => PlannerSession,
   ): void {
     const now = new Date().toISOString();
-    this.sessions.update((sessions) =>
-      sessions.map((session) => (session.id === sessionId ? mapper(session, now) : session)),
-    );
+    this.sessions.update((sessions) => {
+      let changed = false;
+      const nextSessions = sessions.map((session) => {
+        if (session.id !== sessionId) {
+          return session;
+        }
+        const nextSession = mapper(session, now);
+        if (nextSession !== session) {
+          changed = true;
+        }
+        return nextSession;
+      });
+      return changed ? nextSessions : sessions;
+    });
   }
 
   private requireUserDefaults(dataset: GameDataset): PlannerUserDefaults {
@@ -495,6 +505,22 @@ function uniqueProjectIds(projectIds: readonly string[]): string[] {
     uniqueIds.push(projectId);
   }
   return uniqueIds;
+}
+
+function createNextPlanName(existingProjects: readonly PlannerProject[]): string {
+  const baseName = 'Plan';
+  const existingNames = new Set(
+    existingProjects.map((project) => project.name.trim().toLowerCase()),
+  );
+  let nextIndex = existingProjects.length + 1;
+
+  while (true) {
+    const candidate = `${baseName} ${nextIndex}`;
+    if (!existingNames.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+    nextIndex += 1;
+  }
 }
 
 function createUniqueSessionName(existingNames: readonly string[]): string {

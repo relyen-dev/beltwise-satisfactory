@@ -386,6 +386,42 @@ describe('decodePlannerPersistenceState', () => {
     ]);
   });
 
+  it('uses session ids to disambiguate missing stored session names', () => {
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'session-a',
+        activeProjectId: 'project-a',
+        sessions: [
+          {
+            id: 'session-a',
+            datasetId: tinySatisfactoryDataset.id,
+            createdAt: '2026-05-12T00:00:00.000Z',
+            updatedAt: '2026-05-12T00:00:00.000Z',
+            projectIds: ['project-a'],
+            activeProjectId: 'project-a',
+          },
+          {
+            id: 'session-b',
+            datasetId: tinySatisfactoryDataset.id,
+            createdAt: '2026-05-12T00:00:00.000Z',
+            updatedAt: '2026-05-12T00:00:00.000Z',
+            projectIds: ['project-b'],
+            activeProjectId: 'project-b',
+          },
+        ],
+        projects: [rawPlannerProject({ id: 'project-a' }), rawPlannerProject({ id: 'project-b' })],
+        userDefaults: createDomainUserDefaults(),
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.sessions.map((session) => session.name)).toEqual([
+      'Restored session session-a',
+      'Restored session session-b',
+    ]);
+  });
+
   it('saves and loads workspace defaults separately from projects', () => {
     const userDefaults = createDomainUserDefaults();
     const state = decodePlannerPersistenceState(
