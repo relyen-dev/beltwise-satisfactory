@@ -1,5 +1,5 @@
 import { inject, Injectable, signal, type OnDestroy } from '@angular/core';
-import { type ItemId, type RecipeId } from '@beltwise/game-data';
+import { type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
 import {
   type ConveyorBeltTier,
   type GraphEdgeStyle,
@@ -12,6 +12,7 @@ import { DatasetService } from './dataset.service';
 import { PlannerPersistenceCoordinatorService } from './planner-persistence-coordinator.service';
 import { PlannerStoreConnections } from './planner-store-connections';
 import { PlannerGraphBuildSlice } from './planner-store-graph-build';
+import { PlannerDefaultsCommandSlice } from './planner-store-defaults';
 import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
@@ -45,6 +46,7 @@ export class PlannerStoreService implements OnDestroy {
 
   private readonly workspace: PlannerWorkspaceSlice;
   private readonly graphBuild: PlannerGraphBuildSlice;
+  private readonly defaultsCommands: PlannerDefaultsCommandSlice;
   private readonly planCommands: PlannerPlanCommandSlice;
   private readonly views: PlannerStoreViewSelectors;
   private readonly connections: PlannerStoreConnections;
@@ -52,33 +54,43 @@ export class PlannerStoreService implements OnDestroy {
   public readonly dataset = this.datasetService.dataset;
   public readonly datasetError = this.datasetService.loadError;
   public readonly recipeSearch = signal('');
+  public readonly defaultRecipeSearch = signal('');
   public readonly solveStatus = this.solver.solveStatus;
   public readonly solveError = this.solver.solveError;
   public readonly solveResult = this.solver.solveResult;
 
   public readonly projects: PlannerWorkspaceSlice['projects'];
   public readonly activeProjectId: PlannerWorkspaceSlice['activeProjectId'];
+  public readonly userDefaults: PlannerWorkspaceSlice['userDefaults'];
   public readonly activeConfigTab: PlannerWorkspaceSlice['activeConfigTab'];
   public readonly workbenchFocusRequest: PlannerWorkspaceSlice['workbenchFocusRequest'];
   public readonly activeProject: PlannerWorkspaceSlice['activeProject'];
   public readonly selectedGraphNodeId: PlannerGraphBuildSlice['selectedGraphNodeId'];
   public readonly itemOptions: PlannerStoreViewSelectors['itemOptions'];
   public readonly resourceRows: PlannerStoreViewSelectors['resourceRows'];
+  public readonly defaultResourceRows: PlannerStoreViewSelectors['defaultResourceRows'];
   public readonly externalInputRows: PlannerStoreViewSelectors['externalInputRows'];
   public readonly machineRows: PlannerStoreViewSelectors['machineRows'];
+  public readonly defaultMachineRows: PlannerStoreViewSelectors['defaultMachineRows'];
   public readonly machinePanelSummary: PlannerStoreViewSelectors['machinePanelSummary'];
   public readonly machineUsageRows: PlannerStoreViewSelectors['machineUsageRows'];
   public readonly recipeRows: PlannerStoreViewSelectors['recipeRows'];
+  public readonly defaultRecipeRows: PlannerStoreViewSelectors['defaultRecipeRows'];
   public readonly baseRecipeRows: PlannerStoreViewSelectors['baseRecipeRows'];
+  public readonly defaultBaseRecipeRows: PlannerStoreViewSelectors['defaultBaseRecipeRows'];
   public readonly standardBaseRecipeRows: PlannerStoreViewSelectors['standardBaseRecipeRows'];
+  public readonly defaultStandardBaseRecipeRows: PlannerStoreViewSelectors['defaultStandardBaseRecipeRows'];
   public readonly converterResourceRecipeRows: PlannerStoreViewSelectors['converterResourceRecipeRows'];
+  public readonly defaultConverterResourceRecipeRows: PlannerStoreViewSelectors['defaultConverterResourceRecipeRows'];
   public readonly alternateRecipeRows: PlannerStoreViewSelectors['alternateRecipeRows'];
+  public readonly defaultAlternateRecipeRows: PlannerStoreViewSelectors['defaultAlternateRecipeRows'];
   public readonly graph: PlannerStoreViewSelectors['graph'];
   public readonly planLocked: PlannerStoreViewSelectors['planLocked'];
   public readonly nodeLayoutLocked: PlannerStoreViewSelectors['nodeLayoutLocked'];
   public readonly completedGraphNodeIds: PlannerStoreViewSelectors['completedGraphNodeIds'];
   public readonly graphNodeNotes: PlannerStoreViewSelectors['graphNodeNotes'];
   public readonly graphDisplaySettings: PlannerStoreViewSelectors['graphDisplaySettings'];
+  public readonly defaultGraphDisplaySettings: PlannerStoreViewSelectors['defaultGraphDisplaySettings'];
   public readonly selectedGraphNode: PlannerStoreViewSelectors['selectedGraphNode'];
   public readonly selectedGraphNodeState: PlannerStoreViewSelectors['selectedGraphNodeState'];
   public readonly inspectorViewModel: PlannerStoreViewSelectors['inspectorViewModel'];
@@ -100,9 +112,16 @@ export class PlannerStoreService implements OnDestroy {
     this.views = new PlannerStoreViewSelectors({
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
+      userDefaults: this.workspace.userDefaults,
       recipeSearch: this.recipeSearch,
+      defaultRecipeSearch: this.defaultRecipeSearch,
       selectedGraphNodeId: this.graphBuild.selectedGraphNodeId,
       solveResult: this.solveResult,
+    });
+    this.defaultsCommands = new PlannerDefaultsCommandSlice({
+      dataset: this.dataset,
+      activeProject: this.workspace.activeProject,
+      updateUserDefaults: (mapper) => this.workspace.updateUserDefaults(mapper),
     });
     this.planCommands = new PlannerPlanCommandSlice({
       dataset: this.dataset,
@@ -115,34 +134,45 @@ export class PlannerStoreService implements OnDestroy {
       dataset: this.dataset,
       projects: this.workspace.projects,
       activeProjectId: this.workspace.activeProjectId,
+      userDefaults: this.workspace.userDefaults,
       activeProject: this.workspace.activeProject,
       initializeFromStoredState: (state) => this.workspace.initializeFromStoredState(state),
-      initializeStarterProject: (dataset) => this.workspace.initializeStarterProject(dataset),
+      initializeStarterProject: (dataset, userDefaults) =>
+        this.workspace.initializeStarterProject(dataset, userDefaults),
     });
 
     this.projects = this.workspace.projects;
     this.activeProjectId = this.workspace.activeProjectId;
+    this.userDefaults = this.workspace.userDefaults;
     this.activeConfigTab = this.workspace.activeConfigTab;
     this.workbenchFocusRequest = this.workspace.workbenchFocusRequest;
     this.activeProject = this.workspace.activeProject;
     this.selectedGraphNodeId = this.graphBuild.selectedGraphNodeId;
     this.itemOptions = this.views.itemOptions;
     this.resourceRows = this.views.resourceRows;
+    this.defaultResourceRows = this.views.defaultResourceRows;
     this.externalInputRows = this.views.externalInputRows;
     this.machineRows = this.views.machineRows;
+    this.defaultMachineRows = this.views.defaultMachineRows;
     this.machinePanelSummary = this.views.machinePanelSummary;
     this.machineUsageRows = this.views.machineUsageRows;
     this.recipeRows = this.views.recipeRows;
+    this.defaultRecipeRows = this.views.defaultRecipeRows;
     this.baseRecipeRows = this.views.baseRecipeRows;
+    this.defaultBaseRecipeRows = this.views.defaultBaseRecipeRows;
     this.standardBaseRecipeRows = this.views.standardBaseRecipeRows;
+    this.defaultStandardBaseRecipeRows = this.views.defaultStandardBaseRecipeRows;
     this.converterResourceRecipeRows = this.views.converterResourceRecipeRows;
+    this.defaultConverterResourceRecipeRows = this.views.defaultConverterResourceRecipeRows;
     this.alternateRecipeRows = this.views.alternateRecipeRows;
+    this.defaultAlternateRecipeRows = this.views.defaultAlternateRecipeRows;
     this.graph = this.views.graph;
     this.planLocked = this.views.planLocked;
     this.nodeLayoutLocked = this.views.nodeLayoutLocked;
     this.completedGraphNodeIds = this.views.completedGraphNodeIds;
     this.graphNodeNotes = this.views.graphNodeNotes;
     this.graphDisplaySettings = this.views.graphDisplaySettings;
+    this.defaultGraphDisplaySettings = this.views.defaultGraphDisplaySettings;
     this.selectedGraphNode = this.views.selectedGraphNode;
     this.selectedGraphNodeState = this.views.selectedGraphNodeState;
     this.inspectorViewModel = this.views.inspectorViewModel;
@@ -254,6 +284,50 @@ export class PlannerStoreService implements OnDestroy {
     this.planCommands.setMachineEnabled(machineId, enabled);
   }
 
+  public setDefaultRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
+    this.defaultsCommands.setRecipeEnabled(recipeId, enabled);
+  }
+
+  public setDefaultRecipesEnabled(recipeIds: readonly RecipeId[], enabled: boolean): void {
+    this.defaultsCommands.setRecipesEnabled(recipeIds, enabled);
+  }
+
+  public setDefaultMachineEnabled(machineId: MachineId, enabled: boolean): void {
+    this.defaultsCommands.setMachineEnabled(machineId, enabled);
+  }
+
+  public setDefaultMachinesEnabled(machineIds: readonly MachineId[], enabled: boolean): void {
+    this.defaultsCommands.setMachinesEnabled(machineIds, enabled);
+  }
+
+  public setDefaultResourceCap(itemId: ItemId, maxPerMinute: number): void {
+    this.defaultsCommands.setResourceCap(itemId, maxPerMinute);
+  }
+
+  public setDefaultResourceEnabled(itemId: ItemId, enabled: boolean): void {
+    this.defaultsCommands.setResourceEnabled(itemId, enabled);
+  }
+
+  public resetDefaultResource(itemId: ItemId): void {
+    this.defaultsCommands.resetResource(itemId);
+  }
+
+  public resetAllDefaultResources(): void {
+    this.defaultsCommands.resetAllResources();
+  }
+
+  public setAllDefaultResourcesEnabled(enabled: boolean): void {
+    this.defaultsCommands.setAllResourcesEnabled(enabled);
+  }
+
+  public saveActivePlanAsDefaults(): void {
+    this.defaultsCommands.saveActivePlanAsDefaults();
+  }
+
+  public resetUserDefaults(): void {
+    this.defaultsCommands.resetUserDefaults();
+  }
+
   public setGraphNodePosition(nodeId: string, position: { x: number; y: number }): void {
     this.graphBuild.setGraphNodePosition(nodeId, position);
   }
@@ -290,24 +364,48 @@ export class PlannerStoreService implements OnDestroy {
     this.planCommands.setMaxBeltTier(maxBeltTier);
   }
 
+  public setDefaultMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
+    this.defaultsCommands.setMaxBeltTier(maxBeltTier);
+  }
+
   public setMaxPipeTier(maxPipeTier: PipelineTier): void {
     this.planCommands.setMaxPipeTier(maxPipeTier);
+  }
+
+  public setDefaultMaxPipeTier(maxPipeTier: PipelineTier): void {
+    this.defaultsCommands.setMaxPipeTier(maxPipeTier);
   }
 
   public setRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
     this.planCommands.setRateDecimalPlaces(rateDecimalPlaces);
   }
 
+  public setDefaultRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
+    this.defaultsCommands.setRateDecimalPlaces(rateDecimalPlaces);
+  }
+
   public setGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
     this.planCommands.setGraphEdgeStyle(edgeStyle);
+  }
+
+  public setDefaultGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
+    this.defaultsCommands.setGraphEdgeStyle(edgeStyle);
   }
 
   public setShowTransportLabels(showTransportLabels: boolean): void {
     this.planCommands.setShowTransportLabels(showTransportLabels);
   }
 
+  public setDefaultShowTransportLabels(showTransportLabels: boolean): void {
+    this.defaultsCommands.setShowTransportLabels(showTransportLabels);
+  }
+
   public setAnimateFlowLines(animateFlowLines: boolean): void {
     this.planCommands.setAnimateFlowLines(animateFlowLines);
+  }
+
+  public setDefaultAnimateFlowLines(animateFlowLines: boolean): void {
+    this.defaultsCommands.setAnimateFlowLines(animateFlowLines);
   }
 
   public setSelectedGraphNodeDone(done: boolean): void {

@@ -2,9 +2,11 @@ import { Injector } from '@angular/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
+  createDefaultUserDefaults,
   createPlannerProject,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
+  type PlannerUserDefaults,
 } from '@beltwise/planner-core';
 import {
   PLANNER_PERSISTENCE_STORAGE,
@@ -116,10 +118,11 @@ describe('PlannerPersistenceService', () => {
     try {
       const defaultStorage = createBrowserPlannerPersistenceStorage();
       const defaultService = createPersistenceService(defaultStorage);
+      const userDefaults = createDefaultUserDefaults(tinySatisfactoryDataset);
 
       expect(defaultStorage).toBeNull();
       expect(defaultService.load(tinySatisfactoryDataset)).toBeNull();
-      expect(() => defaultService.saveProjects([], undefined)).not.toThrow();
+      expect(() => defaultService.saveProjects([], undefined, userDefaults)).not.toThrow();
     } finally {
       if (originalLocalStorage) {
         Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
@@ -133,16 +136,18 @@ describe('PlannerPersistenceService', () => {
     const failingService = createPersistenceService(
       new ThrowingStorage({ setFailure: new Error('Quota exceeded') }),
     );
+    const userDefaults = createDefaultUserDefaults(tinySatisfactoryDataset);
 
-    expect(() => failingService.saveProjects([], undefined)).not.toThrow();
-    expect(() => createPersistenceService(null).saveProjects([], undefined)).not.toThrow();
+    expect(() => failingService.saveProjects([], undefined, userDefaults)).not.toThrow();
+    expect(() => createPersistenceService(null).saveProjects([], undefined, userDefaults)).not.toThrow();
   });
 
   it('writes saved planner state JSON to storage', () => {
     const project = createDomainPlannerProject();
-    const state = createStoredPlannerState([project], project.id);
+    const userDefaults = createDomainUserDefaults();
+    const state = createStoredPlannerState([project], project.id, userDefaults);
 
-    service.saveProjects([project], project.id);
+    service.saveProjects([project], project.id, userDefaults);
 
     expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(state));
   });
@@ -158,7 +163,11 @@ describe('PlannerPersistenceService', () => {
       })),
     };
 
-    service.saveProjects([projectWithDerivedState], project.id);
+    service.saveProjects(
+      [projectWithDerivedState],
+      project.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+    );
 
     const savedProject = firstSavedProject(storage);
     expect(savedProject['solverResult']).toBeUndefined();
@@ -432,6 +441,24 @@ describe('PlannerPersistenceService', () => {
       nodeStates: {},
     });
   });
+
+  it('loads and saves user defaults with the workspace', () => {
+    const userDefaults = createDomainUserDefaults();
+    service.saveProjects([createDomainPlannerProject()], 'project-a', userDefaults);
+
+    const state = service.load(tinySatisfactoryDataset);
+
+    expect(state?.userDefaults.recipeOverrides['Recipe_IronWire_C']).toEqual({
+      enabled: true,
+    });
+    expect(state?.userDefaults.machineOverrides['Build_ConstructorMk1_C']).toEqual({
+      enabled: false,
+    });
+    expect(state?.userDefaults.resourceOverrides['Desc_OreIron_C']).toEqual({
+      maxPerMinute: 180,
+    });
+    expect(state?.userDefaults.graphDisplay.maxBeltTier).toBe(5);
+  });
 });
 
 describe('plannerRelevantMachineIds', () => {
@@ -549,6 +576,36 @@ function createDomainPlannerProject(): PlannerProject {
       },
     ],
   });
+}
+
+function createDomainUserDefaults(): PlannerUserDefaults {
+  return {
+    ...createDefaultUserDefaults(tinySatisfactoryDataset),
+    recipeOverrides: {
+      Recipe_IronWire_C: { enabled: true },
+    },
+    machineOverrides: {
+      Build_ConstructorMk1_C: { enabled: false },
+    },
+    resourceOverrides: {
+      Desc_OreIron_C: { maxPerMinute: 180 },
+    },
+    graphDisplay: {
+      maxBeltTier: 5,
+      maxPipeTier: 2,
+      rateDecimalPlaces: 2,
+      edgeStyle: 'curved',
+      showTransportLabels: false,
+      animateFlowLines: true,
+    },
+    objectiveProfile: {
+      resourceScarcityWeight: 1,
+      powerWeight: 0.2,
+      machineCountWeight: 0.25,
+      surplusWeight: 0.5,
+      rawResourceMultipliers: {},
+    },
+  };
 }
 
 function firstSavedProject(storage: MemoryStorage): Record<string, unknown> {

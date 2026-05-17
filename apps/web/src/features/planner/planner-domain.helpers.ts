@@ -8,6 +8,7 @@ import {
 import {
   createPlannerProject,
   type PlannerProject,
+  type PlannerUserDefaults,
   type ProductTarget,
   type ResourceOverride,
 } from '@beltwise/planner-core';
@@ -15,11 +16,13 @@ import {
 export function createStarterProject(
   dataset: GameDataset,
   name = 'Starter factory',
+  userDefaults?: PlannerUserDefaults,
 ): PlannerProject {
   return createPlannerProject({
     name,
     dataset,
     targets: [],
+    ...(userDefaults !== undefined ? { userDefaults } : {}),
   });
 }
 

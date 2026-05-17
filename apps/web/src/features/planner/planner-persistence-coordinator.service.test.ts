@@ -3,6 +3,7 @@ import { Injector } from '@angular/core';
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
+  createDefaultUserDefaults,
   createPlannerProject,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
@@ -35,24 +36,28 @@ class MemoryStorage implements PlannerPersistenceStorage {
 describe('PlannerPersistenceCoordinatorService', () => {
   it('builds stored planner state without an undefined active project id field', () => {
     const projects = [createProject('project-a')];
+    const userDefaults = createDefaultUserDefaults(tinySatisfactoryDataset);
 
-    expect(createStoredPlannerState(projects, undefined)).toEqual({
+    expect(createStoredPlannerState(projects, undefined, userDefaults)).toEqual({
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
       projects,
+      userDefaults,
     });
   });
 
   it('saves active project state through the persistence service', () => {
     const { coordinator, storage } = createCoordinatorHarness();
     const projects = [createProject('project-a'), createProject('project-b')];
+    const userDefaults = createDefaultUserDefaults(tinySatisfactoryDataset);
 
-    coordinator.saveState(projects, 'project-b');
+    coordinator.saveState(projects, 'project-b', userDefaults);
 
     expect(storage.getItem(STORAGE_KEY)).toBe(
       JSON.stringify({
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeProjectId: 'project-b',
         projects,
+        userDefaults,
       }),
     );
   });
@@ -60,7 +65,7 @@ describe('PlannerPersistenceCoordinatorService', () => {
   it('does not write empty project lists', () => {
     const { coordinator, storage } = createCoordinatorHarness();
 
-    coordinator.saveState([], undefined);
+    coordinator.saveState([], undefined, createDefaultUserDefaults(tinySatisfactoryDataset));
 
     expect(storage.getItem(STORAGE_KEY)).toBeNull();
   });

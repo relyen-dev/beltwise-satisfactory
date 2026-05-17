@@ -1,0 +1,453 @@
+<section class="defaults-drawer" aria-label="Global defaults for new plans">
+  <header class="defaults-header">
+    <div>
+      <span class="panel-kicker">Global Defaults</span>
+      <h2>New plan defaults</h2>
+      <p>Future plans start with these settings. Existing plans stay unchanged.</p>
+    </div>
+    <button type="button" title="Close defaults" aria-label="Close defaults" (click)="closed.emit()">
+      Close
+    </button>
+  </header>
+
+  <div class="defaults-actions" aria-label="Default actions">
+    <button type="button" class="primary-action" (click)="store.saveActivePlanAsDefaults()">
+      Save current plan settings as defaults
+    </button>
+    <button type="button" (click)="store.resetUserDefaults()">
+      Reset to Beltwise defaults
+    </button>
+  </div>
+
+  <nav class="defaults-tabs" aria-label="Default setting sections">
+    @for (tab of tabs; track tab.id) {
+      <button
+        type="button"
+        class="defaults-tab"
+        [class.defaults-tab--active]="activeTab() === tab.id"
+        [attr.aria-pressed]="activeTab() === tab.id ? 'true' : 'false'"
+        (click)="activeTab.set(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  <div class="defaults-body">
+    @switch (activeTab()) {
+      @case ('recipes') {
+        <section class="defaults-section defaults-section--recipes">
+          <div class="section-heading">
+            <div>
+              <h3>Recipe defaults</h3>
+              <span>Base and alternate recipe availability for future plans.</span>
+            </div>
+          </div>
+
+          <div class="recipe-toolbar">
+            <label class="search-field">
+              <span class="sr-only">Search default recipes</span>
+              <input
+                placeholder="Search recipes"
+                [ngModel]="store.defaultRecipeSearch()"
+                (ngModelChange)="store.defaultRecipeSearch.set($event)"
+              />
+            </label>
+          </div>
+
+          <div class="recipe-columns defaults-recipe-columns">
+            <section class="recipe-group" aria-labelledby="default-recipes-title">
+              @let standardBaseRows = store.defaultStandardBaseRecipeRows();
+              @let converterResourceRows = store.defaultConverterResourceRecipeRows();
+              @let alternateRows = store.defaultAlternateRecipeRows();
+              @let recipeRows = activeRecipeRows();
+              <div class="recipe-group-header">
+                <div>
+                  <h4 id="default-recipes-title">Recipes</h4>
+                  <span>{{ recipeRows.length }} shown</span>
+                </div>
+                <div class="section-actions recipe-group-actions">
+                  <button type="button" (click)="setRecipeRowsEnabled(recipeRows, true)">
+                    Enable shown
+                  </button>
+                  <button type="button" (click)="setRecipeRowsEnabled(recipeRows, false)">
+                    Disable shown
+                  </button>
+                </div>
+              </div>
+
+              <div class="recipe-subtabs recipe-subtabs--three" aria-label="Default recipe category">
+                <button
+                  type="button"
+                  class="recipe-subtab"
+                  [class.recipe-subtab--active]="activeRecipePanel() === 'standard'"
+                  [attr.aria-pressed]="
+                    activeRecipePanel() === 'standard' ? 'true' : 'false'
+                  "
+                  (click)="activeRecipePanel.set('standard')"
+                >
+                  <span>Standard</span>
+                  <span>{{ standardBaseRows.length }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="recipe-subtab"
+                  [class.recipe-subtab--active]="activeRecipePanel() === 'converterResources'"
+                  [attr.aria-pressed]="
+                    activeRecipePanel() === 'converterResources' ? 'true' : 'false'
+                  "
+                  (click)="activeRecipePanel.set('converterResources')"
+                >
+                  <span>Converter resources</span>
+                  <span>{{ converterResourceRows.length }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="recipe-subtab"
+                  [class.recipe-subtab--active]="activeRecipePanel() === 'alternates'"
+                  [attr.aria-pressed]="
+                    activeRecipePanel() === 'alternates' ? 'true' : 'false'
+                  "
+                  (click)="activeRecipePanel.set('alternates')"
+                >
+                  <span>Alternates</span>
+                  <span>{{ alternateRows.length }}</span>
+                </button>
+              </div>
+
+              <div class="recipe-list" aria-label="Default recipes">
+                @if (recipeRows.length === 0) {
+                  <div class="recipe-empty">No recipes match the search.</div>
+                } @else {
+                  @for (row of recipeRows; track row.recipe.id) {
+                    <label
+                      class="config-toggle-row recipe-row"
+                      [class.config-toggle-row--enabled]="row.enabled"
+                      [class.config-toggle-row--disabled]="!row.enabled"
+                    >
+                      <input
+                        class="config-toggle-row__control"
+                        type="checkbox"
+                        [ngModel]="row.enabled"
+                        [attr.aria-label]="row.toggleLabel"
+                        (ngModelChange)="store.setDefaultRecipeEnabled(row.recipe.id, $event)"
+                      />
+                      <span class="config-toggle-row__indicator" aria-hidden="true"></span>
+                      <span class="config-toggle-row__copy">
+                        <span class="config-toggle-row__title">{{ row.recipe.displayName }}</span>
+                        <span class="recipe-meta-line">
+                          <span class="config-toggle-row__meta">{{ row.machineName }}</span>
+                        </span>
+                      </span>
+                      <span class="recipe-product-icons" aria-hidden="true">
+                        @for (product of row.productIcons; track $index) {
+                          <bw-game-icon
+                            [src]="product.iconSrc"
+                            [label]="product.displayName"
+                            [size]="'lg'"
+                            [kind]="'item'"
+                            [showTitle]="true"
+                          />
+                        }
+                        @if (row.hiddenProductIconCount > 0) {
+                          <span class="recipe-icon-more">+{{ row.hiddenProductIconCount }}</span>
+                        }
+                      </span>
+                      <span class="config-toggle-row__badges">
+                        <span class="recipe-chip" [class.recipe-chip--alt]="row.recipe.isAlternate">
+                          {{ row.recipe.isAlternate ? 'alternate' : 'base' }}
+                        </span>
+                        <span
+                          class="config-toggle-row__state"
+                          [class.config-toggle-row__state--off]="!row.enabled"
+                        >
+                          {{ row.enabled ? 'on' : 'off' }}
+                        </span>
+                      </span>
+                      <span class="recipe-detail-tooltip" role="tooltip">
+                        <span class="recipe-detail-tooltip__title">{{ row.recipe.displayName }}</span>
+                        <span class="recipe-detail-tooltip__stat">
+                          {{ row.machineName }} - {{ row.details.durationLabel }}
+                        </span>
+                        @if (row.details.ingredients.length > 0) {
+                          <span class="recipe-detail-tooltip__section">Inputs</span>
+                          @for (ingredient of row.details.ingredients; track ingredient.itemId) {
+                            <span class="recipe-detail-tooltip__flow">
+                              <bw-game-icon
+                                [src]="ingredient.iconSrc"
+                                [label]="ingredient.displayName"
+                                [size]="'xs'"
+                                [kind]="'item'"
+                              />
+                              <span>{{ ingredient.displayName }}</span>
+                              <strong>{{ ingredient.amountPerMinuteLabel }}</strong>
+                            </span>
+                          }
+                        }
+                        @if (row.details.products.length > 0) {
+                          <span class="recipe-detail-tooltip__section">Outputs</span>
+                          @for (product of row.details.products; track product.itemId) {
+                            <span class="recipe-detail-tooltip__flow">
+                              <bw-game-icon
+                                [src]="product.iconSrc"
+                                [label]="product.displayName"
+                                [size]="'xs'"
+                                [kind]="'item'"
+                              />
+                              <span>{{ product.displayName }}</span>
+                              <strong>{{ product.amountPerMinuteLabel }}</strong>
+                            </span>
+                          }
+                        }
+                      </span>
+                    </label>
+                  }
+                }
+              </div>
+            </section>
+          </div>
+        </section>
+      }
+
+      @case ('machines') {
+        <section class="defaults-section">
+          @let rows = store.defaultMachineRows();
+          <div class="section-heading">
+            <div>
+              <h3>Machine defaults</h3>
+              <span>Allowed recipe machines for new plans.</span>
+            </div>
+            <div class="section-actions">
+              <button type="button" (click)="setMachineRowsEnabled(rows, false)">Disable all</button>
+              <button type="button" (click)="setMachineRowsEnabled(rows, true)">Enable all</button>
+            </div>
+          </div>
+
+          @if (rows.length === 0) {
+            <div class="empty-state">No recipe-solving machines are available in this dataset.</div>
+          } @else {
+            <div
+              class="config-toggle-list config-toggle-list--wide config-toggle-list--machines"
+              aria-label="Default recipe machines"
+            >
+              @for (row of rows; track row.machine.id) {
+                <label
+                  class="config-toggle-row machine-row"
+                  [class.config-toggle-row--enabled]="row.enabled"
+                  [class.config-toggle-row--disabled]="!row.enabled"
+                >
+                  <input
+                    class="config-toggle-row__control"
+                    type="checkbox"
+                    [ngModel]="row.enabled"
+                    [attr.aria-label]="row.toggleLabel"
+                    (ngModelChange)="store.setDefaultMachineEnabled(row.machine.id, $event)"
+                  />
+                  <span class="config-toggle-row__indicator" aria-hidden="true"></span>
+                  <span class="machine-icon-slot">
+                    <bw-game-icon
+                      [src]="row.iconSrc"
+                      [label]="row.machine.displayName"
+                      [size]="'lg'"
+                      [kind]="'machine'"
+                      [showTitle]="true"
+                    />
+                  </span>
+                  <span class="config-toggle-row__copy">
+                    <span class="machine-title-line">
+                      <span class="config-toggle-row__title">{{ row.machine.displayName }}</span>
+                    </span>
+                    <span class="machine-meta">
+                      <span class="machine-meta__chip">{{ row.typeLabel }}</span>
+                      @if (row.powerLabel) {
+                        <span class="machine-meta__chip machine-meta__chip--power">
+                          {{ row.powerLabel }}
+                        </span>
+                      }
+                    </span>
+                  </span>
+                </label>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @case ('resources') {
+        <section class="defaults-section">
+          <div class="section-heading">
+            <div>
+              <h3>Resource defaults</h3>
+              <span>Raw resource availability and caps for future plans.</span>
+            </div>
+            <div class="section-actions resource-actions">
+              <button type="button" (click)="store.resetAllDefaultResources()">
+                Reset all to map limits
+              </button>
+              <button type="button" (click)="store.setAllDefaultResourcesEnabled(false)">
+                Disable all
+              </button>
+              <button type="button" (click)="store.setAllDefaultResourcesEnabled(true)">
+                Enable all
+              </button>
+            </div>
+          </div>
+
+          <div class="resource-grid" aria-label="Default raw resource caps">
+            @for (row of store.defaultResourceRows(); track row.resource.itemId) {
+              <div
+                class="resource-row"
+                [class.resource-row--disabled]="!row.enabled"
+                [class.resource-row--custom]="row.isCustom"
+              >
+                <label class="resource-toggle">
+                  <input
+                    type="checkbox"
+                    [attr.aria-label]="'Enable ' + row.resource.displayName + ' by default'"
+                    [ngModel]="row.enabled"
+                    (ngModelChange)="store.setDefaultResourceEnabled(row.resource.itemId, $event)"
+                  />
+                </label>
+
+                <div class="resource-copy">
+                  <div class="resource-title-line">
+                    <bw-game-icon
+                      [src]="row.iconSrc"
+                      [label]="row.resource.displayName"
+                      [size]="'sm'"
+                      [kind]="'item'"
+                      [showTitle]="true"
+                    />
+                    <span class="resource-name">{{ row.resource.displayName }}</span>
+                    @if (row.isCustom) {
+                      <span class="resource-marker">custom</span>
+                    }
+                    @if (!row.enabled) {
+                      <span class="resource-marker resource-marker--off">disabled</span>
+                    }
+                  </div>
+                  <span class="resource-meta">
+                    Map {{ row.baselineCapLabel }} &middot; Default {{ row.effectiveCapLabel }}
+                  </span>
+                </div>
+
+                <label class="resource-cap">
+                  <span class="sr-only">{{ row.resource.displayName }} default max per minute</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Unlimited"
+                    [ngModel]="row.capInputValue"
+                    (ngModelChange)="setResourceCap(row.resource.itemId, $event)"
+                  />
+                  <span>/ min</span>
+                </label>
+
+                <button
+                  type="button"
+                  title="Reset default to map limit"
+                  [attr.aria-label]="'Reset ' + row.resource.displayName + ' default to map limit'"
+                  (click)="store.resetDefaultResource(row.resource.itemId)"
+                >
+                  Reset
+                </button>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      @case ('display') {
+        <section class="defaults-section">
+          <div class="section-heading">
+            <div>
+              <h3>Display defaults</h3>
+              <span>Graph presentation for new plans.</span>
+            </div>
+          </div>
+
+          @if (store.defaultGraphDisplaySettings(); as display) {
+            <div class="display-settings-grid" aria-label="Default graph display settings">
+              <label class="display-setting-card">
+                <span class="display-setting-card__label">Max belt</span>
+                <select
+                  [ngModel]="display.maxBeltTier"
+                  (ngModelChange)="store.setDefaultMaxBeltTier($event)"
+                >
+                  @for (tier of beltTierOptions; track tier.value) {
+                    <option [ngValue]="tier.value">
+                      {{ tier.label }} &middot; {{ tier.capacityLabel }}
+                    </option>
+                  }
+                </select>
+              </label>
+
+              <label class="display-setting-card">
+                <span class="display-setting-card__label">Max pipe</span>
+                <select
+                  [ngModel]="display.maxPipeTier"
+                  (ngModelChange)="store.setDefaultMaxPipeTier($event)"
+                >
+                  @for (tier of pipeTierOptions; track tier.value) {
+                    <option [ngValue]="tier.value">
+                      {{ tier.label }} &middot; {{ tier.capacityLabel }}
+                    </option>
+                  }
+                </select>
+              </label>
+
+              <label class="display-setting-card">
+                <span class="display-setting-card__label">Rate precision</span>
+                <select
+                  [ngModel]="display.rateDecimalPlaces"
+                  (ngModelChange)="store.setDefaultRateDecimalPlaces($event)"
+                >
+                  @for (option of rateDecimalOptions; track option.value) {
+                    <option [ngValue]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="display-setting-card">
+                <span class="display-setting-card__label">Edge style</span>
+                <select
+                  [ngModel]="display.edgeStyle"
+                  (ngModelChange)="store.setDefaultGraphEdgeStyle($event)"
+                >
+                  @for (option of edgeStyleOptions; track option.value) {
+                    <option [ngValue]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="display-setting-card display-setting-card--check">
+                <span>
+                  <strong>Transport counts</strong>
+                  <em>Belt and pipe counts on flow labels</em>
+                </span>
+                <input
+                  type="checkbox"
+                  [ngModel]="display.showTransportLabels"
+                  (ngModelChange)="store.setDefaultShowTransportLabels($event)"
+                />
+              </label>
+
+              <label class="display-setting-card display-setting-card--check">
+                <span>
+                  <strong>Flow animation</strong>
+                  <em>Subtle motion on graph arrows</em>
+                </span>
+                <input
+                  type="checkbox"
+                  [ngModel]="display.animateFlowLines"
+                  (ngModelChange)="store.setDefaultAnimateFlowLines($event)"
+                />
+              </label>
+            </div>
+          }
+        </section>
+      }
+    }
+  </div>
+</section>

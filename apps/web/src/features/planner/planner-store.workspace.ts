@@ -1,6 +1,11 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { type GameDataset } from '@beltwise/game-data';
-import { createStableId, type PlannerProject } from '@beltwise/planner-core';
+import {
+  createDefaultUserDefaults,
+  createStableId,
+  type PlannerProject,
+  type PlannerUserDefaults,
+} from '@beltwise/planner-core';
 import { createStarterProject } from './planner-domain.helpers';
 import { type LoadedPlannerState } from './planner-persistence.service';
 import * as projectMutations from './planner-project-mutations';
@@ -32,6 +37,7 @@ export class PlannerWorkspaceSlice {
 
   public readonly projects = signal<PlannerProject[]>([]);
   public readonly activeProjectId = signal<string | undefined>(undefined);
+  public readonly userDefaults = signal<PlannerUserDefaults | null>(null);
   public readonly activeConfigTab = signal<ConfigurationTab>('plan');
   public readonly workbenchFocusRequest = signal<WorkbenchFocusRequest | null>(null);
 
@@ -61,7 +67,11 @@ export class PlannerWorkspaceSlice {
     if (!dataset) {
       return;
     }
-    const project = createStarterProject(dataset, `Plan ${this.projects().length + 1}`);
+    const project = createStarterProject(
+      dataset,
+      `Plan ${this.projects().length + 1}`,
+      this.requireUserDefaults(dataset),
+    );
     this.projects.update((projects) => [...projects, project]);
     this.activateProject(project, 'open-plan');
   }
@@ -101,6 +111,7 @@ export class PlannerWorkspaceSlice {
 
   public initializeFromStoredState(state: LoadedPlannerState): void {
     this.graphHooks.clearPendingGraphState();
+    this.userDefaults.set(state.userDefaults);
     this.projects.set(state.projects);
     const activeProject =
       state.projects.find((project) => project.id === state.activeProjectId) ?? state.projects[0];
@@ -111,11 +122,28 @@ export class PlannerWorkspaceSlice {
     this.activeProjectId.set(undefined);
   }
 
-  public initializeStarterProject(dataset: GameDataset): void {
+  public initializeStarterProject(
+    dataset: GameDataset,
+    userDefaults?: PlannerUserDefaults,
+  ): void {
     this.graphHooks.clearPendingGraphState();
-    const starter = createStarterProject(dataset);
+    const defaults = userDefaults ?? this.requireUserDefaults(dataset);
+    this.userDefaults.set(defaults);
+    const starter = createStarterProject(dataset, 'Starter factory', defaults);
     this.projects.set([starter]);
     this.activateProject(starter, 'open-plan');
+  }
+
+  public updateUserDefaults(
+    mapper: (userDefaults: PlannerUserDefaults, dataset: GameDataset) => PlannerUserDefaults,
+  ): void {
+    const dataset = this.options.dataset();
+    if (!dataset) {
+      return;
+    }
+    this.userDefaults.update((currentDefaults) =>
+      mapper(currentDefaults ?? createDefaultUserDefaults(dataset), dataset),
+    );
   }
 
   public updateActiveProject(mapper: (project: PlannerProject) => PlannerProject): void {
@@ -166,6 +194,16 @@ export class PlannerWorkspaceSlice {
       mode: focusMode,
       sequence: ++this.focusRequestSequence,
     });
+  }
+
+  private requireUserDefaults(dataset: GameDataset): PlannerUserDefaults {
+    const defaults = this.userDefaults();
+    if (defaults) {
+      return defaults;
+    }
+    const createdDefaults = createDefaultUserDefaults(dataset);
+    this.userDefaults.set(createdDefaults);
+    return createdDefaults;
   }
 }
 

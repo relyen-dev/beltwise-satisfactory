@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
+import { PlannerDefaultsPanelComponent } from './planner-defaults-panel.component';
 import { PlannerDisplaySectionComponent } from './planner-display-section.component';
 import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
 import { PlannerInspectorComponent } from './planner-inspector.component';
@@ -30,6 +31,7 @@ interface ConfigurationTabDefinition {
   imports: [
     CommonModule,
     FormsModule,
+    PlannerDefaultsPanelComponent,
     PlannerDisplaySectionComponent,
     PlannerInputsSectionComponent,
     PlannerInspectorComponent,
@@ -52,6 +54,7 @@ export class PlannerPageComponent {
     },
   });
   public readonly inspectorOpen = signal(true);
+  public readonly defaultsPanelOpen = signal(false);
   public readonly tabs: ConfigurationTabDefinition[] = [
     { id: 'plan', label: 'Plan' },
     { id: 'recipes', label: 'Recipes' },
@@ -78,6 +81,10 @@ export class PlannerPageComponent {
     this.workPanelOpen.set(false);
   }
 
+  public toggleDefaultsPanel(): void {
+    this.defaultsPanelOpen.update((open) => !open);
+  }
+
   @HostListener('window:beforeunload')
   @HostListener('window:pagehide')
   public flushGraphNodePositionsBeforeUnload(): void {
@@ -86,6 +93,11 @@ export class PlannerPageComponent {
 
   @HostListener('document:keydown.escape', ['$event'])
   public clearGraphSelectionFromKeyboard(event: KeyboardEvent): void {
+    if (this.defaultsPanelOpen() && !isEditableKeyboardTarget(event.target)) {
+      event.preventDefault();
+      this.defaultsPanelOpen.set(false);
+      return;
+    }
     if (!this.store.selectedGraphNodeId() || isEditableKeyboardTarget(event.target)) {
       return;
     }

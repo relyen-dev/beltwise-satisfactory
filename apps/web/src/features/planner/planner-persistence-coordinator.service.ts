@@ -8,7 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import type { GameDataset } from '@beltwise/game-data';
-import type { PlannerProject } from '@beltwise/planner-core';
+import type { PlannerProject, PlannerUserDefaults } from '@beltwise/planner-core';
 import { PlannerPersistenceService, type LoadedPlannerState } from './planner-persistence.service';
 
 export { createStoredPlannerState } from './planner-persistence.service';
@@ -17,8 +17,12 @@ export interface PlannerPersistenceCoordinatorBinding {
   readonly dataset: Signal<GameDataset | null>;
   readonly projects: Signal<PlannerProject[]>;
   readonly activeProjectId: Signal<string | undefined>;
+  readonly userDefaults: Signal<PlannerUserDefaults | null>;
   readonly initializeFromStoredState: (state: LoadedPlannerState) => void;
-  readonly initializeStarterProject: (dataset: GameDataset) => void;
+  readonly initializeStarterProject: (
+    dataset: GameDataset,
+    userDefaults?: PlannerUserDefaults,
+  ) => void;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,10 +53,11 @@ export class PlannerPersistenceCoordinatorService {
       () => {
         const projects = binding.projects();
         const activeProjectId = binding.activeProjectId();
-        if (!this.initialized) {
+        const userDefaults = binding.userDefaults();
+        if (!this.initialized || !userDefaults) {
           return;
         }
-        untracked(() => this.saveState(projects, activeProjectId));
+        untracked(() => this.saveState(projects, activeProjectId, userDefaults));
       },
       { injector: this.injector },
     );
@@ -62,11 +67,15 @@ export class PlannerPersistenceCoordinatorService {
     return this.persistence.load(dataset);
   }
 
-  public saveState(projects: PlannerProject[], activeProjectId: string | undefined): void {
+  public saveState(
+    projects: PlannerProject[],
+    activeProjectId: string | undefined,
+    userDefaults: PlannerUserDefaults,
+  ): void {
     if (projects.length === 0) {
       return;
     }
-    this.persistence.saveProjects(projects, activeProjectId);
+    this.persistence.saveProjects(projects, activeProjectId, userDefaults);
   }
 
   private initializePlannerState(
@@ -78,7 +87,7 @@ export class PlannerPersistenceCoordinatorService {
     if (stored && stored.projects.length > 0) {
       binding.initializeFromStoredState(stored);
     } else {
-      binding.initializeStarterProject(dataset);
+      binding.initializeStarterProject(dataset, stored?.userDefaults);
     }
   }
 }

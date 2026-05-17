@@ -56,6 +56,16 @@
           >
             Delete
           </button>
+          <button
+            type="button"
+            class="defaults-button"
+            title="Edit defaults for new plans"
+            aria-label="Edit defaults for new plans"
+            [attr.aria-expanded]="defaultsPanelOpen()"
+            (click)="toggleDefaultsPanel()"
+          >
+            Defaults
+          </button>
         </div>
       </div>
 
@@ -119,6 +129,10 @@
       </div>
     }
   </header>
+
+  @if (defaultsPanelOpen()) {
+    <bw-planner-defaults-panel (closed)="defaultsPanelOpen.set(false)" />
+  }
 
   @if (store.datasetError()) {
     <section class="load-error" role="alert">{{ store.datasetError() }}</section>
