@@ -31,6 +31,14 @@ export interface PlannerProject {
   buildState: PlanBuildState;
 }
 
+export interface PlannerUserDefaults {
+  recipeOverrides: Record<RecipeId, RecipeOverride>;
+  machineOverrides: Record<MachineId, MachineOverride>;
+  resourceOverrides: Record<ItemId, ResourceOverride>;
+  objectiveProfile: ObjectiveProfile;
+  graphDisplay: GraphDisplaySettings;
+}
+
 export interface ProductTarget {
   id: string;
   /** Empty string represents a draft target row before the user selects an item. */
@@ -99,10 +107,12 @@ export interface PlannerProjectCreateOptions {
   name: string;
   dataset: GameDataset;
   targets?: ProductTarget[];
+  userDefaults?: PlannerUserDefaults;
   now?: string;
 }
 
-export const PLANNER_STORAGE_SCHEMA_VERSION = 1;
+export const PLANNER_STORAGE_SCHEMA_VERSION = 2;
+const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 
 export function createDefaultGraphDisplaySettings(): GraphDisplaySettings {
   return {
@@ -130,7 +140,7 @@ export function createDefaultRecipeOverrides(
 ): Record<RecipeId, RecipeOverride> {
   return Object.values(dataset.recipes).reduce<Record<RecipeId, RecipeOverride>>(
     (overrides, recipe) => {
-      if (recipe.isAlternate) {
+      if (recipe.isAlternate || isConverterResourceRecipe(dataset, recipe)) {
         overrides[recipe.id] = { enabled: false };
       }
       return overrides;
@@ -139,8 +149,32 @@ export function createDefaultRecipeOverrides(
   );
 }
 
+export function createDefaultUserDefaults(dataset: GameDataset): PlannerUserDefaults {
+  return {
+    recipeOverrides: createDefaultRecipeOverrides(dataset),
+    machineOverrides: {},
+    resourceOverrides: {},
+    objectiveProfile: createDefaultObjectiveProfile(),
+    graphDisplay: createDefaultGraphDisplaySettings(),
+  };
+}
+
+export function createUserDefaultsFromProject(project: PlannerProject): PlannerUserDefaults {
+  return {
+    recipeOverrides: copyRecipeOverrides(project.recipeOverrides),
+    machineOverrides: copyMachineOverrides(project.machineOverrides),
+    resourceOverrides: copyResourceOverrides(project.resourceOverrides),
+    objectiveProfile: copyObjectiveProfile(project.objectiveProfile),
+    graphDisplay: { ...project.graphDisplay },
+  };
+}
+
 export function createPlannerProject(options: PlannerProjectCreateOptions): PlannerProject {
   const now = options.now ?? new Date().toISOString();
+  const userDefaults = mergeUserDefaults(
+    createDefaultUserDefaults(options.dataset),
+    options.userDefaults,
+  );
 
   return {
     id: options.id ?? createStableId('project'),
@@ -149,13 +183,13 @@ export function createPlannerProject(options: PlannerProjectCreateOptions): Plan
     createdAt: now,
     updatedAt: now,
     targets: options.targets ?? [],
-    recipeOverrides: createDefaultRecipeOverrides(options.dataset),
-    machineOverrides: {},
-    resourceOverrides: {},
+    recipeOverrides: copyRecipeOverrides(userDefaults.recipeOverrides),
+    machineOverrides: copyMachineOverrides(userDefaults.machineOverrides),
+    resourceOverrides: copyResourceOverrides(userDefaults.resourceOverrides),
     itemInputs: {},
-    objectiveProfile: createDefaultObjectiveProfile(),
+    objectiveProfile: copyObjectiveProfile(userDefaults.objectiveProfile),
     graphLayout: { nodePositions: {} },
-    graphDisplay: createDefaultGraphDisplaySettings(),
+    graphDisplay: { ...userDefaults.graphDisplay },
     buildState: { planLocked: false, nodeLayoutLocked: false, nodeStates: {} },
   };
 }
@@ -184,7 +218,7 @@ export function hydratePlannerProject(value: unknown, dataset: GameDataset): Pla
     updatedAt,
     targets: readProductTargets(value['targets']),
     recipeOverrides: {
-      ...defaults.recipeOverrides,
+      ...createLegacyProjectHydrationRecipeOverrides(dataset),
       ...readRecipeOverrides(value['recipeOverrides']),
     },
     machineOverrides: readMachineOverrides(value['machineOverrides']),
@@ -195,6 +229,24 @@ export function hydratePlannerProject(value: unknown, dataset: GameDataset): Pla
     graphDisplay: hydrateGraphDisplaySettings(value['graphDisplay']),
     buildState: hydrateBuildState(value['buildState']),
   };
+}
+
+export function hydratePlannerUserDefaults(
+  value: unknown,
+  dataset: GameDataset,
+): PlannerUserDefaults {
+  const defaults = createDefaultUserDefaults(dataset);
+  if (!isRecord(value)) {
+    return defaults;
+  }
+
+  return mergeUserDefaults(defaults, {
+    recipeOverrides: readRecipeOverrides(value['recipeOverrides']),
+    machineOverrides: readMachineOverrides(value['machineOverrides']),
+    resourceOverrides: readResourceOverrides(value['resourceOverrides']),
+    objectiveProfile: hydrateObjectiveProfile(value['objectiveProfile']),
+    graphDisplay: hydrateGraphDisplaySettings(value['graphDisplay']),
+  });
 }
 
 export function summarizeProject(project: PlannerProject): PlannerProjectSummary {
@@ -286,6 +338,107 @@ function readRecipeOverrides(value: unknown): Record<RecipeId, RecipeOverride> {
     overrides[recipeId] = { enabled: override['enabled'] };
   }
   return overrides;
+}
+
+function createLegacyProjectHydrationRecipeOverrides(
+  dataset: GameDataset,
+): Record<RecipeId, RecipeOverride> {
+  return Object.values(dataset.recipes).reduce<Record<RecipeId, RecipeOverride>>(
+    (overrides, recipe) => {
+      if (recipe.isAlternate) {
+        overrides[recipe.id] = { enabled: false };
+      }
+      return overrides;
+    },
+    {},
+  );
+}
+
+function isConverterResourceRecipe(
+  dataset: GameDataset,
+  recipe: GameDataset['recipes'][string],
+): boolean {
+  return (
+    !recipe.isAlternate &&
+    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
+    recipe.products.length > 0 &&
+    recipe.products.every((product) => dataset.resources[product.itemId] !== undefined)
+  );
+}
+
+function mergeUserDefaults(
+  defaults: PlannerUserDefaults,
+  overrides: PlannerUserDefaults | undefined,
+): PlannerUserDefaults {
+  if (!overrides) {
+    return {
+      recipeOverrides: copyRecipeOverrides(defaults.recipeOverrides),
+      machineOverrides: copyMachineOverrides(defaults.machineOverrides),
+      resourceOverrides: copyResourceOverrides(defaults.resourceOverrides),
+      objectiveProfile: copyObjectiveProfile(defaults.objectiveProfile),
+      graphDisplay: { ...defaults.graphDisplay },
+    };
+  }
+
+  return {
+    recipeOverrides: {
+      ...copyRecipeOverrides(defaults.recipeOverrides),
+      ...copyRecipeOverrides(overrides.recipeOverrides),
+    },
+    machineOverrides: {
+      ...copyMachineOverrides(defaults.machineOverrides),
+      ...copyMachineOverrides(overrides.machineOverrides),
+    },
+    resourceOverrides: {
+      ...copyResourceOverrides(defaults.resourceOverrides),
+      ...copyResourceOverrides(overrides.resourceOverrides),
+    },
+    objectiveProfile: copyObjectiveProfile(overrides.objectiveProfile),
+    graphDisplay: { ...defaults.graphDisplay, ...overrides.graphDisplay },
+  };
+}
+
+function copyRecipeOverrides(
+  recipeOverrides: Record<RecipeId, RecipeOverride>,
+): Record<RecipeId, RecipeOverride> {
+  const copy: Record<RecipeId, RecipeOverride> = {};
+  for (const [recipeId, override] of Object.entries(recipeOverrides)) {
+    copy[recipeId] = { enabled: override.enabled };
+  }
+  return copy;
+}
+
+function copyMachineOverrides(
+  machineOverrides: Record<MachineId, MachineOverride>,
+): Record<MachineId, MachineOverride> {
+  const copy: Record<MachineId, MachineOverride> = {};
+  for (const [machineId, override] of Object.entries(machineOverrides)) {
+    copy[machineId] = { enabled: override.enabled };
+  }
+  return copy;
+}
+
+function copyResourceOverrides(
+  resourceOverrides: Record<ItemId, ResourceOverride>,
+): Record<ItemId, ResourceOverride> {
+  const copy: Record<ItemId, ResourceOverride> = {};
+  for (const [itemId, override] of Object.entries(resourceOverrides)) {
+    copy[itemId] = {
+      ...(override.enabled !== undefined ? { enabled: override.enabled } : {}),
+      ...(override.maxPerMinute !== undefined ? { maxPerMinute: override.maxPerMinute } : {}),
+    };
+  }
+  return copy;
+}
+
+function copyObjectiveProfile(objectiveProfile: ObjectiveProfile): ObjectiveProfile {
+  return {
+    resourceScarcityWeight: objectiveProfile.resourceScarcityWeight,
+    powerWeight: objectiveProfile.powerWeight,
+    machineCountWeight: objectiveProfile.machineCountWeight,
+    surplusWeight: objectiveProfile.surplusWeight,
+    rawResourceMultipliers: { ...objectiveProfile.rawResourceMultipliers },
+  };
 }
 
 function readMachineOverrides(value: unknown): Record<MachineId, MachineOverride> {

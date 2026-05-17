@@ -5,6 +5,7 @@ import {
   encodePlannerPersistenceState,
   type LoadedPlannerState as CoreLoadedPlannerState,
   type PlannerProject,
+  type PlannerUserDefaults,
   type StoredPlannerState as CoreStoredPlannerState,
 } from '@beltwise/planner-core';
 
@@ -24,6 +25,8 @@ export {
   type StoredPlannerProjectV1,
   type StoredPlannerState,
   type StoredPlannerStateV1,
+  type StoredPlannerStateV2,
+  type StoredPlannerUserDefaultsV2,
   type StoredPointV1,
   type StoredProductTargetV1,
   type StoredRecipeOverrideV1,
@@ -58,8 +61,9 @@ export class PlannerPersistenceService {
   public saveProjects(
     projects: readonly PlannerProject[],
     activeProjectId: string | undefined,
+    userDefaults: PlannerUserDefaults,
   ): void {
-    this.saveStoredState(encodePlannerPersistenceState(projects, activeProjectId));
+    this.saveStoredState(encodePlannerPersistenceState(projects, activeProjectId, userDefaults));
   }
 
   private saveStoredState(state: CoreStoredPlannerState): void {

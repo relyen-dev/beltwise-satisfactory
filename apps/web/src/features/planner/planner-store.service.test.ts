@@ -3,9 +3,11 @@ import { Injector, runInInjectionContext, signal, type Signal } from '@angular/c
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
+  createDefaultUserDefaults,
   createPlannerProject,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
+  type PlannerUserDefaults,
   type ProductionPlanResult,
   type ProductTarget,
 } from '@beltwise/planner-core';
@@ -220,6 +222,21 @@ describe('PlannerStoreService', () => {
     expect(solveInput?.project.id).toBe(activeProject?.id);
   });
 
+  it('initializes a starter project with current user defaults', () => {
+    const userDefaults = createCustomUserDefaults();
+    const { store } = createStoreHarness((binding) => {
+      binding.initializeStarterProject(tinySatisfactoryDataset, userDefaults);
+    });
+
+    const project = requiredProject(store);
+
+    expect(project.recipeOverrides['Recipe_IronPlate_C']).toEqual({ enabled: false });
+    expect(project.recipeOverrides['Recipe_IronWire_C']).toEqual({ enabled: true });
+    expect(project.machineOverrides['Build_ConstructorMk1_C']).toEqual({ enabled: false });
+    expect(project.resourceOverrides['Desc_OreIron_C']).toEqual({ maxPerMinute: 180 });
+    expect(project.graphDisplay.maxBeltTier).toBe(5);
+  });
+
   it('keeps graph focus when a stored active project already has targets', () => {
     const project = createProject();
     const { store } = createStoreHarness((binding) => {
@@ -227,6 +244,7 @@ describe('PlannerStoreService', () => {
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeProjectId: project.id,
         projects: [project],
+        userDefaults: createDefaultUserDefaults(tinySatisfactoryDataset),
       });
     });
 
@@ -249,6 +267,7 @@ describe('PlannerStoreService', () => {
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeProjectId: 'missing-project',
         projects: [draftProject, targetProject],
+        userDefaults: createDefaultUserDefaults(tinySatisfactoryDataset),
       });
     });
 
@@ -290,6 +309,142 @@ describe('PlannerStoreService', () => {
       projectId: graphProject.id,
       mode: 'focus-graph',
       sequence: initialFocusSequence + 2,
+    });
+  });
+
+  it('creates new projects from user defaults without mutating existing projects', () => {
+    const userDefaults = createCustomUserDefaults();
+    const originalProject = createProject();
+    const { store } = createInitializedStore([originalProject], originalProject.id, userDefaults);
+
+    store.createProject();
+
+    const newProject = requiredProject(store);
+    const storedOriginal = store.projects().find((project) => project.id === originalProject.id);
+    expect(newProject.id).not.toBe(originalProject.id);
+    expect(newProject.recipeOverrides['Recipe_IronPlate_C']).toEqual({ enabled: false });
+    expect(newProject.recipeOverrides['Recipe_IronWire_C']).toEqual({ enabled: true });
+    expect(newProject.machineOverrides['Build_ConstructorMk1_C']).toEqual({ enabled: false });
+    expect(newProject.resourceOverrides['Desc_OreIron_C']).toEqual({ maxPerMinute: 180 });
+    expect(newProject.graphDisplay.maxBeltTier).toBe(5);
+    expect(storedOriginal).toEqual(originalProject);
+  });
+
+  it('duplicates the active project exactly without reapplying user defaults', () => {
+    const userDefaults = createCustomUserDefaults();
+    const project: PlannerProject = {
+      ...createProject(),
+      recipeOverrides: { Recipe_IronWire_C: { enabled: false } },
+      machineOverrides: {},
+      resourceOverrides: {},
+      graphDisplay: {
+        maxBeltTier: 1,
+        maxPipeTier: 1,
+        rateDecimalPlaces: 1,
+        edgeStyle: 'straight',
+        showTransportLabels: true,
+        animateFlowLines: false,
+      },
+    };
+    const { store } = createInitializedStore([project], project.id, userDefaults);
+
+    store.duplicateProject();
+
+    const clone = requiredProject(store);
+    expect(clone.id).not.toBe(project.id);
+    expect(clone.name).toBe(`${project.name} copy`);
+    expect(clone.recipeOverrides).toEqual(project.recipeOverrides);
+    expect(clone.machineOverrides).toEqual(project.machineOverrides);
+    expect(clone.resourceOverrides).toEqual(project.resourceOverrides);
+    expect(clone.graphDisplay).toEqual(project.graphDisplay);
+  });
+
+  it('keeps defaults commands separate from the active project', () => {
+    const { store } = createInitializedStore();
+    const beforeProject = requiredProject(store);
+
+    store.setDefaultRecipeEnabled('Recipe_IronPlate_C', false);
+    store.setDefaultMachineEnabled('Build_ConstructorMk1_C', false);
+    store.setDefaultResourceCap('Desc_OreIron_C', 120);
+    store.setDefaultGraphEdgeStyle('curved');
+
+    expect(requiredProject(store)).toEqual(beforeProject);
+    expect(store.userDefaults()?.recipeOverrides['Recipe_IronPlate_C']).toEqual({
+      enabled: false,
+    });
+    expect(store.userDefaults()?.machineOverrides['Build_ConstructorMk1_C']).toEqual({
+      enabled: false,
+    });
+    expect(store.userDefaults()?.resourceOverrides['Desc_OreIron_C']).toEqual({
+      maxPerMinute: 120,
+    });
+    expect(store.userDefaults()?.graphDisplay.edgeStyle).toBe('curved');
+  });
+
+  it('saves only default-eligible active plan settings as user defaults', () => {
+    const project: PlannerProject = {
+      ...createProject(),
+      targets: [
+        {
+          id: 'target-a',
+          itemId: 'Desc_IronPlate_C',
+          mode: 'fixed',
+          amountPerMinute: 20,
+          sortOrder: 0,
+        },
+      ],
+      recipeOverrides: { Recipe_IronWire_C: { enabled: true } },
+      machineOverrides: { Build_ConstructorMk1_C: { enabled: false } },
+      resourceOverrides: { Desc_OreIron_C: { enabled: false, maxPerMinute: 90 } },
+      itemInputs: { Desc_IngotIron_C: { amountPerMinute: 15 } },
+      graphLayout: { nodePositions: { node: { x: 1, y: 2 } } },
+      graphDisplay: {
+        maxBeltTier: 4,
+        maxPipeTier: 1,
+        rateDecimalPlaces: 2,
+        edgeStyle: 'curved',
+        showTransportLabels: false,
+        animateFlowLines: false,
+      },
+      buildState: {
+        planLocked: true,
+        nodeLayoutLocked: true,
+        nodeStates: { node: { done: true, note: 'Build next' } },
+      },
+    };
+    const { store } = createInitializedStore([project], project.id);
+
+    store.saveActivePlanAsDefaults();
+
+    expect(requiredProject(store)).toEqual(project);
+    expect(store.userDefaults()).toEqual({
+      recipeOverrides: project.recipeOverrides,
+      machineOverrides: project.machineOverrides,
+      resourceOverrides: project.resourceOverrides,
+      objectiveProfile: project.objectiveProfile,
+      graphDisplay: project.graphDisplay,
+    });
+  });
+
+  it('resets user defaults to built-in behavior for future new projects', () => {
+    const { store } = createInitializedStore([createProject()], 'project-a', createCustomUserDefaults());
+
+    store.resetUserDefaults();
+    store.createProject();
+
+    const newProject = requiredProject(store);
+    expect(store.userDefaults()).toEqual(createDefaultUserDefaults(tinySatisfactoryDataset));
+    expect(newProject.recipeOverrides['Recipe_IronPlate_C']).toBeUndefined();
+    expect(newProject.recipeOverrides['Recipe_IronWire_C']).toEqual({ enabled: false });
+    expect(newProject.machineOverrides).toEqual({});
+    expect(newProject.resourceOverrides).toEqual({});
+    expect(newProject.graphDisplay).toEqual({
+      maxBeltTier: 6,
+      maxPipeTier: 2,
+      rateDecimalPlaces: 3,
+      edgeStyle: 'straight',
+      showTransportLabels: true,
+      animateFlowLines: true,
     });
   });
 
@@ -496,6 +651,30 @@ function createEmptyProject(id: string, name: string): PlannerProject {
   });
 }
 
+function createCustomUserDefaults(): PlannerUserDefaults {
+  return {
+    ...createDefaultUserDefaults(tinySatisfactoryDataset),
+    recipeOverrides: {
+      Recipe_IronPlate_C: { enabled: false },
+      Recipe_IronWire_C: { enabled: true },
+    },
+    machineOverrides: {
+      Build_ConstructorMk1_C: { enabled: false },
+    },
+    resourceOverrides: {
+      Desc_OreIron_C: { maxPerMinute: 180 },
+    },
+    graphDisplay: {
+      maxBeltTier: 5,
+      maxPipeTier: 2,
+      rateDecimalPlaces: 2,
+      edgeStyle: 'curved',
+      showTransportLabels: false,
+      animateFlowLines: true,
+    },
+  };
+}
+
 function solveKey(project: PlannerProject, dataset: GameDataset = tinySatisfactoryDataset): string {
   const input = selectPlannerSolveInput(project, dataset);
   if (!input) {
@@ -533,6 +712,7 @@ function requiredSolveInput(
 function createInitializedStore(
   projects: PlannerProject[] = [createProject()],
   activeProjectId = projects[0]?.id,
+  userDefaults: PlannerUserDefaults = createDefaultUserDefaults(tinySatisfactoryDataset),
 ): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
   store: PlannerStoreService;
@@ -542,6 +722,7 @@ function createInitializedStore(
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
       activeProjectId,
       projects,
+      userDefaults,
     });
   });
 }

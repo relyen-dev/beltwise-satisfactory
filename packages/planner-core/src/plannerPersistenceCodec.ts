@@ -1,6 +1,7 @@
 import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import {
   hydratePlannerProject,
+  hydratePlannerUserDefaults,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
@@ -10,6 +11,7 @@ import {
   type PipelineTier,
   type PlanBuildState,
   type PlannerProject,
+  type PlannerUserDefaults,
   type ProductTarget,
   type RateDecimalPlaces,
   type RecipeOverride,
@@ -22,6 +24,7 @@ export interface LoadedPlannerState {
   schemaVersion: PlannerStorageSchemaVersion;
   activeProjectId?: string;
   projects: PlannerProject[];
+  userDefaults: PlannerUserDefaults;
 }
 
 export interface StoredPlannerStateV1<Project = StoredPlannerProjectV1> {
@@ -30,7 +33,17 @@ export interface StoredPlannerStateV1<Project = StoredPlannerProjectV1> {
   projects: Project[];
 }
 
-export type StoredPlannerState = StoredPlannerStateV1;
+export interface StoredPlannerStateV2<
+  Project = StoredPlannerProjectV1,
+  Defaults = StoredPlannerUserDefaultsV2,
+> {
+  schemaVersion: 2;
+  activeProjectId?: string;
+  projects: Project[];
+  userDefaults?: Defaults;
+}
+
+export type StoredPlannerState = StoredPlannerStateV2;
 
 export interface StoredPlannerProjectV1 {
   id: string;
@@ -47,6 +60,14 @@ export interface StoredPlannerProjectV1 {
   graphLayout: StoredGraphLayoutStateV1;
   graphDisplay: StoredGraphDisplaySettingsV1;
   buildState: StoredPlanBuildStateV1;
+}
+
+export interface StoredPlannerUserDefaultsV2 {
+  recipeOverrides: Record<RecipeId, StoredRecipeOverrideV1>;
+  machineOverrides: Record<MachineId, StoredMachineOverrideV1>;
+  resourceOverrides: Record<ItemId, StoredResourceOverrideV1>;
+  objectiveProfile: StoredObjectiveProfileV1;
+  graphDisplay: StoredGraphDisplaySettingsV1;
 }
 
 export interface StoredProductTargetV1 {
@@ -115,15 +136,17 @@ interface RawVersionedStoredPlannerState {
   schemaVersion: number;
   activeProjectId?: string;
   projects: unknown[];
+  userDefaults?: unknown;
 }
 
-type HydratableStoredPlannerState = StoredPlannerStateV1<unknown>;
+type HydratableStoredPlannerState = StoredPlannerStateV2<unknown, unknown>;
 type PlannerStorageMigration = (
   state: RawVersionedStoredPlannerState,
 ) => HydratableStoredPlannerState | null;
 
 const PLANNER_STORAGE_MIGRATIONS: Readonly<Record<number, PlannerStorageMigration>> = {
   1: migrateStoredPlannerStateV1ToCurrent,
+  2: migrateStoredPlannerStateV2ToCurrent,
 };
 
 export function decodePlannerPersistenceState(
@@ -136,9 +159,7 @@ export function decodePlannerPersistenceState(
   }
 
   const projects = hydrateStoredProjects(stored.projects, dataset);
-  if (projects.length === 0) {
-    return null;
-  }
+  const userDefaults = hydratePlannerUserDefaults(stored.userDefaults, dataset);
 
   const activeProjectId = projects.some((project) => project.id === stored.activeProjectId)
     ? stored.activeProjectId
@@ -148,31 +169,37 @@ export function decodePlannerPersistenceState(
     schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
     ...(activeProjectId !== undefined ? { activeProjectId } : {}),
     projects,
+    userDefaults,
   };
 }
 
 export function encodePlannerPersistenceState(
   projects: readonly PlannerProject[],
   activeProjectId: string | undefined,
+  userDefaults: PlannerUserDefaults,
 ): StoredPlannerState {
   const storedProjects = projects.map(toStoredPlannerProjectV1);
+  const storedUserDefaults = toStoredPlannerUserDefaultsV2(userDefaults);
   return activeProjectId === undefined
     ? {
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         projects: storedProjects,
+        userDefaults: storedUserDefaults,
       }
     : {
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeProjectId,
         projects: storedProjects,
+        userDefaults: storedUserDefaults,
       };
 }
 
 export function createStoredPlannerState(
   projects: readonly PlannerProject[],
   activeProjectId: string | undefined,
+  userDefaults: PlannerUserDefaults,
 ): StoredPlannerState {
-  return encodePlannerPersistenceState(projects, activeProjectId);
+  return encodePlannerPersistenceState(projects, activeProjectId, userDefaults);
 }
 
 function migrateStoredPlannerState(value: unknown): HydratableStoredPlannerState | null {
@@ -196,11 +223,34 @@ function migrateStoredPlannerStateV1ToCurrent(
     ? {
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         projects: state.projects,
+        userDefaults: undefined,
       }
     : {
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeProjectId: state.activeProjectId,
         projects: state.projects,
+        userDefaults: undefined,
+      };
+}
+
+function migrateStoredPlannerStateV2ToCurrent(
+  state: RawVersionedStoredPlannerState,
+): HydratableStoredPlannerState | null {
+  if (state.schemaVersion !== 2) {
+    return null;
+  }
+
+  return state.activeProjectId === undefined
+    ? {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        projects: state.projects,
+        userDefaults: state.userDefaults,
+      }
+    : {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeProjectId: state.activeProjectId,
+        projects: state.projects,
+        userDefaults: state.userDefaults,
       };
 }
 
@@ -231,6 +281,7 @@ function readVersionedStoredPlannerState(value: unknown): RawVersionedStoredPlan
   const schemaVersion = record['schemaVersion'];
   const activeProjectId = record['activeProjectId'];
   const projects = record['projects'];
+  const userDefaults = record['userDefaults'];
   if (
     typeof schemaVersion !== 'number' ||
     !Number.isInteger(schemaVersion) ||
@@ -241,8 +292,8 @@ function readVersionedStoredPlannerState(value: unknown): RawVersionedStoredPlan
   }
 
   return activeProjectId === undefined
-    ? { schemaVersion, projects }
-    : { schemaVersion, activeProjectId, projects };
+    ? { schemaVersion, projects, userDefaults }
+    : { schemaVersion, activeProjectId, projects, userDefaults };
 }
 
 function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProjectV1 {
@@ -268,6 +319,25 @@ function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProject
       animateFlowLines: project.graphDisplay.animateFlowLines,
     },
     buildState: toStoredPlanBuildStateV1(project.buildState),
+  };
+}
+
+function toStoredPlannerUserDefaultsV2(
+  userDefaults: PlannerUserDefaults,
+): StoredPlannerUserDefaultsV2 {
+  return {
+    recipeOverrides: toStoredRecipeOverridesV1(userDefaults.recipeOverrides),
+    machineOverrides: toStoredMachineOverridesV1(userDefaults.machineOverrides),
+    resourceOverrides: toStoredResourceOverridesV1(userDefaults.resourceOverrides),
+    objectiveProfile: toStoredObjectiveProfileV1(userDefaults.objectiveProfile),
+    graphDisplay: {
+      maxBeltTier: userDefaults.graphDisplay.maxBeltTier,
+      maxPipeTier: userDefaults.graphDisplay.maxPipeTier,
+      rateDecimalPlaces: userDefaults.graphDisplay.rateDecimalPlaces,
+      edgeStyle: userDefaults.graphDisplay.edgeStyle,
+      showTransportLabels: userDefaults.graphDisplay.showTransportLabels,
+      animateFlowLines: userDefaults.graphDisplay.animateFlowLines,
+    },
   };
 }
 

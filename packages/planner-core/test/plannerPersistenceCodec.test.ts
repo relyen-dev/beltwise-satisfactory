@@ -1,19 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
+  createDefaultUserDefaults,
   createPlannerProject,
   decodePlannerPersistenceState,
   encodePlannerPersistenceState,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
+  type PlannerUserDefaults,
   type StoredPlannerProjectV1,
 } from '@beltwise/planner-core';
 
 describe('encodePlannerPersistenceState', () => {
-  it('encodes the stable v1 planner storage shape', () => {
+  it('encodes the stable v2 planner storage shape', () => {
     const project = createDomainPlannerProject();
+    const userDefaults = createDomainUserDefaults();
 
-    const state = encodePlannerPersistenceState([project], project.id);
+    const state = encodePlannerPersistenceState([project], project.id, userDefaults);
 
     expect(state).toEqual({
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
@@ -86,6 +89,32 @@ describe('encodePlannerPersistenceState', () => {
           },
         },
       ],
+      userDefaults: {
+        recipeOverrides: {
+          Recipe_IronWire_C: { enabled: true },
+        },
+        machineOverrides: {
+          Build_ConstructorMk1_C: { enabled: false },
+        },
+        resourceOverrides: {
+          Desc_OreIron_C: { maxPerMinute: 180 },
+        },
+        objectiveProfile: {
+          resourceScarcityWeight: 1,
+          powerWeight: 0.2,
+          machineCountWeight: 0.25,
+          surplusWeight: 0.5,
+          rawResourceMultipliers: {},
+        },
+        graphDisplay: {
+          maxBeltTier: 5,
+          maxPipeTier: 2,
+          rateDecimalPlaces: 2,
+          edgeStyle: 'curved',
+          showTransportLabels: false,
+          animateFlowLines: true,
+        },
+      },
     });
   });
 
@@ -100,7 +129,11 @@ describe('encodePlannerPersistenceState', () => {
       })),
     };
 
-    const state = encodePlannerPersistenceState([projectWithDerivedState], project.id);
+    const state = encodePlannerPersistenceState(
+      [projectWithDerivedState],
+      project.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+    );
 
     const storedProject = firstStoredProject(state.projects);
     const storedTarget = firstStoredTarget(storedProject);
@@ -168,6 +201,7 @@ describe('decodePlannerPersistenceState', () => {
 
     expect(state?.schemaVersion).toBe(PLANNER_STORAGE_SCHEMA_VERSION);
     expect(state?.activeProjectId).toBe('project-from-v1');
+    expect(state?.userDefaults).toEqual(createDefaultUserDefaults(tinySatisfactoryDataset));
     const project = loadedProject(state?.projects, 'project-from-v1');
     expect(project.graphDisplay).toEqual({
       maxBeltTier: 6,
@@ -187,6 +221,60 @@ describe('decodePlannerPersistenceState', () => {
       },
     });
     expect('solverResult' in project).toBe(false);
+  });
+
+  it('saves and loads workspace defaults separately from projects', () => {
+    const userDefaults = createDomainUserDefaults();
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeProjectId: 'project-a',
+        projects: [rawPlannerProject({ id: 'project-a' })],
+        userDefaults: {
+          recipeOverrides: {
+            Recipe_IronPlate_C: { enabled: false },
+            Recipe_IronWire_C: { enabled: true },
+          },
+          machineOverrides: userDefaults.machineOverrides,
+          resourceOverrides: userDefaults.resourceOverrides,
+          objectiveProfile: userDefaults.objectiveProfile,
+          graphDisplay: userDefaults.graphDisplay,
+        },
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.userDefaults.recipeOverrides['Recipe_IronPlate_C']).toEqual({
+      enabled: false,
+    });
+    expect(state?.userDefaults.recipeOverrides['Recipe_IronWire_C']).toEqual({
+      enabled: true,
+    });
+    expect(state?.userDefaults.machineOverrides).toEqual(userDefaults.machineOverrides);
+    expect(state?.userDefaults.resourceOverrides).toEqual(userDefaults.resourceOverrides);
+    expect(state?.userDefaults.graphDisplay).toEqual(userDefaults.graphDisplay);
+  });
+
+  it('falls back to built-in defaults when stored defaults are missing or malformed', () => {
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        projects: [rawPlannerProject()],
+        userDefaults: {
+          recipeOverrides: 'bad',
+          machineOverrides: null,
+          resourceOverrides: {
+            Desc_OreIron_C: { maxPerMinute: 'fast' },
+          },
+          graphDisplay: {
+            maxBeltTier: 99,
+          },
+        },
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.userDefaults).toEqual(createDefaultUserDefaults(tinySatisfactoryDataset));
   });
 });
 
@@ -256,6 +344,36 @@ function createDomainPlannerProject(): PlannerProject {
           note: 'Floor 2',
         },
       },
+    },
+  };
+}
+
+function createDomainUserDefaults(): PlannerUserDefaults {
+  return {
+    ...createDefaultUserDefaults(tinySatisfactoryDataset),
+    recipeOverrides: {
+      Recipe_IronWire_C: { enabled: true },
+    },
+    machineOverrides: {
+      Build_ConstructorMk1_C: { enabled: false },
+    },
+    resourceOverrides: {
+      Desc_OreIron_C: { maxPerMinute: 180 },
+    },
+    objectiveProfile: {
+      resourceScarcityWeight: 1,
+      powerWeight: 0.2,
+      machineCountWeight: 0.25,
+      surplusWeight: 0.5,
+      rawResourceMultipliers: {},
+    },
+    graphDisplay: {
+      maxBeltTier: 5,
+      maxPipeTier: 2,
+      rateDecimalPlaces: 2,
+      edgeStyle: 'curved',
+      showTransportLabels: false,
+      animateFlowLines: true,
     },
   };
 }

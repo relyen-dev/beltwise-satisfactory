@@ -110,6 +110,10 @@ export interface ProductionGraphInput {
   rateDecimalPlaces: RateDecimalPlaces;
 }
 
+type ResourceOverrideSource = Pick<PlannerProject, 'resourceOverrides'>;
+type MachineOverrideSource = Pick<PlannerProject, 'machineOverrides'>;
+type RecipeOverrideSource = Pick<PlannerProject, 'recipeOverrides'>;
+
 const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const MAX_RECIPE_PRODUCT_ICONS = 1;
 
@@ -121,12 +125,15 @@ export function selectItemOptions(dataset: GameDataset | null): Item[] {
     : [];
 }
 
-export function selectResourceRows(dataset: GameDataset, project: PlannerProject): ResourceRow[] {
+export function selectResourceRows(
+  dataset: GameDataset,
+  source: ResourceOverrideSource,
+): ResourceRow[] {
   return Object.values(dataset.resources)
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
     .map((resource) => {
       const baselineCapPerMinute = defaultResourceCapPerMinute(resource);
-      const override = project.resourceOverrides[resource.itemId];
+      const override = source.resourceOverrides[resource.itemId];
       const storedCapPerMinute = override?.maxPerMinute ?? baselineCapPerMinute;
       const enabled = override?.enabled !== false;
       return {
@@ -155,7 +162,7 @@ export function selectExternalInputRows(
 
 export function selectMachineRows(
   dataset: GameDataset,
-  project: PlannerProject,
+  source: MachineOverrideSource,
   result: ProductionPlanResult | null = null,
 ): MachineRow[] {
   const relevantMachineIds = plannerRelevantMachineIds(dataset);
@@ -165,7 +172,7 @@ export function selectMachineRows(
     .filter(isDefined)
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
     .map((machine) => {
-      const enabled = project.machineOverrides[machine.id]?.enabled !== false;
+      const enabled = source.machineOverrides[machine.id]?.enabled !== false;
       return {
         machine,
         enabled,
@@ -196,7 +203,7 @@ export function selectMachinePanelSummary(
 
 export function selectRecipeRows(
   dataset: GameDataset,
-  project: PlannerProject,
+  source: RecipeOverrideSource,
   search: string,
 ): RecipeRow[] {
   const normalizedSearch = search.trim().toLowerCase();
@@ -204,7 +211,7 @@ export function selectRecipeRows(
     .filter((recipe) => recipe.displayName.toLowerCase().includes(normalizedSearch))
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
     .map((recipe) => {
-      const enabled = project.recipeOverrides[recipe.id]?.enabled !== false;
+      const enabled = source.recipeOverrides[recipe.id]?.enabled !== false;
       return {
         recipe,
         enabled,

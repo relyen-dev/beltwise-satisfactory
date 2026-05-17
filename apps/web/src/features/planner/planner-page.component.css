@@ -83,6 +83,12 @@
   min-height: 30px;
 }
 
+.defaults-button[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--color-accent) 62%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--color-panel-raised));
+  color: var(--color-accent-strong);
+}
+
 .solve-pill {
   display: inline-flex;
   align-items: center;
