@@ -4,6 +4,7 @@ import {
   hydratePlannerProject,
   hydratePlannerUserDefaults,
   PLANNER_STORAGE_SCHEMA_VERSION,
+  uniqueStrings,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type GraphNodeBuildState,
@@ -416,10 +417,13 @@ function decodeStoredPlannerSession(
 
   const now = new Date().toISOString();
   const id = readString(session['id']);
+  if (id === undefined) {
+    return null;
+  }
   const createdAt = readString(session['createdAt']) ?? now;
   const activeProjectId = readString(session['activeProjectId']) ?? projectIds[0];
   return createPlannerSession({
-    ...(id !== undefined ? { id } : {}),
+    id,
     name: readString(session['name']) ?? 'Restored session',
     datasetId: readString(session['datasetId']) ?? dataset.id,
     createdAt,
@@ -520,11 +524,11 @@ function normalizeSessionsForStorage(
     .filter((session): session is PlannerSession => session !== null);
 
   if (normalizedSessions.length === 0) {
-    return createDefaultSessionForProjects(
-      projects,
-      projects[0]?.datasetId ?? 'unknown',
-      activeProjectId,
-    );
+    const firstProject = projects[0];
+    if (firstProject === undefined) {
+      return [];
+    }
+    return createDefaultSessionForProjects(projects, firstProject.datasetId, activeProjectId);
   }
 
   const assignedProjectIds = new Set(normalizedSessions.flatMap((session) => session.projectIds));
@@ -755,19 +759,6 @@ function readStringArray(value: unknown): string[] {
   return uniqueStrings(
     value.filter((item): item is string => typeof item === 'string' && item.length > 0),
   );
-}
-
-function uniqueStrings(values: readonly string[]): string[] {
-  const uniqueValues: string[] = [];
-  const seen = new Set<string>();
-  for (const value of values) {
-    if (seen.has(value)) {
-      continue;
-    }
-    seen.add(value);
-    uniqueValues.push(value);
-  }
-  return uniqueValues;
 }
 
 function earliestProjectCreatedAt(projects: readonly PlannerProject[]): string {

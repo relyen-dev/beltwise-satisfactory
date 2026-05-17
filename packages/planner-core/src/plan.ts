@@ -669,7 +669,7 @@ function readGraphNodeStates(value: unknown): Record<string, GraphNodeBuildState
   return nodeStates;
 }
 
-function uniqueStrings(values: readonly string[]): string[] {
+export function uniqueStrings(values: readonly string[]): string[] {
   const uniqueValues: string[] = [];
   const seen = new Set<string>();
   for (const value of values) {

@@ -100,10 +100,11 @@ export class PlannerWorkspaceSlice {
     }
 
     const project = this.selectProjectForSession(session);
-    this.activeSessionId.set(session.id);
-    if (project) {
-      this.activateProject(project, projectFocusMode(project), session.id);
+    if (!project) {
+      return;
     }
+    this.activeSessionId.set(session.id);
+    this.activateProject(project, projectFocusMode(project), session.id);
   }
 
   public createSession(): void {
@@ -115,7 +116,7 @@ export class PlannerWorkspaceSlice {
 
     const project = createStarterProject(dataset, 'Plan 1', this.requireUserDefaults(dataset));
     const session = createPlannerSession({
-      name: `Session ${this.sessions().length + 1}`,
+      name: createUniqueSessionName(this.sessions().map((candidate) => candidate.name)),
       datasetId: dataset.id,
       projectIds: [project.id],
       activeProjectId: project.id,
@@ -171,7 +172,29 @@ export class PlannerWorkspaceSlice {
     const activeId = this.activeProjectId();
     const activeSession = this.activeSession();
     const sessionProjects = this.activeSessionProjects();
-    if (!activeId || !activeSession || sessionProjects.length <= 1) {
+    if (
+      !activeId ||
+      !activeSession ||
+      !sessionProjects.some((project) => project.id === activeId)
+    ) {
+      return;
+    }
+    if (sessionProjects.length <= 1) {
+      const dataset = this.options.dataset();
+      if (!dataset) {
+        return;
+      }
+      const replacement = createStarterProject(
+        dataset,
+        'Plan 1',
+        this.requireUserDefaults(dataset),
+      );
+      this.projects.update((projects) => [
+        ...projects.filter((project) => project.id !== activeId),
+        replacement,
+      ]);
+      this.replaceProjectInSession(activeId, replacement, activeSession.id);
+      this.activateProject(replacement, 'open-plan', activeSession.id);
       return;
     }
     const remainingProjects = this.projects().filter((project) => project.id !== activeId);
@@ -335,7 +358,7 @@ export class PlannerWorkspaceSlice {
         activeProjectId: project.id,
         now: project.createdAt,
       });
-      this.sessions.set([session]);
+      this.sessions.update((sessions) => [...sessions, session]);
       this.activeSessionId.set(session.id);
       return;
     }
@@ -347,6 +370,51 @@ export class PlannerWorkspaceSlice {
       activeProjectId: project.id,
       updatedAt: now,
     }));
+  }
+
+  private replaceProjectInSession(
+    projectId: string,
+    replacementProject: PlannerProject,
+    activeSessionId: string,
+  ): void {
+    const now = new Date().toISOString();
+    this.sessions.update((sessions) =>
+      sessions.flatMap((session) => {
+        if (session.id !== activeSessionId) {
+          const projectIds = session.projectIds.filter((candidate) => candidate !== projectId);
+          if (projectIds.length === 0) {
+            return [];
+          }
+          if (projectIds.length === session.projectIds.length) {
+            return [session];
+          }
+          const activeProjectId =
+            session.activeProjectId === projectId ? projectIds[0] : session.activeProjectId;
+          return [
+            {
+              ...session,
+              projectIds,
+              ...(activeProjectId !== undefined ? { activeProjectId } : {}),
+              updatedAt: now,
+            },
+          ];
+        }
+
+        const projectIds = uniqueProjectIds(
+          session.projectIds.map((candidate) =>
+            candidate === projectId ? replacementProject.id : candidate,
+          ),
+        );
+        return [
+          {
+            ...session,
+            projectIds: projectIds.length > 0 ? projectIds : [replacementProject.id],
+            activeProjectId: replacementProject.id,
+            updatedAt: now,
+          },
+        ];
+      }),
+    );
   }
 
   private removeProjectFromSessions(
@@ -427,6 +495,37 @@ function uniqueProjectIds(projectIds: readonly string[]): string[] {
     uniqueIds.push(projectId);
   }
   return uniqueIds;
+}
+
+function createUniqueSessionName(existingNames: readonly string[]): string {
+  const baseName = 'Session';
+  const normalizedNames = new Set(existingNames.map((name) => name.trim().toLowerCase()));
+  let nextIndex = 1;
+
+  for (const name of existingNames) {
+    const trimmedName = name.trim();
+    if (trimmedName.toLowerCase() === baseName.toLowerCase()) {
+      nextIndex = Math.max(nextIndex, 2);
+      continue;
+    }
+
+    const match = /^Session (\d+)$/i.exec(trimmedName);
+    if (!match) {
+      continue;
+    }
+    const index = Number.parseInt(match[1] ?? '', 10);
+    if (Number.isInteger(index)) {
+      nextIndex = Math.max(nextIndex, index + 1);
+    }
+  }
+
+  while (true) {
+    const candidate = `${baseName} ${nextIndex}`;
+    if (!normalizedNames.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+    nextIndex += 1;
+  }
 }
 
 function projectFocusMode(project: PlannerProject): WorkbenchFocusMode {

@@ -358,12 +358,39 @@ describe('PlannerStoreService', () => {
 
     store.createSession();
     expect(store.sessions()).toHaveLength(3);
-    expect(store.activeSession()?.name).toBe('Session 3');
+    expect(store.activeSession()?.name).toBe('Session 1');
     expect(store.activeSessionProjects()).toHaveLength(1);
     expect(requiredProject(store).recipeOverrides['Recipe_IronPlate_C']).toEqual({
       enabled: false,
     });
     expect(store.userDefaults()).toEqual(userDefaults);
+  });
+
+  it('ignores session selection when the session has no loadable projects', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const staleSession: PlannerSession = {
+      id: 'session-stale',
+      name: 'Stale session',
+      datasetId: tinySatisfactoryDataset.id,
+      createdAt: NOW,
+      updatedAt: NOW,
+      projectIds: ['missing-project'],
+      activeProjectId: 'missing-project',
+    };
+    const { store } = createInitializedStore(
+      [projectA],
+      projectA.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA, staleSession],
+      sessionA.id,
+    );
+
+    store.selectSession(staleSession.id);
+
+    expect(store.activeSessionId()).toBe(sessionA.id);
+    expect(store.activeProjectId()).toBe(projectA.id);
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectA.id]);
   });
 
   it('creates new projects from user defaults without mutating existing projects', () => {
@@ -474,8 +501,14 @@ describe('PlannerStoreService', () => {
 
     store.deleteProject();
 
-    expect(store.projects().map((project) => project.id)).toEqual([projectA.id]);
-    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectA.id]);
+    const replacementProject = requiredProject(store);
+    expect(store.projects().map((project) => project.id)).toEqual([replacementProject.id]);
+    expect(replacementProject.id).not.toBe(projectA.id);
+    expect(replacementProject.name).toBe('Plan 1');
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      replacementProject.id,
+    ]);
+    expect(store.activeProjectId()).toBe(replacementProject.id);
   });
 
   it('keeps defaults commands separate from the active project', () => {

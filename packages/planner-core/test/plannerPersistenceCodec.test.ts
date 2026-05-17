@@ -353,6 +353,39 @@ describe('decodePlannerPersistenceState', () => {
     expect(state?.sessions[0]?.activeProjectId).toBe('project-a');
   });
 
+  it('ignores v3 sessions without stable ids before selecting the active session', () => {
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'missing-session',
+        activeProjectId: 'project-a',
+        sessions: [
+          {
+            name: 'Missing id session',
+            datasetId: tinySatisfactoryDataset.id,
+            createdAt: '2026-05-12T00:00:00.000Z',
+            updatedAt: '2026-05-12T00:00:00.000Z',
+            projectIds: ['project-a'],
+            activeProjectId: 'project-a',
+          },
+        ],
+        projects: [rawPlannerProject({ id: 'project-a' })],
+        userDefaults: createDomainUserDefaults(),
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.activeSessionId).toBe('session-default');
+    expect(state?.activeProjectId).toBe('project-a');
+    expect(state?.sessions).toMatchObject([
+      {
+        id: 'session-default',
+        projectIds: ['project-a'],
+        activeProjectId: 'project-a',
+      },
+    ]);
+  });
+
   it('saves and loads workspace defaults separately from projects', () => {
     const userDefaults = createDomainUserDefaults();
     const state = decodePlannerPersistenceState(
