@@ -64,43 +64,93 @@
               <button type="button" (click)="cancelProjectNameEdit()">Cancel</button>
             </form>
           } @else {
-            <div class="active-plan-title">
-              @if (activePlanDockItem(); as activePlan) {
-                @if (activePlan.iconSrc) {
-                  <bw-game-icon
-                    [src]="activePlan.iconSrc"
-                    [label]="activePlan.iconLabel"
-                    size="sm"
-                  />
-                } @else {
-                  <span class="plan-avatar" aria-hidden="true">{{ activePlan.fallbackLabel }}</span>
-                }
-                <div class="active-plan-copy">
-                  <strong>{{ project.name }}</strong>
-                  <span>{{ activePlan.targetSummary }}</span>
-                </div>
-              } @else {
-                <div class="active-plan-copy">
-                  <strong>{{ project.name }}</strong>
-                  <span>Draft plan</span>
-                </div>
-              }
+            <div class="active-plan-selector">
               <button
                 type="button"
-                class="quiet-button"
+                class="active-plan-trigger"
+                aria-label="Choose active plan"
+                aria-haspopup="listbox"
+                aria-controls="active-plan-selector-panel"
+                [attr.aria-expanded]="planSelectorOpen()"
+                (click)="togglePlanSelector()"
+              >
+                @if (activePlanDockItem(); as activePlan) {
+                  @if (activePlan.iconSrc) {
+                    <bw-game-icon
+                      [src]="activePlan.iconSrc"
+                      [label]="activePlan.iconLabel"
+                      size="sm"
+                    />
+                  } @else {
+                    <span class="plan-avatar" aria-hidden="true">{{
+                      activePlan.fallbackLabel
+                    }}</span>
+                  }
+                  <span class="active-plan-copy">
+                    <strong>{{ project.name }}</strong>
+                    <span>{{ activePlan.targetSummary }}</span>
+                  </span>
+                } @else {
+                  <span class="active-plan-copy">
+                    <strong>{{ project.name }}</strong>
+                    <span>Draft plan</span>
+                  </span>
+                }
+                <span class="plan-selector-label">Plans</span>
+              </button>
+              <button
+                type="button"
+                class="rename-plan-button"
                 title="Rename active plan"
                 aria-label="Rename active plan"
                 (click)="startProjectNameEdit(project.id, project.name)"
               >
-                Rename
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    d="M4 16.8V20h3.2L17.7 9.5l-3.2-3.2L4 16.8Zm12.1-12.1 3.2 3.2 1.2-1.2a1.1 1.1 0 0 0 0-1.6l-1.6-1.6a1.1 1.1 0 0 0-1.6 0l-1.2 1.2Z"
+                  />
+                </svg>
               </button>
+              @if (planSelectorOpen()) {
+                <div
+                  id="active-plan-selector-panel"
+                  class="plan-selector-panel"
+                  role="listbox"
+                  aria-label="All plans in this save session"
+                >
+                  @for (plan of planDockItems(); track plan.id) {
+                    <button
+                      type="button"
+                      class="plan-selector-option"
+                      role="option"
+                      [class.is-active]="plan.isActive"
+                      [attr.aria-selected]="plan.isActive"
+                      [title]="'Switch to ' + plan.name + ' (' + plan.targetSummary + ')'"
+                      (click)="selectProjectFromSelector(plan.id)"
+                    >
+                      @if (plan.iconSrc) {
+                        <bw-game-icon [src]="plan.iconSrc" [label]="plan.iconLabel" size="sm" />
+                      } @else {
+                        <span class="plan-avatar" aria-hidden="true">{{ plan.fallbackLabel }}</span>
+                      }
+                      <span class="plan-option-copy">
+                        <strong>{{ plan.name }}</strong>
+                        <span>{{ plan.targetSummary }}</span>
+                      </span>
+                      @if (plan.isActive) {
+                        <span class="plan-option-state">Active</span>
+                      }
+                    </button>
+                  }
+                </div>
+              }
             </div>
           }
         </div>
 
         <nav class="plan-dock" aria-label="Plans in this save session">
-          <div class="plan-dock__track">
-            @for (plan of planDockItems(); track plan.id) {
+          <div class="plan-strip">
+            @for (plan of visiblePlanDockItems(); track plan.id) {
               <button
                 type="button"
                 class="plan-chip"
@@ -115,6 +165,20 @@
                   <span class="plan-avatar" aria-hidden="true">{{ plan.fallbackLabel }}</span>
                 }
                 <span class="plan-chip__name">{{ plan.name }}</span>
+              </button>
+            }
+          </div>
+          <div class="plan-direct-actions">
+            @if (hasHiddenPlanDockItems()) {
+              <button
+                type="button"
+                class="plan-more-button"
+                [title]="'Show all plans (' + hiddenPlanDockItemCount() + ' hidden)'"
+                [attr.aria-label]="'Show all plans, ' + hiddenPlanDockItemCount() + ' hidden'"
+                [attr.aria-expanded]="planSelectorOpen()"
+                (click)="openPlanSelector()"
+              >
+                More
               </button>
             }
             <button

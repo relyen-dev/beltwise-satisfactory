@@ -217,6 +217,83 @@ describe('PlannerPageComponent', () => {
     expect(component.sessionNameEditing()).toBe(false);
   });
 
+  it('lists all plans in the active plan selector and switches from it', () => {
+    const { component, selectProject, store } = createComponentHarness();
+    const projects = createPageProjectList(7);
+    store.activeSessionProjects.set(projects);
+    store.activeProjectId.set('project-4');
+
+    component.openPlanSelector();
+
+    expect(component.planSelectorOpen()).toBe(true);
+    expect(component.planDockItems().map((plan) => plan.id)).toEqual([
+      'project-1',
+      'project-2',
+      'project-3',
+      'project-4',
+      'project-5',
+      'project-6',
+      'project-7',
+    ]);
+
+    component.selectProjectFromSelector('project-7');
+
+    expect(selectProject).toHaveBeenCalledWith('project-7');
+    expect(component.planSelectorOpen()).toBe(false);
+  });
+
+  it('keeps the visible plan strip bounded around recently touched plans', () => {
+    const { component, selectProject, store } = createComponentHarness();
+    store.activeSessionProjects.set(createPageProjectList(8));
+    store.activeProjectId.set('project-5');
+
+    component.selectProject('project-2');
+    component.selectProject('project-7');
+    component.selectProject('project-3');
+
+    expect(component.visiblePlanDockItems().map((plan) => plan.id)).toEqual([
+      'project-3',
+      'project-7',
+      'project-2',
+      'project-1',
+      'project-4',
+      'project-5',
+    ]);
+    expect(component.hiddenPlanDockItemCount()).toBe(2);
+    expect(component.hasHiddenPlanDockItems()).toBe(true);
+
+    component.openPlanSelector();
+    component.selectProjectFromSelector('project-1');
+
+    expect(selectProject).toHaveBeenLastCalledWith('project-1');
+  });
+
+  it('keeps create plan available outside the compact strip when many plans exist', () => {
+    const { component, createProject, store } = createComponentHarness();
+    store.activeSessionProjects.set(createPageProjectList(10));
+    store.activeProjectId.set('project-10');
+    component.openPlanSelector();
+
+    component.createProject();
+
+    expect(createProject).toHaveBeenCalledOnce();
+    expect(component.planSelectorOpen()).toBe(false);
+    expect(component.visiblePlanDockItems()).toHaveLength(6);
+  });
+
+  it('closes the active plan selector from Escape before graph selection handling', () => {
+    const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    component.openPlanSelector();
+    const event = keyboardEvent(new TestHTMLElement('div'));
+
+    component.clearGraphSelectionFromKeyboard(event);
+
+    expect(component.planSelectorOpen()).toBe(false);
+    expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
   it('cancels inline renames from Escape before graph selection handling', () => {
     const { clearSelectedGraphNode, component, store } = createComponentHarness();
     component.startProjectNameEdit('project-a', 'Draft factory');
@@ -408,9 +485,15 @@ function createComponentHarness(): {
   }));
   const renameProject = vi.fn();
   const renameSession = vi.fn();
-  const selectProject = vi.fn();
+  let store: PlannerPageStoreHarness;
+  const selectProject = vi.fn((projectId: string) => {
+    store.activeProjectId.set(projectId);
+    store.activeProject.set(
+      store.activeSessionProjects().find((project) => project.id === projectId) ?? null,
+    );
+  });
   const selectSession = vi.fn();
-  const store: PlannerPageStoreHarness = {
+  store = {
     activeProject: signal<PlannerProject | null>(
       createPageProject('project-a', 'Draft factory', []),
     ),
@@ -538,6 +621,13 @@ function createPageProject(
     name,
     targets,
   } as PlannerProject;
+}
+
+function createPageProjectList(count: number): PlannerProject[] {
+  return Array.from({ length: count }, (_value, index) => {
+    const planNumber = index + 1;
+    return createPageProject(`project-${planNumber}`, `Factory ${planNumber}`, []);
+  });
 }
 
 class TestHTMLElement {

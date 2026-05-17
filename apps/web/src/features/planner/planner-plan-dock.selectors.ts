@@ -13,6 +13,12 @@ export interface PlanDockItem {
   readonly targetSummary: string;
 }
 
+export interface CompactPlanDockSelection {
+  readonly items: PlanDockItem[];
+  readonly hiddenCount: number;
+  readonly hasHiddenItems: boolean;
+}
+
 export function selectPlanDockItems(
   projects: readonly PlannerProject[],
   dataset: GameDataset | null,
@@ -21,6 +27,53 @@ export function selectPlanDockItems(
   return projects.map((project) =>
     selectPlanDockItem(project, dataset, activeProjectId === project.id),
   );
+}
+
+export function selectCompactPlanDockItems(
+  items: readonly PlanDockItem[],
+  activeProjectId: string | undefined,
+  recentlyTouchedProjectIds: readonly string[],
+  itemLimit: number,
+): CompactPlanDockSelection {
+  const visibleLimit = Math.max(1, Math.floor(itemLimit));
+  if (items.length <= visibleLimit) {
+    return {
+      items: [...items],
+      hiddenCount: 0,
+      hasHiddenItems: false,
+    };
+  }
+
+  const selectedItems: PlanDockItem[] = [];
+  const seenIds = new Set<string>();
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const addVisibleItem = (projectId: string | undefined): void => {
+    if (!projectId || seenIds.has(projectId)) {
+      return;
+    }
+    const item = itemById.get(projectId);
+    if (!item) {
+      return;
+    }
+    selectedItems.push(item);
+    seenIds.add(projectId);
+  };
+
+  addVisibleItem(activeProjectId);
+  for (const projectId of recentlyTouchedProjectIds) {
+    addVisibleItem(projectId);
+  }
+  for (const item of items) {
+    addVisibleItem(item.id);
+  }
+
+  const visibleItems = selectedItems.slice(0, visibleLimit);
+
+  return {
+    items: visibleItems,
+    hiddenCount: items.length - visibleItems.length,
+    hasHiddenItems: true,
+  };
 }
 
 function selectPlanDockItem(

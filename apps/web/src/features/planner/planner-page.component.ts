@@ -30,7 +30,7 @@ import {
   readPlannerShareCodeFromLocation,
 } from './planner-share-codec';
 import { GameIconComponent } from './game-icon.component';
-import { selectPlanDockItems } from './planner-plan-dock.selectors';
+import { selectCompactPlanDockItems, selectPlanDockItems } from './planner-plan-dock.selectors';
 import {
   projectRequiresDeleteConfirmation,
   sessionRequiresDeleteConfirmation,
@@ -47,6 +47,9 @@ interface PlanTransferStatus {
   kind: 'success' | 'warning' | 'error';
   message: string;
 }
+
+const VISIBLE_PLAN_CHIP_COUNT = 6;
+const RECENT_PLAN_MEMORY_LIMIT = 12;
 
 @Component({
   selector: 'bw-planner-page',
@@ -81,11 +84,13 @@ export class PlannerPageComponent implements OnInit {
     },
   });
   public readonly defaultsPanelOpen = signal(false);
+  public readonly planSelectorOpen = signal(false);
   public readonly shareImportOpen = signal(false);
   public readonly shareCodeText = signal('');
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
+  private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
   private readonly projectNameEditProjectId = signal<string | null>(null);
   private readonly sessionNameEditSessionId = signal<string | null>(null);
   public readonly projectNameDraft = signal('');
@@ -117,6 +122,21 @@ export class PlannerPageComponent implements OnInit {
   public readonly activePlanDockItem = computed(() => {
     return this.planDockItems().find((item) => item.isActive) ?? null;
   });
+  public readonly visiblePlanDockSelection = computed(() =>
+    selectCompactPlanDockItems(
+      this.planDockItems(),
+      this.store.activeProjectId(),
+      this.recentlyTouchedProjectIds(),
+      VISIBLE_PLAN_CHIP_COUNT,
+    ),
+  );
+  public readonly visiblePlanDockItems = computed(() => this.visiblePlanDockSelection().items);
+  public readonly hiddenPlanDockItemCount = computed(
+    () => this.visiblePlanDockSelection().hiddenCount,
+  );
+  public readonly hasHiddenPlanDockItems = computed(
+    () => this.visiblePlanDockSelection().hasHiddenItems,
+  );
 
   public ngOnInit(): void {
     effect(
@@ -146,31 +166,39 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public selectSession(sessionId: string): void {
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
+    this.recentlyTouchedProjectIds.set([]);
     this.store.selectSession(sessionId);
+    this.touchActiveProject();
   }
 
   public selectProject(projectId: string): void {
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
     this.store.selectProject(projectId);
+    this.touchProject(projectId);
   }
 
   public createSession(): void {
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
+    this.recentlyTouchedProjectIds.set([]);
     this.store.createSession();
+    this.touchActiveProject();
   }
 
   public createProject(): void {
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
     this.store.createProject();
+    this.touchActiveProject();
   }
 
   public duplicateProject(): void {
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
     this.store.duplicateProject();
+    this.touchActiveProject();
   }
 
   public startSessionNameEdit(sessionId: string, name: string): void {
+    this.closePlanSelector();
     this.sessionNameEditSessionId.set(sessionId);
     this.sessionNameDraft.set(name);
     this.focusSessionNameInput();
@@ -202,8 +230,10 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
 
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
+    this.recentlyTouchedProjectIds.set([]);
     this.store.deleteSession(session.id);
+    this.touchActiveProject();
   }
 
   public deleteActiveProject(): void {
@@ -219,11 +249,13 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
 
-    this.clearInlineEdits();
+    this.clearTransientNavigationState();
     this.store.deleteProject();
+    this.touchActiveProject();
   }
 
   public startProjectNameEdit(projectId: string, name: string): void {
+    this.closePlanSelector();
     this.projectNameEditProjectId.set(projectId);
     this.projectNameDraft.set(name);
     this.focusProjectNameInput();
@@ -248,6 +280,28 @@ export class PlannerPageComponent implements OnInit {
 
   public toggleShareImport(): void {
     this.shareImportOpen.update((open) => !open);
+  }
+
+  public togglePlanSelector(): void {
+    if (this.planSelectorOpen()) {
+      this.closePlanSelector();
+      return;
+    }
+
+    this.openPlanSelector();
+  }
+
+  public openPlanSelector(): void {
+    this.clearInlineEdits();
+    this.planSelectorOpen.set(true);
+  }
+
+  public closePlanSelector(): void {
+    this.planSelectorOpen.set(false);
+  }
+
+  public selectProjectFromSelector(projectId: string): void {
+    this.selectProject(projectId);
   }
 
   public exportActivePlan(): void {
@@ -307,13 +361,14 @@ export class PlannerPageComponent implements OnInit {
     }
 
     try {
-      this.clearInlineEdits();
+      this.clearTransientNavigationState();
       const result = this.store.importPlanJson(await file.text());
       if (!result.ok) {
         this.showPlanTransferStatus('error', result.message);
         return;
       }
 
+      this.touchActiveProject();
       this.showPlanImportResult(result.project.name, result.warnings);
     } catch {
       this.showPlanTransferStatus('error', 'The selected plan file could not be read.');
@@ -352,6 +407,11 @@ export class PlannerPageComponent implements OnInit {
       this.clearInlineEdits();
       return;
     }
+    if (this.planSelectorOpen()) {
+      event.preventDefault();
+      this.closePlanSelector();
+      return;
+    }
     if (this.defaultsPanelOpen() && !isEditableKeyboardTarget(event.target)) {
       event.preventDefault();
       this.defaultsPanelOpen.set(false);
@@ -372,6 +432,31 @@ export class PlannerPageComponent implements OnInit {
   private clearInlineEdits(): void {
     this.projectNameEditProjectId.set(null);
     this.sessionNameEditSessionId.set(null);
+  }
+
+  private clearTransientNavigationState(): void {
+    this.clearInlineEdits();
+    this.closePlanSelector();
+  }
+
+  private touchActiveProject(): void {
+    this.touchProject(this.store.activeProjectId());
+  }
+
+  private touchProject(projectId: string | undefined): void {
+    if (
+      !projectId ||
+      !this.store.activeSessionProjects().some((project) => project.id === projectId)
+    ) {
+      return;
+    }
+
+    this.recentlyTouchedProjectIds.update((projectIds) =>
+      [projectId, ...projectIds.filter((candidateId) => candidateId !== projectId)].slice(
+        0,
+        RECENT_PLAN_MEMORY_LIMIT,
+      ),
+    );
   }
 
   private focusProjectNameInput(): void {
@@ -398,7 +483,7 @@ export class PlannerPageComponent implements OnInit {
   private async importPlanShareCode(value: string, sourceLabel: string): Promise<boolean> {
     try {
       const payload = await decodePlannerShareCode(value);
-      this.clearInlineEdits();
+      this.clearTransientNavigationState();
       const result = this.store.importPlanSharePayload(payload);
       if (!result.ok) {
         this.showPlanTransferStatus('error', result.message);
@@ -406,6 +491,7 @@ export class PlannerPageComponent implements OnInit {
       }
 
       clearPlannerShareCodeFromLocation();
+      this.touchActiveProject();
       this.showPlanImportResult(result.project.name, result.warnings);
       return true;
     } catch (error) {
