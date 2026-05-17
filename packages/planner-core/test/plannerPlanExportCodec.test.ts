@@ -116,6 +116,9 @@ describe('Beltwise plan export files', () => {
     expect('solverResult' in exportFile.project).toBe(false);
     expect('solvedAmountPerMinute' in exportFile.project.targets[0]).toBe(false);
     expect('userDefaults' in exportFile).toBe(false);
+    expect('sessions' in exportFile).toBe(false);
+    expect('activeSessionId' in exportFile).toBe(false);
+    expect('sessionId' in exportFile.project).toBe(false);
   });
 
   it('decodes exported JSON and preserves plan-scoped ids, layout, and build notes', () => {
@@ -181,10 +184,7 @@ describe('Beltwise plan export files', () => {
       'Iron floor import',
     );
     expect(
-      createUniqueImportedPlannerProjectName('Iron floor', [
-        'Iron floor',
-        'Iron floor import',
-      ]),
+      createUniqueImportedPlannerProjectName('Iron floor', ['Iron floor', 'Iron floor import']),
     ).toBe('Iron floor import 2');
   });
 

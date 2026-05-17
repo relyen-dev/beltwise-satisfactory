@@ -77,15 +77,28 @@
   min-width: 190px;
 }
 
+.session-control {
+  min-width: 160px;
+}
+
+.session-control--name {
+  min-width: 180px;
+}
+
 .project-select,
 .project-name {
   min-width: 0;
 }
 
 .project-actions button,
+.session-create-button,
 .status-strip button,
 .share-import-panel button {
   min-height: 30px;
+}
+
+.session-create-button {
+  align-self: end;
 }
 
 .plan-file-input {

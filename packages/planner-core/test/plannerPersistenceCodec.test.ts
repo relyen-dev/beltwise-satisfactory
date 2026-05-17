@@ -12,7 +12,7 @@ import {
 } from '@beltwise/planner-core';
 
 describe('encodePlannerPersistenceState', () => {
-  it('encodes the stable v2 planner storage shape', () => {
+  it('encodes the stable v3 planner storage shape with sessions', () => {
     const project = createDomainPlannerProject();
     const userDefaults = createDomainUserDefaults();
 
@@ -20,7 +20,19 @@ describe('encodePlannerPersistenceState', () => {
 
     expect(state).toEqual({
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+      activeSessionId: 'session-default',
       activeProjectId: 'project-a',
+      sessions: [
+        {
+          id: 'session-default',
+          name: 'Default session',
+          datasetId: tinySatisfactoryDataset.id,
+          createdAt: '2026-05-12T00:00:00.000Z',
+          updatedAt: '2026-05-12T00:00:00.000Z',
+          projectIds: ['project-a'],
+          activeProjectId: 'project-a',
+        },
+      ],
       projects: [
         {
           id: 'project-a',
@@ -173,10 +185,18 @@ describe('decodePlannerPersistenceState', () => {
     );
 
     expect(state?.activeProjectId).toBe('valid-project');
+    expect(state?.activeSessionId).toBe('session-default');
+    expect(state?.sessions).toMatchObject([
+      {
+        id: 'session-default',
+        projectIds: ['valid-project'],
+        activeProjectId: 'valid-project',
+      },
+    ]);
     expect(state?.projects.map((project) => project.id)).toEqual(['valid-project']);
   });
 
-  it('migrates v1 state, hydrates defaults, and drops non-authoritative solver output', () => {
+  it('migrates v1 state into one default session and drops non-authoritative solver output', () => {
     const state = decodePlannerPersistenceState(
       {
         schemaVersion: 1,
@@ -200,7 +220,17 @@ describe('decodePlannerPersistenceState', () => {
     );
 
     expect(state?.schemaVersion).toBe(PLANNER_STORAGE_SCHEMA_VERSION);
+    expect(state?.activeSessionId).toBe('session-default');
     expect(state?.activeProjectId).toBe('project-from-v1');
+    expect(state?.sessions).toMatchObject([
+      {
+        id: 'session-default',
+        name: 'Default session',
+        datasetId: tinySatisfactoryDataset.id,
+        projectIds: ['project-from-v1'],
+        activeProjectId: 'project-from-v1',
+      },
+    ]);
     expect(state?.userDefaults).toEqual(createDefaultUserDefaults(tinySatisfactoryDataset));
     const project = loadedProject(state?.projects, 'project-from-v1');
     expect(project.graphDisplay).toEqual({
@@ -221,6 +251,106 @@ describe('decodePlannerPersistenceState', () => {
       },
     });
     expect('solverResult' in project).toBe(false);
+  });
+
+  it('migrates v2 state into one default session and preserves workspace defaults', () => {
+    const userDefaults = createDomainUserDefaults();
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: 2,
+        activeProjectId: 'project-b',
+        projects: [
+          rawPlannerProject({ id: 'project-a' }),
+          rawPlannerProject({ id: 'project-b', name: 'Project B' }),
+        ],
+        userDefaults,
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.schemaVersion).toBe(PLANNER_STORAGE_SCHEMA_VERSION);
+    expect(state?.activeSessionId).toBe('session-default');
+    expect(state?.activeProjectId).toBe('project-b');
+    expect(state?.sessions).toMatchObject([
+      {
+        id: 'session-default',
+        projectIds: ['project-a', 'project-b'],
+        activeProjectId: 'project-b',
+      },
+    ]);
+    expect(state?.userDefaults.resourceOverrides).toEqual(userDefaults.resourceOverrides);
+  });
+
+  it('encodes and decodes v3 sessions and active session ids', () => {
+    const projectA = createDomainPlannerProject();
+    const projectB = { ...createDomainPlannerProject(), id: 'project-b', name: 'Project B' };
+    const userDefaults = createDomainUserDefaults();
+    const encoded = encodePlannerPersistenceState(
+      [projectA, projectB],
+      projectB.id,
+      userDefaults,
+      [
+        {
+          id: 'session-a',
+          name: 'Rocky Desert',
+          datasetId: tinySatisfactoryDataset.id,
+          createdAt: '2026-05-10T00:00:00.000Z',
+          updatedAt: '2026-05-12T00:00:00.000Z',
+          projectIds: [projectA.id],
+          activeProjectId: projectA.id,
+        },
+        {
+          id: 'session-b',
+          name: 'Dune Desert',
+          datasetId: tinySatisfactoryDataset.id,
+          createdAt: '2026-05-11T00:00:00.000Z',
+          updatedAt: '2026-05-12T00:00:00.000Z',
+          projectIds: [projectB.id],
+          activeProjectId: projectB.id,
+        },
+      ],
+      'session-b',
+    );
+
+    const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
+
+    expect(encoded.activeSessionId).toBe('session-b');
+    expect(encoded.sessions.map((session) => session.id)).toEqual(['session-a', 'session-b']);
+    expect(decoded?.activeSessionId).toBe('session-b');
+    expect(decoded?.activeProjectId).toBe(projectB.id);
+    expect(decoded?.sessions.map((session) => session.projectIds)).toEqual([
+      [projectA.id],
+      [projectB.id],
+    ]);
+  });
+
+  it('filters stale session project ids and chooses a valid active project', () => {
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'session-a',
+        activeProjectId: 'missing-project',
+        sessions: [
+          {
+            id: 'session-a',
+            name: 'Session A',
+            datasetId: tinySatisfactoryDataset.id,
+            createdAt: '2026-05-12T00:00:00.000Z',
+            updatedAt: '2026-05-12T00:00:00.000Z',
+            projectIds: ['missing-project', 'project-a'],
+            activeProjectId: 'missing-project',
+          },
+        ],
+        projects: [rawPlannerProject({ id: 'project-a' })],
+        userDefaults: createDomainUserDefaults(),
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.activeSessionId).toBe('session-a');
+    expect(state?.activeProjectId).toBe('project-a');
+    expect(state?.sessions[0]?.projectIds).toEqual(['project-a']);
+    expect(state?.sessions[0]?.activeProjectId).toBe('project-a');
   });
 
   it('saves and loads workspace defaults separately from projects', () => {

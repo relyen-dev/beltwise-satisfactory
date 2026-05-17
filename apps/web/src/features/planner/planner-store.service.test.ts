@@ -4,12 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createDefaultUserDefaults,
+  createPlannerSession,
   createPlannerProject,
   encodeBeltwisePlanExport,
   encodeBeltwisePlanShare,
   PLANNER_STORAGE_SCHEMA_VERSION,
   stringifyBeltwisePlanExport,
   type PlannerProject,
+  type PlannerSession,
   type PlannerUserDefaults,
   type ProductionPlanResult,
   type ProductTarget,
@@ -245,7 +247,9 @@ describe('PlannerStoreService', () => {
     const { store } = createStoreHarness((binding) => {
       binding.initializeFromStoredState({
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'session-a',
         activeProjectId: project.id,
+        sessions: [createSession([project], project.id)],
         projects: [project],
         userDefaults: createDefaultUserDefaults(tinySatisfactoryDataset),
       });
@@ -268,7 +272,9 @@ describe('PlannerStoreService', () => {
     const { store } = createStoreHarness((binding) => {
       binding.initializeFromStoredState({
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'session-a',
         activeProjectId: 'missing-project',
+        sessions: [createSession([draftProject, targetProject], 'missing-project')],
         projects: [draftProject, targetProject],
         userDefaults: createDefaultUserDefaults(tinySatisfactoryDataset),
       });
@@ -315,6 +321,51 @@ describe('PlannerStoreService', () => {
     });
   });
 
+  it('creates, renames, and selects sessions with session-scoped project lists', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createProject();
+    const sessionA = createSession([projectA, projectB], projectB.id, 'session-a');
+    const sessionB = createSession([projectC], projectC.id, 'session-b');
+    const userDefaults = createCustomUserDefaults();
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectB.id,
+      userDefaults,
+      [sessionA, sessionB],
+      sessionA.id,
+    );
+
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      projectA.id,
+      projectB.id,
+    ]);
+
+    store.renameSession('Rocky Desert');
+    expect(store.activeSession()?.name).toBe('Rocky Desert');
+
+    store.selectSession(sessionB.id);
+    expect(store.activeSessionId()).toBe(sessionB.id);
+    expect(store.activeProjectId()).toBe(projectC.id);
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectC.id]);
+
+    store.selectSession(sessionA.id);
+    expect(store.activeProjectId()).toBe(projectB.id);
+    store.selectProject(projectA.id);
+    store.selectSession(sessionB.id);
+    store.selectSession(sessionA.id);
+    expect(store.activeProjectId()).toBe(projectA.id);
+
+    store.createSession();
+    expect(store.sessions()).toHaveLength(3);
+    expect(store.activeSession()?.name).toBe('Session 3');
+    expect(store.activeSessionProjects()).toHaveLength(1);
+    expect(requiredProject(store).recipeOverrides['Recipe_IronPlate_C']).toEqual({
+      enabled: false,
+    });
+    expect(store.userDefaults()).toEqual(userDefaults);
+  });
+
   it('creates new projects from user defaults without mutating existing projects', () => {
     const userDefaults = createCustomUserDefaults();
     const originalProject = createProject();
@@ -331,6 +382,7 @@ describe('PlannerStoreService', () => {
     expect(newProject.resourceOverrides['Desc_OreIron_C']).toEqual({ maxPerMinute: 180 });
     expect(newProject.graphDisplay.maxBeltTier).toBe(5);
     expect(storedOriginal).toEqual(originalProject);
+    expect(store.activeSessionProjects().map((project) => project.id)).toContain(newProject.id);
   });
 
   it('duplicates the active project exactly without reapplying user defaults', () => {
@@ -360,6 +412,70 @@ describe('PlannerStoreService', () => {
     expect(clone.machineOverrides).toEqual(project.machineOverrides);
     expect(clone.resourceOverrides).toEqual(project.resourceOverrides);
     expect(clone.graphDisplay).toEqual(project.graphDisplay);
+    expect(store.activeSessionProjects().map((candidate) => candidate.id)).toContain(clone.id);
+  });
+
+  it('keeps new, duplicated, and imported plans in the active session', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const sessionB = createSession([projectB], projectB.id, 'session-b');
+    const { store } = createInitializedStore(
+      [projectA, projectB],
+      projectB.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA, sessionB],
+      sessionB.id,
+    );
+
+    store.createProject();
+    const createdProjectId = requiredProject(store).id;
+    store.duplicateProject();
+    const duplicatedProjectId = requiredProject(store).id;
+    const importResult = store.importPlanJson(
+      createPlanExportJson(createImportSourceProject('project-source-json', 'Imported JSON')),
+    );
+    const shareResult = store.importPlanSharePayload(
+      encodeBeltwisePlanShare(
+        createImportSourceProject('project-source-share', 'Imported share'),
+        tinySatisfactoryDataset,
+      ),
+    );
+
+    expect(importResult.ok).toBe(true);
+    expect(shareResult.ok).toBe(true);
+    const sessionAIds = store.sessions().find((session) => session.id === sessionA.id)?.projectIds;
+    const sessionBIds = store.sessions().find((session) => session.id === sessionB.id)?.projectIds;
+    expect(sessionAIds).toEqual([projectA.id]);
+    expect(sessionBIds).toEqual([
+      projectB.id,
+      createdProjectId,
+      duplicatedProjectId,
+      importResult.ok ? importResult.project.id : '',
+      shareResult.ok ? shareResult.project.id : '',
+    ]);
+  });
+
+  it('updates the active session safely when deleting plans', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const { store } = createInitializedStore(
+      [projectA, projectB],
+      projectB.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [createSession([projectA, projectB], projectB.id)],
+    );
+
+    store.deleteProject();
+
+    expect(store.projects().map((project) => project.id)).toEqual([projectA.id]);
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectA.id]);
+    expect(store.activeProjectId()).toBe(projectA.id);
+
+    store.deleteProject();
+
+    expect(store.projects().map((project) => project.id)).toEqual([projectA.id]);
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectA.id]);
   });
 
   it('keeps defaults commands separate from the active project', () => {
@@ -430,7 +546,11 @@ describe('PlannerStoreService', () => {
   });
 
   it('resets user defaults to built-in behavior for future new projects', () => {
-    const { store } = createInitializedStore([createProject()], 'project-a', createCustomUserDefaults());
+    const { store } = createInitializedStore(
+      [createProject()],
+      'project-a',
+      createCustomUserDefaults(),
+    );
 
     store.resetUserDefaults();
     store.createProject();
@@ -640,9 +760,13 @@ describe('PlannerStoreService', () => {
     const parsed = JSON.parse(result.json) as {
       project: Record<string, unknown>;
       userDefaults?: unknown;
+      sessions?: unknown;
+      activeSessionId?: unknown;
     };
     expect(parsed.project['updatedAt']).toBe(beforeProject.updatedAt);
     expect('userDefaults' in parsed).toBe(false);
+    expect('sessions' in parsed).toBe(false);
+    expect('activeSessionId' in parsed).toBe(false);
   });
 
   it('flushes pending graph node positions before exporting the active plan', () => {
@@ -772,6 +896,8 @@ describe('PlannerStoreService', () => {
       },
     });
     expect('userDefaults' in result.payload).toBe(false);
+    expect('sessions' in result.payload).toBe(false);
+    expect('activeSessionId' in result.payload).toBe(false);
   });
 
   it('imports compact share payloads as new projects without changing user defaults', () => {
@@ -1008,6 +1134,8 @@ function createInitializedStore(
   projects: PlannerProject[] = [createProject()],
   activeProjectId = projects[0]?.id,
   userDefaults: PlannerUserDefaults = createDefaultUserDefaults(tinySatisfactoryDataset),
+  sessions: PlannerSession[] = [createSession(projects, activeProjectId)],
+  activeSessionId = sessions[0]?.id,
 ): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
   store: PlannerStoreService;
@@ -1015,10 +1143,27 @@ function createInitializedStore(
   return createStoreHarness((binding) => {
     binding.initializeFromStoredState({
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+      activeSessionId,
       activeProjectId,
+      sessions,
       projects,
       userDefaults,
     });
+  });
+}
+
+function createSession(
+  projects: readonly PlannerProject[],
+  activeProjectId = projects[0]?.id,
+  id = 'session-a',
+): PlannerSession {
+  return createPlannerSession({
+    id,
+    name: id,
+    datasetId: tinySatisfactoryDataset.id,
+    projectIds: projects.map((project) => project.id),
+    activeProjectId,
+    now: NOW,
   });
 }
 

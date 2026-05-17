@@ -8,7 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import type { GameDataset } from '@beltwise/game-data';
-import type { PlannerProject, PlannerUserDefaults } from '@beltwise/planner-core';
+import type { PlannerProject, PlannerSession, PlannerUserDefaults } from '@beltwise/planner-core';
 import { PlannerPersistenceService, type LoadedPlannerState } from './planner-persistence.service';
 
 export { createStoredPlannerState } from './planner-persistence.service';
@@ -16,6 +16,8 @@ export { createStoredPlannerState } from './planner-persistence.service';
 export interface PlannerPersistenceCoordinatorBinding {
   readonly dataset: Signal<GameDataset | null>;
   readonly projects: Signal<PlannerProject[]>;
+  readonly sessions: Signal<PlannerSession[]>;
+  readonly activeSessionId: Signal<string | undefined>;
   readonly activeProjectId: Signal<string | undefined>;
   readonly userDefaults: Signal<PlannerUserDefaults | null>;
   readonly initializeFromStoredState: (state: LoadedPlannerState) => void;
@@ -52,12 +54,16 @@ export class PlannerPersistenceCoordinatorService {
     this.saveEffect = effect(
       () => {
         const projects = binding.projects();
+        const sessions = binding.sessions();
+        const activeSessionId = binding.activeSessionId();
         const activeProjectId = binding.activeProjectId();
         const userDefaults = binding.userDefaults();
         if (!this.initialized || !userDefaults) {
           return;
         }
-        untracked(() => this.saveState(projects, activeProjectId, userDefaults));
+        untracked(() =>
+          this.saveState(projects, activeProjectId, userDefaults, sessions, activeSessionId),
+        );
       },
       { injector: this.injector },
     );
@@ -71,11 +77,19 @@ export class PlannerPersistenceCoordinatorService {
     projects: PlannerProject[],
     activeProjectId: string | undefined,
     userDefaults: PlannerUserDefaults,
+    sessions?: PlannerSession[],
+    activeSessionId?: string,
   ): void {
     if (projects.length === 0) {
       return;
     }
-    this.persistence.saveProjects(projects, activeProjectId, userDefaults);
+    this.persistence.saveProjects(
+      projects,
+      activeProjectId,
+      userDefaults,
+      sessions,
+      activeSessionId,
+    );
   }
 
   private initializePlannerState(

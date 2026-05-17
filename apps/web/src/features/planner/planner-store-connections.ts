@@ -1,6 +1,10 @@
 import { computed, type Signal } from '@angular/core';
 import { type GameDataset } from '@beltwise/game-data';
-import { type PlannerProject, type PlannerUserDefaults } from '@beltwise/planner-core';
+import {
+  type PlannerProject,
+  type PlannerSession,
+  type PlannerUserDefaults,
+} from '@beltwise/planner-core';
 import {
   type PlannerPersistenceCoordinatorBinding,
   type PlannerPersistenceCoordinatorService,
@@ -16,6 +20,8 @@ import { type PlannerSolverService } from './planner-solver.service';
 interface PlannerStoreConnectionPorts {
   readonly dataset: Signal<GameDataset | null>;
   readonly projects: Signal<PlannerProject[]>;
+  readonly sessions: Signal<PlannerSession[]>;
+  readonly activeSessionId: Signal<string | undefined>;
   readonly activeProjectId: Signal<string | undefined>;
   readonly userDefaults: Signal<PlannerUserDefaults | null>;
   readonly activeProject: Signal<PlannerProject | null>;
@@ -48,6 +54,8 @@ export class PlannerStoreConnections {
     return {
       dataset: this.ports.dataset,
       projects: this.ports.projects,
+      sessions: this.ports.sessions,
+      activeSessionId: this.ports.activeSessionId,
       activeProjectId: this.ports.activeProjectId,
       userDefaults: this.ports.userDefaults,
       initializeFromStoredState: this.ports.initializeFromStoredState,

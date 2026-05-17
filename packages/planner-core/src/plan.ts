@@ -3,8 +3,20 @@ import type { Point } from './model';
 
 export interface PlannerWorkspace {
   schemaVersion: number;
+  activeSessionId?: string;
   activeProjectId?: string;
+  sessions: PlannerSession[];
   projects: PlannerProjectSummary[];
+}
+
+export interface PlannerSession {
+  id: string;
+  name: string;
+  datasetId: string;
+  createdAt: string;
+  updatedAt: string;
+  projectIds: string[];
+  activeProjectId?: string;
 }
 
 export interface PlannerProjectSummary {
@@ -111,7 +123,18 @@ export interface PlannerProjectCreateOptions {
   now?: string;
 }
 
-export const PLANNER_STORAGE_SCHEMA_VERSION = 2;
+export interface PlannerSessionCreateOptions {
+  id?: string;
+  name: string;
+  datasetId: string;
+  projectIds?: readonly string[];
+  activeProjectId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  now?: string;
+}
+
+export const PLANNER_STORAGE_SCHEMA_VERSION = 3;
 const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 
 export function createDefaultGraphDisplaySettings(): GraphDisplaySettings {
@@ -191,6 +214,26 @@ export function createPlannerProject(options: PlannerProjectCreateOptions): Plan
     graphLayout: { nodePositions: {} },
     graphDisplay: { ...userDefaults.graphDisplay },
     buildState: { planLocked: false, nodeLayoutLocked: false, nodeStates: {} },
+  };
+}
+
+export function createPlannerSession(options: PlannerSessionCreateOptions): PlannerSession {
+  const createdAt = options.createdAt ?? options.now ?? new Date().toISOString();
+  const updatedAt = options.updatedAt ?? createdAt;
+  const projectIds = uniqueStrings(options.projectIds ?? []);
+  const activeProjectId =
+    options.activeProjectId !== undefined && projectIds.includes(options.activeProjectId)
+      ? options.activeProjectId
+      : projectIds[0];
+
+  return {
+    id: options.id ?? createStableId('session'),
+    name: options.name,
+    datasetId: options.datasetId,
+    createdAt,
+    updatedAt,
+    projectIds,
+    ...(activeProjectId !== undefined ? { activeProjectId } : {}),
   };
 }
 
@@ -624,4 +667,17 @@ function readGraphNodeStates(value: unknown): Record<string, GraphNodeBuildState
     };
   }
   return nodeStates;
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  const uniqueValues: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    uniqueValues.push(value);
+  }
+  return uniqueValues;
 }
