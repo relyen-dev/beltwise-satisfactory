@@ -5,6 +5,7 @@ import {
   encodePlannerPersistenceState,
   type LoadedPlannerState as CoreLoadedPlannerState,
   type PlannerProject,
+  type PlannerSession,
   type PlannerUserDefaults,
   type StoredPlannerState as CoreStoredPlannerState,
 } from '@beltwise/planner-core';
@@ -23,9 +24,11 @@ export {
   type StoredObjectiveProfileV1,
   type StoredPlanBuildStateV1,
   type StoredPlannerProjectV1,
+  type StoredPlannerSessionV3,
   type StoredPlannerState,
   type StoredPlannerStateV1,
   type StoredPlannerStateV2,
+  type StoredPlannerStateV3,
   type StoredPlannerUserDefaultsV2,
   type StoredPointV1,
   type StoredProductTargetV1,
@@ -38,11 +41,13 @@ export interface PlannerPersistenceStorage {
   setItem(key: string, value: string): void;
 }
 
-export const PLANNER_PERSISTENCE_STORAGE =
-  new InjectionToken<PlannerPersistenceStorage | null>('Beltwise planner persistence storage', {
+export const PLANNER_PERSISTENCE_STORAGE = new InjectionToken<PlannerPersistenceStorage | null>(
+  'Beltwise planner persistence storage',
+  {
     providedIn: 'root',
     factory: createBrowserPlannerPersistenceStorage,
-  });
+  },
+);
 
 @Injectable({ providedIn: 'root' })
 export class PlannerPersistenceService {
@@ -62,8 +67,18 @@ export class PlannerPersistenceService {
     projects: readonly PlannerProject[],
     activeProjectId: string | undefined,
     userDefaults: PlannerUserDefaults,
+    sessions?: readonly PlannerSession[],
+    activeSessionId?: string,
   ): void {
-    this.saveStoredState(encodePlannerPersistenceState(projects, activeProjectId, userDefaults));
+    this.saveStoredState(
+      encodePlannerPersistenceState(
+        projects,
+        activeProjectId,
+        userDefaults,
+        sessions,
+        activeSessionId,
+      ),
+    );
   }
 
   private saveStoredState(state: CoreStoredPlannerState): void {

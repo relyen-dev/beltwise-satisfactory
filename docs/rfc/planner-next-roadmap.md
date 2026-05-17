@@ -11,7 +11,7 @@ Primary themes:
 - Make the planning panels more visual, faster to scan, and less checkbox-heavy.
 - Add item and machine icons in restrained places that improve recognition without cluttering the graph.
 - Let users define their own defaults for new plans.
-- Introduce sessions as a future grouping model for saves, plans, defaults, notes, and linked factories.
+- Grow current game sessions from plan grouping into saves, defaults, notes, and linked factories.
 - Grow from one-factory planning toward save-wide planning through plan links and logistics capacity models.
 - Keep advanced map, save, logistics, and layout ideas behind abstractions so the core planner stays readable.
 
@@ -56,7 +56,7 @@ These are plausible next steps because they build on current app structure witho
 1. Planning panel refresh for Recipes, Machines, Display, and the inspector.
 2. Icon manifest and first tasteful icon placements.
 3. User-configurable defaults for new plans.
-4. Plan and session import/export.
+4. Plan import/export and session grouping polish.
 5. Objective profile controls for solver priorities.
 6. Plan and node note improvements.
 7. More graph connection display controls.
@@ -66,7 +66,7 @@ These are plausible next steps because they build on current app structure witho
 
 These are high-value ideas, but they need more data-model work and research before implementation.
 
-1. Game sessions that group plans, save imports, defaults, notes, locations, and logistics.
+1. Game sessions beyond plan grouping: save imports, defaults, notes, locations, and logistics.
 2. Save imports that initialize session defaults or update plan settings.
 3. Randomized resource node support through save-derived resource providers or seed reproduction.
 4. Linked plans where exports from one plan supply inputs to another.
@@ -80,26 +80,26 @@ These are high-value ideas, but they need more data-model work and research befo
 
 This index keeps the original brainstorm traceable while the rest of the RFC groups related work by system.
 
-| Idea | Area | Current placement |
-| --- | --- | --- |
-| Planning panel improvements | UX | [Planning Panels](#planning-panels) |
-| Item and machine icons | UX/data assets | [Icons](#icons) |
-| User defaults | Persistence/settings | [User Defaults](#user-defaults) |
-| Export/import | Persistence/sharing | [Import And Export](#import-and-export) |
-| Save importing for defaults/plan settings | Sessions/save import | [Sessions And Saves](#sessions-and-saves) |
-| Randomized node maps | Resource providers | [Sessions And Saves](#sessions-and-saves) and [resource-provider RFC](./resource-providers.md) |
-| Game sessions | Persistence/product model | [Sessions And Saves](#sessions-and-saves) |
-| Linked plans | Session-scale planning | [Linked Plans](#linked-plans) |
-| Train/vehicle logistics | Session-scale logistics | [Logistics](#logistics) |
-| Save-wide logistics overview | Session-scale logistics UX | [Session Logistics Overview](#session-logistics-overview) |
-| Solver priorities | Solver/UI | [Solver Objectives](#solver-objectives) |
-| Inspector overhaul | UX | [Inspector](#inspector) |
-| Plan/session notes | Persistence/UX | [Notes](#notes) |
-| Graph connection controls | Graph UX | [Graph Connection Controls](#graph-connection-controls) |
-| Wiki or knowledge links | Knowledge/help | [Wiki And Knowledge Links](#wiki-and-knowledge-links) |
-| Planned locations/map | Session/location planning | [Planned Locations And Map](#planned-locations-and-map) |
-| Recycled rubber/plastic drill-in | Graph explanation | [Drill-In Production Views](#drill-in-production-views) |
-| Top-down factory layout | Future layout system | [Top-Down Factory Layout](#top-down-factory-layout) |
+| Idea                                      | Area                       | Current placement                                                                              |
+| ----------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| Planning panel improvements               | UX                         | [Planning Panels](#planning-panels)                                                            |
+| Item and machine icons                    | UX/data assets             | [Icons](#icons)                                                                                |
+| User defaults                             | Persistence/settings       | [User Defaults](#user-defaults)                                                                |
+| Export/import                             | Persistence/sharing        | [Import And Export](#import-and-export)                                                        |
+| Save importing for defaults/plan settings | Sessions/save import       | [Sessions And Saves](#sessions-and-saves)                                                      |
+| Randomized node maps                      | Resource providers         | [Sessions And Saves](#sessions-and-saves) and [resource-provider RFC](./resource-providers.md) |
+| Game sessions                             | Persistence/product model  | [Sessions And Saves](#sessions-and-saves)                                                      |
+| Linked plans                              | Session-scale planning     | [Linked Plans](#linked-plans)                                                                  |
+| Train/vehicle logistics                   | Session-scale logistics    | [Logistics](#logistics)                                                                        |
+| Save-wide logistics overview              | Session-scale logistics UX | [Session Logistics Overview](#session-logistics-overview)                                      |
+| Solver priorities                         | Solver/UI                  | [Solver Objectives](#solver-objectives)                                                        |
+| Inspector overhaul                        | UX                         | [Inspector](#inspector)                                                                        |
+| Plan/session notes                        | Persistence/UX             | [Notes](#notes)                                                                                |
+| Graph connection controls                 | Graph UX                   | [Graph Connection Controls](#graph-connection-controls)                                        |
+| Wiki or knowledge links                   | Knowledge/help             | [Wiki And Knowledge Links](#wiki-and-knowledge-links)                                          |
+| Planned locations/map                     | Session/location planning  | [Planned Locations And Map](#planned-locations-and-map)                                        |
+| Recycled rubber/plastic drill-in          | Graph explanation          | [Drill-In Production Views](#drill-in-production-views)                                        |
+| Top-down factory layout                   | Future layout system       | [Top-Down Factory Layout](#top-down-factory-layout)                                            |
 
 ## Planning Panels
 
@@ -247,6 +247,11 @@ Future sharing:
 ## Sessions And Saves
 
 A session should represent a Satisfactory game world/save context. It can group plans without forcing every user into save management.
+
+Beltwise now has a first-pass session model that groups plans in local workspace
+state. The current implementation intentionally stops there: no save import,
+session defaults, linked plans, logistics, map pins, session-wide balance, or
+session import/export yet.
 
 Session model direction:
 
@@ -580,8 +585,8 @@ Recommended path:
 6. Expose objective presets and custom objective profiles.
 7. Add richer notes at plan and node scope.
 8. Add graph connection display controls and drill-in views.
-9. Design the session data model before implementing save imports or linked plans.
-10. Add session import/export once sessions exist.
+9. Extend the session data model before implementing save imports or linked plans.
+10. Add session import/export after session-scoped data exists beyond plan grouping.
 11. Prototype linked plans with manual links before logistics-backed links.
 12. Add a schematic session logistics overview once linked plans exist.
 13. Research save-derived logistics only after save import has a reliable parser boundary.

@@ -25,6 +25,30 @@ User projects persist configuration, not solver output:
 
 On load, the solver reruns from the stored project and generated dataset.
 
+Local workspace state is versioned separately from individual plan exports. The
+current workspace schema stores:
+
+- `sessions`: game-session records that group plan/project IDs.
+- `activeSessionId`: the selected session.
+- `projects`: standalone plan/project records.
+- `activeProjectId`: the selected plan within the active session.
+- `userDefaults`: global defaults for newly created plans.
+
+A `PlannerSession` represents a Satisfactory world/save context. It currently
+stores `id`, `name`, `datasetId`, `createdAt`, `updatedAt`, `projectIds`, and
+an optional `activeProjectId`. Sessions reference project IDs instead of
+embedding project records, so plans remain portable and can still be imported,
+exported, duplicated, and solved independently.
+
+Existing v1/v2 local workspaces migrate into one `Default session` that contains
+all existing projects and preserves the active project when possible. Hydration
+filters stale session project references and falls back to a valid session plan
+when saved IDs no longer exist.
+
+Sessions currently group plans only. Session defaults, save metadata, linked
+plans, logistics routes, map pins/locations, session-wide production balance,
+and session import/export are future extensions.
+
 Individual plans can be exported as readable Beltwise JSON files with `kind:
 beltwise.plan` and `formatVersion: 1`. A plan export contains one persisted
 project payload plus dataset metadata for mismatch warnings. It does not include

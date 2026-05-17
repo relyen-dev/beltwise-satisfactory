@@ -34,12 +34,25 @@ class MemoryStorage implements PlannerPersistenceStorage {
 }
 
 describe('PlannerPersistenceCoordinatorService', () => {
-  it('builds stored planner state without an undefined active project id field', () => {
+  it('builds stored planner state with a default session fallback', () => {
     const projects = [createProject('project-a')];
     const userDefaults = createDefaultUserDefaults(tinySatisfactoryDataset);
 
     expect(createStoredPlannerState(projects, undefined, userDefaults)).toEqual({
       schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+      activeSessionId: 'session-default',
+      activeProjectId: 'project-a',
+      sessions: [
+        {
+          id: 'session-default',
+          name: 'Default session',
+          datasetId: tinySatisfactoryDataset.id,
+          createdAt: NOW,
+          updatedAt: NOW,
+          projectIds: ['project-a'],
+          activeProjectId: 'project-a',
+        },
+      ],
       projects,
       userDefaults,
     });
@@ -55,7 +68,19 @@ describe('PlannerPersistenceCoordinatorService', () => {
     expect(storage.getItem(STORAGE_KEY)).toBe(
       JSON.stringify({
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'session-default',
         activeProjectId: 'project-b',
+        sessions: [
+          {
+            id: 'session-default',
+            name: 'Default session',
+            datasetId: tinySatisfactoryDataset.id,
+            createdAt: NOW,
+            updatedAt: NOW,
+            projectIds: ['project-a', 'project-b'],
+            activeProjectId: 'project-b',
+          },
+        ],
         projects,
         userDefaults,
       }),

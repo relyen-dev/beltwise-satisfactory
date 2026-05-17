@@ -6,26 +6,58 @@
     </div>
 
     @if (store.activeProject(); as project) {
-      <div class="project-strip" aria-label="Project controls">
+      <div class="project-strip" aria-label="Session and project controls">
+        @if (store.activeSession(); as session) {
+          <label class="project-control session-control">
+            <span>Session</span>
+            <select
+              class="project-select"
+              aria-label="Active session"
+              [ngModel]="session.id"
+              (ngModelChange)="store.selectSession($event)"
+            >
+              @for (candidate of store.sessions(); track candidate.id) {
+                <option [value]="candidate.id">{{ candidate.name }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="project-control session-control--name">
+            <span>Session name</span>
+            <input
+              class="project-name"
+              aria-label="Session name"
+              [ngModel]="session.name"
+              (ngModelChange)="store.renameSession($event)"
+            />
+          </label>
+
+          <div class="session-actions" aria-label="Session actions">
+            <button type="button" class="session-create-button" (click)="store.createSession()">
+              New session
+            </button>
+          </div>
+        }
+
         <label class="project-control">
-          <span>Project</span>
+          <span>Plan</span>
           <select
             class="project-select"
-            aria-label="Active project"
+            aria-label="Active plan"
             [ngModel]="project.id"
             (ngModelChange)="store.selectProject($event)"
           >
-            @for (candidate of store.projects(); track candidate.id) {
+            @for (candidate of store.activeSessionProjects(); track candidate.id) {
               <option [value]="candidate.id">{{ candidate.name }}</option>
             }
           </select>
         </label>
 
         <label class="project-control project-control--name">
-          <span>Name</span>
+          <span>Plan name</span>
           <input
             class="project-name"
-            aria-label="Project name"
+            aria-label="Plan name"
             [ngModel]="project.name"
             (ngModelChange)="store.renameProject($event)"
           />
@@ -34,11 +66,11 @@
         <div class="project-actions" aria-label="Project actions">
           <button
             type="button"
-            title="Create project"
-            aria-label="Create project"
+            title="Create plan"
+            aria-label="Create plan"
             (click)="store.createProject()"
           >
-            New
+            New plan
           </button>
           <button
             type="button"

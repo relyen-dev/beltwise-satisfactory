@@ -74,6 +74,9 @@ describe('Beltwise compact plan share payloads', () => {
       },
     });
     expect('userDefaults' in payload).toBe(false);
+    expect('sessions' in payload).toBe(false);
+    expect('activeSessionId' in payload).toBe(false);
+    expect('sessionId' in payload.p).toBe(false);
   });
 
   it('decodes from canonical defaults and preserves plan intent, ids, layout, and notes', () => {
@@ -130,7 +133,10 @@ describe('Beltwise compact plan share payloads', () => {
     });
     expect(
       decodeBeltwisePlanShare(
-        { ...encodeBeltwisePlanShare(createSharedPlannerProject(), tinySatisfactoryDataset), p: {} },
+        {
+          ...encodeBeltwisePlanShare(createSharedPlannerProject(), tinySatisfactoryDataset),
+          p: {},
+        },
         tinySatisfactoryDataset,
       ),
     ).toMatchObject({

@@ -102,6 +102,10 @@ export class PlannerStoreService implements OnDestroy {
   public readonly solveError = this.solver.solveError;
   public readonly solveResult = this.solver.solveResult;
 
+  public readonly sessions: PlannerWorkspaceSlice['sessions'];
+  public readonly activeSessionId: PlannerWorkspaceSlice['activeSessionId'];
+  public readonly activeSession: PlannerWorkspaceSlice['activeSession'];
+  public readonly activeSessionProjects: PlannerWorkspaceSlice['activeSessionProjects'];
   public readonly projects: PlannerWorkspaceSlice['projects'];
   public readonly activeProjectId: PlannerWorkspaceSlice['activeProjectId'];
   public readonly userDefaults: PlannerWorkspaceSlice['userDefaults'];
@@ -176,6 +180,8 @@ export class PlannerStoreService implements OnDestroy {
     this.connections = new PlannerStoreConnections({
       dataset: this.dataset,
       projects: this.workspace.projects,
+      sessions: this.workspace.sessions,
+      activeSessionId: this.workspace.activeSessionId,
       activeProjectId: this.workspace.activeProjectId,
       userDefaults: this.workspace.userDefaults,
       activeProject: this.workspace.activeProject,
@@ -184,6 +190,10 @@ export class PlannerStoreService implements OnDestroy {
         this.workspace.initializeStarterProject(dataset, userDefaults),
     });
 
+    this.sessions = this.workspace.sessions;
+    this.activeSessionId = this.workspace.activeSessionId;
+    this.activeSession = this.workspace.activeSession;
+    this.activeSessionProjects = this.workspace.activeSessionProjects;
     this.projects = this.workspace.projects;
     this.activeProjectId = this.workspace.activeProjectId;
     this.userDefaults = this.workspace.userDefaults;
@@ -233,6 +243,18 @@ export class PlannerStoreService implements OnDestroy {
 
   public selectProject(projectId: string): void {
     this.workspace.selectProject(projectId);
+  }
+
+  public selectSession(sessionId: string): void {
+    this.workspace.selectSession(sessionId);
+  }
+
+  public createSession(): void {
+    this.workspace.createSession();
+  }
+
+  public renameSession(name: string): void {
+    this.workspace.renameSession(name);
   }
 
   public createProject(): void {
@@ -312,7 +334,7 @@ export class PlannerStoreService implements OnDestroy {
   ): PlannerPlanImportResult {
     const name = createUniqueImportedPlannerProjectName(
       decodedProject.name,
-      this.workspace.projects().map((project) => project.name),
+      this.workspace.activeSessionProjects().map((project) => project.name),
     );
     const project = prepareImportedPlannerProject(decodedProject, { dataset, name });
     this.workspace.importProject(project);

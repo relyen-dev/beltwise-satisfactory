@@ -385,7 +385,7 @@ Frontend data loading:
 ```ts
 interface GameDataset {
   id: string;
-  game: "satisfactory";
+  game: 'satisfactory';
   gameVersionLabel: string;
   generatedAt: string;
   source: {
@@ -405,7 +405,7 @@ interface Item {
   className: string;
   displayName: string;
   description?: string;
-  form: "solid" | "liquid" | "gas" | "invalid" | "unknown";
+  form: 'solid' | 'liquid' | 'gas' | 'invalid' | 'unknown';
   stackSize?: string;
   energyValue?: number;
   sinkPoints?: number;
@@ -441,13 +441,13 @@ interface Machine {
   className: string;
   displayName: string;
   type:
-    | "manufacturer"
-    | "variablePowerManufacturer"
-    | "extractor"
-    | "resourceWellExtractor"
-    | "generator"
-    | "waterPump"
-    | "unknown";
+    | 'manufacturer'
+    | 'variablePowerManufacturer'
+    | 'extractor'
+    | 'resourceWellExtractor'
+    | 'generator'
+    | 'waterPump'
+    | 'unknown';
   powerMw?: number;
   powerRangeMw?: {
     min: number;
@@ -461,7 +461,7 @@ interface MachineExtraction {
   amountPerCycle?: number;
   cycleTimeSeconds?: number;
   amountPerMinute?: number;
-  allowedResourceForms?: Array<"solid" | "liquid" | "gas" | "invalid" | "unknown">;
+  allowedResourceForms?: Array<'solid' | 'liquid' | 'gas' | 'invalid' | 'unknown'>;
   allowedResourceItemIds?: ItemId[];
   extractorTypeName?: string;
 }
@@ -494,7 +494,7 @@ interface BaselineResourceLimits {
 interface ResourceLimit {
   itemId: ItemId;
   maxPerMinute: number;
-  source: "manual-map-count";
+  source: 'manual-map-count';
   nodeCounts?: {
     impure?: number;
     normal?: number;
@@ -593,16 +593,37 @@ interface PlannerProject {
   buildState: PlanBuildState;
 }
 
-interface StoredPlannerState {
-  schemaVersion: number;
+interface PlannerSession {
+  id: string;
+  name: string;
+  datasetId: string;
+  createdAt: string;
+  updatedAt: string;
+  projectIds: string[];
   activeProjectId?: string;
+}
+
+interface StoredPlannerStateV3 {
+  schemaVersion: 3;
+  activeSessionId?: string;
+  activeProjectId?: string;
+  sessions: PlannerSession[];
   projects: PlannerProject[];
+  userDefaults: PlannerUserDefaults;
+}
+
+interface PlannerUserDefaults {
+  recipeOverrides: Record<RecipeId, RecipeOverride>;
+  machineOverrides: Record<MachineId, MachineOverride>;
+  resourceOverrides: Record<ItemId, ResourceOverride>;
+  objectiveProfile: ObjectiveProfile;
+  graphDisplay: GraphDisplaySettings;
 }
 
 interface ProductTarget {
   id: string;
   itemId: ItemId;
-  mode: "fixed" | "maximize";
+  mode: 'fixed' | 'maximize';
   amountPerMinute?: number;
   sortOrder: number;
 }
@@ -636,7 +657,7 @@ interface GraphDisplaySettings {
   maxBeltTier: 1 | 2 | 3 | 4 | 5 | 6;
   maxPipeTier: 1 | 2;
   rateDecimalPlaces: 1 | 2 | 3 | 4;
-  edgeStyle: "straight" | "curved";
+  edgeStyle: 'straight' | 'curved';
   showTransportLabels: boolean;
   animateFlowLines: boolean;
 }
@@ -655,13 +676,16 @@ interface GraphNodeBuildState {
 
 Persistence rules:
 
-- Support multiple separate user plans/projects.
+- Support multiple separate user plans/projects grouped under game sessions.
 - Store project configuration locally under a versioned schema.
+- Keep projects as standalone plan records; sessions reference project ids instead of embedding plans.
+- Store global user defaults separately from projects and sessions.
 - Store targets, recipe overrides, machine overrides, resource caps, item inputs, objective profile, graph display settings, plan/node locks, node done state, node notes, and manual graph layout.
 - Do not persist full solver output, machine totals, or derived graph edges as authoritative state.
 - On project load, rerun the solver from the stored configuration and generated dataset.
 - If the solver is temporarily slow, cache the last result only as a non-authoritative convenience and invalidate it when inputs/dataset change.
-- Include import/export later so users can move plans between browsers without server storage.
+- Plan import/export remains plan-level only and does not include whole-session state.
+- See [`docs/data-model.md`](./data-model.md) for the current workspace migration and hydration rules.
 
 ## Graph Model
 
@@ -673,7 +697,7 @@ Solver result:
 
 ```ts
 interface ProductionPlanResult {
-  status: "optimal" | "infeasible" | "unbounded" | "error";
+  status: 'optimal' | 'infeasible' | 'unbounded' | 'error';
   recipeRates: Record<RecipeId, number>;
   rawInputs: Record<ItemId, number>;
   externalInputs?: Record<ItemId, number>;
@@ -700,7 +724,7 @@ Renderer boundary:
 ```ts
 interface GraphRendererNode {
   id: string;
-  kind: "resource" | "externalInput" | "recipe" | "output" | "byproduct";
+  kind: 'resource' | 'externalInput' | 'recipe' | 'output' | 'byproduct';
   position: { x: number; y: number };
   size?: { width: number; height: number };
   data: ProductionGraphNode;
