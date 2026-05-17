@@ -42,6 +42,48 @@
           </button>
           <button
             type="button"
+            title="Import a Beltwise plan JSON file"
+            aria-label="Import a Beltwise plan JSON file"
+            (click)="planImportInput.click()"
+          >
+            Import
+          </button>
+          <button
+            type="button"
+            title="Export active plan as Beltwise JSON"
+            aria-label="Export active plan as Beltwise JSON"
+            (click)="exportActivePlan()"
+          >
+            Export
+          </button>
+          <button
+            type="button"
+            title="Copy a self-contained plan link"
+            aria-label="Copy a self-contained plan link"
+            (click)="copyActivePlanShareLink()"
+          >
+            Copy link
+          </button>
+          <button
+            type="button"
+            title="Paste a Beltwise plan link or code"
+            aria-label="Paste a Beltwise plan link or code"
+            [attr.aria-expanded]="shareImportOpen()"
+            (click)="toggleShareImport()"
+          >
+            Paste
+          </button>
+          <input
+            #planImportInput
+            class="plan-file-input"
+            type="file"
+            accept=".json,application/json"
+            aria-hidden="true"
+            tabindex="-1"
+            (change)="importPlanFile($event)"
+          />
+          <button
+            type="button"
             title="Duplicate project"
             aria-label="Duplicate project"
             (click)="store.duplicateProject()"
@@ -127,6 +169,39 @@
           {{ inspectorOpen() ? 'Hide inspector' : 'Show inspector' }}
         </button>
       </div>
+
+      @if (shareImportOpen()) {
+        <form
+          class="share-import-panel"
+          aria-label="Import shared plan"
+          (submit)="$event.preventDefault(); importPlanShareCodeInput()"
+        >
+          <label>
+            <span>Plan link or code</span>
+            <input
+              name="planShareCode"
+              autocomplete="off"
+              [ngModel]="shareCodeText()"
+              (ngModelChange)="shareCodeText.set($event)"
+            />
+          </label>
+          <button type="submit">Import</button>
+          <button type="button" (click)="shareImportOpen.set(false)">Close</button>
+        </form>
+      }
+
+      @if (planTransferStatus(); as status) {
+        <div
+          class="plan-transfer-status"
+          [class.plan-transfer-status--success]="status.kind === 'success'"
+          [class.plan-transfer-status--warning]="status.kind === 'warning'"
+          [class.plan-transfer-status--error]="status.kind === 'error'"
+          [attr.role]="status.kind === 'error' ? 'alert' : 'status'"
+          aria-live="polite"
+        >
+          {{ status.message }}
+        </div>
+      }
     }
   </header>
 
