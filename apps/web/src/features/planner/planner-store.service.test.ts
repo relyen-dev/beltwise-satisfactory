@@ -448,6 +448,28 @@ describe('PlannerStoreService', () => {
     expect(store.activeProjectId()).toBe(projectB.id);
   });
 
+  it('deletes a middle active session and selects the previous neighboring session', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const sessionB = createSession([projectB], projectB.id, 'session-b');
+    const sessionC = createSession([projectC], projectC.id, 'session-c');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectB.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA, sessionB, sessionC],
+      sessionB.id,
+    );
+
+    store.deleteSession(sessionB.id);
+
+    expect(store.sessions().map((session) => session.id)).toEqual([sessionA.id, sessionC.id]);
+    expect(store.activeSessionId()).toBe(sessionA.id);
+    expect(store.activeProjectId()).toBe(projectA.id);
+  });
+
   it('replaces the only deleted session with a blank default session', () => {
     const project = createProject();
     const { store } = createInitializedStore([project], project.id);
@@ -618,6 +640,26 @@ describe('PlannerStoreService', () => {
     expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
       projectA.id,
       projectB.id,
+    ]);
+    expect(store.activeProjectId()).toBe(projectB.id);
+  });
+
+  it('selects the next plan after deleting the first active plan', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectA.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [createSession([projectA, projectB, projectC], projectA.id)],
+    );
+
+    store.deleteProject();
+
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      projectB.id,
+      projectC.id,
     ]);
     expect(store.activeProjectId()).toBe(projectB.id);
   });

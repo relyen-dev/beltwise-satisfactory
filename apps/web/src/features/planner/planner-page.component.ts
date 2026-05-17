@@ -8,8 +8,10 @@ import {
   effect,
   inject,
   linkedSignal,
+  type ElementRef,
   type OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
@@ -82,10 +84,18 @@ export class PlannerPageComponent implements OnInit {
   public readonly shareImportOpen = signal(false);
   public readonly shareCodeText = signal('');
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
-  public readonly projectNameEditing = signal(false);
+  public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
+  public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
+  private readonly projectNameEditProjectId = signal<string | null>(null);
+  private readonly sessionNameEditSessionId = signal<string | null>(null);
   public readonly projectNameDraft = signal('');
-  public readonly sessionNameEditing = signal(false);
   public readonly sessionNameDraft = signal('');
+  public readonly projectNameEditing = computed(() => {
+    return this.projectNameEditProjectId() === this.store.activeProjectId();
+  });
+  public readonly sessionNameEditing = computed(() => {
+    return this.sessionNameEditSessionId() === this.store.activeSessionId();
+  });
   public readonly tabs: ConfigurationTabDefinition[] = [
     { id: 'plan', label: 'Plan' },
     { id: 'recipes', label: 'Recipes' },
@@ -136,31 +146,47 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public selectSession(sessionId: string): void {
-    this.sessionNameEditing.set(false);
-    this.projectNameEditing.set(false);
+    this.clearInlineEdits();
     this.store.selectSession(sessionId);
   }
 
   public selectProject(projectId: string): void {
-    this.projectNameEditing.set(false);
+    this.clearInlineEdits();
     this.store.selectProject(projectId);
   }
 
-  public startSessionNameEdit(name: string): void {
+  public createSession(): void {
+    this.clearInlineEdits();
+    this.store.createSession();
+  }
+
+  public createProject(): void {
+    this.clearInlineEdits();
+    this.store.createProject();
+  }
+
+  public duplicateProject(): void {
+    this.clearInlineEdits();
+    this.store.duplicateProject();
+  }
+
+  public startSessionNameEdit(sessionId: string, name: string): void {
+    this.sessionNameEditSessionId.set(sessionId);
     this.sessionNameDraft.set(name);
-    this.sessionNameEditing.set(true);
+    this.focusSessionNameInput();
   }
 
   public saveSessionNameEdit(): void {
     const name = this.sessionNameDraft().trim();
-    if (name.length > 0) {
+    const editedSessionId = this.sessionNameEditSessionId();
+    if (name.length > 0 && editedSessionId === this.store.activeSessionId()) {
       this.store.renameSession(name);
     }
-    this.sessionNameEditing.set(false);
+    this.sessionNameEditSessionId.set(null);
   }
 
   public cancelSessionNameEdit(): void {
-    this.sessionNameEditing.set(false);
+    this.sessionNameEditSessionId.set(null);
   }
 
   public deleteActiveSession(): void {
@@ -176,8 +202,7 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
 
-    this.sessionNameEditing.set(false);
-    this.projectNameEditing.set(false);
+    this.clearInlineEdits();
     this.store.deleteSession(session.id);
   }
 
@@ -194,25 +219,27 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
 
-    this.projectNameEditing.set(false);
+    this.clearInlineEdits();
     this.store.deleteProject();
   }
 
-  public startProjectNameEdit(name: string): void {
+  public startProjectNameEdit(projectId: string, name: string): void {
+    this.projectNameEditProjectId.set(projectId);
     this.projectNameDraft.set(name);
-    this.projectNameEditing.set(true);
+    this.focusProjectNameInput();
   }
 
   public saveProjectNameEdit(): void {
     const name = this.projectNameDraft().trim();
-    if (name.length > 0) {
+    const editedProjectId = this.projectNameEditProjectId();
+    if (name.length > 0 && editedProjectId === this.store.activeProjectId()) {
       this.store.renameProject(name);
     }
-    this.projectNameEditing.set(false);
+    this.projectNameEditProjectId.set(null);
   }
 
   public cancelProjectNameEdit(): void {
-    this.projectNameEditing.set(false);
+    this.projectNameEditProjectId.set(null);
   }
 
   public toggleDefaultsPanel(): void {
@@ -280,6 +307,7 @@ export class PlannerPageComponent implements OnInit {
     }
 
     try {
+      this.clearInlineEdits();
       const result = this.store.importPlanJson(await file.text());
       if (!result.ok) {
         this.showPlanTransferStatus('error', result.message);
@@ -319,6 +347,11 @@ export class PlannerPageComponent implements OnInit {
 
   @HostListener('document:keydown.escape', ['$event'])
   public clearGraphSelectionFromKeyboard(event: KeyboardEvent): void {
+    if (this.projectNameEditing() || this.sessionNameEditing()) {
+      event.preventDefault();
+      this.clearInlineEdits();
+      return;
+    }
     if (this.defaultsPanelOpen() && !isEditableKeyboardTarget(event.target)) {
       event.preventDefault();
       this.defaultsPanelOpen.set(false);
@@ -334,6 +367,19 @@ export class PlannerPageComponent implements OnInit {
 
   private showPlanTransferStatus(kind: PlanTransferStatus['kind'], message: string): void {
     this.planTransferStatus.set({ kind, message });
+  }
+
+  private clearInlineEdits(): void {
+    this.projectNameEditProjectId.set(null);
+    this.sessionNameEditSessionId.set(null);
+  }
+
+  private focusProjectNameInput(): void {
+    focusInputAfterRender(() => this.projectNameInput()?.nativeElement);
+  }
+
+  private focusSessionNameInput(): void {
+    focusInputAfterRender(() => this.sessionNameInput()?.nativeElement);
   }
 
   private showPlanImportResult(
@@ -352,6 +398,7 @@ export class PlannerPageComponent implements OnInit {
   private async importPlanShareCode(value: string, sourceLabel: string): Promise<boolean> {
     try {
       const payload = await decodePlannerShareCode(value);
+      this.clearInlineEdits();
       const result = this.store.importPlanSharePayload(payload);
       if (!result.ok) {
         this.showPlanTransferStatus('error', result.message);
@@ -392,6 +439,19 @@ function blurFocusedGraphNode(): void {
   if (activeElement.closest('.production-node')) {
     activeElement.blur();
   }
+}
+
+function focusInputAfterRender(input: () => HTMLInputElement | undefined, attempts = 4): void {
+  setTimeout(() => {
+    const element = input();
+    if (element) {
+      element.focus();
+      return;
+    }
+    if (attempts > 0) {
+      focusInputAfterRender(input, attempts - 1);
+    }
+  });
 }
 
 function downloadJsonFile(filename: string, json: string): void {

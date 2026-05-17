@@ -17,6 +17,7 @@
                 (submit)="$event.preventDefault(); saveSessionNameEdit()"
               >
                 <input
+                  #sessionNameInput
                   name="sessionName"
                   aria-label="Session name"
                   autocomplete="off"
@@ -53,6 +54,7 @@
             >
               <input
                 name="projectName"
+                #projectNameInput
                 aria-label="Plan name"
                 autocomplete="off"
                 [ngModel]="projectNameDraft()"
@@ -88,7 +90,7 @@
                 class="quiet-button"
                 title="Rename active plan"
                 aria-label="Rename active plan"
-                (click)="startProjectNameEdit(project.name)"
+                (click)="startProjectNameEdit(project.id, project.name)"
               >
                 Rename
               </button>
@@ -120,7 +122,7 @@
               class="plan-add-button"
               title="Create plan"
               aria-label="Create plan"
-              (click)="store.createProject()"
+              (click)="createProject()"
             >
               + Plan
             </button>
@@ -156,11 +158,11 @@
                 type="button"
                 title="Rename save session"
                 aria-label="Rename save session"
-                (click)="startSessionNameEdit(session.name)"
+                (click)="startSessionNameEdit(session.id, session.name)"
               >
                 Rename session
               </button>
-              <button type="button" (click)="store.createSession()">New session</button>
+              <button type="button" (click)="createSession()">New session</button>
               <button
                 type="button"
                 class="danger-menu-button"
@@ -175,7 +177,7 @@
               type="button"
               title="Duplicate active plan"
               aria-label="Duplicate active plan"
-              (click)="store.duplicateProject()"
+              (click)="duplicateProject()"
             >
               Duplicate plan
             </button>

@@ -1,5 +1,11 @@
 import '@angular/compiler';
-import { Injector, runInInjectionContext, signal, type WritableSignal } from '@angular/core';
+import {
+  Injector,
+  runInInjectionContext,
+  signal,
+  type ElementRef,
+  type WritableSignal,
+} from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlannerProject, PlannerSession } from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
@@ -98,6 +104,130 @@ describe('PlannerPageComponent', () => {
     component.flushGraphNodePositionsBeforeUnload();
 
     expect(flushGraphNodePositions).toHaveBeenCalledOnce();
+  });
+
+  it('saves inline renames while the edited entity is still active', () => {
+    const { component, renameProject, renameSession } = createComponentHarness();
+    component.startProjectNameEdit('project-a', 'Draft factory');
+    component.projectNameDraft.set('Renamed factory');
+
+    component.saveProjectNameEdit();
+
+    expect(renameProject).toHaveBeenCalledWith('Renamed factory');
+    expect(component.projectNameEditing()).toBe(false);
+
+    component.startSessionNameEdit('session-a', 'Default session');
+    component.sessionNameDraft.set('Rocky Desert');
+
+    component.saveSessionNameEdit();
+
+    expect(renameSession).toHaveBeenCalledWith('Rocky Desert');
+    expect(component.sessionNameEditing()).toBe(false);
+  });
+
+  it('does not save a plan rename after the active project changes', () => {
+    const { component, renameProject, store } = createComponentHarness();
+    component.startProjectNameEdit('project-a', 'Draft factory');
+    component.projectNameDraft.set('Renamed factory');
+    store.activeProjectId.set('project-b');
+
+    component.saveProjectNameEdit();
+
+    expect(renameProject).not.toHaveBeenCalled();
+    expect(component.projectNameEditing()).toBe(false);
+  });
+
+  it('does not save a session rename after the active session changes', () => {
+    const { component, renameSession, store } = createComponentHarness();
+    component.startSessionNameEdit('session-a', 'Default session');
+    component.sessionNameDraft.set('Rocky Desert');
+    store.activeSessionId.set('session-b');
+
+    component.saveSessionNameEdit();
+
+    expect(renameSession).not.toHaveBeenCalled();
+    expect(component.sessionNameEditing()).toBe(false);
+  });
+
+  it('moves focus into inline rename fields after activation', () => {
+    const { component } = createComponentHarness();
+    const projectFocus = vi.fn();
+    const sessionFocus = vi.fn();
+    stubInputViewChild(component, 'projectNameInput', projectFocus);
+    stubInputViewChild(component, 'sessionNameInput', sessionFocus);
+    vi.useFakeTimers();
+
+    try {
+      component.startProjectNameEdit('project-a', 'Draft factory');
+      vi.runOnlyPendingTimers();
+
+      expect(projectFocus).toHaveBeenCalledOnce();
+
+      component.startSessionNameEdit('session-a', 'Default session');
+      vi.runOnlyPendingTimers();
+
+      expect(sessionFocus).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears inline edits before active-changing commands', () => {
+    const {
+      component,
+      createProject,
+      createSession,
+      duplicateProject,
+      selectProject,
+      selectSession,
+    } = createComponentHarness();
+    component.startProjectNameEdit('project-a', 'Draft factory');
+
+    component.createProject();
+
+    expect(createProject).toHaveBeenCalledOnce();
+    expect(component.projectNameEditing()).toBe(false);
+
+    component.startProjectNameEdit('project-a', 'Draft factory');
+
+    component.duplicateProject();
+
+    expect(duplicateProject).toHaveBeenCalledOnce();
+    expect(component.projectNameEditing()).toBe(false);
+
+    component.startProjectNameEdit('project-a', 'Draft factory');
+
+    component.selectProject('project-b');
+
+    expect(selectProject).toHaveBeenCalledWith('project-b');
+    expect(component.projectNameEditing()).toBe(false);
+
+    component.startSessionNameEdit('session-a', 'Default session');
+
+    component.createSession();
+
+    expect(createSession).toHaveBeenCalledOnce();
+    expect(component.sessionNameEditing()).toBe(false);
+
+    component.startSessionNameEdit('session-a', 'Default session');
+
+    component.selectSession('session-b');
+
+    expect(selectSession).toHaveBeenCalledWith('session-b');
+    expect(component.sessionNameEditing()).toBe(false);
+  });
+
+  it('cancels inline renames from Escape before graph selection handling', () => {
+    const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    component.startProjectNameEdit('project-a', 'Draft factory');
+    const event = keyboardEvent(new TestHTMLElement('input'));
+
+    component.clearGraphSelectionFromKeyboard(event);
+
+    expect(component.projectNameEditing()).toBe(false);
+    expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
   it('deletes a draft-only session without confirmation', () => {
@@ -200,12 +330,14 @@ describe('PlannerPageComponent', () => {
     const code = await encodePlannerShareCode(payload);
     component.shareImportOpen.set(true);
     component.shareCodeText.set(code);
+    component.startSessionNameEdit('session-a', 'Default session');
 
     await component.importPlanShareCodeInput();
 
     expect(importPlanSharePayload).toHaveBeenCalledWith(payload);
     expect(component.shareImportOpen()).toBe(false);
     expect(component.shareCodeText()).toBe('');
+    expect(component.sessionNameEditing()).toBe(false);
     expect(component.planTransferStatus()).toEqual({
       kind: 'success',
       message: 'Imported Pasted plan.',
@@ -221,11 +353,13 @@ describe('PlannerPageComponent', () => {
         text: () => Promise.resolve('{"kind":"beltwise.plan"}'),
       }),
     };
+    component.startProjectNameEdit('project-a', 'Draft factory');
 
     await component.importPlanFile({ target: input } as unknown as Event);
 
     expect(importPlanJson).toHaveBeenCalledWith('{"kind":"beltwise.plan"}');
     expect(input.value).toBe('');
+    expect(component.projectNameEditing()).toBe(false);
     expect(component.planTransferStatus()).toEqual({
       kind: 'success',
       message: 'Imported File plan.',
@@ -236,17 +370,27 @@ describe('PlannerPageComponent', () => {
 function createComponentHarness(): {
   clearSelectedGraphNode: ReturnType<typeof vi.fn>;
   component: PlannerPageComponent;
+  createProject: ReturnType<typeof vi.fn>;
+  createSession: ReturnType<typeof vi.fn>;
   deleteProject: ReturnType<typeof vi.fn>;
   deleteSession: ReturnType<typeof vi.fn>;
+  duplicateProject: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: ReturnType<typeof vi.fn>;
   importPlanJson: ReturnType<typeof vi.fn>;
   importPlanSharePayload: ReturnType<typeof vi.fn>;
+  renameProject: ReturnType<typeof vi.fn>;
+  renameSession: ReturnType<typeof vi.fn>;
+  selectProject: ReturnType<typeof vi.fn>;
+  selectSession: ReturnType<typeof vi.fn>;
   store: PlannerPageStoreHarness;
 } {
   const clearSelectedGraphNode = vi.fn();
+  const createProject = vi.fn();
+  const createSession = vi.fn();
   const deleteProject = vi.fn();
   const deleteSession = vi.fn();
+  const duplicateProject = vi.fn();
   const exportActivePlanSharePayload = vi.fn(() => ({
     ok: true,
     payload: createSharePayload('Copied plan'),
@@ -262,6 +406,10 @@ function createComponentHarness(): {
     project: { name: 'Pasted plan' },
     warnings: [],
   }));
+  const renameProject = vi.fn();
+  const renameSession = vi.fn();
+  const selectProject = vi.fn();
+  const selectSession = vi.fn();
   const store: PlannerPageStoreHarness = {
     activeProject: signal<PlannerProject | null>(
       createPageProject('project-a', 'Draft factory', []),
@@ -271,6 +419,7 @@ function createComponentHarness(): {
       id: 'session-a',
       name: 'Default session',
     } as PlannerSession),
+    activeSessionId: signal<string | undefined>('session-a'),
     activeSessionProjects: signal<PlannerProject[]>([
       createPageProject('project-a', 'Draft factory', []),
     ]),
@@ -279,13 +428,20 @@ function createComponentHarness(): {
       clearSelectedGraphNode();
       store.selectedGraphNodeId.set(null);
     },
+    createProject,
+    createSession,
     dataset: signal({ id: 'dataset' }),
     deleteProject,
     deleteSession,
+    duplicateProject,
     exportActivePlanSharePayload,
     flushGraphNodePositions,
     importPlanJson,
     importPlanSharePayload,
+    renameProject,
+    renameSession,
+    selectProject,
+    selectSession,
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
@@ -297,12 +453,19 @@ function createComponentHarness(): {
   return {
     clearSelectedGraphNode,
     component,
+    createProject,
+    createSession,
     deleteProject,
     deleteSession,
+    duplicateProject,
     exportActivePlanSharePayload,
     flushGraphNodePositions,
     importPlanJson,
     importPlanSharePayload,
+    renameProject,
+    renameSession,
+    selectProject,
+    selectSession,
     store,
   };
 }
@@ -330,17 +493,39 @@ interface PlannerPageStoreHarness {
   activeProject: WritableSignal<PlannerProject | null>;
   activeProjectId: WritableSignal<string | undefined>;
   activeSession: WritableSignal<PlannerSession | null>;
+  activeSessionId: WritableSignal<string | undefined>;
   activeSessionProjects: WritableSignal<PlannerProject[]>;
   clearSelectedGraphNode: () => void;
+  createProject: ReturnType<typeof vi.fn>;
+  createSession: ReturnType<typeof vi.fn>;
   dataset: WritableSignal<{ id: string } | null>;
   deleteProject: ReturnType<typeof vi.fn>;
   deleteSession: ReturnType<typeof vi.fn>;
+  duplicateProject: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: () => void;
   importPlanJson: ReturnType<typeof vi.fn>;
   importPlanSharePayload: ReturnType<typeof vi.fn>;
+  renameProject: ReturnType<typeof vi.fn>;
+  renameSession: ReturnType<typeof vi.fn>;
+  selectProject: ReturnType<typeof vi.fn>;
+  selectSession: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
+}
+
+function stubInputViewChild(
+  component: PlannerPageComponent,
+  property: 'projectNameInput' | 'sessionNameInput',
+  focus: () => void,
+): void {
+  const inputRef: ElementRef<HTMLInputElement> = {
+    nativeElement: { focus } as unknown as HTMLInputElement,
+  };
+  Object.defineProperty(component, property, {
+    configurable: true,
+    value: () => inputRef,
+  });
 }
 
 function createPageProject(

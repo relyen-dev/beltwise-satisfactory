@@ -642,6 +642,35 @@ h2 {
     min-height: 420px;
   }
 
+  .graph-stage {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100vw;
+    overflow: hidden;
+    padding: var(--space-3);
+  }
+
+  .graph-stage bw-production-graph {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .graph-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .graph-toolbar > div,
+  .graph-toolbar__actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .graph-toolbar__actions button {
+    flex: 0 0 auto;
+  }
+
   .work-panel {
     width: auto;
     max-width: none;
