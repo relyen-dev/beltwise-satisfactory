@@ -91,6 +91,12 @@ export class PlannerWorkspaceSlice {
     this.activateProject(clone, projectFocusMode(clone));
   }
 
+  public importProject(project: PlannerProject): void {
+    this.graphHooks.flushPendingGraphState();
+    this.projects.update((projects) => [...projects, project]);
+    this.activateProject(project, projectFocusMode(project));
+  }
+
   public deleteProject(): void {
     this.graphHooks.flushPendingGraphState();
     const activeId = this.activeProjectId();

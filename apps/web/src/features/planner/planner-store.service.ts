@@ -1,10 +1,21 @@
 import { inject, Injectable, signal, type OnDestroy } from '@angular/core';
-import { type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
+import { type GameDataset, type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
 import {
+  createBeltwisePlanExportFilename,
+  createUniqueImportedPlannerProjectName,
+  decodeBeltwisePlanShare,
+  encodeBeltwisePlanShare,
+  encodeBeltwisePlanExport,
+  parseBeltwisePlanExportJson,
+  prepareImportedPlannerProject,
+  stringifyBeltwisePlanExport,
+  type BeltwisePlanImportWarning,
+  type BeltwisePlanSharePayload,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type GraphLayoutState,
   type PipelineTier,
+  type PlannerProject,
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
@@ -37,6 +48,38 @@ export type {
   WorkbenchFocusMode,
   WorkbenchFocusRequest,
 } from './planner-store.models';
+
+export type PlannerPlanExportResult =
+  | {
+      ok: true;
+      filename: string;
+      json: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export type PlannerPlanImportResult =
+  | {
+      ok: true;
+      project: PlannerProject;
+      warnings: BeltwisePlanImportWarning[];
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export type PlannerPlanShareExportResult =
+  | {
+      ok: true;
+      payload: BeltwisePlanSharePayload;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
 
 @Injectable({ providedIn: 'root' })
 export class PlannerStoreService implements OnDestroy {
@@ -202,6 +245,82 @@ export class PlannerStoreService implements OnDestroy {
 
   public deleteProject(): void {
     this.workspace.deleteProject();
+  }
+
+  public exportActivePlan(): PlannerPlanExportResult {
+    this.graphBuild.flushGraphNodePositions();
+    const dataset = this.dataset();
+    const project = this.workspace.activeProject();
+    if (!dataset || !project) {
+      return { ok: false, message: 'There is no active plan to export yet.' };
+    }
+
+    const exportFile = encodeBeltwisePlanExport(project, { dataset });
+    return {
+      ok: true,
+      filename: createBeltwisePlanExportFilename(project.name),
+      json: stringifyBeltwisePlanExport(exportFile),
+    };
+  }
+
+  public importPlanJson(json: string): PlannerPlanImportResult {
+    const dataset = this.dataset();
+    if (!dataset) {
+      return { ok: false, message: 'Planner data is still loading. Try importing again shortly.' };
+    }
+
+    const decoded = parseBeltwisePlanExportJson(json, dataset);
+    if (!decoded.ok) {
+      return { ok: false, message: decoded.error.message };
+    }
+
+    return this.importDecodedPlan(decoded.project, decoded.warnings, dataset);
+  }
+
+  public exportActivePlanSharePayload(): PlannerPlanShareExportResult {
+    this.graphBuild.flushGraphNodePositions();
+    const dataset = this.dataset();
+    const project = this.workspace.activeProject();
+    if (!dataset || !project) {
+      return { ok: false, message: 'There is no active plan to share yet.' };
+    }
+
+    return {
+      ok: true,
+      payload: encodeBeltwisePlanShare(project, dataset),
+    };
+  }
+
+  public importPlanSharePayload(payload: unknown): PlannerPlanImportResult {
+    const dataset = this.dataset();
+    if (!dataset) {
+      return { ok: false, message: 'Planner data is still loading. Try importing again shortly.' };
+    }
+
+    const decoded = decodeBeltwisePlanShare(payload, dataset);
+    if (!decoded.ok) {
+      return { ok: false, message: decoded.error.message };
+    }
+
+    return this.importDecodedPlan(decoded.project, decoded.warnings, dataset);
+  }
+
+  private importDecodedPlan(
+    decodedProject: PlannerProject,
+    warnings: BeltwisePlanImportWarning[],
+    dataset: GameDataset,
+  ): PlannerPlanImportResult {
+    const name = createUniqueImportedPlannerProjectName(
+      decodedProject.name,
+      this.workspace.projects().map((project) => project.name),
+    );
+    const project = prepareImportedPlannerProject(decodedProject, { dataset, name });
+    this.workspace.importProject(project);
+    return {
+      ok: true,
+      project,
+      warnings,
+    };
   }
 
   public renameProject(name: string): void {

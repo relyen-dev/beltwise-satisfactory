@@ -24,3 +24,15 @@ User projects persist configuration, not solver output:
 - graph node done flags and notes
 
 On load, the solver reruns from the stored project and generated dataset.
+
+Individual plans can be exported as readable Beltwise JSON files with `kind:
+beltwise.plan` and `formatVersion: 1`. A plan export contains one persisted
+project payload plus dataset metadata for mismatch warnings. It does not include
+global user defaults, whole-session state, save-game data, share links, or solver
+output. Imported plans are added as separate local projects and are solved again
+with the current app dataset.
+
+Plan sharing uses a separate compact `bw.p` payload. It stores deltas against
+Beltwise's schema-defined defaults for the current dataset, then compresses that
+payload for `#plan=` links or copy/paste codes. Missing compact fields never
+resolve from the importing user's defaults.

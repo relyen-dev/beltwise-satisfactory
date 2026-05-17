@@ -5,7 +5,10 @@ import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createDefaultUserDefaults,
   createPlannerProject,
+  encodeBeltwisePlanExport,
+  encodeBeltwisePlanShare,
   PLANNER_STORAGE_SCHEMA_VERSION,
+  stringifyBeltwisePlanExport,
   type PlannerProject,
   type PlannerUserDefaults,
   type ProductionPlanResult,
@@ -621,6 +624,211 @@ describe('PlannerStoreService', () => {
       'recipe:Recipe_IronPlate_C': { x: 19, y: 29 },
     });
   });
+
+  it('exports the active plan without changing timestamps when no layout flush is pending', () => {
+    const { store } = createInitializedStore();
+    const beforeProject = requiredProject(store);
+
+    const result = store.exportActivePlan();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    expect(result.filename).toBe('beltwise-factory.json');
+    expect(requiredProject(store).updatedAt).toBe(beforeProject.updatedAt);
+    const parsed = JSON.parse(result.json) as {
+      project: Record<string, unknown>;
+      userDefaults?: unknown;
+    };
+    expect(parsed.project['updatedAt']).toBe(beforeProject.updatedAt);
+    expect('userDefaults' in parsed).toBe(false);
+  });
+
+  it('flushes pending graph node positions before exporting the active plan', () => {
+    vi.useFakeTimers();
+    const { store } = createInitializedStore();
+
+    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 41, y: 82 });
+    const result = store.exportActivePlan();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    const parsed = JSON.parse(result.json) as {
+      project: { graphLayout?: { nodePositions?: Record<string, { x: number; y: number }> } };
+    };
+    expect(parsed.project.graphLayout?.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 41, y: 82 },
+    });
+  });
+
+  it('imports a plan as a new selected project with fresh local identity', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T00:00:00.000Z'));
+    const existingProject = createProject();
+    const userDefaults = createCustomUserDefaults();
+    const importSource = createImportSourceProject('project-source', 'Factory');
+    const { store } = createInitializedStore([existingProject], existingProject.id, userDefaults);
+
+    const result = store.importPlanJson(createPlanExportJson(importSource));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    expect(store.projects()).toHaveLength(2);
+    expect(store.activeProjectId()).toBe(result.project.id);
+    expect(result.project.id).not.toBe(importSource.id);
+    expect(result.project.id).not.toBe(existingProject.id);
+    expect(result.project).toMatchObject({
+      name: 'Factory import',
+      datasetId: tinySatisfactoryDataset.id,
+      createdAt: '2026-05-15T00:00:00.000Z',
+      updatedAt: '2026-05-15T00:00:00.000Z',
+      targets: importSource.targets,
+      recipeOverrides: importSource.recipeOverrides,
+      machineOverrides: importSource.machineOverrides,
+      resourceOverrides: importSource.resourceOverrides,
+      itemInputs: importSource.itemInputs,
+      objectiveProfile: importSource.objectiveProfile,
+      graphDisplay: importSource.graphDisplay,
+      graphLayout: importSource.graphLayout,
+      buildState: importSource.buildState,
+    });
+    expect(loadedStoreProject(store, existingProject.id)).toEqual(existingProject);
+    expect(store.userDefaults()).toEqual(userDefaults);
+  });
+
+  it('leaves projects and user defaults unchanged when plan import JSON is invalid', () => {
+    const existingProject = createProject();
+    const userDefaults = createCustomUserDefaults();
+    const { store } = createInitializedStore([existingProject], existingProject.id, userDefaults);
+
+    const result = store.importPlanJson('{');
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: 'That file is not valid JSON.',
+    });
+    expect(store.projects()).toEqual([existingProject]);
+    expect(store.activeProjectId()).toBe(existingProject.id);
+    expect(store.userDefaults()).toEqual(userDefaults);
+  });
+
+  it('imports with a non-blocking warning when exported dataset metadata differs', () => {
+    const exportedDataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      id: 'older-dataset',
+      gameVersionLabel: 'older',
+      source: {
+        ...tinySatisfactoryDataset.source,
+        fingerprint: 'older-fingerprint',
+      },
+    };
+    const importSource = createImportSourceProject('project-source', 'Imported factory');
+    const { store } = createInitializedStore();
+
+    const result = store.importPlanJson(createPlanExportJson(importSource, exportedDataset));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatchObject({
+      code: 'dataset-mismatch',
+      exportedDatasetId: 'older-dataset',
+      currentDatasetId: tinySatisfactoryDataset.id,
+    });
+    expect(store.activeProjectId()).toBe(result.project.id);
+  });
+
+  it('exports the active plan as a compact share payload without user defaults', () => {
+    const userDefaults = createCustomUserDefaults();
+    const { store } = createInitializedStore([createProject()], 'project-a', userDefaults);
+
+    const result = store.exportActivePlanSharePayload();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    expect(result.payload).toMatchObject({
+      k: 'bw.p',
+      v: 1,
+      p: {
+        n: 'Factory',
+        t: [
+          {
+            id: 'target-a',
+            i: 'Desc_IronPlate_C',
+            m: 'f',
+            a: 10,
+            s: 0,
+          },
+        ],
+      },
+    });
+    expect('userDefaults' in result.payload).toBe(false);
+  });
+
+  it('imports compact share payloads as new projects without changing user defaults', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T00:00:00.000Z'));
+    const existingProject = createProject();
+    const userDefaults = createCustomUserDefaults();
+    const importSource = createImportSourceProject('project-source', 'Factory');
+    const { store } = createInitializedStore([existingProject], existingProject.id, userDefaults);
+
+    const result = store.importPlanSharePayload(
+      encodeBeltwisePlanShare(importSource, tinySatisfactoryDataset),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    expect(store.projects()).toHaveLength(2);
+    expect(store.activeProjectId()).toBe(result.project.id);
+    expect(result.project.id).not.toBe(importSource.id);
+    expect(result.project).toMatchObject({
+      name: 'Factory import',
+      datasetId: tinySatisfactoryDataset.id,
+      createdAt: '2026-05-15T00:00:00.000Z',
+      updatedAt: '2026-05-15T00:00:00.000Z',
+      targets: importSource.targets,
+      recipeOverrides: importSource.recipeOverrides,
+      machineOverrides: importSource.machineOverrides,
+      resourceOverrides: {
+        Desc_OreIron_C: { maxPerMinute: 120 },
+      },
+      itemInputs: importSource.itemInputs,
+      objectiveProfile: importSource.objectiveProfile,
+      graphDisplay: importSource.graphDisplay,
+      graphLayout: importSource.graphLayout,
+      buildState: importSource.buildState,
+    });
+    expect(loadedStoreProject(store, existingProject.id)).toEqual(existingProject);
+    expect(store.userDefaults()).toEqual(userDefaults);
+  });
+
+  it('leaves projects unchanged when compact share payloads are invalid', () => {
+    const existingProject = createProject();
+    const userDefaults = createCustomUserDefaults();
+    const { store } = createInitializedStore([existingProject], existingProject.id, userDefaults);
+
+    const result = store.importPlanSharePayload({ k: 'bw.p', v: 99, d: {}, p: {} });
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: 'This plan link uses a newer Beltwise format.',
+    });
+    expect(store.projects()).toEqual([existingProject]);
+    expect(store.activeProjectId()).toBe(existingProject.id);
+    expect(store.userDefaults()).toEqual(userDefaults);
+  });
 });
 
 function createProject(): PlannerProject {
@@ -675,6 +883,85 @@ function createCustomUserDefaults(): PlannerUserDefaults {
   };
 }
 
+function createImportSourceProject(id: string, name: string): PlannerProject {
+  return {
+    ...createProject(),
+    id,
+    name,
+    targets: [
+      {
+        id: 'target-fixed',
+        itemId: 'Desc_IronPlate_C',
+        mode: 'fixed',
+        amountPerMinute: 20,
+        sortOrder: 0,
+      },
+      {
+        id: 'target-maximize',
+        itemId: 'Desc_Wire_C',
+        mode: 'maximize',
+        sortOrder: 1,
+      },
+    ],
+    recipeOverrides: {
+      Recipe_IronWire_C: { enabled: true },
+    },
+    machineOverrides: {
+      Build_ConstructorMk1_C: { enabled: false },
+    },
+    resourceOverrides: {
+      Desc_OreIron_C: { enabled: true, maxPerMinute: 120 },
+    },
+    itemInputs: {
+      Desc_IngotIron_C: { amountPerMinute: 15 },
+    },
+    objectiveProfile: {
+      resourceScarcityWeight: 2,
+      powerWeight: 0.3,
+      machineCountWeight: 0.4,
+      surplusWeight: 0.1,
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 1.5,
+      },
+    },
+    graphLayout: {
+      nodePositions: {
+        'recipe:Recipe_IronPlate_C': { x: 25, y: 50 },
+      },
+    },
+    graphDisplay: {
+      maxBeltTier: 4,
+      maxPipeTier: 1,
+      rateDecimalPlaces: 4,
+      edgeStyle: 'curved',
+      showTransportLabels: false,
+      animateFlowLines: false,
+    },
+    buildState: {
+      planLocked: true,
+      nodeLayoutLocked: true,
+      nodeStates: {
+        'recipe:Recipe_IronPlate_C': {
+          done: true,
+          note: 'Floor 2',
+        },
+      },
+    },
+  };
+}
+
+function createPlanExportJson(
+  project: PlannerProject,
+  dataset: GameDataset = tinySatisfactoryDataset,
+): string {
+  return stringifyBeltwisePlanExport(
+    encodeBeltwisePlanExport(project, {
+      dataset,
+      exportedAt: '2026-05-13T00:00:00.000Z',
+    }),
+  );
+}
+
 function solveKey(project: PlannerProject, dataset: GameDataset = tinySatisfactoryDataset): string {
   const input = selectPlannerSolveInput(project, dataset);
   if (!input) {
@@ -695,6 +982,14 @@ function requiredProject(store: PlannerStoreService): PlannerProject {
   const project = store.activeProject();
   if (!project) {
     throw new Error('Expected an active project');
+  }
+  return project;
+}
+
+function loadedStoreProject(store: PlannerStoreService, projectId: string): PlannerProject {
+  const project = store.projects().find((candidate) => candidate.id === projectId);
+  if (!project) {
+    throw new Error(`Expected project ${projectId}`);
   }
   return project;
 }

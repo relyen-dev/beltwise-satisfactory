@@ -7,10 +7,12 @@ import {
   type ConfigurationTab,
   type WorkbenchFocusRequest,
 } from './planner-store.service';
+import { encodePlannerShareCode } from './planner-share-codec';
 
 describe('PlannerPageComponent', () => {
   beforeEach(() => {
     vi.stubGlobal('HTMLElement', TestHTMLElement);
+    vi.stubGlobal('HTMLInputElement', TestHTMLInputElement);
     vi.stubGlobal('document', { activeElement: null });
   });
 
@@ -96,23 +98,100 @@ describe('PlannerPageComponent', () => {
 
     expect(flushGraphNodePositions).toHaveBeenCalledOnce();
   });
+
+  it('copies a self-contained plan link and reports success', async () => {
+    const { component, exportActivePlanSharePayload } = createComponentHarness();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    vi.stubGlobal('location', { href: 'https://beltwise.test/planner#panel=plan' });
+
+    await component.copyActivePlanShareLink();
+
+    expect(exportActivePlanSharePayload).toHaveBeenCalledOnce();
+    expect(writeText).toHaveBeenCalledOnce();
+    const copied = writeText.mock.calls[0]?.[0] as string;
+    expect(copied).toMatch(/^https:\/\/beltwise\.test\/planner#panel=plan&plan=bw1\./);
+    expect(component.planTransferStatus()).toEqual({
+      kind: 'success',
+      message: 'Copied a self-contained plan link.',
+    });
+  });
+
+  it('imports a pasted plan link or code and closes the paste panel', async () => {
+    const { component, importPlanSharePayload } = createComponentHarness();
+    const payload = createSharePayload('Pasted plan');
+    const code = await encodePlannerShareCode(payload);
+    component.shareImportOpen.set(true);
+    component.shareCodeText.set(code);
+
+    await component.importPlanShareCodeInput();
+
+    expect(importPlanSharePayload).toHaveBeenCalledWith(payload);
+    expect(component.shareImportOpen()).toBe(false);
+    expect(component.shareCodeText()).toBe('');
+    expect(component.planTransferStatus()).toEqual({
+      kind: 'success',
+      message: 'Imported Pasted plan.',
+    });
+  });
+
+  it('imports a selected plan file and reports status', async () => {
+    const { component, importPlanJson } = createComponentHarness();
+    const input = new TestHTMLInputElement('input');
+    input.value = 'C:\\fakepath\\plan.json';
+    input.files = {
+      item: () => ({
+        text: () => Promise.resolve('{"kind":"beltwise.plan"}'),
+      }),
+    };
+
+    await component.importPlanFile({ target: input } as unknown as Event);
+
+    expect(importPlanJson).toHaveBeenCalledWith('{"kind":"beltwise.plan"}');
+    expect(input.value).toBe('');
+    expect(component.planTransferStatus()).toEqual({
+      kind: 'success',
+      message: 'Imported File plan.',
+    });
+  });
 });
 
 function createComponentHarness(): {
   clearSelectedGraphNode: ReturnType<typeof vi.fn>;
   component: PlannerPageComponent;
+  exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: ReturnType<typeof vi.fn>;
+  importPlanJson: ReturnType<typeof vi.fn>;
+  importPlanSharePayload: ReturnType<typeof vi.fn>;
   store: PlannerPageStoreHarness;
 } {
   const clearSelectedGraphNode = vi.fn();
+  const exportActivePlanSharePayload = vi.fn(() => ({
+    ok: true,
+    payload: createSharePayload('Copied plan'),
+  }));
   const flushGraphNodePositions = vi.fn();
+  const importPlanJson = vi.fn(() => ({
+    ok: true,
+    project: { name: 'File plan' },
+    warnings: [],
+  }));
+  const importPlanSharePayload = vi.fn((_payload: unknown) => ({
+    ok: true,
+    project: { name: 'Pasted plan' },
+    warnings: [],
+  }));
   const store: PlannerPageStoreHarness = {
     activeConfigTab: signal<ConfigurationTab>('plan'),
     clearSelectedGraphNode: () => {
       clearSelectedGraphNode();
       store.selectedGraphNodeId.set(null);
     },
+    dataset: signal({ id: 'dataset' }),
+    exportActivePlanSharePayload,
     flushGraphNodePositions,
+    importPlanJson,
+    importPlanSharePayload,
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
@@ -121,7 +200,24 @@ function createComponentHarness(): {
   });
   const component = runInInjectionContext(injector, () => new PlannerPageComponent());
 
-  return { clearSelectedGraphNode, component, flushGraphNodePositions, store };
+  return {
+    clearSelectedGraphNode,
+    component,
+    exportActivePlanSharePayload,
+    flushGraphNodePositions,
+    importPlanJson,
+    importPlanSharePayload,
+    store,
+  };
+}
+
+function createSharePayload(name: string): Record<string, unknown> {
+  return {
+    k: 'bw.p',
+    v: 1,
+    d: { id: 'dataset', gameVersionLabel: 'fixture' },
+    p: { n: name },
+  };
 }
 
 function keyboardEvent(target: TestHTMLElement): KeyboardEvent & {
@@ -136,7 +232,11 @@ function keyboardEvent(target: TestHTMLElement): KeyboardEvent & {
 interface PlannerPageStoreHarness {
   activeConfigTab: WritableSignal<ConfigurationTab>;
   clearSelectedGraphNode: () => void;
+  dataset: WritableSignal<{ id: string } | null>;
+  exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: () => void;
+  importPlanJson: ReturnType<typeof vi.fn>;
+  importPlanSharePayload: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
 }
@@ -157,4 +257,13 @@ class TestHTMLElement {
   public closest(_selector: string): TestHTMLElement | null {
     return null;
   }
+}
+
+class TestHTMLInputElement extends TestHTMLElement {
+  public files:
+    | {
+        item: (index: number) => { text: () => Promise<string> } | null;
+      }
+    | null = null;
+  public value = '';
 }

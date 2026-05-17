@@ -3,4 +3,6 @@ export * from './graphRendererModel';
 export * from './model';
 export * from './plan';
 export * from './plannerPersistenceCodec';
+export * from './plannerPlanExportCodec';
+export * from './plannerPlanShareCodec';
 export * from './resourceLimits';

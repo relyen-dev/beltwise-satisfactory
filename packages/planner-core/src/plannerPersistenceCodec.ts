@@ -178,7 +178,7 @@ export function encodePlannerPersistenceState(
   activeProjectId: string | undefined,
   userDefaults: PlannerUserDefaults,
 ): StoredPlannerState {
-  const storedProjects = projects.map(toStoredPlannerProjectV1);
+  const storedProjects = projects.map(encodeStoredPlannerProject);
   const storedUserDefaults = toStoredPlannerUserDefaultsV2(userDefaults);
   return activeProjectId === undefined
     ? {
@@ -200,6 +200,21 @@ export function createStoredPlannerState(
   userDefaults: PlannerUserDefaults,
 ): StoredPlannerState {
   return encodePlannerPersistenceState(projects, activeProjectId, userDefaults);
+}
+
+export function decodeStoredPlannerProject(
+  project: unknown,
+  dataset: GameDataset,
+): PlannerProject | null {
+  try {
+    return hydratePlannerProject(project, dataset);
+  } catch {
+    return null;
+  }
+}
+
+export function encodeStoredPlannerProject(project: PlannerProject): StoredPlannerProjectV1 {
+  return toStoredPlannerProjectV1(project);
 }
 
 function migrateStoredPlannerState(value: unknown): HydratableStoredPlannerState | null {
@@ -257,20 +272,12 @@ function migrateStoredPlannerStateV2ToCurrent(
 function hydrateStoredProjects(projects: unknown[], dataset: GameDataset): PlannerProject[] {
   const hydratedProjects: PlannerProject[] = [];
   for (const project of projects) {
-    const hydratedProject = hydrateStoredProject(project, dataset);
+    const hydratedProject = decodeStoredPlannerProject(project, dataset);
     if (hydratedProject) {
       hydratedProjects.push(hydratedProject);
     }
   }
   return hydratedProjects;
-}
-
-function hydrateStoredProject(project: unknown, dataset: GameDataset): PlannerProject | null {
-  try {
-    return hydratePlannerProject(project, dataset);
-  } catch {
-    return null;
-  }
 }
 
 function readVersionedStoredPlannerState(value: unknown): RawVersionedStoredPlannerState | null {
