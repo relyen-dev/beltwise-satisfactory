@@ -99,9 +99,12 @@ export class PlannerWorkspaceSlice {
       return;
     }
 
-    const project = this.selectProjectForSession(session);
+    let project = this.selectProjectForSession(session);
     if (!project) {
-      return;
+      project = this.createStarterProjectInSession(session, []);
+      if (!project) {
+        return;
+      }
     }
     this.activeSessionId.set(session.id);
     this.activateProject(project, projectFocusMode(project), session.id);
@@ -377,9 +380,31 @@ export class PlannerWorkspaceSlice {
     this.touchSession(activeSession.id, (session, now) => ({
       ...session,
       projectIds: uniqueProjectIds([...session.projectIds, project.id]),
+      updatedAt: now,
+    }));
+  }
+
+  private createStarterProjectInSession(
+    session: PlannerSession,
+    existingProjects: readonly PlannerProject[],
+  ): PlannerProject | undefined {
+    const dataset = this.options.dataset();
+    if (!dataset) {
+      return undefined;
+    }
+    const project = createStarterProject(
+      dataset,
+      createNextPlanName(existingProjects),
+      this.requireUserDefaults(dataset),
+    );
+    this.projects.update((projects) => [...projects, project]);
+    this.touchSession(session.id, (currentSession, now) => ({
+      ...currentSession,
+      projectIds: [project.id],
       activeProjectId: project.id,
       updatedAt: now,
     }));
+    return project;
   }
 
   private replaceProjectInActiveSession(
@@ -419,25 +444,24 @@ export class PlannerWorkspaceSlice {
   ): void {
     const now = new Date().toISOString();
     this.sessions.update((sessions) =>
-      sessions.flatMap((session) => {
+      sessions.map((session) => {
+        if (session.id !== activeSessionId) {
+          return session;
+        }
         const projectIds = session.projectIds.filter((candidate) => candidate !== projectId);
         if (projectIds.length === 0) {
-          return [];
+          return session;
         }
-        const activeProjectId =
-          session.id === activeSessionId
-            ? nextActiveProjectId
-            : session.activeProjectId === projectId
-              ? projectIds[0]
-              : session.activeProjectId;
-        return [
-          {
-            ...session,
-            projectIds,
-            ...(activeProjectId !== undefined ? { activeProjectId } : {}),
-            updatedAt: session.projectIds.length === projectIds.length ? session.updatedAt : now,
-          },
-        ];
+        const activeProjectId = nextActiveProjectId ?? projectIds[0];
+        if (activeProjectId === undefined) {
+          return session;
+        }
+        return {
+          ...session,
+          projectIds,
+          activeProjectId,
+          updatedAt: session.projectIds.length === projectIds.length ? session.updatedAt : now,
+        };
       }),
     );
   }
@@ -512,7 +536,7 @@ function createNextPlanName(existingProjects: readonly PlannerProject[]): string
   const existingNames = new Set(
     existingProjects.map((project) => project.name.trim().toLowerCase()),
   );
-  let nextIndex = existingProjects.length + 1;
+  let nextIndex = 1;
 
   while (true) {
     const candidate = `${baseName} ${nextIndex}`;

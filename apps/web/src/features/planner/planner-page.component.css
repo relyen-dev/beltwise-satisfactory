@@ -38,6 +38,7 @@
 
 .project-strip,
 .status-strip,
+.session-actions,
 .project-actions,
 .graph-toolbar div {
   display: flex;
@@ -90,6 +91,7 @@
   min-width: 0;
 }
 
+.session-actions button,
 .project-actions button,
 .session-create-button,
 .status-strip button,

@@ -403,6 +403,10 @@ function decodeStoredPlannerSession(
     return null;
   }
 
+  const id = readString(session['id']);
+  if (id === undefined) {
+    return null;
+  }
   const projectIds = readStringArray(session['projectIds']).filter((projectId) =>
     validProjectIds.has(projectId),
   );
@@ -411,10 +415,6 @@ function decodeStoredPlannerSession(
   }
 
   const now = new Date().toISOString();
-  const id = readString(session['id']);
-  if (id === undefined) {
-    return null;
-  }
   const createdAt = readString(session['createdAt']) ?? now;
   const activeProjectId = readString(session['activeProjectId']) ?? projectIds[0];
   return createPlannerSession({
@@ -437,38 +437,11 @@ function ensureAllProjectsBelongToSessions(
     return createDefaultSessionForProjects(projects, storedActiveProjectId);
   }
 
-  const assignedProjectIds = new Set(sessions.flatMap((session) => session.projectIds));
-  const orphanProjectIds = projects
-    .map((project) => project.id)
-    .filter((projectId) => !assignedProjectIds.has(projectId));
-  if (orphanProjectIds.length === 0) {
-    return sessions.map(copyPlannerSession);
-  }
-
-  const targetSessionIndex = Math.max(
-    0,
-    sessions.findIndex(
-      (session) =>
-        storedActiveProjectId !== undefined && session.projectIds.includes(storedActiveProjectId),
-    ),
+  return mergeOrphanProjectsIntoSessions(
+    sessions.map(copyPlannerSession),
+    projects,
+    storedActiveProjectId,
   );
-  const orphanUpdatedAt = latestProjectUpdatedAt(projects, orphanProjectIds);
-  return sessions.map((session, index) => {
-    if (index !== targetSessionIndex) {
-      return copyPlannerSession(session);
-    }
-    const projectIds = uniqueStrings([...session.projectIds, ...orphanProjectIds]);
-    const activeProjectId =
-      storedActiveProjectId !== undefined && projectIds.includes(storedActiveProjectId)
-        ? storedActiveProjectId
-        : session.activeProjectId;
-    return {
-      ...session,
-      projectIds,
-      ...(activeProjectId !== undefined ? { activeProjectId } : {}),
-      updatedAt: laterIsoTimestamp(session.updatedAt, orphanUpdatedAt),
-    };
-  });
 }
 
 function readVersionedStoredPlannerState(value: unknown): RawVersionedStoredPlannerState | null {
@@ -521,22 +494,30 @@ function normalizeSessionsForStorage(
     return createDefaultSessionForProjects(projects, activeProjectId);
   }
 
-  const assignedProjectIds = new Set(normalizedSessions.flatMap((session) => session.projectIds));
+  return mergeOrphanProjectsIntoSessions(normalizedSessions, projects, activeProjectId);
+}
+
+function mergeOrphanProjectsIntoSessions(
+  sessions: readonly PlannerSession[],
+  projects: readonly PlannerProject[],
+  activeProjectId: string | undefined,
+): PlannerSession[] {
+  const assignedProjectIds = new Set(sessions.flatMap((session) => session.projectIds));
   const orphanProjectIds = projects
     .map((project) => project.id)
     .filter((projectId) => !assignedProjectIds.has(projectId));
   if (orphanProjectIds.length === 0) {
-    return normalizedSessions;
+    return [...sessions];
   }
 
   const targetSessionIndex = Math.max(
     0,
-    normalizedSessions.findIndex(
+    sessions.findIndex(
       (session) => activeProjectId !== undefined && session.projectIds.includes(activeProjectId),
     ),
   );
   const orphanUpdatedAt = latestProjectUpdatedAt(projects, orphanProjectIds);
-  return normalizedSessions.map((session, index) =>
+  return sessions.map((session, index) =>
     index === targetSessionIndex
       ? {
           ...session,

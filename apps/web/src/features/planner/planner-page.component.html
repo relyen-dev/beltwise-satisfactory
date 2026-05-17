@@ -32,15 +32,11 @@
             />
           </label>
 
-          <button
-            type="button"
-            class="session-create-button"
-            title="Create session"
-            aria-label="Create session"
-            (click)="store.createSession()"
-          >
-            New session
-          </button>
+          <div class="session-actions" aria-label="Session actions">
+            <button type="button" class="session-create-button" (click)="store.createSession()">
+              New session
+            </button>
+          </div>
         }
 
         <label class="project-control">

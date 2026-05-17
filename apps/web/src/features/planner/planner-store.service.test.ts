@@ -368,7 +368,7 @@ describe('PlannerStoreService', () => {
     expect(store.userDefaults()).toEqual(userDefaults);
   });
 
-  it('ignores session selection when the session has no loadable projects', () => {
+  it('repairs stale sessions with a starter project when selected', () => {
     const projectA = createEmptyProject('project-a', 'Factory A');
     const sessionA = createSession([projectA], projectA.id, 'session-a');
     const staleSession: PlannerSession = {
@@ -390,9 +390,18 @@ describe('PlannerStoreService', () => {
 
     store.selectSession(staleSession.id);
 
-    expect(store.activeSessionId()).toBe(sessionA.id);
-    expect(store.activeProjectId()).toBe(projectA.id);
-    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([projectA.id]);
+    const repairedProject = requiredProject(store);
+    expect(store.activeSessionId()).toBe(staleSession.id);
+    expect(repairedProject.id).not.toBe(projectA.id);
+    expect(repairedProject.name).toBe('Plan 1');
+    expect(store.activeProjectId()).toBe(repairedProject.id);
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      repairedProject.id,
+    ]);
+    expect(store.projects().map((project) => project.id)).toEqual([
+      projectA.id,
+      repairedProject.id,
+    ]);
   });
 
   it('updates the session active project without touching the session timestamp', () => {
