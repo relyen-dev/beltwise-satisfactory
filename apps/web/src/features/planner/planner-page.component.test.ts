@@ -1,6 +1,7 @@
 import '@angular/compiler';
 import { Injector, runInInjectionContext, signal, type WritableSignal } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PlannerProject, PlannerSession } from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
 import {
   PlannerStoreService,
@@ -99,6 +100,82 @@ describe('PlannerPageComponent', () => {
     expect(flushGraphNodePositions).toHaveBeenCalledOnce();
   });
 
+  it('deletes a draft-only session without confirmation', () => {
+    const { component, deleteSession } = createComponentHarness();
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+
+    component.deleteActiveSession();
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(deleteSession).toHaveBeenCalledWith('session-a');
+  });
+
+  it('confirms before deleting a session with configured plans', () => {
+    const { component, deleteSession, store } = createComponentHarness();
+    store.activeSessionProjects.set([
+      createPageProject('project-a', 'Factory', [
+        {
+          id: 'target-a',
+          itemId: 'Desc_IronPlate_C',
+          mode: 'fixed',
+          amountPerMinute: 10,
+          sortOrder: 0,
+        },
+      ]),
+    ]);
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+
+    component.deleteActiveSession();
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(deleteSession).not.toHaveBeenCalled();
+
+    confirm.mockReturnValue(true);
+    component.deleteActiveSession();
+
+    expect(deleteSession).toHaveBeenCalledWith('session-a');
+  });
+
+  it('deletes a draft plan without confirmation', () => {
+    const { component, deleteProject } = createComponentHarness();
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+
+    component.deleteActiveProject();
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(deleteProject).toHaveBeenCalledOnce();
+  });
+
+  it('confirms before deleting a plan with configured target items', () => {
+    const { component, deleteProject, store } = createComponentHarness();
+    store.activeProject.set(
+      createPageProject('project-a', 'Factory', [
+        {
+          id: 'target-a',
+          itemId: 'Desc_IronPlate_C',
+          mode: 'fixed',
+          amountPerMinute: 10,
+          sortOrder: 0,
+        },
+      ]),
+    );
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+
+    component.deleteActiveProject();
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(deleteProject).not.toHaveBeenCalled();
+
+    confirm.mockReturnValue(true);
+    component.deleteActiveProject();
+
+    expect(deleteProject).toHaveBeenCalledOnce();
+  });
+
   it('copies a self-contained plan link and reports success', async () => {
     const { component, exportActivePlanSharePayload } = createComponentHarness();
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -159,6 +236,8 @@ describe('PlannerPageComponent', () => {
 function createComponentHarness(): {
   clearSelectedGraphNode: ReturnType<typeof vi.fn>;
   component: PlannerPageComponent;
+  deleteProject: ReturnType<typeof vi.fn>;
+  deleteSession: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: ReturnType<typeof vi.fn>;
   importPlanJson: ReturnType<typeof vi.fn>;
@@ -166,6 +245,8 @@ function createComponentHarness(): {
   store: PlannerPageStoreHarness;
 } {
   const clearSelectedGraphNode = vi.fn();
+  const deleteProject = vi.fn();
+  const deleteSession = vi.fn();
   const exportActivePlanSharePayload = vi.fn(() => ({
     ok: true,
     payload: createSharePayload('Copied plan'),
@@ -182,12 +263,25 @@ function createComponentHarness(): {
     warnings: [],
   }));
   const store: PlannerPageStoreHarness = {
+    activeProject: signal<PlannerProject | null>(
+      createPageProject('project-a', 'Draft factory', []),
+    ),
+    activeProjectId: signal<string | undefined>('project-a'),
+    activeSession: signal<PlannerSession | null>({
+      id: 'session-a',
+      name: 'Default session',
+    } as PlannerSession),
+    activeSessionProjects: signal<PlannerProject[]>([
+      createPageProject('project-a', 'Draft factory', []),
+    ]),
     activeConfigTab: signal<ConfigurationTab>('plan'),
     clearSelectedGraphNode: () => {
       clearSelectedGraphNode();
       store.selectedGraphNodeId.set(null);
     },
     dataset: signal({ id: 'dataset' }),
+    deleteProject,
+    deleteSession,
     exportActivePlanSharePayload,
     flushGraphNodePositions,
     importPlanJson,
@@ -203,6 +297,8 @@ function createComponentHarness(): {
   return {
     clearSelectedGraphNode,
     component,
+    deleteProject,
+    deleteSession,
     exportActivePlanSharePayload,
     flushGraphNodePositions,
     importPlanJson,
@@ -231,14 +327,32 @@ function keyboardEvent(target: TestHTMLElement): KeyboardEvent & {
 
 interface PlannerPageStoreHarness {
   activeConfigTab: WritableSignal<ConfigurationTab>;
+  activeProject: WritableSignal<PlannerProject | null>;
+  activeProjectId: WritableSignal<string | undefined>;
+  activeSession: WritableSignal<PlannerSession | null>;
+  activeSessionProjects: WritableSignal<PlannerProject[]>;
   clearSelectedGraphNode: () => void;
   dataset: WritableSignal<{ id: string } | null>;
+  deleteProject: ReturnType<typeof vi.fn>;
+  deleteSession: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: () => void;
   importPlanJson: ReturnType<typeof vi.fn>;
   importPlanSharePayload: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
+}
+
+function createPageProject(
+  id: string,
+  name: string,
+  targets: PlannerProject['targets'],
+): PlannerProject {
+  return {
+    id,
+    name,
+    targets,
+  } as PlannerProject;
 }
 
 class TestHTMLElement {
@@ -260,10 +374,8 @@ class TestHTMLElement {
 }
 
 class TestHTMLInputElement extends TestHTMLElement {
-  public files:
-    | {
-        item: (index: number) => { text: () => Promise<string> } | null;
-      }
-    | null = null;
+  public files: {
+    item: (index: number) => { text: () => Promise<string> } | null;
+  } | null = null;
   public value = '';
 }

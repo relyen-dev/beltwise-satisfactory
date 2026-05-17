@@ -27,6 +27,12 @@ import {
   encodePlannerShareCode,
   readPlannerShareCodeFromLocation,
 } from './planner-share-codec';
+import { GameIconComponent } from './game-icon.component';
+import { selectPlanDockItems } from './planner-plan-dock.selectors';
+import {
+  projectRequiresDeleteConfirmation,
+  sessionRequiresDeleteConfirmation,
+} from './planner-session-delete.helpers';
 import { PlannerStoreService, type ConfigurationTab } from './planner-store.service';
 import { PlannerTargetsSectionComponent } from './planner-targets-section.component';
 
@@ -48,6 +54,7 @@ interface PlanTransferStatus {
     FormsModule,
     PlannerDefaultsPanelComponent,
     PlannerDisplaySectionComponent,
+    GameIconComponent,
     PlannerInputsSectionComponent,
     PlannerInspectorComponent,
     PlannerMachinesSectionComponent,
@@ -71,11 +78,14 @@ export class PlannerPageComponent implements OnInit {
       return request ? request.mode === 'open-plan' : (previous?.value ?? false);
     },
   });
-  public readonly inspectorOpen = signal(true);
   public readonly defaultsPanelOpen = signal(false);
   public readonly shareImportOpen = signal(false);
   public readonly shareCodeText = signal('');
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
+  public readonly projectNameEditing = signal(false);
+  public readonly projectNameDraft = signal('');
+  public readonly sessionNameEditing = signal(false);
+  public readonly sessionNameDraft = signal('');
   public readonly tabs: ConfigurationTabDefinition[] = [
     { id: 'plan', label: 'Plan' },
     { id: 'recipes', label: 'Recipes' },
@@ -86,6 +96,16 @@ export class PlannerPageComponent implements OnInit {
   ];
   public readonly activeSectionLabel = computed(() => {
     return this.tabs.find((tab) => tab.id === this.store.activeConfigTab())?.label ?? 'Plan';
+  });
+  public readonly planDockItems = computed(() =>
+    selectPlanDockItems(
+      this.store.activeSessionProjects(),
+      this.store.dataset(),
+      this.store.activeProjectId(),
+    ),
+  );
+  public readonly activePlanDockItem = computed(() => {
+    return this.planDockItems().find((item) => item.isActive) ?? null;
   });
 
   public ngOnInit(): void {
@@ -113,6 +133,86 @@ export class PlannerPageComponent implements OnInit {
 
   public closeWorkPanel(): void {
     this.workPanelOpen.set(false);
+  }
+
+  public selectSession(sessionId: string): void {
+    this.sessionNameEditing.set(false);
+    this.projectNameEditing.set(false);
+    this.store.selectSession(sessionId);
+  }
+
+  public selectProject(projectId: string): void {
+    this.projectNameEditing.set(false);
+    this.store.selectProject(projectId);
+  }
+
+  public startSessionNameEdit(name: string): void {
+    this.sessionNameDraft.set(name);
+    this.sessionNameEditing.set(true);
+  }
+
+  public saveSessionNameEdit(): void {
+    const name = this.sessionNameDraft().trim();
+    if (name.length > 0) {
+      this.store.renameSession(name);
+    }
+    this.sessionNameEditing.set(false);
+  }
+
+  public cancelSessionNameEdit(): void {
+    this.sessionNameEditing.set(false);
+  }
+
+  public deleteActiveSession(): void {
+    const session = this.store.activeSession();
+    if (!session) {
+      return;
+    }
+
+    if (
+      sessionRequiresDeleteConfirmation(this.store.activeSessionProjects()) &&
+      !confirm(`Delete "${session.name}" and every plan in it? This cannot be undone.`)
+    ) {
+      return;
+    }
+
+    this.sessionNameEditing.set(false);
+    this.projectNameEditing.set(false);
+    this.store.deleteSession(session.id);
+  }
+
+  public deleteActiveProject(): void {
+    const project = this.store.activeProject();
+    if (!project) {
+      return;
+    }
+
+    if (
+      projectRequiresDeleteConfirmation(project) &&
+      !confirm(`Delete "${project.name}"? This cannot be undone.`)
+    ) {
+      return;
+    }
+
+    this.projectNameEditing.set(false);
+    this.store.deleteProject();
+  }
+
+  public startProjectNameEdit(name: string): void {
+    this.projectNameDraft.set(name);
+    this.projectNameEditing.set(true);
+  }
+
+  public saveProjectNameEdit(): void {
+    const name = this.projectNameDraft().trim();
+    if (name.length > 0) {
+      this.store.renameProject(name);
+    }
+    this.projectNameEditing.set(false);
+  }
+
+  public cancelProjectNameEdit(): void {
+    this.projectNameEditing.set(false);
   }
 
   public toggleDefaultsPanel(): void {
@@ -262,7 +362,10 @@ export class PlannerPageComponent implements OnInit {
       this.showPlanImportResult(result.project.name, result.warnings);
       return true;
     } catch (error) {
-      this.showPlanTransferStatus('error', `${sourceLabel} could not be imported. ${shareErrorMessage(error)}`);
+      this.showPlanTransferStatus(
+        'error',
+        `${sourceLabel} could not be imported. ${shareErrorMessage(error)}`,
+      );
       return false;
     }
   }

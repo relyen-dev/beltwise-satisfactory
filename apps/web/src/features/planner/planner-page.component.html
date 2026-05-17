@@ -6,141 +6,135 @@
     </div>
 
     @if (store.activeProject(); as project) {
-      <div class="project-strip" aria-label="Session and project controls">
+      <div class="workspace-context" aria-label="Session and plan controls">
         @if (store.activeSession(); as session) {
-          <label class="project-control session-control">
-            <span>Session</span>
-            <select
-              class="project-select"
-              aria-label="Active session"
-              [ngModel]="session.id"
-              (ngModelChange)="store.selectSession($event)"
-            >
-              @for (candidate of store.sessions(); track candidate.id) {
-                <option [value]="candidate.id">{{ candidate.name }}</option>
-              }
-            </select>
-          </label>
-
-          <label class="project-control session-control--name">
-            <span>Session name</span>
-            <input
-              class="project-name"
-              aria-label="Session name"
-              [ngModel]="session.name"
-              (ngModelChange)="store.renameSession($event)"
-            />
-          </label>
-
-          <div class="session-actions" aria-label="Session actions">
-            <button type="button" class="session-create-button" (click)="store.createSession()">
-              New session
-            </button>
+          <div class="session-card">
+            <span class="context-label">Save session</span>
+            @if (sessionNameEditing()) {
+              <form
+                class="inline-edit-form"
+                aria-label="Rename session"
+                (submit)="$event.preventDefault(); saveSessionNameEdit()"
+              >
+                <input
+                  name="sessionName"
+                  aria-label="Session name"
+                  autocomplete="off"
+                  [ngModel]="sessionNameDraft()"
+                  (ngModelChange)="sessionNameDraft.set($event)"
+                />
+                <button type="submit">Save</button>
+                <button type="button" (click)="cancelSessionNameEdit()">Cancel</button>
+              </form>
+            } @else {
+              <div class="session-picker-row">
+                <select
+                  class="context-select"
+                  aria-label="Active save session"
+                  [ngModel]="session.id"
+                  (ngModelChange)="selectSession($event)"
+                >
+                  @for (candidate of store.sessions(); track candidate.id) {
+                    <option [value]="candidate.id">{{ candidate.name }}</option>
+                  }
+                </select>
+              </div>
+            }
           </div>
         }
 
-        <label class="project-control">
-          <span>Plan</span>
-          <select
-            class="project-select"
-            aria-label="Active plan"
-            [ngModel]="project.id"
-            (ngModelChange)="store.selectProject($event)"
-          >
-            @for (candidate of store.activeSessionProjects(); track candidate.id) {
-              <option [value]="candidate.id">{{ candidate.name }}</option>
-            }
-          </select>
-        </label>
-
-        <label class="project-control project-control--name">
-          <span>Plan name</span>
-          <input
-            class="project-name"
-            aria-label="Plan name"
-            [ngModel]="project.name"
-            (ngModelChange)="store.renameProject($event)"
-          />
-        </label>
-
-        <div class="project-actions" aria-label="Project actions">
-          <button
-            type="button"
-            title="Create plan"
-            aria-label="Create plan"
-            (click)="store.createProject()"
-          >
-            New plan
-          </button>
-          <button
-            type="button"
-            title="Import a Beltwise plan JSON file"
-            aria-label="Import a Beltwise plan JSON file"
-            (click)="planImportInput.click()"
-          >
-            Import
-          </button>
-          <button
-            type="button"
-            title="Export active plan as Beltwise JSON"
-            aria-label="Export active plan as Beltwise JSON"
-            (click)="exportActivePlan()"
-          >
-            Export
-          </button>
-          <button
-            type="button"
-            title="Copy a self-contained plan link"
-            aria-label="Copy a self-contained plan link"
-            (click)="copyActivePlanShareLink()"
-          >
-            Copy link
-          </button>
-          <button
-            type="button"
-            title="Paste a Beltwise plan link or code"
-            aria-label="Paste a Beltwise plan link or code"
-            [attr.aria-expanded]="shareImportOpen()"
-            (click)="toggleShareImport()"
-          >
-            Paste
-          </button>
-          <input
-            #planImportInput
-            class="plan-file-input"
-            type="file"
-            accept=".json,application/json"
-            aria-hidden="true"
-            tabindex="-1"
-            (change)="importPlanFile($event)"
-          />
-          <button
-            type="button"
-            title="Duplicate project"
-            aria-label="Duplicate project"
-            (click)="store.duplicateProject()"
-          >
-            Copy
-          </button>
-          <button
-            type="button"
-            title="Delete project"
-            aria-label="Delete project"
-            (click)="store.deleteProject()"
-          >
-            Delete
-          </button>
-          <button
-            type="button"
-            class="defaults-button"
-            title="Edit defaults for new plans"
-            aria-label="Edit defaults for new plans"
-            [attr.aria-expanded]="defaultsPanelOpen()"
-            (click)="toggleDefaultsPanel()"
-          >
-            Defaults
-          </button>
+        <div class="active-plan-card">
+          <span class="context-label">Active plan</span>
+          @if (projectNameEditing()) {
+            <form
+              class="inline-edit-form"
+              aria-label="Rename plan"
+              (submit)="$event.preventDefault(); saveProjectNameEdit()"
+            >
+              <input
+                name="projectName"
+                aria-label="Plan name"
+                autocomplete="off"
+                [ngModel]="projectNameDraft()"
+                (ngModelChange)="projectNameDraft.set($event)"
+              />
+              <button type="submit">Save</button>
+              <button type="button" (click)="cancelProjectNameEdit()">Cancel</button>
+            </form>
+          } @else {
+            <div class="active-plan-title">
+              @if (activePlanDockItem(); as activePlan) {
+                @if (activePlan.iconSrc) {
+                  <bw-game-icon
+                    [src]="activePlan.iconSrc"
+                    [label]="activePlan.iconLabel"
+                    size="sm"
+                  />
+                } @else {
+                  <span class="plan-avatar" aria-hidden="true">{{ activePlan.fallbackLabel }}</span>
+                }
+                <div class="active-plan-copy">
+                  <strong>{{ project.name }}</strong>
+                  <span>{{ activePlan.targetSummary }}</span>
+                </div>
+              } @else {
+                <div class="active-plan-copy">
+                  <strong>{{ project.name }}</strong>
+                  <span>Draft plan</span>
+                </div>
+              }
+              <button
+                type="button"
+                class="quiet-button"
+                title="Rename active plan"
+                aria-label="Rename active plan"
+                (click)="startProjectNameEdit(project.name)"
+              >
+                Rename
+              </button>
+            </div>
+          }
         </div>
+
+        <nav class="plan-dock" aria-label="Plans in this save session">
+          <div class="plan-dock__track">
+            @for (plan of planDockItems(); track plan.id) {
+              <button
+                type="button"
+                class="plan-chip"
+                [class.is-active]="plan.isActive"
+                [attr.aria-current]="plan.isActive ? 'page' : null"
+                [title]="'Switch to ' + plan.name + ' (' + plan.targetSummary + ')'"
+                (click)="selectProject(plan.id)"
+              >
+                @if (plan.iconSrc) {
+                  <bw-game-icon [src]="plan.iconSrc" [label]="plan.iconLabel" size="sm" />
+                } @else {
+                  <span class="plan-avatar" aria-hidden="true">{{ plan.fallbackLabel }}</span>
+                }
+                <span class="plan-chip__name">{{ plan.name }}</span>
+              </button>
+            }
+            <button
+              type="button"
+              class="plan-add-button"
+              title="Create plan"
+              aria-label="Create plan"
+              (click)="store.createProject()"
+            >
+              + Plan
+            </button>
+            <button
+              type="button"
+              class="plan-delete-button"
+              title="Delete active plan"
+              aria-label="Delete active plan"
+              (click)="deleteActiveProject()"
+            >
+              Delete
+            </button>
+          </div>
+        </nav>
       </div>
 
       <div class="status-strip" aria-label="Solve status and global actions">
@@ -154,52 +148,99 @@
             <span>{{ result.powerMw | number: '1.0-1' }} MW</span>
           }
         </div>
-        <button type="button" title="Open active work panel" (click)="workPanelOpen.set(true)">
-          Open {{ activeSectionLabel() }}
-        </button>
-        <button
-          type="button"
-          class="lock-toggle"
-          [class.lock-toggle--locked]="project.buildState.planLocked"
-          [title]="
-            project.buildState.planLocked
-              ? 'Unlock plan and allow solver configuration edits'
-              : 'Lock plan to prevent solver configuration edits'
-          "
-          [attr.aria-pressed]="project.buildState.planLocked"
-          (click)="store.setPlanLocked(!project.buildState.planLocked)"
-        >
-          {{ project.buildState.planLocked ? 'Unlock plan' : 'Lock plan' }}
-        </button>
-        <button
-          type="button"
-          class="lock-toggle"
-          [class.lock-toggle--locked]="project.buildState.nodeLayoutLocked"
-          [title]="
-            project.buildState.nodeLayoutLocked
-              ? 'Unlock graph node movement'
-              : 'Lock graph node movement'
-          "
-          [attr.aria-pressed]="project.buildState.nodeLayoutLocked"
-          (click)="store.setNodeLayoutLocked(!project.buildState.nodeLayoutLocked)"
-        >
-          {{ project.buildState.nodeLayoutLocked ? 'Unlock nodes' : 'Lock nodes' }}
-        </button>
-        <button
-          type="button"
-          title="Reset manual node positions"
-          [disabled]="project.buildState.nodeLayoutLocked"
-          (click)="store.resetGraphLayout()"
-        >
-          Reset layout
-        </button>
-        <button
-          type="button"
-          title="Toggle inspector"
-          (click)="inspectorOpen.set(!inspectorOpen())"
-        >
-          {{ inspectorOpen() ? 'Hide inspector' : 'Show inspector' }}
-        </button>
+        <details class="command-menu">
+          <summary aria-label="Open plan actions">Actions</summary>
+          <div class="command-menu__panel" aria-label="Plan actions">
+            @if (store.activeSession(); as session) {
+              <button
+                type="button"
+                title="Rename save session"
+                aria-label="Rename save session"
+                (click)="startSessionNameEdit(session.name)"
+              >
+                Rename session
+              </button>
+              <button type="button" (click)="store.createSession()">New session</button>
+              <button
+                type="button"
+                class="danger-menu-button"
+                title="Delete save session"
+                aria-label="Delete save session"
+                (click)="deleteActiveSession()"
+              >
+                Delete session
+              </button>
+            }
+            <button
+              type="button"
+              title="Duplicate active plan"
+              aria-label="Duplicate active plan"
+              (click)="store.duplicateProject()"
+            >
+              Duplicate plan
+            </button>
+            <button
+              type="button"
+              title="Import a Beltwise plan JSON file"
+              aria-label="Import a Beltwise plan JSON file"
+              (click)="planImportInput.click()"
+            >
+              Import plan
+            </button>
+            <button
+              type="button"
+              title="Export active plan as Beltwise JSON"
+              aria-label="Export active plan as Beltwise JSON"
+              (click)="exportActivePlan()"
+            >
+              Export plan
+            </button>
+            <button
+              type="button"
+              title="Copy a self-contained plan link"
+              aria-label="Copy a self-contained plan link"
+              (click)="copyActivePlanShareLink()"
+            >
+              Copy link
+            </button>
+            <button
+              type="button"
+              title="Paste a Beltwise plan link or code"
+              aria-label="Paste a Beltwise plan link or code"
+              [attr.aria-expanded]="shareImportOpen()"
+              (click)="toggleShareImport()"
+            >
+              Paste link
+            </button>
+            <button
+              type="button"
+              title="Edit defaults for new plans"
+              aria-label="Edit defaults for new plans"
+              [attr.aria-expanded]="defaultsPanelOpen()"
+              (click)="toggleDefaultsPanel()"
+            >
+              Plan defaults
+            </button>
+            <button
+              type="button"
+              class="danger-menu-button"
+              title="Delete active plan"
+              aria-label="Delete active plan"
+              (click)="deleteActiveProject()"
+            >
+              Delete plan
+            </button>
+          </div>
+        </details>
+        <input
+          #planImportInput
+          class="plan-file-input"
+          type="file"
+          accept=".json,application/json"
+          aria-hidden="true"
+          tabindex="-1"
+          (change)="importPlanFile($event)"
+        />
       </div>
 
       @if (shareImportOpen()) {
@@ -296,8 +337,41 @@
                 Clear selection
               </button>
             }
-            <button type="button" (click)="workPanelOpen.set(!workPanelOpen())">
-              {{ workPanelOpen() ? 'Collapse panel' : 'Open panel' }}
+            <button
+              type="button"
+              class="lock-toggle"
+              [class.lock-toggle--locked]="project.buildState.planLocked"
+              [title]="
+                project.buildState.planLocked
+                  ? 'Unlock plan and allow solver configuration edits'
+                  : 'Lock plan to prevent solver configuration edits'
+              "
+              [attr.aria-pressed]="project.buildState.planLocked"
+              (click)="store.setPlanLocked(!project.buildState.planLocked)"
+            >
+              {{ project.buildState.planLocked ? 'Unlock plan' : 'Lock plan' }}
+            </button>
+            <button
+              type="button"
+              class="lock-toggle"
+              [class.lock-toggle--locked]="project.buildState.nodeLayoutLocked"
+              [title]="
+                project.buildState.nodeLayoutLocked
+                  ? 'Unlock graph node movement'
+                  : 'Lock graph node movement'
+              "
+              [attr.aria-pressed]="project.buildState.nodeLayoutLocked"
+              (click)="store.setNodeLayoutLocked(!project.buildState.nodeLayoutLocked)"
+            >
+              {{ project.buildState.nodeLayoutLocked ? 'Unlock nodes' : 'Lock nodes' }}
+            </button>
+            <button
+              type="button"
+              title="Reset manual node positions"
+              [disabled]="project.buildState.nodeLayoutLocked"
+              (click)="store.resetGraphLayout()"
+            >
+              Reset layout
             </button>
           </div>
         </div>
@@ -365,11 +439,9 @@
         </section>
       }
 
-      @if (inspectorOpen()) {
-        <aside class="inspector-panel" aria-label="Plan inspector">
-          <bw-planner-inspector />
-        </aside>
-      }
+      <aside class="inspector-panel" aria-label="Plan inspector">
+        <bw-planner-inspector />
+      </aside>
     </main>
   }
 
