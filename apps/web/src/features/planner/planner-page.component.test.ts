@@ -63,6 +63,32 @@ describe('PlannerPageComponent', () => {
     }
   });
 
+  it('closes the defaults panel from Escape before clearing graph selection', () => {
+    const { component, store, clearSelectedGraphNode } = createComponentHarness();
+    component.defaultsPanelOpen.set(true);
+    const event = keyboardEvent(new TestHTMLElement('div'));
+
+    component.clearGraphSelectionFromKeyboard(event);
+
+    expect(component.defaultsPanelOpen()).toBe(false);
+    expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the defaults panel open from Escape when focus is editable', () => {
+    const { component, store, clearSelectedGraphNode } = createComponentHarness();
+    component.defaultsPanelOpen.set(true);
+    const event = keyboardEvent(new TestHTMLElement('input'));
+
+    component.clearGraphSelectionFromKeyboard(event);
+
+    expect(component.defaultsPanelOpen()).toBe(true);
+    expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
   it('flushes graph node positions before unloading', () => {
     const { component, flushGraphNodePositions } = createComponentHarness();
 
