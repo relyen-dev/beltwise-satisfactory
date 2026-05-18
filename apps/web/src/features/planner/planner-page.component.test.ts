@@ -306,15 +306,24 @@ describe('PlannerPageComponent', () => {
 
   it('closes the active plan selector from Escape before graph selection handling', () => {
     const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    const focus = vi.fn();
+    stubElementViewChild(component, 'activePlanTrigger', focus);
     component.openPlanSelector();
     const event = keyboardEvent(new TestHTMLElement('div'));
+    vi.useFakeTimers();
 
-    component.handleEscapeKey(event);
+    try {
+      component.handleEscapeKey(event);
+      vi.runOnlyPendingTimers();
 
-    expect(component.planSelectorOpen()).toBe(false);
-    expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
-    expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(component.planSelectorOpen()).toBe(false);
+      expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+      expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(focus).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('closes the actions menu from Escape before graph selection handling', () => {
@@ -697,7 +706,7 @@ function stubInputViewChild(
 
 function stubElementViewChild(
   component: PlannerPageComponent,
-  property: 'actionMenuSummary',
+  property: 'actionMenuSummary' | 'activePlanTrigger',
   focus: () => void,
 ): void {
   const elementRef: ElementRef<HTMLElement> = {

@@ -96,6 +96,7 @@ export class PlannerPageComponent implements OnInit {
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
+  public readonly activePlanTrigger = viewChild<ElementRef<HTMLElement>>('activePlanTrigger');
   public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
   private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
   private readonly projectNameEditProjectId = signal<string | null>(null);
@@ -322,12 +323,17 @@ export class PlannerPageComponent implements OnInit {
     this.planSelectorOpen.set(true);
   }
 
-  public closePlanSelector(): void {
+  public closePlanSelector(restoreFocus = false): void {
+    const wasOpen = this.planSelectorOpen();
     this.planSelectorOpen.set(false);
+    if (restoreFocus && wasOpen) {
+      this.focusPlanSelectorTrigger();
+    }
   }
 
   public selectProjectFromSelector(projectId: string): void {
     this.selectProject(projectId);
+    this.focusPlanSelectorTrigger();
   }
 
   public syncActionMenuOpen(event: Event): void {
@@ -460,7 +466,7 @@ export class PlannerPageComponent implements OnInit {
     }
     if (this.planSelectorOpen()) {
       event.preventDefault();
-      this.closePlanSelector();
+      this.closePlanSelector(true);
       return;
     }
     if (this.actionMenuOpen()) {
@@ -522,6 +528,13 @@ export class PlannerPageComponent implements OnInit {
 
   private focusSessionNameInput(): void {
     focusElementAfterRender(() => this.sessionNameInput()?.nativeElement);
+  }
+
+  private focusPlanSelectorTrigger(): void {
+    if (!this.activePlanTrigger()) {
+      return;
+    }
+    focusElementAfterRender(() => this.activePlanTrigger()?.nativeElement);
   }
 
   private showPlanImportResult(
