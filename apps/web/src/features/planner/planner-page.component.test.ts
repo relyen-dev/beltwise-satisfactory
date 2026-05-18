@@ -259,8 +259,7 @@ describe('PlannerPageComponent', () => {
       'project-4',
       'project-5',
     ]);
-    expect(component.hiddenPlanDockItemCount()).toBe(2);
-    expect(component.hasHiddenPlanDockItems()).toBe(true);
+    expect(component.visiblePlanDockItems()).toHaveLength(6);
 
     component.openPlanSelector();
     component.selectProjectFromSelector('project-1');
@@ -292,6 +291,41 @@ describe('PlannerPageComponent', () => {
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
     expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it('closes the actions menu from Escape before graph selection handling', () => {
+    const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    const focus = vi.fn();
+    stubElementViewChild(component, 'actionMenuSummary', focus);
+    component.actionMenuOpen.set(true);
+    const event = keyboardEvent(new TestHTMLElement('div'));
+    vi.useFakeTimers();
+
+    try {
+      component.clearGraphSelectionFromKeyboard(event);
+      vi.runOnlyPendingTimers();
+
+      expect(component.actionMenuOpen()).toBe(false);
+      expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+      expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(focus).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('syncs the actions menu with the native details open state', () => {
+    const { component } = createComponentHarness();
+    const details = new TestDetailsElement();
+
+    details.open = true;
+    component.syncActionMenuOpen({ currentTarget: details } as unknown as Event);
+    expect(component.actionMenuOpen()).toBe(true);
+
+    details.open = false;
+    component.syncActionMenuOpen({ currentTarget: details } as unknown as Event);
+    expect(component.actionMenuOpen()).toBe(false);
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
@@ -611,6 +645,20 @@ function stubInputViewChild(
   });
 }
 
+function stubElementViewChild(
+  component: PlannerPageComponent,
+  property: 'actionMenuSummary',
+  focus: () => void,
+): void {
+  const elementRef: ElementRef<HTMLElement> = {
+    nativeElement: { focus } as unknown as HTMLElement,
+  };
+  Object.defineProperty(component, property, {
+    configurable: true,
+    value: () => elementRef,
+  });
+}
+
 function createPageProject(
   id: string,
   name: string,
@@ -643,8 +691,20 @@ class TestHTMLElement {
     return undefined;
   }
 
+  public focus(): void {
+    return undefined;
+  }
+
   public closest(_selector: string): TestHTMLElement | null {
     return null;
+  }
+}
+
+class TestDetailsElement extends TestHTMLElement {
+  public open = false;
+
+  public constructor() {
+    super('details');
   }
 }
 

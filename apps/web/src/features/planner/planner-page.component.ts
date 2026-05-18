@@ -85,11 +85,13 @@ export class PlannerPageComponent implements OnInit {
   });
   public readonly defaultsPanelOpen = signal(false);
   public readonly planSelectorOpen = signal(false);
+  public readonly actionMenuOpen = signal(false);
   public readonly shareImportOpen = signal(false);
   public readonly shareCodeText = signal('');
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
+  public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
   private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
   private readonly projectNameEditProjectId = signal<string | null>(null);
   private readonly sessionNameEditSessionId = signal<string | null>(null);
@@ -122,20 +124,13 @@ export class PlannerPageComponent implements OnInit {
   public readonly activePlanDockItem = computed(() => {
     return this.planDockItems().find((item) => item.isActive) ?? null;
   });
-  public readonly visiblePlanDockSelection = computed(() =>
+  public readonly visiblePlanDockItems = computed(() =>
     selectCompactPlanDockItems(
       this.planDockItems(),
       this.store.activeProjectId(),
       this.recentlyTouchedProjectIds(),
       VISIBLE_PLAN_CHIP_COUNT,
     ),
-  );
-  public readonly visiblePlanDockItems = computed(() => this.visiblePlanDockSelection().items);
-  public readonly hiddenPlanDockItemCount = computed(
-    () => this.visiblePlanDockSelection().hiddenCount,
-  );
-  public readonly hasHiddenPlanDockItems = computed(
-    () => this.visiblePlanDockSelection().hasHiddenItems,
   );
 
   public ngOnInit(): void {
@@ -199,6 +194,7 @@ export class PlannerPageComponent implements OnInit {
 
   public startSessionNameEdit(sessionId: string, name: string): void {
     this.closePlanSelector();
+    this.closeActionMenu();
     this.sessionNameEditSessionId.set(sessionId);
     this.sessionNameDraft.set(name);
     this.focusSessionNameInput();
@@ -256,6 +252,7 @@ export class PlannerPageComponent implements OnInit {
 
   public startProjectNameEdit(projectId: string, name: string): void {
     this.closePlanSelector();
+    this.closeActionMenu();
     this.projectNameEditProjectId.set(projectId);
     this.projectNameDraft.set(name);
     this.focusProjectNameInput();
@@ -275,10 +272,12 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public toggleDefaultsPanel(): void {
+    this.closeActionMenu();
     this.defaultsPanelOpen.update((open) => !open);
   }
 
   public toggleShareImport(): void {
+    this.closeActionMenu();
     this.shareImportOpen.update((open) => !open);
   }
 
@@ -293,6 +292,7 @@ export class PlannerPageComponent implements OnInit {
 
   public openPlanSelector(): void {
     this.clearInlineEdits();
+    this.closeActionMenu();
     this.planSelectorOpen.set(true);
   }
 
@@ -304,7 +304,25 @@ export class PlannerPageComponent implements OnInit {
     this.selectProject(projectId);
   }
 
+  public syncActionMenuOpen(event: Event): void {
+    if (isDetailsElement(event.currentTarget)) {
+      this.actionMenuOpen.set(event.currentTarget.open);
+    }
+  }
+
+  public closeActionMenu(restoreFocus = false): void {
+    if (!this.actionMenuOpen()) {
+      return;
+    }
+
+    this.actionMenuOpen.set(false);
+    if (restoreFocus) {
+      focusElementAfterRender(() => this.actionMenuSummary()?.nativeElement);
+    }
+  }
+
   public exportActivePlan(): void {
+    this.closeActionMenu();
     const result = this.store.exportActivePlan();
     if (!result.ok) {
       this.showPlanTransferStatus('error', result.message);
@@ -320,6 +338,7 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public async copyActivePlanShareLink(): Promise<void> {
+    this.closeActionMenu();
     const result = this.store.exportActivePlanSharePayload();
     if (!result.ok) {
       this.showPlanTransferStatus('error', result.message);
@@ -412,6 +431,11 @@ export class PlannerPageComponent implements OnInit {
       this.closePlanSelector();
       return;
     }
+    if (this.actionMenuOpen()) {
+      event.preventDefault();
+      this.closeActionMenu(true);
+      return;
+    }
     if (this.defaultsPanelOpen() && !isEditableKeyboardTarget(event.target)) {
       event.preventDefault();
       this.defaultsPanelOpen.set(false);
@@ -437,6 +461,7 @@ export class PlannerPageComponent implements OnInit {
   private clearTransientNavigationState(): void {
     this.clearInlineEdits();
     this.closePlanSelector();
+    this.closeActionMenu();
   }
 
   private touchActiveProject(): void {
@@ -460,11 +485,11 @@ export class PlannerPageComponent implements OnInit {
   }
 
   private focusProjectNameInput(): void {
-    focusInputAfterRender(() => this.projectNameInput()?.nativeElement);
+    focusElementAfterRender(() => this.projectNameInput()?.nativeElement);
   }
 
   private focusSessionNameInput(): void {
-    focusInputAfterRender(() => this.sessionNameInput()?.nativeElement);
+    focusElementAfterRender(() => this.sessionNameInput()?.nativeElement);
   }
 
   private showPlanImportResult(
@@ -517,6 +542,14 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
+function isDetailsElement(target: EventTarget | null): target is HTMLDetailsElement {
+  return (
+    target instanceof HTMLElement &&
+    target.tagName.toLowerCase() === 'details' &&
+    'open' in target
+  );
+}
+
 function blurFocusedGraphNode(): void {
   const activeElement = document.activeElement;
   if (!(activeElement instanceof HTMLElement)) {
@@ -527,15 +560,15 @@ function blurFocusedGraphNode(): void {
   }
 }
 
-function focusInputAfterRender(input: () => HTMLInputElement | undefined, attempts = 4): void {
+function focusElementAfterRender(element: () => HTMLElement | undefined, attempts = 4): void {
   setTimeout(() => {
-    const element = input();
-    if (element) {
-      element.focus();
+    const target = element();
+    if (target) {
+      target.focus();
       return;
     }
     if (attempts > 0) {
-      focusInputAfterRender(input, attempts - 1);
+      focusElementAfterRender(element, attempts - 1);
     }
   });
 }

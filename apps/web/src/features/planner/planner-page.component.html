@@ -69,7 +69,6 @@
                 type="button"
                 class="active-plan-trigger"
                 aria-label="Choose active plan"
-                aria-haspopup="listbox"
                 aria-controls="active-plan-selector-panel"
                 [attr.aria-expanded]="planSelectorOpen()"
                 (click)="togglePlanSelector()"
@@ -136,16 +135,14 @@
                 <div
                   id="active-plan-selector-panel"
                   class="plan-selector-panel"
-                  role="listbox"
                   aria-label="All plans in this save session"
                 >
                   @for (plan of planDockItems(); track plan.id) {
                     <button
                       type="button"
                       class="plan-selector-option"
-                      role="option"
                       [class.is-active]="plan.isActive"
-                      [attr.aria-selected]="plan.isActive"
+                      [attr.aria-current]="plan.isActive ? 'page' : null"
                       [title]="'Switch to ' + plan.name + ' (' + plan.targetSummary + ')'"
                       (click)="selectProjectFromSelector(plan.id)"
                     >
@@ -200,8 +197,12 @@
               Delete
             </button>
             <div class="status-strip" aria-label="Global actions">
-              <details class="command-menu">
-                <summary aria-label="Open plan actions">
+              <details
+                class="command-menu"
+                [open]="actionMenuOpen()"
+                (toggle)="syncActionMenuOpen($event)"
+              >
+                <summary #actionMenuSummary aria-label="Open plan actions">
                   Actions
                   <svg
                     class="button-caret"
@@ -212,7 +213,11 @@
                     <path d="m7 10 5 5 5-5H7Z" />
                   </svg>
                 </summary>
-                <div class="command-menu__panel" aria-label="Plan actions">
+                <div
+                  class="command-menu__panel"
+                  aria-label="Plan actions"
+                  (click)="closeActionMenu()"
+                >
                   @if (store.activeSession(); as session) {
                     <button
                       type="button"
@@ -245,7 +250,7 @@
                     type="button"
                     title="Import a Beltwise plan JSON file"
                     aria-label="Import a Beltwise plan JSON file"
-                    (click)="planImportInput.click()"
+                    (click)="planImportInput.click(); closeActionMenu()"
                   >
                     Import plan
                   </button>

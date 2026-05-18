@@ -32,7 +32,6 @@ describe('selectPlanDockItems', () => {
       isActive: true,
       iconSrc: '/game-icons/Desc_IronPlate_C.png',
       iconLabel: 'Iron Plate',
-      targetCount: 2,
       targetSummary: 'Iron Plate +1',
     });
   });
@@ -46,7 +45,6 @@ describe('selectPlanDockItems', () => {
       isActive: false,
       iconSrc: null,
       fallbackLabel: 'RE',
-      targetCount: 0,
       targetSummary: 'Draft plan',
     });
   });
@@ -62,16 +60,15 @@ describe('selectPlanDockItems', () => {
       5,
     );
 
-    expect(selection.items.map((item) => item.id)).toEqual([
+    expect(selection.map((item) => item.id)).toEqual([
       'project-5',
       'project-2',
       'project-7',
       'project-3',
       'project-1',
     ]);
-    expect(selection.items.some((item) => item.isActive)).toBe(true);
-    expect(selection.hiddenCount).toBe(3);
-    expect(selection.hasHiddenItems).toBe(true);
+    expect(selection.some((item) => item.isActive)).toBe(true);
+    expect(selection).toHaveLength(5);
   });
 
   it('filters stale and duplicate recently touched plans from the compact strip', () => {
@@ -85,7 +82,7 @@ describe('selectPlanDockItems', () => {
       4,
     );
 
-    expect(selection.items.map((item) => item.id)).toEqual([
+    expect(selection.map((item) => item.id)).toEqual([
       'project-4',
       'project-2',
       'project-6',
@@ -99,8 +96,7 @@ describe('selectPlanDockItems', () => {
 
     const selection = selectCompactPlanDockItems(items, 'project-3', ['project-2'], 5);
 
-    expect(selection.items.map((item) => item.id)).toEqual(['project-1', 'project-2', 'project-3']);
-    expect(selection.hasHiddenItems).toBe(false);
+    expect(selection.map((item) => item.id)).toEqual(['project-1', 'project-2', 'project-3']);
   });
 });
 

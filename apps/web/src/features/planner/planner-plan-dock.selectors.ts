@@ -1,4 +1,4 @@
-import type { GameDataset, ItemId } from '@beltwise/game-data';
+import type { GameDataset } from '@beltwise/game-data';
 import type { PlannerProject, ProductTarget } from '@beltwise/planner-core';
 import { gameIconPathForItemId } from './game-icon.helpers';
 
@@ -9,14 +9,7 @@ export interface PlanDockItem {
   readonly iconSrc: string | null;
   readonly iconLabel: string;
   readonly fallbackLabel: string;
-  readonly targetCount: number;
   readonly targetSummary: string;
-}
-
-export interface CompactPlanDockSelection {
-  readonly items: PlanDockItem[];
-  readonly hiddenCount: number;
-  readonly hasHiddenItems: boolean;
 }
 
 export function selectPlanDockItems(
@@ -34,14 +27,10 @@ export function selectCompactPlanDockItems(
   activeProjectId: string | undefined,
   recentlyTouchedProjectIds: readonly string[],
   itemLimit: number,
-): CompactPlanDockSelection {
+): PlanDockItem[] {
   const visibleLimit = Math.max(1, Math.floor(itemLimit));
   if (items.length <= visibleLimit) {
-    return {
-      items: [...items],
-      hiddenCount: 0,
-      hasHiddenItems: false,
-    };
+    return [...items];
   }
 
   const selectedItems: PlanDockItem[] = [];
@@ -67,13 +56,7 @@ export function selectCompactPlanDockItems(
     addVisibleItem(item.id);
   }
 
-  const visibleItems = selectedItems.slice(0, visibleLimit);
-
-  return {
-    items: visibleItems,
-    hiddenCount: items.length - visibleItems.length,
-    hasHiddenItems: true,
-  };
+  return selectedItems.slice(0, visibleLimit);
 }
 
 function selectPlanDockItem(
@@ -93,7 +76,6 @@ function selectPlanDockItem(
     iconSrc: primaryTarget ? gameIconPathForItemId(primaryTarget.itemId) : null,
     iconLabel,
     fallbackLabel: createFallbackLabel(project.name),
-    targetCount: targets.length,
     targetSummary: createTargetSummary(iconLabel, targets.length),
   };
 }
