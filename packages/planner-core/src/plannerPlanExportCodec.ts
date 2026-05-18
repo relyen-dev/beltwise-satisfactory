@@ -5,6 +5,7 @@ import {
   encodeStoredPlannerProject,
   type StoredPlannerProjectV1,
 } from './plannerPersistenceCodec';
+import { isPlanTransferRecord, readTransferString } from './planTransferFieldCodecs';
 
 export const BELTWISE_PLAN_EXPORT_KIND = 'beltwise.plan';
 export const BELTWISE_PLAN_EXPORT_FORMAT_VERSION = 1;
@@ -83,8 +84,6 @@ export interface BeltwisePlanImportWarning {
   currentDatasetId: string;
 }
 
-type UnknownRecord = Record<string, unknown>;
-
 export function encodeBeltwisePlanExport(
   project: PlannerProject,
   options: { dataset: GameDataset; exportedAt?: string },
@@ -121,7 +120,7 @@ export function decodeBeltwisePlanExport(
   value: unknown,
   dataset: GameDataset,
 ): DecodeBeltwisePlanExportResult {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return fail('invalid-envelope', 'That file is not a Beltwise plan export.');
   }
 
@@ -134,15 +133,12 @@ export function decodeBeltwisePlanExport(
       typeof value['formatVersion'] === 'number' &&
       value['formatVersion'] > BELTWISE_PLAN_EXPORT_FORMAT_VERSION
     ) {
-      return fail(
-        'unsupported-version',
-        'This plan was exported by a newer Beltwise format.',
-      );
+      return fail('unsupported-version', 'This plan was exported by a newer Beltwise format.');
     }
     return fail('invalid-envelope', 'That Beltwise plan export has an invalid version.');
   }
 
-  const exportedAt = readString(value['exportedAt']);
+  const exportedAt = readTransferString(value['exportedAt']);
   if (exportedAt === undefined || value['sourceApp'] !== BELTWISE_PLAN_EXPORT_SOURCE_APP) {
     return fail('invalid-envelope', 'That Beltwise plan export is missing required metadata.');
   }
@@ -246,14 +242,14 @@ function toDatasetMetadata(dataset: GameDataset): BeltwisePlanExportDatasetMetad
 }
 
 function readDatasetMetadata(value: unknown): BeltwisePlanExportDatasetMetadataV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
 
-  const datasetId = readString(value['datasetId']);
+  const datasetId = readTransferString(value['datasetId']);
   const game = value['game'];
-  const gameVersionLabel = readString(value['gameVersionLabel']);
-  const generatedAt = readString(value['generatedAt']);
+  const gameVersionLabel = readTransferString(value['gameVersionLabel']);
+  const generatedAt = readTransferString(value['generatedAt']);
   const source = readDatasetSourceMetadata(value['source']);
   if (
     datasetId === undefined ||
@@ -277,17 +273,17 @@ function readDatasetMetadata(value: unknown): BeltwisePlanExportDatasetMetadataV
 function readDatasetSourceMetadata(
   value: unknown,
 ): BeltwisePlanExportDatasetSourceMetadataV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
 
-  const docsFileName = readString(value['docsFileName']);
+  const docsFileName = readTransferString(value['docsFileName']);
   if (docsFileName === undefined) {
     return null;
   }
 
-  const docsLastModified = readString(value['docsLastModified']);
-  const fingerprint = readString(value['fingerprint']);
+  const docsLastModified = readTransferString(value['docsLastModified']);
+  const fingerprint = readTransferString(value['fingerprint']);
   return {
     docsFileName,
     ...(docsLastModified !== undefined ? { docsLastModified } : {}),
@@ -328,36 +324,33 @@ function datasetImportWarnings(
 }
 
 function isStoredPlannerProjectV1(value: unknown): value is StoredPlannerProjectV1 {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return false;
   }
 
   const graphLayout = value['graphLayout'];
   const buildState = value['buildState'];
   return (
-    readString(value['id']) !== undefined &&
-    readString(value['name']) !== undefined &&
-    readString(value['datasetId']) !== undefined &&
-    readString(value['createdAt']) !== undefined &&
-    readString(value['updatedAt']) !== undefined &&
+    readTransferString(value['id']) !== undefined &&
+    readTransferString(value['name']) !== undefined &&
+    readTransferString(value['datasetId']) !== undefined &&
+    readTransferString(value['createdAt']) !== undefined &&
+    readTransferString(value['updatedAt']) !== undefined &&
     Array.isArray(value['targets']) &&
-    isRecord(value['recipeOverrides']) &&
-    isRecord(value['machineOverrides']) &&
-    isRecord(value['resourceOverrides']) &&
-    isRecord(value['itemInputs']) &&
-    isRecord(value['objectiveProfile']) &&
-    isRecord(graphLayout) &&
-    isRecord(graphLayout['nodePositions']) &&
-    isRecord(value['graphDisplay']) &&
-    isRecord(buildState) &&
-    isRecord(buildState['nodeStates'])
+    isPlanTransferRecord(value['recipeOverrides']) &&
+    isPlanTransferRecord(value['machineOverrides']) &&
+    isPlanTransferRecord(value['resourceOverrides']) &&
+    isPlanTransferRecord(value['itemInputs']) &&
+    isPlanTransferRecord(value['objectiveProfile']) &&
+    isPlanTransferRecord(graphLayout) &&
+    isPlanTransferRecord(graphLayout['nodePositions']) &&
+    isPlanTransferRecord(value['graphDisplay']) &&
+    isPlanTransferRecord(buildState) &&
+    isPlanTransferRecord(buildState['nodeStates'])
   );
 }
 
-function fail(
-  code: BeltwisePlanImportErrorCode,
-  message: string,
-): DecodeBeltwisePlanExportFailure {
+function fail(code: BeltwisePlanImportErrorCode, message: string): DecodeBeltwisePlanExportFailure {
   return { ok: false, error: { code, message } };
 }
 
@@ -370,12 +363,4 @@ function hasProjectName(existingNames: readonly string[], candidate: string): bo
 
 function normalizeProjectNameForComparison(name: string): string {
   return name.trim().toLowerCase();
-}
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

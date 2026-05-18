@@ -1,6 +1,32 @@
 import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import { uniqueStrings } from './internal/uniqueStrings';
 import type { Point } from './model';
+import {
+  copyGraphDisplaySettingsForTransfer,
+  copyMachineOverridesForTransfer,
+  copyNumberRecordForTransfer,
+  copyRecipeOverridesForTransfer,
+  copyResourceOverridesForTransfer,
+  isPlanTransferRecord,
+  normalizePlanTransferNote,
+  objectiveStageOrdersEqual,
+  readBuildStateForTransfer,
+  readGraphDisplaySettingsForTransfer,
+  readGraphLayoutForTransfer,
+  readItemInputsForTransfer,
+  readMachineOverridesForTransfer,
+  readNumberRecordForTransfer,
+  readPlanTransferNote,
+  readProductTargetsForTransfer,
+  readRecipeOverridesForTransfer,
+  readResourceOverridesForTransfer,
+  readTransferNonNegativeFiniteNumber,
+  readTransferObjectivePresetId,
+  readTransferObjectiveStageOrder,
+  readTransferObjectiveStrategy,
+  readTransferString,
+  sanitizeTransferWeight,
+} from './planTransferFieldCodecs';
 
 export interface PlannerWorkspace {
   schemaVersion: number;
@@ -369,7 +395,7 @@ export function objectivePresetDefinition(presetId: ObjectivePresetId): Objectiv
 }
 
 export function sanitizeObjectiveWeight(value: number): number {
-  return Math.max(0, Number.isFinite(value) ? value : 0);
+  return sanitizeTransferWeight(value);
 }
 
 export function createDefaultRecipeOverrides(
@@ -402,7 +428,7 @@ export function createUserDefaultsFromProject(project: PlannerProject): PlannerU
     machineOverrides: copyMachineOverrides(project.machineOverrides),
     resourceOverrides: copyResourceOverrides(project.resourceOverrides),
     objectiveProfile: copyObjectiveProfile(project.objectiveProfile),
-    graphDisplay: { ...project.graphDisplay },
+    graphDisplay: copyGraphDisplaySettingsForTransfer(project.graphDisplay),
   };
 }
 
@@ -453,15 +479,15 @@ export function createPlannerSession(options: PlannerSessionCreateOptions): Plan
 }
 
 export function hydratePlannerProject(value: unknown, dataset: GameDataset): PlannerProject | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
 
   const now = new Date().toISOString();
-  const id = readString(value['id']) ?? createStableId('project');
-  const name = readString(value['name']) ?? 'Restored factory';
-  const createdAt = readString(value['createdAt']) ?? now;
-  const updatedAt = readString(value['updatedAt']) ?? createdAt;
+  const id = readTransferString(value['id']) ?? createStableId('project');
+  const name = readTransferString(value['name']) ?? 'Restored factory';
+  const createdAt = readTransferString(value['createdAt']) ?? now;
+  const updatedAt = readTransferString(value['updatedAt']) ?? createdAt;
   const defaults = createPlannerProject({
     id,
     name,
@@ -471,22 +497,25 @@ export function hydratePlannerProject(value: unknown, dataset: GameDataset): Pla
 
   return {
     ...defaults,
-    datasetId: readString(value['datasetId']) ?? dataset.id,
+    datasetId: readTransferString(value['datasetId']) ?? dataset.id,
     createdAt,
     updatedAt,
-    notes: readPlainTextNote(value['notes']),
-    targets: readProductTargets(value['targets']),
+    notes: readPlanTransferNote(value['notes']),
+    targets: readProductTargetsForTransfer(value['targets'], () => createStableId('target')),
     recipeOverrides: {
       ...createLegacyProjectHydrationRecipeOverrides(dataset),
-      ...readRecipeOverrides(value['recipeOverrides']),
+      ...readRecipeOverridesForTransfer(value['recipeOverrides']),
     },
-    machineOverrides: readMachineOverrides(value['machineOverrides']),
-    resourceOverrides: readResourceOverrides(value['resourceOverrides']),
-    itemInputs: readItemInputs(value['itemInputs']),
+    machineOverrides: readMachineOverridesForTransfer(value['machineOverrides']),
+    resourceOverrides: readResourceOverridesForTransfer(value['resourceOverrides']),
+    itemInputs: readItemInputsForTransfer(value['itemInputs']),
     objectiveProfile: hydrateObjectiveProfile(value['objectiveProfile']),
-    graphLayout: hydrateGraphLayout(value['graphLayout']),
-    graphDisplay: hydrateGraphDisplaySettings(value['graphDisplay']),
-    buildState: hydrateBuildState(value['buildState']),
+    graphLayout: readGraphLayoutForTransfer(value['graphLayout']),
+    graphDisplay: readGraphDisplaySettingsForTransfer(
+      value['graphDisplay'],
+      createDefaultGraphDisplaySettings(),
+    ),
+    buildState: readBuildStateForTransfer(value['buildState']),
   };
 }
 
@@ -495,16 +524,19 @@ export function hydratePlannerUserDefaults(
   dataset: GameDataset,
 ): PlannerUserDefaults {
   const defaults = createDefaultUserDefaults(dataset);
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return defaults;
   }
 
   return mergeUserDefaults(defaults, {
-    recipeOverrides: readRecipeOverrides(value['recipeOverrides']),
-    machineOverrides: readMachineOverrides(value['machineOverrides']),
-    resourceOverrides: readResourceOverrides(value['resourceOverrides']),
+    recipeOverrides: readRecipeOverridesForTransfer(value['recipeOverrides']),
+    machineOverrides: readMachineOverridesForTransfer(value['machineOverrides']),
+    resourceOverrides: readResourceOverridesForTransfer(value['resourceOverrides']),
     objectiveProfile: hydrateObjectiveProfile(value['objectiveProfile']),
-    graphDisplay: hydrateGraphDisplaySettings(value['graphDisplay']),
+    graphDisplay: readGraphDisplaySettingsForTransfer(
+      value['graphDisplay'],
+      createDefaultGraphDisplaySettings(),
+    ),
   });
 }
 
@@ -526,85 +558,7 @@ export function createStableId(prefix: string): string {
 }
 
 export function normalizePlainTextNote(note: string): string {
-  return note.trim().length > 0 ? note : '';
-}
-
-type UnknownRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function readPlainTextNote(value: unknown): string {
-  return typeof value === 'string' ? normalizePlainTextNote(value) : '';
-}
-
-function readFiniteNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
-function readProductTargets(value: unknown): ProductTarget[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const targets: ProductTarget[] = [];
-  for (const [index, target] of value.entries()) {
-    if (!isRecord(target)) {
-      continue;
-    }
-
-    const itemId = readTargetItemId(target['itemId']);
-    const mode = target['mode'];
-    if (itemId === undefined || (mode !== 'fixed' && mode !== 'maximize')) {
-      continue;
-    }
-
-    const baseTarget = {
-      id: readString(target['id']) ?? createStableId('target'),
-      itemId,
-      mode,
-      sortOrder: readFiniteNumber(target['sortOrder']) ?? index,
-    };
-
-    if (mode === 'fixed') {
-      targets.push({
-        ...baseTarget,
-        mode,
-        amountPerMinute: Math.max(0, readFiniteNumber(target['amountPerMinute']) ?? 0),
-      });
-      continue;
-    }
-
-    targets.push({
-      ...baseTarget,
-      mode,
-    });
-  }
-  return targets;
-}
-
-function readTargetItemId(value: unknown): ItemId | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
-function readRecipeOverrides(value: unknown): Record<RecipeId, RecipeOverride> {
-  const overrides: Record<RecipeId, RecipeOverride> = {};
-  if (!isRecord(value)) {
-    return overrides;
-  }
-
-  for (const [recipeId, override] of Object.entries(value)) {
-    if (!isRecord(override) || typeof override['enabled'] !== 'boolean') {
-      continue;
-    }
-    overrides[recipeId] = { enabled: override['enabled'] };
-  }
-  return overrides;
+  return normalizePlanTransferNote(note);
 }
 
 function createLegacyProjectHydrationRecipeOverrides(
@@ -643,7 +597,7 @@ function mergeUserDefaults(
       machineOverrides: copyMachineOverrides(defaults.machineOverrides),
       resourceOverrides: copyResourceOverrides(defaults.resourceOverrides),
       objectiveProfile: copyObjectiveProfile(defaults.objectiveProfile),
-      graphDisplay: { ...defaults.graphDisplay },
+      graphDisplay: copyGraphDisplaySettingsForTransfer(defaults.graphDisplay),
     };
   }
 
@@ -668,34 +622,19 @@ function mergeUserDefaults(
 function copyRecipeOverrides(
   recipeOverrides: Record<RecipeId, RecipeOverride>,
 ): Record<RecipeId, RecipeOverride> {
-  const copy: Record<RecipeId, RecipeOverride> = {};
-  for (const [recipeId, override] of Object.entries(recipeOverrides)) {
-    copy[recipeId] = { enabled: override.enabled };
-  }
-  return copy;
+  return copyRecipeOverridesForTransfer(recipeOverrides);
 }
 
 function copyMachineOverrides(
   machineOverrides: Record<MachineId, MachineOverride>,
 ): Record<MachineId, MachineOverride> {
-  const copy: Record<MachineId, MachineOverride> = {};
-  for (const [machineId, override] of Object.entries(machineOverrides)) {
-    copy[machineId] = { enabled: override.enabled };
-  }
-  return copy;
+  return copyMachineOverridesForTransfer(machineOverrides);
 }
 
 function copyResourceOverrides(
   resourceOverrides: Record<ItemId, ResourceOverride>,
 ): Record<ItemId, ResourceOverride> {
-  const copy: Record<ItemId, ResourceOverride> = {};
-  for (const [itemId, override] of Object.entries(resourceOverrides)) {
-    copy[itemId] = {
-      ...(override.enabled !== undefined ? { enabled: override.enabled } : {}),
-      ...(override.maxPerMinute !== undefined ? { maxPerMinute: override.maxPerMinute } : {}),
-    };
-  }
-  return copy;
+  return copyResourceOverridesForTransfer(resourceOverrides);
 }
 
 function copyObjectiveProfile(objectiveProfile: ObjectiveProfile): ObjectiveProfile {
@@ -711,87 +650,33 @@ function copyObjectiveProfile(objectiveProfile: ObjectiveProfile): ObjectiveProf
   };
 }
 
-function readMachineOverrides(value: unknown): Record<MachineId, MachineOverride> {
-  const overrides: Record<MachineId, MachineOverride> = {};
-  if (!isRecord(value)) {
-    return overrides;
-  }
-
-  for (const [machineId, override] of Object.entries(value)) {
-    if (!isRecord(override) || typeof override['enabled'] !== 'boolean') {
-      continue;
-    }
-    overrides[machineId] = { enabled: override['enabled'] };
-  }
-  return overrides;
-}
-
-function readResourceOverrides(value: unknown): Record<ItemId, ResourceOverride> {
-  const overrides: Record<ItemId, ResourceOverride> = {};
-  if (!isRecord(value)) {
-    return overrides;
-  }
-
-  for (const [itemId, override] of Object.entries(value)) {
-    if (!isRecord(override)) {
-      continue;
-    }
-    const enabled = typeof override['enabled'] === 'boolean' ? override['enabled'] : undefined;
-    const maxPerMinute = readFiniteNumber(override['maxPerMinute']);
-    if (enabled === undefined && maxPerMinute === undefined) {
-      continue;
-    }
-    overrides[itemId] = {
-      ...(enabled !== undefined ? { enabled } : {}),
-      ...(maxPerMinute !== undefined ? { maxPerMinute: Math.max(0, maxPerMinute) } : {}),
-    };
-  }
-  return overrides;
-}
-
-function readItemInputs(value: unknown): Record<ItemId, ItemInputOverride> {
-  const inputs: Record<ItemId, ItemInputOverride> = {};
-  if (!isRecord(value)) {
-    return inputs;
-  }
-
-  for (const [itemId, input] of Object.entries(value)) {
-    if (!isRecord(input)) {
-      continue;
-    }
-    const amountPerMinute = readFiniteNumber(input['amountPerMinute']);
-    if (amountPerMinute === undefined) {
-      continue;
-    }
-    inputs[itemId] = { amountPerMinute: Math.max(0, amountPerMinute) };
-  }
-  return inputs;
-}
-
 function hydrateObjectiveProfile(value: unknown): ObjectiveProfile {
   const defaults = createDefaultObjectiveProfile();
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return defaults;
   }
 
-  const explicitPresetId = readObjectivePresetId(value['presetId']);
+  const explicitPresetId = readTransferObjectivePresetId(value['presetId']);
   const presetDefaults =
     explicitPresetId === undefined ? defaults : createObjectiveProfileFromPreset(explicitPresetId);
-  const strategy = readObjectiveStrategy(value['strategy']) ?? presetDefaults.strategy;
-  const stageOrder = readObjectiveStageOrder(value['stageOrder']) ?? presetDefaults.stageOrder;
+  const strategy = readTransferObjectiveStrategy(value['strategy']) ?? presetDefaults.strategy;
+  const stageOrder =
+    readTransferObjectiveStageOrder(value['stageOrder']) ?? presetDefaults.stageOrder;
   const profile: ObjectiveProfile = {
     presetId: explicitPresetId ?? defaults.presetId,
     strategy,
     stageOrder,
     resourceScarcityWeight:
-      readNonNegativeFiniteNumber(value['resourceScarcityWeight']) ??
+      readTransferNonNegativeFiniteNumber(value['resourceScarcityWeight']) ??
       presetDefaults.resourceScarcityWeight,
-    powerWeight: readNonNegativeFiniteNumber(value['powerWeight']) ?? presetDefaults.powerWeight,
+    powerWeight:
+      readTransferNonNegativeFiniteNumber(value['powerWeight']) ?? presetDefaults.powerWeight,
     machineCountWeight:
-      readNonNegativeFiniteNumber(value['machineCountWeight']) ?? presetDefaults.machineCountWeight,
+      readTransferNonNegativeFiniteNumber(value['machineCountWeight']) ??
+      presetDefaults.machineCountWeight,
     surplusWeight:
-      readNonNegativeFiniteNumber(value['surplusWeight']) ?? presetDefaults.surplusWeight,
-    rawResourceMultipliers: readNumberRecord(value['rawResourceMultipliers']),
+      readTransferNonNegativeFiniteNumber(value['surplusWeight']) ?? presetDefaults.surplusWeight,
+    rawResourceMultipliers: readNumberRecordForTransfer(value['rawResourceMultipliers']),
   };
 
   if (explicitPresetId === 'custom') {
@@ -809,120 +694,6 @@ function hydrateObjectiveProfile(value: unknown): ObjectiveProfile {
     ...profile,
     presetId: findMatchingObjectivePresetId(profile) ?? 'custom',
   };
-}
-
-function readNumberRecord(value: unknown): Record<ItemId, number> {
-  const record: Record<ItemId, number> = {};
-  if (!isRecord(value)) {
-    return record;
-  }
-
-  for (const [itemId, multiplier] of Object.entries(value)) {
-    const numericMultiplier = readNonNegativeFiniteNumber(multiplier);
-    if (numericMultiplier !== undefined) {
-      record[itemId] = numericMultiplier;
-    }
-  }
-  return record;
-}
-
-function hydrateGraphLayout(value: unknown): GraphLayoutState {
-  if (!isRecord(value) || !isRecord(value['nodePositions'])) {
-    return { nodePositions: {} };
-  }
-
-  const nodePositions: GraphLayoutState['nodePositions'] = {};
-  for (const [nodeId, position] of Object.entries(value['nodePositions'])) {
-    if (!isRecord(position)) {
-      continue;
-    }
-    const x = readFiniteNumber(position['x']);
-    const y = readFiniteNumber(position['y']);
-    if (x === undefined || y === undefined) {
-      continue;
-    }
-    nodePositions[nodeId] = { x, y };
-  }
-  return { nodePositions };
-}
-
-function hydrateGraphDisplaySettings(value: unknown): GraphDisplaySettings {
-  const defaults = createDefaultGraphDisplaySettings();
-  if (!isRecord(value)) {
-    return defaults;
-  }
-
-  return {
-    maxBeltTier: readConveyorBeltTier(value['maxBeltTier']) ?? defaults.maxBeltTier,
-    maxPipeTier: readPipelineTier(value['maxPipeTier']) ?? defaults.maxPipeTier,
-    rateDecimalPlaces:
-      readRateDecimalPlaces(value['rateDecimalPlaces']) ?? defaults.rateDecimalPlaces,
-    edgeStyle: readGraphEdgeStyle(value['edgeStyle']) ?? defaults.edgeStyle,
-    showTransportLabels:
-      typeof value['showTransportLabels'] === 'boolean'
-        ? value['showTransportLabels']
-        : defaults.showTransportLabels,
-    animateFlowLines:
-      typeof value['animateFlowLines'] === 'boolean'
-        ? value['animateFlowLines']
-        : defaults.animateFlowLines,
-  };
-}
-
-function readConveyorBeltTier(value: unknown): ConveyorBeltTier | undefined {
-  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5 || value === 6
-    ? value
-    : undefined;
-}
-
-function readPipelineTier(value: unknown): PipelineTier | undefined {
-  return value === 1 || value === 2 ? value : undefined;
-}
-
-function readNonNegativeFiniteNumber(value: unknown): number | undefined {
-  const number = readFiniteNumber(value);
-  return number !== undefined && number >= 0 ? number : undefined;
-}
-
-function readObjectivePresetId(value: unknown): ObjectivePresetId | undefined {
-  return value === 'resource-efficient' ||
-    value === 'low-power' ||
-    value === 'few-machines' ||
-    value === 'low-surplus' ||
-    value === 'balanced' ||
-    value === 'custom'
-    ? value
-    : undefined;
-}
-
-function readObjectiveStrategy(value: unknown): ObjectiveStrategy | undefined {
-  return value === 'lexicographic' || value === 'weighted' ? value : undefined;
-}
-
-function readObjectiveStageId(value: unknown): ObjectiveStageId | undefined {
-  return value === 'raw-resources' ||
-    value === 'surplus' ||
-    value === 'recipe-activity' ||
-    value === 'power'
-    ? value
-    : undefined;
-}
-
-function readObjectiveStageOrder(value: unknown): ObjectiveStageId[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const stageOrder: ObjectiveStageId[] = [];
-  for (const item of value) {
-    const stageId = readObjectiveStageId(item);
-    if (stageId === undefined) {
-      return undefined;
-    }
-    if (!stageOrder.includes(stageId)) {
-      stageOrder.push(stageId);
-    }
-  }
-  return stageOrder.length > 0 ? stageOrder : undefined;
 }
 
 function findMatchingObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId | undefined {
@@ -948,13 +719,6 @@ function objectiveProfileMatchesPreset(
     profile.machineCountWeight === definition.profile.machineCountWeight &&
     profile.surplusWeight === definition.profile.surplusWeight
   );
-}
-
-function objectiveStageOrdersEqual(
-  left: readonly ObjectiveStageId[],
-  right: readonly ObjectiveStageId[],
-): boolean {
-  return left.length === right.length && left.every((stageId, index) => stageId === right[index]);
 }
 
 function sanitizeObjectiveWeightOverrides(
@@ -992,54 +756,5 @@ function sanitizeObjectiveWeightOverrides(
 }
 
 function copyNumberRecord(value: Readonly<Record<ItemId, number>>): Record<ItemId, number> {
-  const copy: Record<ItemId, number> = {};
-  for (const [itemId, number] of Object.entries(value)) {
-    copy[itemId] = sanitizeObjectiveWeight(number);
-  }
-  return copy;
-}
-
-function readRateDecimalPlaces(value: unknown): RateDecimalPlaces | undefined {
-  return value === 1 || value === 2 || value === 3 || value === 4 ? value : undefined;
-}
-
-function readGraphEdgeStyle(value: unknown): GraphEdgeStyle | undefined {
-  return value === 'straight' || value === 'curved' ? value : undefined;
-}
-
-function hydrateBuildState(value: unknown): PlanBuildState {
-  if (!isRecord(value)) {
-    return { planLocked: false, nodeLayoutLocked: false, nodeStates: {} };
-  }
-
-  return {
-    planLocked: value['planLocked'] === true || value['locked'] === true,
-    nodeLayoutLocked: value['nodeLayoutLocked'] === true,
-    nodeStates: readGraphNodeStates(value['nodeStates']),
-  };
-}
-
-function readGraphNodeStates(value: unknown): Record<string, GraphNodeBuildState> {
-  const nodeStates: Record<string, GraphNodeBuildState> = {};
-  if (!isRecord(value)) {
-    return nodeStates;
-  }
-
-  for (const [nodeId, nodeState] of Object.entries(value)) {
-    if (!isRecord(nodeState)) {
-      continue;
-    }
-    const done = typeof nodeState['done'] === 'boolean' ? nodeState['done'] : undefined;
-    const normalizedNote =
-      typeof nodeState['note'] === 'string' ? normalizePlainTextNote(nodeState['note']) : '';
-    const note = normalizedNote.length > 0 ? normalizedNote : undefined;
-    if (done === undefined && note === undefined) {
-      continue;
-    }
-    nodeStates[nodeId] = {
-      ...(done !== undefined ? { done } : {}),
-      ...(note !== undefined ? { note } : {}),
-    };
-  }
-  return nodeStates;
+  return copyNumberRecordForTransfer(value);
 }
