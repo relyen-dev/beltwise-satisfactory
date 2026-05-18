@@ -30,6 +30,8 @@ The graph feature uses a renderer seam:
 
 Renderer-specific types stay in `apps/web/src/features/graph`. Persisted projects and `planner-core` graph models are renderer-neutral.
 
+Future optional capabilities should consider plugin-shaped extension seams before they become built-in planner behavior. See [Plugin-Shaped Extension Seams](./rfc/plugin-extension-seams.md) for the current guidance. Runtime third-party plugins are not an accepted architecture decision.
+
 The generated data pipeline is build-time only. Raw `en-US.json` is read by `scripts/extract-satisfactory-data` and normalized into `apps/web/public/data/satisfactory-current.json`, which is what the Angular app serves.
 
 The production solver uses a continuous LP model solved by HiGHS through `packages/solver`. The model builder, objective preset stage mapping, HiGHS adapter, and solution-to-plan mapping stay framework-independent so Angular can treat solving as an application service dependency.

@@ -34,6 +34,7 @@ The first supporting layer is now in place: stronger panels, icons, defaults, pl
 
 - [Workbench UX Polish](./workbench-ux-polish.md) covers existing recipe/resource panel polish notes.
 - [Resource Providers, Save Imports, And Randomized Nodes](./resource-providers.md) covers save-file import and randomized-node research.
+- [Plugin-Shaped Extension Seams](./plugin-extension-seams.md) captures when expanded features should become optional extension seams instead of built-in planner behavior.
 - [Product Spec](../product-spec.md) remains the north star for current scope and MVP boundaries.
 - [Architecture](../architecture.md) defines current package boundaries and renderer isolation.
 
@@ -48,6 +49,7 @@ The first supporting layer is now in place: stronger panels, icons, defaults, pl
 - Persist user intent and settings, not solver output.
 - Keep save files local-only unless a future feature explicitly introduces server behavior.
 - Do not copy another planner's exact layout, colors, row treatment, node styling, or navigation chrome.
+- Consider plugin-shaped seams for optional, user-selectable, or niche capabilities before making the core planner own every expanded feature.
 
 ## Completed Foundation Sweep
 
@@ -87,6 +89,7 @@ These are high-value ideas, but they need more data-model work and research befo
 7. Lightweight planned-location mapping.
 8. Wiki/knowledge integration.
 9. Top-down factory layout generation.
+10. First-party extension seams for optional reports, graph overlays, layout strategies, export formats, or data packs.
 
 ## Idea Index
 
@@ -112,6 +115,7 @@ This index keeps the original brainstorm traceable while the rest of the RFC gro
 | Planned locations/map                     | Session/location planning  | [Planned Locations And Map](#planned-locations-and-map)                                        |
 | Recycled rubber/plastic drill-in          | Graph explanation          | [Drill-In Production Views](#drill-in-production-views)                                        |
 | Top-down factory layout                   | Future layout system       | [Top-Down Factory Layout](#top-down-factory-layout)                                            |
+| Optional reports/overlays/layouts         | Extension seams            | [Plugin-shaped extension RFC](./plugin-extension-seams.md)                                     |
 
 ## Planning Panels
 
