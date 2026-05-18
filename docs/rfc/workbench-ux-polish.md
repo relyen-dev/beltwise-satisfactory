@@ -1,10 +1,10 @@
 # RFC: Workbench UX Polish
 
-Status: Future polish
+Status: Partially implemented, remaining polish backlog
 
 ## Summary
 
-Beltwise's workbench panels already cover the core planning controls. This RFC captures later visual and interaction polish ideas so near-term work can stay focused on behavior, correctness, and readability.
+Beltwise's workbench panels cover the core planning controls and now use more visual, icon-backed row states for several high-traffic panels. This RFC captures remaining visual and interaction polish ideas so future work can stay focused on behavior, correctness, and readability.
 
 ## Recipe Panel Polish
 
@@ -13,13 +13,12 @@ Current direction:
 - Base recipes and alternate recipes are separate sections.
 - Base recipes are enabled by default.
 - Alternate recipes are disabled by default per project.
+- Recipe rows are clickable semantic controls with visible enabled/disabled treatment.
+- Recipe rows and tooltips can show item icons when matching files exist in `public/game-icons`.
 
-Future polish ideas:
+Remaining polish ideas:
 
-- Use clearer enabled/disabled row states instead of plain checkboxes.
-- Consider toggle switches for recipe enablement if they remain readable in dense lists.
-- Highlight enabled rows with a subtle Beltwise amber or status-color accent.
-- Use a restrained gradient or left-edge glow for active rows, avoiding heavy visual noise.
+- Continue tuning enabled row accents so they are obvious without becoming visual noise.
 - Add compact recipe summaries later:
   - ingredient chips
   - output chips
@@ -36,8 +35,9 @@ Current direction:
 - The default resource values should come from the static baseline map limits.
 - Users should be able to override limits for individual raw resources.
 - Users should be able to disable a raw resource entirely for a plan.
+- Resource rows show custom/disabled state and support bulk enable/disable/reset actions.
 
-Future polish ideas:
+Remaining polish ideas:
 
 - Use a scan-friendly multi-column layout once the full raw resource list is present.
 - Keep each resource row compact: resource name, enabled toggle, per-minute cap, and reset action.

@@ -28,7 +28,7 @@ The long-term differentiator is session-scale planning:
 - Zoom out from individual plans into a session overview that shows item flow between factories.
 - Warn when a train, truck, drone, belt, pipe, or shared production pool cannot support the connected demand.
 
-This should remain a future system until the app has stronger panel UX, icons, defaults, and inspector workflows. But the data model should avoid choices that make session-scale planning hard later.
+The first supporting layer is now in place: stronger panels, icons, defaults, plan transfer, sessions, objective presets, inspector summaries, and notes. The next roadmap decisions should decide how much refactoring is needed before moving into session-scale planning.
 
 ## Related Documents
 
@@ -49,18 +49,30 @@ This should remain a future system until the app has stronger panel UX, icons, d
 - Keep save files local-only unless a future feature explicitly introduces server behavior.
 - Do not copy another planner's exact layout, colors, row treatment, node styling, or navigation chrome.
 
-## Near-Term Candidates
+## Completed Foundation Sweep
 
-These are plausible next steps because they build on current app structure without requiring save parsing, a map catalog, or logistics simulation.
+The initial workspace-priority set is implemented:
 
-1. Planning panel refresh for Recipes, Machines, Display, and the inspector.
-2. Icon manifest and first tasteful icon placements.
-3. User-configurable defaults for new plans.
-4. Plan import/export and session grouping polish.
-5. Objective profile controls for solver priorities.
-6. Plan and node note improvements.
-7. More graph connection display controls.
-8. Drill-in graph views for special production loops.
+1. Planning panel refresh for Recipes and Machines.
+2. Restrained item and machine icon placements.
+3. Contextual inspector overhaul.
+4. User-configurable global defaults for new plans.
+5. Plan JSON import/export and compact share links/codes.
+6. First-pass game sessions that group plans.
+7. Objective presets and custom objective weights.
+8. Plan notes and node-note polish.
+
+## Next Candidate Set
+
+These are plausible next steps before the larger save/logistics systems. Some are cleanup passes that can reduce risk before adding more stateful features.
+
+1. Refactor planner store/UI orchestration where feature slices have grown large.
+2. Add raw resource multiplier controls to the Objective custom editor.
+3. Add browser smoke tests for graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
+4. Improve graph connection display controls.
+5. Add drill-in graph views for special production loops.
+6. Design the linked-plan contract model before implementing logistics.
+7. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
 
 ## Future Systems
 
@@ -103,14 +115,13 @@ This index keeps the original brainstorm traceable while the rest of the RFC gro
 
 ## Planning Panels
 
-The current panel model is useful but still feels like a configuration checklist. The next pass should keep the same underlying recipe, machine, resource, and display settings while making common choices faster to recognize.
+The panel model has moved away from plain checkbox lists, with clickable enabled/disabled rows and stronger icon-backed scanning. Remaining polish should keep the same underlying recipe, machine, resource, objective, and display settings while making common choices faster to recognize.
 
-Recipe panel direction:
+Current recipe panel direction:
 
 - Keep the existing list mode because it is efficient for power users.
-- Hide checkboxes visually in list mode, but keep real checkbox inputs or equivalent semantic controls for keyboard and accessibility.
-- Make each recipe row clickable, with selected/enabled state shown through a subtle Beltwise amber edge, glow, or gradient.
-- Show enabled/disabled state with row treatment and a compact status glyph rather than relying only on a checkbox square.
+- Keep checkboxes semantic while making the row surface the main interaction.
+- Show enabled/disabled state with row treatment and compact status text rather than relying only on a checkbox square.
 - Keep base recipes and alternates distinct, but do not copy another planner's tab or row treatment.
 - Add row metadata gradually: output items, ingredient items, machine, duration, and whether the recipe is used by the current solution.
 - Support filters such as `All`, `Enabled`, `Disabled`, `Base`, `Alternate`, `Used`, and `Unlocked` when unlock state exists.
@@ -150,14 +161,19 @@ Resource panel direction:
 
 Icons should improve recognition and scan speed without taking over the layout.
 
-Asset direction:
+Current asset direction:
 
 - Use the existing extractor work as the source of item and machine icons.
-- Resize extracted icons to web-appropriate variants, likely `64x64` for dense UI and `128x128` for high-DPI or larger surfaces.
-- Generate an icon manifest that maps stable item and machine IDs to asset paths.
-- Keep `iconRef` optional so the app remains usable when icons are missing.
+- The app currently resolves icons by deterministic public paths such as `/game-icons/Desc_IronPlate_C.png`.
+- Machine icons map build IDs to descriptor-style icon IDs, such as `Build_ConstructorMk1_C` to `Desc_ConstructorMk1_C`.
+- Keep icons optional so the app remains usable when files are missing.
 - Use text-first fallbacks for every icon placement.
 - Review Coffee Stain/community asset guidance before bundling extracted assets publicly.
+
+Future asset questions:
+
+- Decide whether to commit smaller `64x64` or `128x128` variants instead of the current extracted source size.
+- Decide whether a generated manifest is useful beyond deterministic public paths.
 
 Good first placements:
 
@@ -238,11 +254,12 @@ Session export later:
 - Keep save-file snapshots out of exports by default unless the user explicitly includes them.
 - Include enough metadata to explain where session settings came from, such as manual, imported save, or custom default profile.
 
-Future sharing:
+Current sharing:
 
-- Compressed share strings or share links can build on the same schema.
+- Compact `bw.p` payloads support copy/paste codes and `#plan=` links.
+- Share payloads contain plan intent/configuration, including non-empty plan and node notes, not solver output.
 - Public or server-backed sharing should remain future work.
-- Keep local JSON import/export useful even if share links are added later.
+- Keep local JSON import/export useful alongside share links.
 
 ## Sessions And Saves
 
@@ -577,26 +594,23 @@ Recommended path:
 
 ## Suggested Sequence
 
-1. Refresh planning panel interactions, especially Recipes and Machines.
-2. Add the icon manifest and use icons in selectors, rows, and inspector summaries.
-3. Overhaul the inspector into context-specific sections and actions.
-4. Add user defaults for new plans.
-5. Add plan JSON import/export.
-6. Add raw resource multiplier controls to the custom objective editor.
-7. Add richer notes at plan and node scope.
-8. Add graph connection display controls and drill-in views.
-9. Extend the session data model before implementing save imports or linked plans.
-10. Add session import/export after session-scoped data exists beyond plan grouping.
-11. Prototype linked plans with manual links before logistics-backed links.
-12. Add a schematic session logistics overview once linked plans exist.
-13. Research save-derived logistics only after save import has a reliable parser boundary.
-14. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
+1. Run a planner-store and UI orchestration refactor pass if the completed feature sweep left seams that will slow future work.
+2. Add raw resource multiplier controls to the custom objective editor.
+3. Add browser smoke tests around graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
+4. Add graph connection display controls and drill-in views.
+5. Write a focused RFC for linked-plan contracts: exports, imports, item pools, and how those should interact with manual external inputs.
+6. Extend the session data model only with fields needed by the linked-plan or save-import feature selected next.
+7. Add session import/export after session-scoped data exists beyond plan grouping.
+8. Prototype linked plans with manual links before logistics-backed links.
+9. Add a schematic session logistics overview once linked plans exist.
+10. Research save-derived logistics only after save import has a reliable parser boundary.
+11. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
 
 ## Open Questions
 
 - Should item-centric recipe mode be a full tab, an alternate panel view, or a search result drilldown?
-- Should defaults be global only at first, or should the data model start with both global defaults and session defaults?
-- Should import/export start with one active plan only, or should it also support all local plans before sessions exist?
+- When should session defaults be added, and should they override or only seed global defaults?
+- When session export exists, should it export all plans by default or let users choose a subset?
 - Which icon sizes should be committed: `64x64`, `128x128`, or both?
 - How should public distribution handle extracted game icons and asset licensing/community guidelines?
 - Should plan links be one-to-one explicit connections, named item pools, or both?

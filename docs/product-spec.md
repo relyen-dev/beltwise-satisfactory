@@ -19,13 +19,13 @@ Build a readable, local-first factory planner that can:
 
 The current app is a working local-first Angular planner:
 
-- `apps/web` is an Angular standalone app with a graph-first planner screen and workbench sections for Plan, Recipes, Inputs, Resources, Machines, and Display.
+- `apps/web` is an Angular standalone app with a graph-first planner screen and workbench sections for Plan, Objectives, Recipes, Inputs, Resources, Machines, and Display.
 - `packages/game-data` parses Satisfactory `en-US.json`, normalizes it behind Zod schemas, and emits stable compact JSON for the browser.
-- `packages/planner-core` owns persisted project state, resource-cap contracts, renderer-neutral graph models, graph display settings, and graph layout preservation.
-- `packages/solver` owns the continuous LP model, lexicographic solve flow, HiGHS adapter, and solution-to-plan mapping.
+- `packages/planner-core` owns persisted project/workspace state, sessions, user defaults, plan transfer codecs, objective presets, resource-cap contracts, renderer-neutral graph models, graph display settings, and graph layout preservation.
+- `packages/solver` owns the continuous LP model, objective-stage construction, HiGHS adapter, and solution-to-plan mapping.
 - The browser loads compact generated data from `apps/web/public/data/satisfactory-current.json`, with `data/generated/satisfactory-current.json` available as a built-asset fallback.
 - The production solver is HiGHS-backed through the `highs` JavaScript/WASM runtime, with the wrapper patched to read raw solution values instead of truncated pretty output.
-- Projects are saved in `localStorage` under a versioned schema and store user intent/configuration, not authoritative solver output.
+- Workspace state is saved in `localStorage` under a versioned schema and stores sessions, projects, user defaults, and user intent/configuration, not authoritative solver output.
 - Foblex Flow renders the graph through an app-layer adapter. Default graph positions are currently generated with Dagre inside the renderer-neutral graph model path.
 - The current graph supports resource, external input, recipe, output, and byproduct nodes, plus selected-path focus, manual node movement, node done state, node notes, transport labels, and configurable edge style.
 - Plans support plain-text plan notes and graph node notes that are stored locally, exported/imported, shared in compact plan payloads when non-empty, and surfaced in the inspector overview.
@@ -74,7 +74,7 @@ The first version should handle a useful early-to-mid-game slice:
 - Continuous LP solving.
 - Machine counts as fractional/rounded display, not integer solver constraints.
 - Angular-based interactive graph with resource, external input, recipe, output, and byproduct nodes.
-- Local browser persistence for multiple user projects/plans, manual node positions, graph display settings, plan notes, and build-tracking node notes.
+- Local browser persistence for sessions, multiple user projects/plans, user defaults, manual node positions, graph display settings, plan notes, and build-tracking node notes.
 
 Do not include save-file parsing, seed-based randomized resource detection, train/logistics planning, blueprint generation, multiplayer sharing, or account/server features in the MVP. Nuclear and late-game recipes may be present in generated data and solver regression tests, but specialized nuclear UX remains future work.
 
@@ -83,10 +83,10 @@ Do not include save-file parsing, seed-based randomized resource detection, trai
 - The app should work offline after initial load when using bundled/generated data.
 - Core planning should run client-side.
 - No analytics or telemetry in the MVP.
-- Plan/project data should live in local storage or IndexedDB with a versioned schema.
+- Workspace, plan/project, and default data should live in local storage or IndexedDB with a versioned schema.
 - User plans should be local-only in the MVP. Do not store user plans on a server.
 - Persist user intent/configuration, not full optimized solver output.
-- Import/export should use explicit JSON files or compressed share strings later.
+- Plan transfer should use explicit JSON files and compact share strings/links while keeping user data local-only.
 - The app should show clear infeasible/error states rather than silently failing.
 - The UI should remain responsive during solving and layout work. Add Web Workers if real-world solve or layout time starts blocking interaction.
 - Generated data should include a source fingerprint or hash so stale data is obvious.
@@ -102,7 +102,7 @@ Use:
 - Foblex Flow (`@foblex/flow`) for Angular-native interactive graph rendering.
 - Dagre (`@dagrejs/dagre`) for the current automatic left-to-right default graph layout.
 - HiGHS via the `highs` JavaScript/WASM package for LP solving, isolated behind solver adapters.
-- Zod for generated-data validation and import/export validation.
+- Zod for generated-data validation, with typed codecs/type guards for planner persistence and plan transfer formats.
 - Angular services with signals/computed state for planner UI state; use RxJS where streams are naturally useful.
 - Angular component-scoped CSS or SCSS with shared CSS custom properties. Avoid a heavy CSS framework at first; readable code matters more.
 - Vitest for framework-independent packages and focused Angular-adjacent pure/service tests.
@@ -798,7 +798,7 @@ The first screen should be the actual planner, not a marketing page.
 Current primary layout:
 
 - Top app bar: brand, project switcher/name, project actions, solve status, graph/layout locks, layout reset, inspector toggle.
-- Left rail: Plan, Recipes, Inputs, Resources, Machines, Display, and Graph focus controls.
+- Left rail: Plan, Objectives, Recipes, Inputs, Resources, Machines, Display, and Graph focus controls.
 - Collapsible workbench panel: production targets and configuration sections.
 - Center: interactive graph.
 - Right inspector: selected node details, machine counts, item flows, power.
@@ -819,6 +819,7 @@ Configuration area:
 
 - Recipes and alternate recipes should not dominate the default sidebar.
 - Put recipe controls in a dedicated `Recipes` tab/drawer/accordion with search, base/alternate grouping, select all, select none, and per-recipe toggles.
+- Put solver objective presets and custom weight controls in an `Objectives` tab/drawer/accordion.
 - Put user-provided item inputs in an `Inputs` tab/drawer/accordion. These represent items produced elsewhere and available to this factory.
 - Put map/resource caps in a `Resources` tab/drawer/accordion.
 - Put allowed machines in a `Machines` tab/drawer/accordion.
@@ -842,7 +843,9 @@ Current controls:
 - Lock/unlock plan edits and lock/unlock graph node movement.
 - Select graph nodes, mark nodes done, and add node notes.
 - Add and clear plain-text plan notes.
-- Create, rename, duplicate, delete, and switch local projects/plans.
+- Create, rename, duplicate, delete, and switch local sessions and projects/plans.
+- Save active plan settings as defaults and reset defaults to Beltwise defaults.
+- Import/export one plan as JSON and copy/paste compact plan share links/codes.
 - Save/load plans from local storage.
 
 Future controls:
@@ -861,19 +864,19 @@ Design direction:
 
 ## Icon Strategy
 
-The docs expose icon asset references such as `mSmallIcon`, but not necessarily ready-to-use PNG files.
+The docs expose icon asset references such as `mSmallIcon`, but not necessarily ready-to-use PNG files. Beltwise keeps icons as optional public assets so the planner remains usable without them.
 
-MVP:
+Current implementation:
 
-- Keep `iconRef` optional in generated data.
-- Use readable text-first UI with item names and type/color treatments.
-- Build the UI so icons are optional.
+- The app resolves item icons from `/game-icons/<DescriptorId>.png`.
+- Machine icons resolve through the matching descriptor-style id, for example `Build_ConstructorMk1_C` maps to `/game-icons/Desc_ConstructorMk1_C.png`.
+- Icon usage is text-first, with fallbacks when files are missing.
+- Icons appear in selectors, recipe rows/tooltips, machine rows, the plan dock, graph nodes, and inspector summaries where they improve scanning without replacing labels.
 
 Later:
 
-- Add an optional local asset extraction/import step.
-- Support a folder like `public/game-icons/<ItemId>.png`.
-- Add a generated icon manifest mapping item IDs to files.
+- Add an optional local asset extraction/import step if the public icon folder needs to be regenerated from game files.
+- Decide whether a generated manifest is useful beyond the current deterministic path convention.
 - Do not block core planning work on icon extraction.
 
 For public distribution, review Coffee Stain's current asset/community guidelines before bundling any extracted game assets.
@@ -987,14 +990,20 @@ Completed baseline:
 6. Added parser, planner-core, solver, persistence, selector, mutation, and graph-adapter tests.
 7. Built graph model conversion and Dagre-backed default left-to-right layout.
 8. Built Angular planner screen with multi-row target table, workbench sections, graph, inspector, and project controls.
-9. Added local-only persistence for multiple projects/plans, storing user configuration, graph display settings, plan notes, build-state node notes, and manual node positions rather than authoritative solver output.
-10. Added docs explaining local workflow, architecture, data model, and data regeneration.
+9. Added local-only persistence for multiple sessions/projects/plans, storing user configuration, graph display settings, plan notes, build-state node notes, and manual node positions rather than authoritative solver output.
+10. Added user defaults for newly created plans.
+11. Added plan JSON import/export and compact share links/codes.
+12. Added restrained item and machine icon placements across planner controls, graph nodes, and inspector views.
+13. Added objective presets and custom objective weight controls.
+14. Added plan-level notes and node-note summaries.
+15. Added docs explaining local workflow, architecture, data model, and data regeneration.
 
 Near-term follow-up:
 
 1. Add raw resource multiplier controls to the Objective custom editor.
-2. Add browser smoke tests for graph rendering, planner editing, persistence reload, and infeasible/error states.
-3. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
-4. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
-5. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
-6. Keep save-file import, randomized node seeds, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
+2. Run focused refactoring passes where feature slices have grown large, especially planner store/UI orchestration and transfer/default/objective helpers.
+3. Add browser smoke tests for graph rendering, planner editing, persistence reload, share/import flows, and infeasible/error states.
+4. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
+5. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
+6. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
+7. Keep save-file import, randomized node seeds, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
