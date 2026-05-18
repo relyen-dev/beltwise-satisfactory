@@ -29,6 +29,8 @@ Planner-visible rates now preserve enough solution precision for Beltwise's four
 
 The workaround depends on the current bundled shape of `highs/build/highs.js`, so the adapter fails loudly if the expected writer or parser signatures are not found. If a future `highs` release exposes raw solution values directly through its public API, replace this patch with that API.
 
+Because this workaround depends on generated wrapper source, keep the `highs` package exact-pinned and treat upgrades as solver changes. Upgrade PRs must pass the wrapper patch canary plus the precision fixtures below before the pin is moved.
+
 Solver precision issues should still become fixture tests. Current regression coverage includes:
 
 - A direct LP proving `10 / 3` is not truncated to `3.33333`.

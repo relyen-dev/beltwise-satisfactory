@@ -13,6 +13,6 @@
   "dependencies": {
     "@beltwise/game-data": "0.1.0",
     "@beltwise/planner-core": "0.1.0",
-    "highs": "^1.8.0"
+    "highs": "1.8.0"
   }
 }
