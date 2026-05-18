@@ -3,12 +3,11 @@ import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
   applyGraphLayout,
   buildProductionGraph,
-  toDefaultGraphRendererModel,
-  toGraphRendererModel,
-  type GraphRendererModel,
+  toGraphPresentationModel,
+  type GraphPresentationModel,
   type ProductionGraph,
   type ProductionPlanResult,
-  type ProductTarget
+  type ProductTarget,
 } from '@beltwise/planner-core';
 
 describe('production graph conversion', () => {
@@ -23,11 +22,11 @@ describe('production graph conversion', () => {
       powerMw: 0,
       warnings: [],
       machineUsage: [],
-      itemFlows: []
+      itemFlows: [],
     };
 
     const graph = buildProductionGraph(tinySatisfactoryDataset, [], result);
-    const renderer = toGraphRendererModel(graph, { nodePositions: {} });
+    const renderer = toGraphPresentationModel(graph);
 
     expect(graph).toEqual({ nodes: [], edges: [] });
     expect(renderer).toEqual({ nodes: [], edges: [] });
@@ -40,27 +39,27 @@ describe('production graph conversion', () => {
         itemId: 'Desc_IronPlate_C',
         mode: 'fixed',
         amountPerMinute: 25,
-        sortOrder: 0
+        sortOrder: 0,
       },
       {
         id: 'target-rod',
         itemId: 'Desc_IronRod_C',
         mode: 'fixed',
         amountPerMinute: 20,
-        sortOrder: 1
-      }
+        sortOrder: 1,
+      },
     ];
     const result: ProductionPlanResult = {
       status: 'optimal',
       recipeRates: {
         Recipe_IronIngot_C: 70,
         Recipe_IronPlate_C: 25,
-        Recipe_IronRod_C: 20
+        Recipe_IronRod_C: 20,
       },
       rawInputs: { Desc_OreIron_C: 70 },
       outputs: {
         Desc_IronPlate_C: 25,
-        Desc_IronRod_C: 20
+        Desc_IronRod_C: 20,
       },
       surplus: {},
       powerMw: 22,
@@ -73,30 +72,30 @@ describe('production graph conversion', () => {
           recipeDisplayName: 'Iron Plate',
           recipeRatePerMinute: 25,
           machineCount: 2.5,
-          powerMw: 10
-        }
+          powerMw: 10,
+        },
       ],
       itemFlows: [
         {
           itemId: 'Desc_OreIron_C',
           amountPerMinute: 70,
           source: { kind: 'resource', id: 'Desc_OreIron_C' },
-          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' }
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
         },
         {
           itemId: 'Desc_IronPlate_C',
           amountPerMinute: 25,
           source: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
-          target: { kind: 'output', id: 'target-plate' }
-        }
-      ]
+          target: { kind: 'output', id: 'target-plate' },
+        },
+      ],
     };
 
     const graph = buildProductionGraph(tinySatisfactoryDataset, targets, result);
-    const renderer = toGraphRendererModel(graph, {
+    const renderer = applyGraphLayout(toGraphPresentationModel(graph), {
       nodePositions: {
-        'recipe:Recipe_IronPlate_C': { x: 123, y: 456 }
-      }
+        'recipe:Recipe_IronPlate_C': { x: 123, y: 456 },
+      },
     });
 
     expect(graph.nodes.map((node) => node.id)).toContain('output:target-plate');
@@ -104,14 +103,16 @@ describe('production graph conversion', () => {
     expect(graph.nodes.find((node) => node.id === 'output:target-plate')).toMatchObject({
       targetId: 'target-plate',
       targetMode: 'fixed',
-      amountPerMinute: 25
+      amountPerMinute: 25,
     });
     expect(graph.nodes.find((node) => node.id === 'recipe:Recipe_IronPlate_C')?.subtitle).toContain(
       'Constructor',
     );
-    expect(renderer.nodes.find((node) => node.id === 'recipe:Recipe_IronPlate_C')?.position).toEqual({
+    expect(
+      renderer.nodes.find((node) => node.id === 'recipe:Recipe_IronPlate_C')?.position,
+    ).toEqual({
       x: 123,
-      y: 456
+      y: 456,
     });
   });
 
@@ -122,20 +123,20 @@ describe('production graph conversion', () => {
         itemId: 'Desc_OreIron_C',
         mode: 'fixed',
         amountPerMinute: 0.7114,
-        sortOrder: 0
-      }
+        sortOrder: 0,
+      },
     ];
     const result: ProductionPlanResult = {
       status: 'optimal',
       recipeRates: {
-        Recipe_IronIngot_C: 1
+        Recipe_IronIngot_C: 1,
       },
       rawInputs: { Desc_OreIron_C: 0.7114 },
       outputs: {
-        Desc_OreIron_C: 0.7114
+        Desc_OreIron_C: 0.7114,
       },
       surplus: {
-        Desc_IronRod_C: 6.7894
+        Desc_IronRod_C: 6.7894,
       },
       powerMw: 0,
       warnings: [],
@@ -147,17 +148,17 @@ describe('production graph conversion', () => {
           recipeDisplayName: 'Iron Ingot',
           recipeRatePerMinute: 1,
           machineCount: 2.9634,
-          powerMw: 12
-        }
+          powerMw: 12,
+        },
       ],
       itemFlows: [
         {
           itemId: 'Desc_OreIron_C',
           amountPerMinute: 0.7114,
           source: { kind: 'resource', id: 'Desc_OreIron_C' },
-          target: { kind: 'output', id: 'target-ore' }
-        }
-      ]
+          target: { kind: 'output', id: 'target-ore' },
+        },
+      ],
     };
 
     const graph = buildProductionGraph(tinySatisfactoryDataset, targets, result);
@@ -185,94 +186,69 @@ describe('production graph conversion', () => {
     ).toBe('3x Smelter');
   });
 
-  it('lays out default graph positions by production flow instead of node kind columns', () => {
+  it('builds renderer-neutral graph presentation data with supplied positions', () => {
     const graph: ProductionGraph = {
       nodes: [
         {
           id: 'resource:Desc_OreIron_C',
           kind: 'resource',
           label: 'Iron Ore',
-          subtitle: '45/min input'
-        },
-        {
-          id: 'recipe:Recipe_IronIngot_C',
-          kind: 'recipe',
-          label: 'Iron Ingot',
-          subtitle: '1.5x Smelter'
-        },
-        {
-          id: 'recipe:Recipe_IronPlate_C',
-          kind: 'recipe',
-          label: 'Iron Plate',
-          subtitle: '1.5x Constructor'
+          subtitle: '45/min input',
         },
         {
           id: 'output:target-plate',
           kind: 'output',
           label: 'Iron Plate',
-          subtitle: '30/min target'
-        }
+          subtitle: '30/min target',
+        },
       ],
       edges: [
         {
-          id: 'resource:Desc_OreIron_C->recipe:Recipe_IronIngot_C:Desc_OreIron_C',
+          id: 'resource:Desc_OreIron_C->output:target-plate:Desc_OreIron_C',
           sourceNodeId: 'resource:Desc_OreIron_C',
-          targetNodeId: 'recipe:Recipe_IronIngot_C',
+          targetNodeId: 'output:target-plate',
           itemId: 'Desc_OreIron_C',
           label: 'Iron Ore 45/min',
-          amountPerMinute: 45
+          amountPerMinute: 45,
         },
-        {
-          id: 'recipe:Recipe_IronIngot_C->recipe:Recipe_IronPlate_C:Desc_IngotIron_C',
-          sourceNodeId: 'recipe:Recipe_IronIngot_C',
-          targetNodeId: 'recipe:Recipe_IronPlate_C',
-          itemId: 'Desc_IngotIron_C',
-          label: 'Iron Ingot 45/min',
-          amountPerMinute: 45
-        },
-        {
-          id: 'recipe:Recipe_IronPlate_C->output:target-plate:Desc_IronPlate_C',
-          sourceNodeId: 'recipe:Recipe_IronPlate_C',
-          targetNodeId: 'output:target-plate',
-          itemId: 'Desc_IronPlate_C',
-          label: 'Iron Plate 30/min',
-          amountPerMinute: 30
-        }
-      ]
+      ],
     };
 
-    const renderer = toGraphRendererModel(graph, { nodePositions: {} });
-    const resource = nodePosition(renderer, 'resource:Desc_OreIron_C');
-    const ingot = nodePosition(renderer, 'recipe:Recipe_IronIngot_C');
-    const plate = nodePosition(renderer, 'recipe:Recipe_IronPlate_C');
-    const output = nodePosition(renderer, 'output:target-plate');
+    const renderer = toGraphPresentationModel(graph, {
+      'output:target-plate': { x: 320, y: 48 },
+    });
 
-    expect(resource.x).toBeLessThan(ingot.x);
-    expect(ingot.x).toBeLessThan(plate.x);
-    expect(plate.x).toBeLessThan(output.x);
+    expect(nodePosition(renderer, 'resource:Desc_OreIron_C')).toEqual({ x: 48, y: 48 });
+    expect(nodePosition(renderer, 'output:target-plate')).toEqual({ x: 320, y: 48 });
+    expect(renderer.nodes[0]?.size).toEqual({ width: 220, height: 104 });
+    expect(renderer.edges[0]).toMatchObject({
+      sourceNodeId: 'resource:Desc_OreIron_C',
+      targetNodeId: 'output:target-plate',
+      label: 'Iron Ore 45/min',
+    });
   });
 
-  it('keeps default layout stable while overlaying manual positions', () => {
+  it('overlays saved layout state without mutating default presentation positions', () => {
     const graph: ProductionGraph = {
       nodes: [
         {
           id: 'resource:Desc_OreIron_C',
           kind: 'resource',
           label: 'Iron Ore',
-          subtitle: '45/min input'
+          subtitle: '45/min input',
         },
         {
           id: 'recipe:Recipe_IronIngot_C',
           kind: 'recipe',
           label: 'Iron Ingot',
-          subtitle: '1.5x Smelter'
+          subtitle: '1.5x Smelter',
         },
         {
           id: 'output:target-ingot',
           kind: 'output',
           label: 'Iron Ingot',
-          subtitle: '45/min target'
-        }
+          subtitle: '45/min target',
+        },
       ],
       edges: [
         {
@@ -281,7 +257,7 @@ describe('production graph conversion', () => {
           targetNodeId: 'recipe:Recipe_IronIngot_C',
           itemId: 'Desc_OreIron_C',
           label: 'Iron Ore 45/min',
-          amountPerMinute: 45
+          amountPerMinute: 45,
         },
         {
           id: 'recipe:Recipe_IronIngot_C->output:target-ingot:Desc_IngotIron_C',
@@ -289,104 +265,39 @@ describe('production graph conversion', () => {
           targetNodeId: 'output:target-ingot',
           itemId: 'Desc_IngotIron_C',
           label: 'Iron Ingot 45/min',
-          amountPerMinute: 45
-        }
-      ]
+          amountPerMinute: 45,
+        },
+      ],
     };
 
-    const defaultRenderer = toDefaultGraphRendererModel(graph);
-    const repeatedDefaultRenderer = toDefaultGraphRendererModel(graph);
+    const defaultRenderer = toGraphPresentationModel(graph, {
+      'resource:Desc_OreIron_C': { x: 48, y: 48 },
+      'recipe:Recipe_IronIngot_C': { x: 416, y: 48 },
+      'output:target-ingot': { x: 784, y: 48 },
+    });
+    const repeatedDefaultRenderer = toGraphPresentationModel(graph, {
+      'resource:Desc_OreIron_C': { x: 48, y: 48 },
+      'recipe:Recipe_IronIngot_C': { x: 416, y: 48 },
+      'output:target-ingot': { x: 784, y: 48 },
+    });
     const manualRenderer = applyGraphLayout(defaultRenderer, {
       nodePositions: {
-        'recipe:Recipe_IronIngot_C': { x: 999, y: 123 }
-      }
+        'recipe:Recipe_IronIngot_C': { x: 999, y: 123 },
+      },
     });
 
     expect(defaultRenderer).toEqual(repeatedDefaultRenderer);
     expect(nodePosition(manualRenderer, 'recipe:Recipe_IronIngot_C')).toEqual({
       x: 999,
-      y: 123
+      y: 123,
     });
     expect(nodePosition(defaultRenderer, 'recipe:Recipe_IronIngot_C')).toEqual(
       nodePosition(repeatedDefaultRenderer, 'recipe:Recipe_IronIngot_C'),
     );
     expect(nodePosition(defaultRenderer, 'recipe:Recipe_IronIngot_C')).not.toEqual({
       x: 999,
-      y: 123
+      y: 123,
     });
-  });
-
-  it('keeps reciprocal production edges from locking default layout', () => {
-    const graph: ProductionGraph = {
-      nodes: [
-        {
-          id: 'resource:fuel',
-          kind: 'resource',
-          label: 'Fuel',
-          subtitle: '800/min input'
-        },
-        {
-          id: 'recipe:plastic',
-          kind: 'recipe',
-          label: 'Alternate: Recycled Plastic',
-          subtitle: '18.889x Refinery'
-        },
-        {
-          id: 'recipe:rubber',
-          kind: 'recipe',
-          label: 'Alternate: Recycled Rubber',
-          subtitle: '7.778x Refinery'
-        },
-        {
-          id: 'output:plastic',
-          kind: 'output',
-          label: 'Plastic',
-          subtitle: '900/min target'
-        }
-      ],
-      edges: [
-        {
-          id: 'resource:fuel->recipe:plastic:fuel',
-          sourceNodeId: 'resource:fuel',
-          targetNodeId: 'recipe:plastic',
-          itemId: 'Desc_Fuel_C',
-          label: 'Fuel 566.67/min',
-          amountPerMinute: 566.67
-        },
-        {
-          id: 'recipe:plastic->recipe:rubber:plastic',
-          sourceNodeId: 'recipe:plastic',
-          targetNodeId: 'recipe:rubber',
-          itemId: 'Desc_Plastic_C',
-          label: 'Plastic 233.33/min',
-          amountPerMinute: 233.33
-        },
-        {
-          id: 'recipe:rubber->recipe:plastic:rubber',
-          sourceNodeId: 'recipe:rubber',
-          targetNodeId: 'recipe:plastic',
-          itemId: 'Desc_Rubber_C',
-          label: 'Rubber 466.67/min',
-          amountPerMinute: 466.67
-        },
-        {
-          id: 'recipe:plastic->output:plastic:plastic',
-          sourceNodeId: 'recipe:plastic',
-          targetNodeId: 'output:plastic',
-          itemId: 'Desc_Plastic_C',
-          label: 'Plastic 900/min',
-          amountPerMinute: 900
-        }
-      ]
-    };
-
-    const renderer = toGraphRendererModel(graph, { nodePositions: {} });
-    const resource = nodePosition(renderer, 'resource:fuel');
-    const plastic = nodePosition(renderer, 'recipe:plastic');
-    const output = nodePosition(renderer, 'output:plastic');
-
-    expect(resource.x).toBeLessThan(plastic.x);
-    expect(plastic.x).toBeLessThan(output.x);
   });
 
   it('maps consumed external inputs to distinct source nodes', () => {
@@ -396,20 +307,20 @@ describe('production graph conversion', () => {
         itemId: 'Desc_IronPlate_C',
         mode: 'fixed',
         amountPerMinute: 25,
-        sortOrder: 0
-      }
+        sortOrder: 0,
+      },
     ];
     const result: ProductionPlanResult = {
       status: 'optimal',
       recipeRates: {
-        Recipe_IronPlate_C: 25
+        Recipe_IronPlate_C: 25,
       },
       rawInputs: {},
       externalInputs: {
-        Desc_IngotIron_C: 50
+        Desc_IngotIron_C: 50,
       },
       outputs: {
-        Desc_IronPlate_C: 25
+        Desc_IronPlate_C: 25,
       },
       surplus: {},
       powerMw: 10,
@@ -422,23 +333,23 @@ describe('production graph conversion', () => {
           recipeDisplayName: 'Iron Plate',
           recipeRatePerMinute: 25,
           machineCount: 2.5,
-          powerMw: 10
-        }
+          powerMw: 10,
+        },
       ],
       itemFlows: [
         {
           itemId: 'Desc_IngotIron_C',
           amountPerMinute: 50,
           source: { kind: 'externalInput', id: 'Desc_IngotIron_C' },
-          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' }
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
         },
         {
           itemId: 'Desc_IronPlate_C',
           amountPerMinute: 25,
           source: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
-          target: { kind: 'output', id: 'target-plate' }
-        }
-      ]
+          target: { kind: 'output', id: 'target-plate' },
+        },
+      ],
     };
 
     const graph = buildProductionGraph(tinySatisfactoryDataset, targets, result);
@@ -447,14 +358,16 @@ describe('production graph conversion', () => {
       expect.objectContaining({
         id: 'external-input:Desc_IngotIron_C',
         kind: 'externalInput',
-        label: 'Iron Ingot'
+        label: 'Iron Ingot',
       }),
     );
-    expect(graph.edges.map((edge) => edge.sourceNodeId)).toContain('external-input:Desc_IngotIron_C');
+    expect(graph.edges.map((edge) => edge.sourceNodeId)).toContain(
+      'external-input:Desc_IngotIron_C',
+    );
   });
 });
 
-function nodePosition(renderer: GraphRendererModel, nodeId: string): { x: number; y: number } {
+function nodePosition(renderer: GraphPresentationModel, nodeId: string): { x: number; y: number } {
   const node = renderer.nodes.find((candidate) => candidate.id === nodeId);
   expect(node).toBeDefined();
 

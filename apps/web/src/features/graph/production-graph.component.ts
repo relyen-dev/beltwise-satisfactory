@@ -12,7 +12,6 @@ import type { GameDataset } from '@beltwise/game-data';
 import {
   applyGraphLayout,
   createDefaultGraphDisplaySettings,
-  toDefaultGraphRendererModel,
   type GraphLayoutState,
   type GraphDisplaySettings,
   type ProductionGraph,
@@ -28,6 +27,7 @@ import {
   formatDisplayDecimalValue,
   toFoblexFlowModel,
 } from './adapters/foblex-flow.adapter';
+import { toDefaultGraphRendererModel } from './production-graph.layout';
 
 const GRAPH_ZOOM_MINIMUM = 0.2;
 const GRAPH_ZOOM_MAXIMUM = 2.5;
