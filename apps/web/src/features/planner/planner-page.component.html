@@ -169,7 +169,7 @@
           }
         </div>
 
-        <nav class="plan-dock" aria-label="Plans in this save session">
+        <nav class="plan-dock" aria-label="Plan navigation and actions">
           <div class="plan-strip">
             @for (plan of visiblePlanDockItems(); track plan.id) {
               <button
@@ -199,109 +199,113 @@
             >
               Delete
             </button>
+            <div class="status-strip" aria-label="Global actions">
+              <details class="command-menu">
+                <summary aria-label="Open plan actions">
+                  Actions
+                  <svg
+                    class="button-caret"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path d="m7 10 5 5 5-5H7Z" />
+                  </svg>
+                </summary>
+                <div class="command-menu__panel" aria-label="Plan actions">
+                  @if (store.activeSession(); as session) {
+                    <button
+                      type="button"
+                      title="Rename save session"
+                      aria-label="Rename save session"
+                      (click)="startSessionNameEdit(session.id, session.name)"
+                    >
+                      Rename session
+                    </button>
+                    <button type="button" (click)="createSession()">New session</button>
+                    <button
+                      type="button"
+                      class="danger-menu-button"
+                      title="Delete save session"
+                      aria-label="Delete save session"
+                      (click)="deleteActiveSession()"
+                    >
+                      Delete session
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    title="Duplicate active plan"
+                    aria-label="Duplicate active plan"
+                    (click)="duplicateProject()"
+                  >
+                    Duplicate plan
+                  </button>
+                  <button
+                    type="button"
+                    title="Import a Beltwise plan JSON file"
+                    aria-label="Import a Beltwise plan JSON file"
+                    (click)="planImportInput.click()"
+                  >
+                    Import plan
+                  </button>
+                  <button
+                    type="button"
+                    title="Export active plan as Beltwise JSON"
+                    aria-label="Export active plan as Beltwise JSON"
+                    (click)="exportActivePlan()"
+                  >
+                    Export plan
+                  </button>
+                  <button
+                    type="button"
+                    title="Copy a self-contained plan link"
+                    aria-label="Copy a self-contained plan link"
+                    (click)="copyActivePlanShareLink()"
+                  >
+                    Copy link
+                  </button>
+                  <button
+                    type="button"
+                    title="Paste a Beltwise plan link or code"
+                    aria-label="Paste a Beltwise plan link or code"
+                    [attr.aria-expanded]="shareImportOpen()"
+                    (click)="toggleShareImport()"
+                  >
+                    Paste link
+                  </button>
+                  <button
+                    type="button"
+                    title="Edit defaults for new plans"
+                    aria-label="Edit defaults for new plans"
+                    [attr.aria-expanded]="defaultsPanelOpen()"
+                    (click)="toggleDefaultsPanel()"
+                  >
+                    Plan defaults
+                  </button>
+                  <button
+                    type="button"
+                    class="danger-menu-button"
+                    title="Delete active plan"
+                    aria-label="Delete active plan"
+                    (click)="deleteActiveProject()"
+                  >
+                    Delete plan
+                  </button>
+                </div>
+              </details>
+              <input
+                #planImportInput
+                class="plan-file-input"
+                type="file"
+                accept=".json,application/json"
+                aria-hidden="true"
+                tabindex="-1"
+                (change)="importPlanFile($event)"
+              />
+            </div>
           </div>
         </nav>
-      </div>
-
-      <div class="status-strip" aria-label="Global actions">
-        <details class="command-menu">
-          <summary aria-label="Open plan actions">
-            Actions
-            <svg class="button-caret" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="m7 10 5 5 5-5H7Z" />
-            </svg>
-          </summary>
-          <div class="command-menu__panel" aria-label="Plan actions">
-            @if (store.activeSession(); as session) {
-              <button
-                type="button"
-                title="Rename save session"
-                aria-label="Rename save session"
-                (click)="startSessionNameEdit(session.id, session.name)"
-              >
-                Rename session
-              </button>
-              <button type="button" (click)="createSession()">New session</button>
-              <button
-                type="button"
-                class="danger-menu-button"
-                title="Delete save session"
-                aria-label="Delete save session"
-                (click)="deleteActiveSession()"
-              >
-                Delete session
-              </button>
-            }
-            <button
-              type="button"
-              title="Duplicate active plan"
-              aria-label="Duplicate active plan"
-              (click)="duplicateProject()"
-            >
-              Duplicate plan
-            </button>
-            <button
-              type="button"
-              title="Import a Beltwise plan JSON file"
-              aria-label="Import a Beltwise plan JSON file"
-              (click)="planImportInput.click()"
-            >
-              Import plan
-            </button>
-            <button
-              type="button"
-              title="Export active plan as Beltwise JSON"
-              aria-label="Export active plan as Beltwise JSON"
-              (click)="exportActivePlan()"
-            >
-              Export plan
-            </button>
-            <button
-              type="button"
-              title="Copy a self-contained plan link"
-              aria-label="Copy a self-contained plan link"
-              (click)="copyActivePlanShareLink()"
-            >
-              Copy link
-            </button>
-            <button
-              type="button"
-              title="Paste a Beltwise plan link or code"
-              aria-label="Paste a Beltwise plan link or code"
-              [attr.aria-expanded]="shareImportOpen()"
-              (click)="toggleShareImport()"
-            >
-              Paste link
-            </button>
-            <button
-              type="button"
-              title="Edit defaults for new plans"
-              aria-label="Edit defaults for new plans"
-              [attr.aria-expanded]="defaultsPanelOpen()"
-              (click)="toggleDefaultsPanel()"
-            >
-              Plan defaults
-            </button>
-            <button
-              type="button"
-              class="danger-menu-button"
-              title="Delete active plan"
-              aria-label="Delete active plan"
-              (click)="deleteActiveProject()"
-            >
-              Delete plan
-            </button>
-          </div>
-        </details>
-        <input
-          #planImportInput
-          class="plan-file-input"
-          type="file"
-          accept=".json,application/json"
-          aria-hidden="true"
-          tabindex="-1"
-          (change)="importPlanFile($event)"
-        />
       </div>
 
       @if (shareImportOpen()) {

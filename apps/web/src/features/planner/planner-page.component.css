@@ -16,7 +16,7 @@
 
 .app-bar {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
   align-items: center;
   gap: 10px var(--space-4);
   padding: 8px 14px;
@@ -340,9 +340,7 @@
 }
 
 .status-strip {
-  align-self: end;
   justify-content: flex-end;
-  padding-bottom: 2px;
 }
 
 .plan-file-input {
@@ -648,7 +646,7 @@ h2 {
 
 @media (max-width: 1460px) {
   .app-bar {
-    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) max-content;
+    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
     align-items: center;
   }
 
@@ -659,12 +657,6 @@ h2 {
 
   .workspace-context {
     grid-column: 2;
-  }
-
-  .status-strip {
-    grid-column: 3;
-    grid-row: 1;
-    justify-content: flex-end;
   }
 
   .plan-transfer-status,
@@ -679,8 +671,7 @@ h2 {
   }
 
   .brand-block,
-  .workspace-context,
-  .status-strip {
+  .workspace-context {
     grid-column: 1;
     grid-row: auto;
   }
@@ -698,10 +689,8 @@ h2 {
   }
 
   .status-strip {
-    align-self: auto;
     justify-content: flex-start;
     flex-wrap: wrap;
-    padding-bottom: 0;
   }
 
   .workspace-body {
@@ -749,8 +738,7 @@ h2 {
 
   .session-card,
   .active-plan-card,
-  .plan-dock,
-  .status-strip {
+  .plan-dock {
     max-width: calc(100vw - 28px);
   }
 
