@@ -3,27 +3,33 @@ import {
   createPlannerSession,
   hydratePlannerProject,
   hydratePlannerUserDefaults,
-  normalizePlainTextNote,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
-  type GraphNodeBuildState,
-  type ItemInputOverride,
-  type MachineOverride,
   type ObjectivePresetId,
   type ObjectiveStageId,
   type ObjectiveStrategy,
   type PipelineTier,
-  type PlanBuildState,
   type PlannerProject,
   type PlannerSession,
   type PlannerUserDefaults,
   type ProductTarget,
   type RateDecimalPlaces,
-  type RecipeOverride,
-  type ResourceOverride,
 } from './plan';
 import { uniqueStrings } from './internal/uniqueStrings';
+import {
+  copyBooleanOverridesForTransfer,
+  copyGraphDisplaySettingsForTransfer,
+  copyGraphLayoutNodePositionsForTransfer,
+  copyItemInputsForTransfer,
+  copyNumberRecordForTransfer,
+  copyPlanBuildStateForTransfer,
+  copyProductTargetForTransfer,
+  copyResourceOverridesForTransfer,
+  isPlanTransferRecord,
+  normalizePlanTransferNote,
+  readTransferString,
+} from './planTransferFieldCodecs';
 
 export type PlannerStorageSchemaVersion = typeof PLANNER_STORAGE_SCHEMA_VERSION;
 
@@ -407,11 +413,11 @@ function decodeStoredPlannerSession(
   dataset: GameDataset,
   validProjectIds: ReadonlySet<string>,
 ): PlannerSession | null {
-  if (!isRecord(session)) {
+  if (!isPlanTransferRecord(session)) {
     return null;
   }
 
-  const id = readString(session['id']);
+  const id = readTransferString(session['id']);
   if (id === undefined) {
     return null;
   }
@@ -423,14 +429,14 @@ function decodeStoredPlannerSession(
   }
 
   const now = new Date().toISOString();
-  const createdAt = readString(session['createdAt']) ?? now;
-  const activeProjectId = readString(session['activeProjectId']) ?? projectIds[0];
+  const createdAt = readTransferString(session['createdAt']) ?? now;
+  const activeProjectId = readTransferString(session['activeProjectId']) ?? projectIds[0];
   return createPlannerSession({
     id,
-    name: readString(session['name']) ?? `Restored session ${id}`,
-    datasetId: readString(session['datasetId']) ?? dataset.id,
+    name: readTransferString(session['name']) ?? `Restored session ${id}`,
+    datasetId: readTransferString(session['datasetId']) ?? dataset.id,
     createdAt,
-    updatedAt: readString(session['updatedAt']) ?? createdAt,
+    updatedAt: readTransferString(session['updatedAt']) ?? createdAt,
     projectIds,
     ...(activeProjectId !== undefined ? { activeProjectId } : {}),
   });
@@ -650,7 +656,7 @@ function toStoredPlannerSessionV3(session: PlannerSession): StoredPlannerSession
 }
 
 function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProjectV1 {
-  const notes = normalizePlainTextNote(project.notes);
+  const notes = normalizePlanTransferNote(project.notes);
   return {
     id: project.id,
     name: project.name,
@@ -658,22 +664,17 @@ function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProject
     datasetId: project.datasetId,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
-    targets: project.targets.map(toStoredProductTargetV1),
-    recipeOverrides: toStoredRecipeOverridesV1(project.recipeOverrides),
-    machineOverrides: toStoredMachineOverridesV1(project.machineOverrides),
-    resourceOverrides: toStoredResourceOverridesV1(project.resourceOverrides),
-    itemInputs: toStoredItemInputsV1(project.itemInputs),
+    targets: project.targets.map(copyProductTargetForTransfer),
+    recipeOverrides: copyBooleanOverridesForTransfer(project.recipeOverrides),
+    machineOverrides: copyBooleanOverridesForTransfer(project.machineOverrides),
+    resourceOverrides: copyResourceOverridesForTransfer(project.resourceOverrides),
+    itemInputs: copyItemInputsForTransfer(project.itemInputs),
     objectiveProfile: toStoredObjectiveProfileV1(project.objectiveProfile),
-    graphLayout: toStoredGraphLayoutStateV1(project.graphLayout),
-    graphDisplay: {
-      maxBeltTier: project.graphDisplay.maxBeltTier,
-      maxPipeTier: project.graphDisplay.maxPipeTier,
-      rateDecimalPlaces: project.graphDisplay.rateDecimalPlaces,
-      edgeStyle: project.graphDisplay.edgeStyle,
-      showTransportLabels: project.graphDisplay.showTransportLabels,
-      animateFlowLines: project.graphDisplay.animateFlowLines,
+    graphLayout: {
+      nodePositions: copyGraphLayoutNodePositionsForTransfer(project.graphLayout.nodePositions),
     },
-    buildState: toStoredPlanBuildStateV1(project.buildState),
+    graphDisplay: copyGraphDisplaySettingsForTransfer(project.graphDisplay),
+    buildState: copyPlanBuildStateForTransfer(project.buildState),
   };
 }
 
@@ -681,56 +682,12 @@ function toStoredPlannerUserDefaultsV2(
   userDefaults: PlannerUserDefaults,
 ): StoredPlannerUserDefaultsV2 {
   return {
-    recipeOverrides: toStoredRecipeOverridesV1(userDefaults.recipeOverrides),
-    machineOverrides: toStoredMachineOverridesV1(userDefaults.machineOverrides),
-    resourceOverrides: toStoredResourceOverridesV1(userDefaults.resourceOverrides),
+    recipeOverrides: copyBooleanOverridesForTransfer(userDefaults.recipeOverrides),
+    machineOverrides: copyBooleanOverridesForTransfer(userDefaults.machineOverrides),
+    resourceOverrides: copyResourceOverridesForTransfer(userDefaults.resourceOverrides),
     objectiveProfile: toStoredObjectiveProfileV1(userDefaults.objectiveProfile),
-    graphDisplay: {
-      maxBeltTier: userDefaults.graphDisplay.maxBeltTier,
-      maxPipeTier: userDefaults.graphDisplay.maxPipeTier,
-      rateDecimalPlaces: userDefaults.graphDisplay.rateDecimalPlaces,
-      edgeStyle: userDefaults.graphDisplay.edgeStyle,
-      showTransportLabels: userDefaults.graphDisplay.showTransportLabels,
-      animateFlowLines: userDefaults.graphDisplay.animateFlowLines,
-    },
+    graphDisplay: copyGraphDisplaySettingsForTransfer(userDefaults.graphDisplay),
   };
-}
-
-function toStoredProductTargetV1(target: ProductTarget): StoredProductTargetV1 {
-  return target.amountPerMinute === undefined
-    ? {
-        id: target.id,
-        itemId: target.itemId,
-        mode: target.mode,
-        sortOrder: target.sortOrder,
-      }
-    : {
-        id: target.id,
-        itemId: target.itemId,
-        mode: target.mode,
-        amountPerMinute: target.amountPerMinute,
-        sortOrder: target.sortOrder,
-      };
-}
-
-function toStoredRecipeOverridesV1(
-  recipeOverrides: Record<RecipeId, RecipeOverride>,
-): Record<RecipeId, StoredRecipeOverrideV1> {
-  const stored: Record<RecipeId, StoredRecipeOverrideV1> = {};
-  for (const [recipeId, override] of Object.entries(recipeOverrides)) {
-    stored[recipeId] = { enabled: override.enabled };
-  }
-  return stored;
-}
-
-type UnknownRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 function readStringArray(value: unknown): string[] {
@@ -766,51 +723,9 @@ function laterIsoTimestamp(left: string, right: string): string {
   return left >= right ? left : right;
 }
 
-function toStoredMachineOverridesV1(
-  machineOverrides: Record<MachineId, MachineOverride>,
-): Record<MachineId, StoredMachineOverrideV1> {
-  const stored: Record<MachineId, StoredMachineOverrideV1> = {};
-  for (const [machineId, override] of Object.entries(machineOverrides)) {
-    stored[machineId] = { enabled: override.enabled };
-  }
-  return stored;
-}
-
-function toStoredResourceOverridesV1(
-  resourceOverrides: Record<ItemId, ResourceOverride>,
-): Record<ItemId, StoredResourceOverrideV1> {
-  const stored: Record<ItemId, StoredResourceOverrideV1> = {};
-  for (const [itemId, override] of Object.entries(resourceOverrides)) {
-    const storedOverride: StoredResourceOverrideV1 = {};
-    if (override.enabled !== undefined) {
-      storedOverride.enabled = override.enabled;
-    }
-    if (override.maxPerMinute !== undefined) {
-      storedOverride.maxPerMinute = override.maxPerMinute;
-    }
-    stored[itemId] = storedOverride;
-  }
-  return stored;
-}
-
-function toStoredItemInputsV1(
-  itemInputs: Record<ItemId, ItemInputOverride>,
-): Record<ItemId, StoredItemInputOverrideV1> {
-  const stored: Record<ItemId, StoredItemInputOverrideV1> = {};
-  for (const [itemId, input] of Object.entries(itemInputs)) {
-    stored[itemId] = { amountPerMinute: input.amountPerMinute };
-  }
-  return stored;
-}
-
 function toStoredObjectiveProfileV1(
   objectiveProfile: PlannerProject['objectiveProfile'],
 ): StoredObjectiveProfileV1 {
-  const rawResourceMultipliers: Record<ItemId, number> = {};
-  for (const [itemId, multiplier] of Object.entries(objectiveProfile.rawResourceMultipliers)) {
-    rawResourceMultipliers[itemId] = multiplier;
-  }
-
   return {
     presetId: objectiveProfile.presetId,
     strategy: objectiveProfile.strategy,
@@ -819,46 +734,6 @@ function toStoredObjectiveProfileV1(
     powerWeight: objectiveProfile.powerWeight,
     machineCountWeight: objectiveProfile.machineCountWeight,
     surplusWeight: objectiveProfile.surplusWeight,
-    rawResourceMultipliers,
+    rawResourceMultipliers: copyNumberRecordForTransfer(objectiveProfile.rawResourceMultipliers),
   };
-}
-
-function toStoredGraphLayoutStateV1(
-  graphLayout: PlannerProject['graphLayout'],
-): StoredGraphLayoutStateV1 {
-  const nodePositions: Record<string, StoredPointV1> = {};
-  for (const [nodeId, position] of Object.entries(graphLayout.nodePositions)) {
-    nodePositions[nodeId] = { x: position.x, y: position.y };
-  }
-  return { nodePositions };
-}
-
-function toStoredPlanBuildStateV1(buildState: PlanBuildState): StoredPlanBuildStateV1 {
-  return {
-    planLocked: buildState.planLocked,
-    nodeLayoutLocked: buildState.nodeLayoutLocked,
-    nodeStates: toStoredGraphNodeBuildStatesV1(buildState.nodeStates),
-  };
-}
-
-function toStoredGraphNodeBuildStatesV1(
-  nodeStates: Record<string, GraphNodeBuildState>,
-): Record<string, StoredGraphNodeBuildStateV1> {
-  const stored: Record<string, StoredGraphNodeBuildStateV1> = {};
-  for (const [nodeId, nodeState] of Object.entries(nodeStates)) {
-    const storedNodeState: StoredGraphNodeBuildStateV1 = {};
-    if (nodeState.done !== undefined) {
-      storedNodeState.done = nodeState.done;
-    }
-    if (nodeState.note !== undefined) {
-      const note = normalizePlainTextNote(nodeState.note);
-      if (note.length > 0) {
-        storedNodeState.note = note;
-      }
-    }
-    if (storedNodeState.done !== undefined || storedNodeState.note !== undefined) {
-      stored[nodeId] = storedNodeState;
-    }
-  }
-  return stored;
 }

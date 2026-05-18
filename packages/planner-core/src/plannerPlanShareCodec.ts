@@ -6,7 +6,6 @@ import {
   createObjectiveProfileFromPreset,
   createPlannerProject,
   createStableId,
-  normalizePlainTextNote,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
   type GraphNodeBuildState,
@@ -20,6 +19,23 @@ import {
   resolveObjectivePresetId,
 } from './plan';
 import type { BeltwisePlanImportWarning } from './plannerPlanExportCodec';
+import {
+  amountOverrideEntriesForTransfer,
+  booleanOverrideEntriesForTransfer,
+  graphNodePositionEntriesForTransfer,
+  isPlanTransferRecord,
+  normalizePlanTransferNote,
+  objectiveStageOrdersEqual,
+  readTransferConveyorBeltTier,
+  readTransferFiniteNumber,
+  readTransferGraphEdgeStyle,
+  readTransferNonNegativeFiniteNumber,
+  readTransferObjectivePresetId,
+  readTransferPipelineTier,
+  readTransferRateDecimalPlaces,
+  readTransferString,
+  resourceOverrideEntriesForTransfer,
+} from './planTransferFieldCodecs';
 
 export const BELTWISE_PLAN_SHARE_KIND = 'bw.p';
 export const BELTWISE_PLAN_SHARE_FORMAT_VERSION = 1;
@@ -141,8 +157,6 @@ export interface BeltwisePlanShareError {
   message: string;
 }
 
-type UnknownRecord = Record<string, unknown>;
-
 export function encodeBeltwisePlanShare(
   project: PlannerProject,
   dataset: GameDataset,
@@ -160,7 +174,7 @@ export function decodeBeltwisePlanShare(
   dataset: GameDataset,
   options: DecodeBeltwisePlanShareOptions = {},
 ): DecodeBeltwisePlanShareResult {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return fail('invalid-envelope', 'That Beltwise plan link has an invalid payload.');
   }
 
@@ -207,7 +221,7 @@ function encodeCompactPlannerProject(
   const compact: CompactPlannerProjectV1 = {
     n: project.name,
   };
-  const notes = normalizePlainTextNote(project.notes);
+  const notes = normalizePlanTransferNote(project.notes);
   if (notes.length > 0) {
     compact.no = notes;
   }
@@ -280,7 +294,7 @@ function applyCompactProjectToCanonicalDefaults(
 
   return {
     ...defaults,
-    notes: normalizePlainTextNote(compact.no ?? ''),
+    notes: normalizePlanTransferNote(compact.no ?? ''),
     targets: decodeTargets(compact.t),
     recipeOverrides,
     machineOverrides: decodeBooleanOverrides(compact.m),
@@ -331,11 +345,9 @@ function encodeBooleanOverrides(
   defaults: Record<string, { enabled: boolean }>,
   implicitDefaultEnabled: boolean,
 ): CompactBooleanOverrideV1[] {
-  return Object.entries(overrides)
-    .filter(
-      ([id, override]) => override.enabled !== (defaults[id]?.enabled ?? implicitDefaultEnabled),
-    )
-    .map(([id, override]) => [id, override.enabled]);
+  return booleanOverrideEntriesForTransfer(overrides, defaults, implicitDefaultEnabled).map(
+    (override) => [override.id, override.enabled],
+  );
 }
 
 function decodeBooleanOverrides(
@@ -351,15 +363,13 @@ function decodeBooleanOverrides(
 function encodeResourceOverrides(
   overrides: PlannerProject['resourceOverrides'],
 ): CompactResourceOverrideV1[] {
-  return Object.entries(overrides)
-    .map(([itemId, override]) => ({
-      i: itemId,
-      ...(override.enabled !== undefined && override.enabled !== true
-        ? { e: override.enabled }
-        : {}),
+  return resourceOverrideEntriesForTransfer(overrides, { omitEnabledWhenTrue: true }).map(
+    (override) => ({
+      i: override.id,
+      ...(override.enabled !== undefined ? { e: override.enabled } : {}),
       ...(override.maxPerMinute !== undefined ? { m: override.maxPerMinute } : {}),
-    }))
-    .filter((override) => override.e !== undefined || override.m !== undefined);
+    }),
+  );
 }
 
 function decodeResourceOverrides(
@@ -378,7 +388,10 @@ function decodeResourceOverrides(
 function encodeAmountOverrides(
   overrides: Record<string, { amountPerMinute: number }>,
 ): CompactAmountOverrideV1[] {
-  return Object.entries(overrides).map(([itemId, override]) => [itemId, override.amountPerMinute]);
+  return amountOverrideEntriesForTransfer(overrides).map((override) => [
+    override.id,
+    override.amountPerMinute,
+  ]);
 }
 
 function decodeAmountOverrides(
@@ -486,8 +499,8 @@ function decodeGraphDisplay(
 function encodeGraphLayout(
   nodePositions: PlannerProject['graphLayout']['nodePositions'],
 ): CompactGraphNodePositionV1[] {
-  return Object.entries(nodePositions).map(([nodeId, position]) => [
-    nodeId,
+  return graphNodePositionEntriesForTransfer(nodePositions).map((position) => [
+    position.nodeId,
     position.x,
     position.y,
   ]);
@@ -525,7 +538,7 @@ function encodeNodeBuildState(
     compact.d = true;
   }
   if (nodeState.note && nodeState.note.trim().length > 0) {
-    compact.n = normalizePlainTextNote(nodeState.note);
+    compact.n = normalizePlanTransferNote(nodeState.note);
   }
   return compact.d || compact.n ? compact : null;
 }
@@ -533,7 +546,7 @@ function encodeNodeBuildState(
 function decodeBuildState(value: CompactPlanBuildStateV1 | undefined): PlanBuildState {
   const nodeStates: Record<string, GraphNodeBuildState> = {};
   for (const compact of value?.n ?? []) {
-    const note = compact.n === undefined ? '' : normalizePlainTextNote(compact.n);
+    const note = compact.n === undefined ? '' : normalizePlanTransferNote(compact.n);
     nodeStates[compact.id] = {
       ...(compact.d ? { done: true } : {}),
       ...(note.length > 0 ? { note } : {}),
@@ -557,15 +570,15 @@ function encodeDatasetMetadata(dataset: GameDataset): BeltwisePlanShareDatasetMe
 }
 
 function readDatasetMetadata(value: unknown): BeltwisePlanShareDatasetMetadataV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const id = readString(value['id']);
-  const gameVersionLabel = readString(value['gameVersionLabel']);
+  const id = readTransferString(value['id']);
+  const gameVersionLabel = readTransferString(value['gameVersionLabel']);
   if (id === undefined || gameVersionLabel === undefined) {
     return null;
   }
-  const fingerprint = readString(value['fingerprint']);
+  const fingerprint = readTransferString(value['fingerprint']);
   return {
     id,
     gameVersionLabel,
@@ -604,16 +617,16 @@ function datasetImportWarnings(
 }
 
 function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const name = readString(value['n']);
+  const name = readTransferString(value['n']);
   if (name === undefined) {
     return null;
   }
   const compact: CompactPlannerProjectV1 = { n: name };
-  const notes = readString(value['no']);
-  if (notes !== undefined && normalizePlainTextNote(notes).length > 0) {
+  const notes = readTransferString(value['no']);
+  if (notes !== undefined && normalizePlanTransferNote(notes).length > 0) {
     compact.no = notes;
   }
 
@@ -676,13 +689,13 @@ function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | nu
 }
 
 function readCompactProductTarget(value: unknown): CompactProductTargetV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const id = readString(value['id']);
-  const itemId = readString(value['i']);
+  const id = readTransferString(value['id']);
+  const itemId = readTransferString(value['i']);
   const mode = value['m'];
-  const sortOrder = readFiniteNumber(value['s']);
+  const sortOrder = readTransferFiniteNumber(value['s']);
   if (
     id === undefined ||
     itemId === undefined ||
@@ -691,7 +704,7 @@ function readCompactProductTarget(value: unknown): CompactProductTargetV1 | null
   ) {
     return null;
   }
-  const amountPerMinute = readNonNegativeFiniteNumber(value['a']);
+  const amountPerMinute = readTransferNonNegativeFiniteNumber(value['a']);
   if (mode === 'f' && value['a'] !== undefined && amountPerMinute === undefined) {
     return null;
   }
@@ -708,7 +721,7 @@ function readCompactBooleanOverride(value: unknown): CompactBooleanOverrideV1 | 
   if (!Array.isArray(value) || value.length !== 2) {
     return null;
   }
-  const id = readString(value[0]);
+  const id = readTransferString(value[0]);
   const enabled = value[1];
   return id !== undefined && typeof enabled === 'boolean' ? [id, enabled] : null;
 }
@@ -717,8 +730,8 @@ function readCompactAmountOverride(value: unknown): CompactAmountOverrideV1 | nu
   if (!Array.isArray(value) || value.length !== 2) {
     return null;
   }
-  const id = readString(value[0]);
-  const amountPerMinute = readFiniteNumber(value[1]);
+  const id = readTransferString(value[0]);
+  const amountPerMinute = readTransferFiniteNumber(value[1]);
   return id !== undefined && amountPerMinute !== undefined ? [id, amountPerMinute] : null;
 }
 
@@ -726,21 +739,21 @@ function readCompactNonNegativeAmountOverride(value: unknown): CompactAmountOver
   if (!Array.isArray(value) || value.length !== 2) {
     return null;
   }
-  const id = readString(value[0]);
-  const amountPerMinute = readNonNegativeFiniteNumber(value[1]);
+  const id = readTransferString(value[0]);
+  const amountPerMinute = readTransferNonNegativeFiniteNumber(value[1]);
   return id !== undefined && amountPerMinute !== undefined ? [id, amountPerMinute] : null;
 }
 
 function readCompactResourceOverride(value: unknown): CompactResourceOverrideV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const itemId = readString(value['i']);
+  const itemId = readTransferString(value['i']);
   if (itemId === undefined) {
     return null;
   }
   const enabled = typeof value['e'] === 'boolean' ? value['e'] : undefined;
-  const maxPerMinute = readNonNegativeFiniteNumber(value['m']);
+  const maxPerMinute = readTransferNonNegativeFiniteNumber(value['m']);
   if (value['m'] !== undefined && maxPerMinute === undefined) {
     return null;
   }
@@ -758,9 +771,9 @@ function readCompactGraphNodePosition(value: unknown): CompactGraphNodePositionV
   if (!Array.isArray(value) || value.length !== 3) {
     return null;
   }
-  const nodeId = readString(value[0]);
-  const x = readFiniteNumber(value[1]);
-  const y = readFiniteNumber(value[2]);
+  const nodeId = readTransferString(value[0]);
+  const x = readTransferFiniteNumber(value[1]);
+  const y = readTransferFiniteNumber(value[2]);
   return nodeId !== undefined && x !== undefined && y !== undefined ? [nodeId, x, y] : null;
 }
 
@@ -768,14 +781,14 @@ function readCompactObjectiveProfile(value: unknown): CompactObjectiveProfileV1 
   if (value === undefined) {
     return undefined;
   }
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
   const rawResourceMultipliers = readArray(value['r'], readCompactNonNegativeAmountOverride);
   if (rawResourceMultipliers === null) {
     return null;
   }
-  const presetId = readObjectivePresetId(value['id']);
+  const presetId = readTransferObjectivePresetId(value['id']);
   const strategy = readCompactObjectiveStrategy(value['y']);
   const stageOrder = readCompactObjectiveStageOrder(value['g']);
   if (
@@ -785,10 +798,10 @@ function readCompactObjectiveProfile(value: unknown): CompactObjectiveProfileV1 
   ) {
     return null;
   }
-  const resourceScarcityWeight = readNonNegativeFiniteNumber(value['rs']);
-  const powerWeight = readNonNegativeFiniteNumber(value['p']);
-  const machineCountWeight = readNonNegativeFiniteNumber(value['m']);
-  const surplusWeight = readNonNegativeFiniteNumber(value['s']);
+  const resourceScarcityWeight = readTransferNonNegativeFiniteNumber(value['rs']);
+  const powerWeight = readTransferNonNegativeFiniteNumber(value['p']);
+  const machineCountWeight = readTransferNonNegativeFiniteNumber(value['m']);
+  const surplusWeight = readTransferNonNegativeFiniteNumber(value['s']);
   return {
     ...(presetId !== undefined ? { id: presetId } : {}),
     ...(strategy !== undefined ? { y: strategy } : {}),
@@ -805,13 +818,13 @@ function readCompactGraphDisplay(value: unknown): CompactGraphDisplaySettingsV1 
   if (value === undefined) {
     return undefined;
   }
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const maxBeltTier = readConveyorBeltTier(value['b']);
-  const maxPipeTier = readPipelineTier(value['p']);
-  const rateDecimalPlaces = readRateDecimalPlaces(value['d']);
-  const edgeStyle = readGraphEdgeStyle(value['e']);
+  const maxBeltTier = readTransferConveyorBeltTier(value['b']);
+  const maxPipeTier = readTransferPipelineTier(value['p']);
+  const rateDecimalPlaces = readTransferRateDecimalPlaces(value['d']);
+  const edgeStyle = readTransferGraphEdgeStyle(value['e']);
   return {
     ...(maxBeltTier !== undefined ? { b: maxBeltTier } : {}),
     ...(maxPipeTier !== undefined ? { p: maxPipeTier } : {}),
@@ -826,7 +839,7 @@ function readCompactBuildState(value: unknown): CompactPlanBuildStateV1 | null |
   if (value === undefined) {
     return undefined;
   }
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
   const nodeStates = readArray(value['n'], readCompactNodeBuildState);
@@ -841,16 +854,16 @@ function readCompactBuildState(value: unknown): CompactPlanBuildStateV1 | null |
 }
 
 function readCompactNodeBuildState(value: unknown): CompactGraphNodeBuildStateV1 | null {
-  if (!isRecord(value)) {
+  if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const id = readString(value['id']);
+  const id = readTransferString(value['id']);
   if (id === undefined) {
     return null;
   }
   const done = value['d'] === true;
-  const note = readString(value['n']);
-  const normalizedNote = note === undefined ? '' : normalizePlainTextNote(note);
+  const note = readTransferString(value['n']);
+  const normalizedNote = note === undefined ? '' : normalizePlanTransferNote(note);
   if (!done && normalizedNote.length === 0) {
     return null;
   }
@@ -881,23 +894,6 @@ function readArray<T>(value: unknown, readItem: (item: unknown) => T | null): T[
 
 function fail(code: BeltwisePlanShareErrorCode, message: string): DecodeBeltwisePlanShareFailure {
   return { ok: false, error: { code, message } };
-}
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function readFiniteNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
-function readNonNegativeFiniteNumber(value: unknown): number | undefined {
-  const number = readFiniteNumber(value);
-  return number !== undefined && number >= 0 ? number : undefined;
 }
 
 function encodeObjectiveStrategy(strategy: ObjectiveStrategy): CompactObjectiveStrategyV1 {
@@ -954,24 +950,6 @@ function decodeObjectiveStageOrder(
   return decoded.length > 0 ? decoded : undefined;
 }
 
-function objectiveStageOrdersEqual(
-  left: readonly ObjectiveStageId[],
-  right: readonly ObjectiveStageId[],
-): boolean {
-  return left.length === right.length && left.every((stageId, index) => stageId === right[index]);
-}
-
-function readObjectivePresetId(value: unknown): ObjectivePresetId | undefined {
-  return value === 'resource-efficient' ||
-    value === 'low-power' ||
-    value === 'few-machines' ||
-    value === 'low-surplus' ||
-    value === 'balanced' ||
-    value === 'custom'
-    ? value
-    : undefined;
-}
-
 function readCompactObjectiveStrategy(value: unknown): CompactObjectiveStrategyV1 | undefined {
   return value === 'l' || value === 'w' ? value : undefined;
 }
@@ -1000,24 +978,4 @@ function readCompactObjectiveStageOrder(
     }
   }
   return stageOrder.length > 0 ? stageOrder : null;
-}
-
-function readConveyorBeltTier(value: unknown): GraphDisplaySettings['maxBeltTier'] | undefined {
-  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5 || value === 6
-    ? value
-    : undefined;
-}
-
-function readPipelineTier(value: unknown): GraphDisplaySettings['maxPipeTier'] | undefined {
-  return value === 1 || value === 2 ? value : undefined;
-}
-
-function readRateDecimalPlaces(
-  value: unknown,
-): GraphDisplaySettings['rateDecimalPlaces'] | undefined {
-  return value === 1 || value === 2 || value === 3 || value === 4 ? value : undefined;
-}
-
-function readGraphEdgeStyle(value: unknown): GraphEdgeStyle | undefined {
-  return value === 'straight' || value === 'curved' ? value : undefined;
 }

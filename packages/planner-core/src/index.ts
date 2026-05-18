@@ -5,6 +5,7 @@ export * from './plan';
 export * from './plannerPersistenceCodec';
 export * from './plannerPlanExportCodec';
 export * from './plannerPlanShareCodec';
+export * from './planTransferFieldCodecs';
 export * from './planIntentMutations';
 export * from './planReport';
 export * from './resourceLimits';
