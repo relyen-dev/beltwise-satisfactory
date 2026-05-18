@@ -275,6 +275,137 @@ describe('Beltwise compact plan share payloads', () => {
       },
     });
   });
+
+  it('rejects unsafe compact target ids and item ids', () => {
+    const payload = encodeBeltwisePlanShare(createSharedPlannerProject(), tinySatisfactoryDataset);
+
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        t: [{ id: '__proto__', i: 'Desc_IronPlate_C', m: 'f', a: 10, s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        t: [{ id: 'target-safe', i: '__proto__', m: 'f', a: 10, s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        t: [{ id: 'toString', i: 'Desc_IronPlate_C', m: 'f', a: 10, s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        t: [{ id: 'target-safe', i: 'hasOwnProperty', m: 'f', a: 10, s: 0 }],
+      },
+    });
+  });
+
+  it('imports script-looking notes and names as inert plain text', () => {
+    const attackText =
+      '<img src=x onerror="globalThis.__beltwiseXss = true"><script>alert(1)</script>';
+    const payload: BeltwisePlanSharePayload = {
+      k: BELTWISE_PLAN_SHARE_KIND,
+      v: 1,
+      d: {
+        id: tinySatisfactoryDataset.id,
+        gameVersionLabel: tinySatisfactoryDataset.gameVersionLabel,
+      },
+      p: {
+        n: attackText,
+        no: attackText,
+        b: {
+          n: [{ id: 'recipe:Recipe_IronPlate_C', n: attackText }],
+        },
+      },
+    };
+
+    const decoded = decodeBeltwisePlanShare(payload, tinySatisfactoryDataset, {
+      id: 'project-imported',
+      now: '2026-05-14T00:00:00.000Z',
+    });
+
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
+    expect(decoded.project.name).toBe(attackText);
+    expect(decoded.project.notes).toBe(attackText);
+    expect(decoded.project.buildState.nodeStates['recipe:Recipe_IronPlate_C']).toEqual({
+      note: attackText,
+    });
+    expect(globalThis).not.toHaveProperty('__beltwiseXss');
+  });
+
+  it('drops unsafe compact record ids instead of importing polluted maps', () => {
+    const payload: BeltwisePlanSharePayload = {
+      k: BELTWISE_PLAN_SHARE_KIND,
+      v: 1,
+      d: {
+        id: tinySatisfactoryDataset.id,
+        gameVersionLabel: tinySatisfactoryDataset.gameVersionLabel,
+      },
+      p: {
+        n: 'Polluted plan',
+        r: [['__proto__', false]],
+        m: [['toString', false]],
+        rc: [
+          { i: 'prototype', e: false },
+          { i: 'hasOwnProperty', e: false },
+        ],
+        i: [
+          ['__proto__', 10],
+          ['toString', 10],
+        ],
+        o: {
+          r: [
+            ['constructor', 2],
+            ['hasOwnProperty', 2],
+          ],
+        },
+        l: [
+          ['__proto__', 10, 20],
+          ['toString', 30, 40],
+        ],
+        b: {
+          n: [
+            { id: '__proto__', d: true, n: 'polluted' },
+            { id: 'hasOwnProperty', d: true, n: 'polluted' },
+          ],
+        },
+      },
+    };
+
+    const decoded = decodeBeltwisePlanShare(payload, tinySatisfactoryDataset, {
+      id: 'project-imported',
+      now: '2026-05-14T00:00:00.000Z',
+    });
+
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
+    expect(Object.prototype.hasOwnProperty.call(decoded.project.recipeOverrides, '__proto__')).toBe(
+      false,
+    );
+    expect(Object.prototype.hasOwnProperty.call(decoded.project.machineOverrides, 'toString')).toBe(
+      false,
+    );
+    expect(decoded.project.resourceOverrides).toEqual({});
+    expect(decoded.project.itemInputs).toEqual({});
+    expect(decoded.project.objectiveProfile.rawResourceMultipliers).toEqual({});
+    expect(decoded.project.graphLayout.nodePositions).toEqual({});
+    expect(decoded.project.buildState.nodeStates).toEqual({});
+    expect(Object.prototype).not.toHaveProperty('polluted');
+  });
 });
 
 function expectInvalidProjectPayload(payload: BeltwisePlanSharePayload): void {

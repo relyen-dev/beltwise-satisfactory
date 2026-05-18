@@ -4,9 +4,12 @@ import {
   copyGraphNodeBuildStatesForTransfer,
   copyProductTargetForTransfer,
   createDefaultGraphDisplaySettings,
+  readBooleanOverridesForTransfer,
   readBuildStateForTransfer,
   readGraphDisplaySettingsForTransfer,
+  readGraphLayoutForTransfer,
   readItemInputsForTransfer,
+  readNumberRecordForTransfer,
   readProductTargetsForTransfer,
   readResourceOverridesForTransfer,
   readTransferObjectiveStageOrder,
@@ -31,6 +34,28 @@ describe('plan transfer field codecs', () => {
           amountPerMinute: 999,
           sortOrder: 4,
         },
+        {
+          id: '__proto__',
+          itemId: 'Desc_Screw_C',
+          mode: 'fixed',
+          amountPerMinute: 5,
+          sortOrder: 5,
+        },
+        {
+          id: 'toString',
+          itemId: 'Desc_Wire_C',
+          mode: 'fixed',
+          amountPerMinute: 2,
+          sortOrder: 6,
+        },
+        { id: 'unsafe-item', itemId: '__proto__', mode: 'fixed', amountPerMinute: 1, sortOrder: 6 },
+        {
+          id: 'unsafe-inherited-item',
+          itemId: 'hasOwnProperty',
+          mode: 'fixed',
+          amountPerMinute: 1,
+          sortOrder: 7,
+        },
         { id: 'bad-mode', itemId: 'Desc_Wire_C', mode: 'unknown', sortOrder: 5 },
       ],
       () => `target-generated-${++nextId}`,
@@ -49,6 +74,20 @@ describe('plan transfer field codecs', () => {
         itemId: 'Desc_Wire_C',
         mode: 'maximize',
         sortOrder: 4,
+      },
+      {
+        id: 'target-generated-2',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 5,
+        sortOrder: 5,
+      },
+      {
+        id: 'target-generated-3',
+        itemId: 'Desc_Wire_C',
+        mode: 'fixed',
+        amountPerMinute: 2,
+        sortOrder: 6,
       },
     ]);
 
@@ -164,5 +203,64 @@ describe('plan transfer field codecs', () => {
       'surplus',
     ]);
     expect(readTransferObjectiveStageOrder(['power', 'bad-stage'])).toBeUndefined();
+  });
+
+  it('drops unsafe record keys from untrusted transfer maps', () => {
+    const pollutedRecord = JSON.parse(
+      '{"__proto__":{"enabled":false},"constructor":{"enabled":false},' +
+        '"prototype":{"enabled":false},"toString":{"enabled":false},' +
+        '"hasOwnProperty":{"enabled":false},"Recipe_IronPlate_C":{"enabled":true}}',
+    ) as unknown;
+
+    expect(readBooleanOverridesForTransfer(pollutedRecord)).toEqual({
+      Recipe_IronPlate_C: { enabled: true },
+    });
+    expect(
+      readResourceOverridesForTransfer(
+        JSON.parse(
+          '{"__proto__":{"enabled":false,"maxPerMinute":1},' +
+            '"hasOwnProperty":{"enabled":false,"maxPerMinute":1}}',
+        ) as unknown,
+      ),
+    ).toEqual({});
+    expect(
+      readItemInputsForTransfer(
+        JSON.parse(
+          '{"__proto__":{"amountPerMinute":1},"toString":{"amountPerMinute":1}}',
+        ) as unknown,
+      ),
+    ).toEqual({});
+    expect(
+      readNumberRecordForTransfer(
+        JSON.parse('{"__proto__":3,"hasOwnProperty":4,"Desc_OreIron_C":2}') as unknown,
+      ),
+    ).toEqual({ Desc_OreIron_C: 2 });
+    expect(
+      readGraphLayoutForTransfer(
+        JSON.parse(
+          '{"nodePositions":{"__proto__":{"x":1,"y":2},"constructor":{"x":3,"y":4},' +
+            '"toString":{"x":7,"y":8},"recipe:Recipe_IronPlate_C":{"x":5,"y":6}}}',
+        ) as unknown,
+      ),
+    ).toEqual({
+      nodePositions: {
+        'recipe:Recipe_IronPlate_C': { x: 5, y: 6 },
+      },
+    });
+    expect(
+      readBuildStateForTransfer(
+        JSON.parse(
+          '{"nodeStates":{"__proto__":{"done":true,"note":"polluted"},' +
+            '"constructor":{"done":true},"hasOwnProperty":{"done":true},' +
+            '"recipe:Recipe_IronPlate_C":{"note":"Floor 2"}}}',
+        ) as unknown,
+      ),
+    ).toEqual({
+      planLocked: false,
+      nodeLayoutLocked: false,
+      nodeStates: {
+        'recipe:Recipe_IronPlate_C': { note: 'Floor 2' },
+      },
+    });
   });
 });

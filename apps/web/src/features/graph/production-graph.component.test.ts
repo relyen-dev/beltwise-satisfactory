@@ -226,6 +226,38 @@ describe('ProductionGraphComponent template', () => {
 
     expect(canvas.fitToScreen).toHaveBeenCalledTimes(2);
   });
+
+  it('renders imported script-looking graph labels and notes as text', async () => {
+    const globals = globalThis as typeof globalThis & { __beltwiseGraphXss?: boolean };
+    delete globals.__beltwiseGraphXss;
+    const attackText =
+      '<img src=x onerror="globalThis.__beltwiseGraphXss = true"><script>alert(1)</script>';
+    const { controls, fixture } = await createRenderedGraphHarness();
+
+    controls.graph.set({
+      nodes: [
+        {
+          id: OUTPUT_NODE_ID,
+          kind: 'output',
+          label: attackText,
+          subtitle: attackText,
+          itemId: 'Desc_IronPlate_C',
+          targetId: 'target-plate',
+          targetMode: 'fixed',
+          amountPerMinute: 25,
+        },
+      ],
+      edges: [],
+    });
+    controls.nodeNotes.set({ [OUTPUT_NODE_ID]: attackText });
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain(attackText);
+    expect(element.querySelector('img[src="x"]')).toBeNull();
+    expect(element.querySelector('script')).toBeNull();
+    expect(globals.__beltwiseGraphXss).toBeUndefined();
+  });
 });
 
 function createComponentHarness(): ProductionGraphHarness {

@@ -40,6 +40,16 @@ describe('game icon helpers', () => {
     );
   });
 
+  it('refuses to build icon URLs from unsafe imported ids', () => {
+    const unsafeItemId = '../evil.svg#x' as Parameters<typeof gameIconPathForItemId>[0];
+    const unsafeMachineId = 'javascript:alert(1)' as Parameters<typeof gameIconPathForMachineId>[0];
+    const unsafePrototypeItemId = '__proto__' as Parameters<typeof gameIconPathForItemId>[0];
+
+    expect(gameIconPathForItemId(unsafeItemId)).toBe('');
+    expect(gameIconPathForItemId(unsafePrototypeItemId)).toBe('');
+    expect(gameIconPathForMachineId(unsafeMachineId)).toBe('');
+  });
+
   it('has a public PNG for every current dataset item and planner machine icon path', () => {
     const missingIconFiles = Array.from(requiredCurrentDatasetIconFileNames()).filter(
       (iconFileName) => !existsSync(join(PUBLIC_GAME_ICONS_DIR, iconFileName)),

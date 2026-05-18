@@ -10,6 +10,7 @@ import { isPlanTransferRecord, readTransferString } from './planTransferFieldCod
 export const BELTWISE_PLAN_EXPORT_KIND = 'beltwise.plan';
 export const BELTWISE_PLAN_EXPORT_FORMAT_VERSION = 1;
 export const BELTWISE_PLAN_EXPORT_SOURCE_APP = 'Beltwise';
+export const MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES = 5_242_880;
 
 export type BeltwisePlanExportKind = typeof BELTWISE_PLAN_EXPORT_KIND;
 export type BeltwisePlanExportFormatVersion = typeof BELTWISE_PLAN_EXPORT_FORMAT_VERSION;
@@ -106,6 +107,10 @@ export function parseBeltwisePlanExportJson(
   json: string,
   dataset: GameDataset,
 ): DecodeBeltwisePlanExportResult {
+  if (new TextEncoder().encode(json).byteLength > MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES) {
+    return fail('invalid-envelope', 'That plan file is too large to import.');
+  }
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(json) as unknown;

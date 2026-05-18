@@ -81,11 +81,11 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
   const hasMaximizeTargets = input.project.targets.some((target) => target.mode === 'maximize');
   const variables: LpVariable[] = [];
   const constraints: LpConstraint[] = [];
-  const targetOutputCoefficients: Record<string, number> = {};
-  const rawResourceCoefficients: Record<string, number> = {};
-  const surplusCoefficients: Record<string, number> = {};
-  const recipeActivityCoefficients: Record<string, number> = {};
-  const powerCoefficients: Record<string, number> = {};
+  const targetOutputCoefficients = createNumberRecord();
+  const rawResourceCoefficients = createNumberRecord();
+  const surplusCoefficients = createNumberRecord();
+  const recipeActivityCoefficients = createNumberRecord();
+  const powerCoefficients = createNumberRecord();
   const objectiveCoefficientSets = [
     targetOutputCoefficients,
     rawResourceCoefficients,
@@ -94,11 +94,11 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     powerCoefficients,
   ];
   const metadata: ProductionLpModel['metadata'] = {
-    recipeVariableById: {},
-    rawInputVariableByItemId: {},
-    externalInputVariableByItemId: {},
-    surplusVariableByItemId: {},
-    maximizeVariableByTargetId: {},
+    recipeVariableById: createStringRecord(),
+    rawInputVariableByItemId: createStringRecord(),
+    externalInputVariableByItemId: createStringRecord(),
+    surplusVariableByItemId: createStringRecord(),
+    maximizeVariableByTargetId: createStringRecord(),
   };
 
   for (const recipe of enabledRecipes) {
@@ -167,7 +167,7 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
   }
 
   for (const itemId of itemIds) {
-    const coefficients: Record<string, number> = {};
+    const coefficients = createNumberRecord();
 
     for (const recipe of enabledRecipes) {
       const recipeVar = metadata.recipeVariableById[recipe.id];
@@ -239,7 +239,7 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     constraints,
     objective: objectiveStages[0]?.objective ?? {
       direction: 'minimize',
-      coefficients: {},
+      coefficients: createNumberRecord(),
     },
     objectiveStages,
     metadata,
@@ -308,7 +308,7 @@ function getRelevantItemIds(
 }
 
 function aggregateFixedTargets(targets: ProductTarget[]): Record<ItemId, number> {
-  const outputs: Record<ItemId, number> = {};
+  const outputs = createNumberRecord<ItemId>();
   for (const target of targets) {
     if (target.mode !== 'fixed') {
       continue;
@@ -385,13 +385,21 @@ function objectiveStage(
 function combineObjectiveCoefficients(
   coefficientSets: ReadonlyArray<Record<string, number>>,
 ): Record<string, number> {
-  const combined: Record<string, number> = {};
+  const combined = createNumberRecord();
   for (const coefficients of coefficientSets) {
     for (const [variableName, coefficient] of Object.entries(coefficients)) {
       combined[variableName] = (combined[variableName] ?? 0) + coefficient;
     }
   }
   return combined;
+}
+
+function createNumberRecord<Key extends string = string>(): Record<Key, number> {
+  return Object.create(null) as Record<Key, number>;
+}
+
+function createStringRecord<Key extends string = string>(): Record<Key, string> {
+  return Object.create(null) as Record<Key, string>;
 }
 
 function recipeActivityUnitCost(

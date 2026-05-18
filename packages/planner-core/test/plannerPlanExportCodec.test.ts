@@ -9,6 +9,7 @@ import {
   createUniqueImportedPlannerProjectName,
   decodeBeltwisePlanExport,
   encodeBeltwisePlanExport,
+  MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES,
   parseBeltwisePlanExportJson,
   prepareImportedPlannerProject,
   stringifyBeltwisePlanExport,
@@ -270,6 +271,18 @@ describe('Beltwise plan export files', () => {
     ).toMatchObject({
       ok: false,
       error: { code: 'invalid-project' },
+    });
+  });
+
+  it('rejects oversized imported JSON before parsing', () => {
+    const oversizedJson = ' '.repeat(MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES + 1);
+
+    expect(parseBeltwisePlanExportJson(oversizedJson, tinySatisfactoryDataset)).toMatchObject({
+      ok: false,
+      error: {
+        code: 'invalid-envelope',
+        message: 'That plan file is too large to import.',
+      },
     });
   });
 
