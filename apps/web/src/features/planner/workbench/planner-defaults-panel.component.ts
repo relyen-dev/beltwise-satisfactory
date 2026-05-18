@@ -21,10 +21,10 @@ import {
   type PipelineTier,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import { GameIconComponent } from './game-icon.component';
-import { PlannerStoreService } from './planner-store.service';
-import { type MachineRow, type RecipeRow } from './planner-store.selectors';
-import { parsePlannerNumber } from './planner-ui.helpers';
+import { GameIconComponent } from '../shared-ui/game-icon.component';
+import { PlannerStoreService } from '../state/planner-store.service';
+import { type MachineRow, type RecipeRow } from '../state/planner-store.selectors';
+import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 
 type DefaultsPanelTab = 'recipes' | 'machines' | 'resources' | 'objectives' | 'display';
 type RecipeDefaultsPanel = 'standard' | 'converterResources' | 'alternates';

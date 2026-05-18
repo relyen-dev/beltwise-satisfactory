@@ -9,7 +9,7 @@ import {
   type PlannerPlanExportResult,
   type PlannerPlanImportResult,
   type PlannerPlanShareExportResult,
-} from './planner-store.service';
+} from '../state/planner-store.service';
 
 describe('PlannerPlanTransferService', () => {
   afterEach(() => {

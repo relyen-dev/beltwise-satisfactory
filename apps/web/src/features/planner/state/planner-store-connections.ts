@@ -8,14 +8,14 @@ import {
 import {
   type PlannerPersistenceCoordinatorBinding,
   type PlannerPersistenceCoordinatorService,
-} from './planner-persistence-coordinator.service';
-import { type LoadedPlannerState } from './planner-persistence.service';
+} from '../persistence/planner-persistence-coordinator.service';
+import { type LoadedPlannerState } from '../persistence/planner-persistence.service';
 import {
   equalPlannerSolveInputs,
   selectPlannerSolveInput as selectPlannerSolveInputForStore,
   type PlannerSolveInput,
-} from './planner-solve-input';
-import { type PlannerSolverService } from './planner-solver.service';
+} from '../solving/planner-solve-input';
+import { type PlannerSolverService } from '../solving/planner-solver.service';
 
 interface PlannerStoreConnectionPorts {
   readonly dataset: Signal<GameDataset | null>;

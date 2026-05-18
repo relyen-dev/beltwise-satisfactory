@@ -18,11 +18,11 @@ import {
   type ProductionPlanResult,
   type ProductTarget,
 } from '@beltwise/planner-core';
-import { DatasetService } from './dataset.service';
-import type { PlannerPersistenceCoordinatorBinding } from './planner-persistence-coordinator.service';
-import { PlannerPersistenceCoordinatorService } from './planner-persistence-coordinator.service';
-import { selectPlannerSolveInput, type PlannerSolveInput } from './planner-solve-input';
-import { PlannerSolverService, type SolveStatus } from './planner-solver.service';
+import { DatasetService } from '../dataset.service';
+import type { PlannerPersistenceCoordinatorBinding } from '../persistence/planner-persistence-coordinator.service';
+import { PlannerPersistenceCoordinatorService } from '../persistence/planner-persistence-coordinator.service';
+import { selectPlannerSolveInput, type PlannerSolveInput } from '../solving/planner-solve-input';
+import { PlannerSolverService, type SolveStatus } from '../solving/planner-solver.service';
 import {
   GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS,
   PlannerStoreService,

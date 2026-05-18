@@ -3,8 +3,8 @@ import { Injector, runInInjectionContext, signal } from '@angular/core';
 import { type RecipeId } from '@beltwise/game-data';
 import { describe, expect, it, vi } from 'vitest';
 import { PlannerRecipesSectionComponent } from './planner-recipes-section.component';
-import { PlannerStoreService } from './planner-store.service';
-import { type RecipeRow } from './planner-store.selectors';
+import { PlannerStoreService } from '../state/planner-store.service';
+import { type RecipeRow } from '../state/planner-store.selectors';
 
 describe('PlannerRecipesSectionComponent', () => {
   it('bulk toggles the currently selected base recipe subtab rows', () => {

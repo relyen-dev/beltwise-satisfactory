@@ -9,13 +9,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlannerProject, PlannerSession, ProductionPlanStatus } from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
-import { PlannerPlanTransferService } from './planner-plan-transfer.service';
+import { PlannerPlanTransferService } from './transfer/planner-plan-transfer.service';
 import {
   PlannerStoreService,
   type ConfigurationTab,
   type WorkbenchFocusRequest,
-} from './planner-store.service';
-import { encodePlannerShareCode } from './planner-share-codec';
+} from './state/planner-store.service';
+import { encodePlannerShareCode } from './transfer/planner-share-codec';
 
 describe('PlannerPageComponent', () => {
   beforeEach(() => {

@@ -7,7 +7,7 @@ import type {
   PipelineTier,
   RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import { PlannerStoreService } from './planner-store.service';
+import { PlannerStoreService } from '../state/planner-store.service';
 
 interface BeltTierOption {
   value: ConveyorBeltTier;

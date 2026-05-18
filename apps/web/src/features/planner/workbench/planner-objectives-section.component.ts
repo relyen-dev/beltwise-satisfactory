@@ -9,8 +9,8 @@ import {
   type ObjectiveProfile,
   type ObjectiveWeightKey,
 } from '@beltwise/planner-core';
-import { PlannerStoreService } from './planner-store.service';
-import { parsePlannerNumber } from './planner-ui.helpers';
+import { PlannerStoreService } from '../state/planner-store.service';
+import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 
 interface ObjectiveWeightControl {
   key: ObjectiveWeightKey;

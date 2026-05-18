@@ -3,8 +3,8 @@ import { Injector, runInInjectionContext, signal } from '@angular/core';
 import type { Item, ItemId } from '@beltwise/game-data';
 import { describe, expect, it } from 'vitest';
 import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
-import { PlannerStoreService } from './planner-store.service';
-import type { ExternalInputRow } from './planner-store.selectors';
+import { PlannerStoreService } from '../state/planner-store.service';
+import type { ExternalInputRow } from '../state/planner-store.selectors';
 
 describe('PlannerInputsSectionComponent', () => {
   it('clamps draft amounts before merging into an existing external input', () => {
