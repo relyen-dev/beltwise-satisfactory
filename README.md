@@ -41,7 +41,8 @@ Good starting points:
 - [docs/architecture.md](./docs/architecture.md) for package boundaries.
 - [docs/product-spec.md](./docs/product-spec.md) for product direction and roadmap.
 - [packages/planner-core/src/plan.ts](./packages/planner-core/src/plan.ts) for saved project shape.
-- [apps/web/src/features/planner/planner-store.service.ts](./apps/web/src/features/planner/planner-store.service.ts) for app orchestration.
+- [apps/web/src/features/planner/planner-page.component.ts](./apps/web/src/features/planner/planner-page.component.ts) for the planner route entry point.
+- [apps/web/src/features/planner/state/planner-store.service.ts](./apps/web/src/features/planner/state/planner-store.service.ts) for app orchestration.
 - [packages/solver/src/lpModel.ts](./packages/solver/src/lpModel.ts) and [packages/solver/src/highsAdapter.ts](./packages/solver/src/highsAdapter.ts) for solving.
 - [packages/game-data/src/parseDocs.ts](./packages/game-data/src/parseDocs.ts) for data extraction.
 - [apps/web/src/features/graph/adapters/foblex-flow.adapter.ts](./apps/web/src/features/graph/adapters/foblex-flow.adapter.ts) for renderer-specific graph mapping.
@@ -71,6 +72,19 @@ apps/web/public/data             Compact planner dataset consumed by the app
 data/generated                   Generated-data fallback served by the app
 data/resource-limits             Fixture baseline resource caps
 docs                             Architecture and data notes
+```
+
+Planner feature code is intentionally grouped by local responsibility:
+
+```txt
+apps/web/src/features/planner
+  planner-page.component.*       Route entry point and page orchestration
+  state                          Store, selectors, command slices, mutations
+  workbench                      Planner panels, sections, inspectors
+  solving                        Solve input, scheduler, solver service integration
+  transfer                       Import/export and share-link orchestration
+  persistence                    Local workspace persistence coordination
+  shared-ui                      Planner-local UI primitives and formatting helpers
 ```
 
 ## Project Docs

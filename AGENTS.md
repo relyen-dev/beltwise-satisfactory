@@ -39,6 +39,21 @@ The app should stay unofficial and clearly separate from Coffee Stain/FICSIT bra
 - Add tests for parser and solver behavior when changing those areas.
 - Avoid broad rewrites when a focused change will do.
 
+## Structure Conventions
+
+- Keep Angular features vertical under `apps/web/src/features`.
+- Keep route entry components at the feature root when practical, then add feature-local subfolders as the feature grows.
+- In `apps/web/src/features/planner`, put new code in the existing local slice that owns it:
+  - `state/` for store, selectors, command slices, and intent mutations.
+  - `workbench/` for planner section, panel, and inspector UI.
+  - `solving/` for Angular-side solve input, scheduling, and solver service integration.
+  - `transfer/` for JSON import/export and share-link browser orchestration.
+  - `persistence/` for local workspace persistence and persistence coordination.
+  - `shared-ui/` for planner-local UI primitives and formatting/filtering helpers.
+- Keep tests colocated with the module they verify.
+- Keep Foblex-specific graph renderer code in `apps/web/src/features/graph` and especially its `adapters/` folder.
+- Do not add barrel files by default; add one only when it creates a real seam or hides meaningful implementation detail.
+
 ## Branch Strategy
 
 - Prefer intent-based branch prefixes over actor/tool prefixes. Use `feature/`, `refactor/`, `bugfix/`, `docs/`, `chore/`, or `test/` rather than `codex/`.
