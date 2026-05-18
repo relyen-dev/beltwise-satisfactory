@@ -340,7 +340,9 @@
 }
 
 .status-strip {
+  align-self: end;
   justify-content: flex-end;
+  padding-bottom: 2px;
 }
 
 .plan-file-input {
@@ -696,8 +698,10 @@ h2 {
   }
 
   .status-strip {
+    align-self: auto;
     justify-content: flex-start;
     flex-wrap: wrap;
+    padding-bottom: 0;
   }
 
   .workspace-body {
