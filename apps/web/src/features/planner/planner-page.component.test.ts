@@ -7,8 +7,9 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PlannerProject, PlannerSession } from '@beltwise/planner-core';
+import type { PlannerProject, PlannerSession, ProductionPlanStatus } from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
+import { PlannerPlanTransferService } from './planner-plan-transfer.service';
 import {
   PlannerStoreService,
   type ConfigurationTab,
@@ -242,6 +243,26 @@ describe('PlannerPageComponent', () => {
     expect(component.planSelectorOpen()).toBe(false);
   });
 
+  it('focuses the active plan option when opening the selector', () => {
+    const { component, store } = createComponentHarness();
+    const firstFocus = vi.fn();
+    const activeFocus = vi.fn();
+    store.activeSessionProjects.set(createPageProjectList(2));
+    store.activeProjectId.set('project-2');
+    stubElementViewChildren(component, 'planSelectorOptions', [firstFocus, activeFocus]);
+    vi.useFakeTimers();
+
+    try {
+      component.openPlanSelector();
+      vi.runOnlyPendingTimers();
+
+      expect(firstFocus).not.toHaveBeenCalled();
+      expect(activeFocus).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps the visible plan strip bounded around recently touched plans', () => {
     const { component, selectProject, store } = createComponentHarness();
     store.activeSessionProjects.set(createPageProjectList(8));
@@ -379,6 +400,12 @@ describe('PlannerPageComponent', () => {
     store.solveError.set(null);
     store.solveResult.set({ status: 'infeasible' });
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Infeasible plan' });
+
+    store.solveResult.set({ status: 'unbounded' });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Unbounded plan' });
+
+    store.solveResult.set({ status: 'error' });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
@@ -614,12 +641,12 @@ function createComponentHarness(): {
     selectSession,
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
     solveError: signal<string | null>(null),
-    solveResult: signal<{ status: 'optimal' | 'infeasible' } | null>({ status: 'optimal' }),
+    solveResult: signal<PlannerPageSolveResult | null>({ status: 'optimal' }),
     solveStatus: signal<'idle' | 'solving' | 'solved' | 'error'>('solved'),
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
   const injector = Injector.create({
-    providers: [{ provide: PlannerStoreService, useValue: store }],
+    providers: [PlannerPlanTransferService, { provide: PlannerStoreService, useValue: store }],
   });
   const component = runInInjectionContext(injector, () => new PlannerPageComponent());
 
@@ -685,9 +712,13 @@ interface PlannerPageStoreHarness {
   selectSession: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
   solveError: WritableSignal<string | null>;
-  solveResult: WritableSignal<{ status: 'optimal' | 'infeasible' } | null>;
+  solveResult: WritableSignal<PlannerPageSolveResult | null>;
   solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
+}
+
+interface PlannerPageSolveResult {
+  readonly status: ProductionPlanStatus;
 }
 
 function stubInputViewChild(
@@ -715,6 +746,20 @@ function stubElementViewChild(
   Object.defineProperty(component, property, {
     configurable: true,
     value: () => elementRef,
+  });
+}
+
+function stubElementViewChildren(
+  component: PlannerPageComponent,
+  property: 'planSelectorOptions',
+  focusCallbacks: readonly (() => void)[],
+): void {
+  const elementRefs: ElementRef<HTMLElement>[] = focusCallbacks.map((focus) => ({
+    nativeElement: { focus } as unknown as HTMLElement,
+  }));
+  Object.defineProperty(component, property, {
+    configurable: true,
+    value: () => elementRefs,
   });
 }
 

@@ -147,6 +147,7 @@
                 >
                   @for (plan of planDockItems(); track plan.id) {
                     <button
+                      #planSelectorOption
                       type="button"
                       class="plan-selector-option"
                       [class.is-active]="plan.isActive"
