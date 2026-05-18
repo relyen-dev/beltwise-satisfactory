@@ -16,29 +16,11 @@ import {
 } from '@beltwise/planner-core';
 import { defaultResourceCapPerMinute, normalizeResourceOverride } from './planner-domain.helpers';
 
-export interface DuplicateProjectOptions {
-  id: string;
-  now: string;
-}
-
 export type ObjectiveWeightKey =
   | 'resourceScarcityWeight'
   | 'powerWeight'
   | 'machineCountWeight'
   | 'surplusWeight';
-
-export function duplicatePlannerProject(
-  project: PlannerProject,
-  options: DuplicateProjectOptions,
-): PlannerProject {
-  return {
-    ...structuredClone(project),
-    id: options.id,
-    name: `${project.name} copy`,
-    createdAt: options.now,
-    updatedAt: options.now,
-  };
-}
 
 export function updateProjectInList(
   projects: PlannerProject[],
@@ -468,8 +450,7 @@ export function setGraphNodeNote(
 
 export function cleanGraphNodeState(nodeState: GraphNodeBuildState): GraphNodeBuildState | null {
   const done = nodeState.done === true ? true : undefined;
-  const normalizedNote =
-    nodeState.note === undefined ? '' : normalizePlainTextNote(nodeState.note);
+  const normalizedNote = nodeState.note === undefined ? '' : normalizePlainTextNote(nodeState.note);
   const note = normalizedNote.length > 0 ? normalizedNote : undefined;
   if (done === undefined && note === undefined) {
     return null;
