@@ -7,10 +7,10 @@ import {
   resolveObjectivePresetId,
   type ObjectivePresetId,
   type ObjectiveProfile,
+  type ObjectiveWeightKey,
 } from '@beltwise/planner-core';
 import { PlannerStoreService } from './planner-store.service';
 import { parsePlannerNumber } from './planner-ui.helpers';
-import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 interface ObjectiveWeightControl {
   key: ObjectiveWeightKey;

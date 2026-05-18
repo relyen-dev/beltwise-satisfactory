@@ -17,6 +17,7 @@ import {
   resolveObjectivePresetId,
   type ObjectivePresetId,
   type ObjectiveProfile,
+  type ObjectiveWeightKey,
   type PipelineTier,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
@@ -24,7 +25,6 @@ import { GameIconComponent } from './game-icon.component';
 import { PlannerStoreService } from './planner-store.service';
 import { type MachineRow, type RecipeRow } from './planner-store.selectors';
 import { parsePlannerNumber } from './planner-ui.helpers';
-import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 type DefaultsPanelTab = 'recipes' | 'machines' | 'resources' | 'objectives' | 'display';
 type RecipeDefaultsPanel = 'standard' | 'converterResources' | 'alternates';

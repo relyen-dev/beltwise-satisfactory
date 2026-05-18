@@ -15,6 +15,7 @@ import {
   type GraphEdgeStyle,
   type GraphLayoutState,
   type ObjectivePresetId,
+  type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
   type ProductTarget,
@@ -29,7 +30,6 @@ import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from './planner-solver.service';
-import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 export { plannerRelevantMachineIds } from './planner-domain.helpers';
 export {

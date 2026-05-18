@@ -10,17 +10,18 @@ import {
   createDefaultUserDefaults,
   createObjectiveProfileFromPreset,
   createUserDefaultsFromProject,
+  defaultResourceCapPerMinute,
   type ConveyorBeltTier,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
+  normalizeResourceOverride,
   type ObjectivePresetId,
+  type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
   type PlannerUserDefaults,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import { defaultResourceCapPerMinute, normalizeResourceOverride } from './planner-domain.helpers';
-import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 export function setDefaultRecipeEnabled(
   userDefaults: PlannerUserDefaults,

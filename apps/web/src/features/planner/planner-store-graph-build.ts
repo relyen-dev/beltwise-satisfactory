@@ -1,6 +1,10 @@
 import { signal, type Signal } from '@angular/core';
-import { type GraphLayoutState, type PlannerProject } from '@beltwise/planner-core';
-import * as projectMutations from './planner-project-mutations';
+import {
+  defaultGraphLayout,
+  mutatePlanGraph,
+  type GraphLayoutState,
+  type PlannerProject,
+} from '@beltwise/planner-core';
 
 export const GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS = 150;
 
@@ -46,7 +50,9 @@ export class PlannerGraphBuildSlice {
       return;
     }
     this.clearPendingGraphNodePositions();
-    this.options.updateActiveProject(projectMutations.resetGraphLayout);
+    this.options.updateActiveProject((project) =>
+      mutatePlanGraph(project, { type: 'reset-layout' }),
+    );
   }
 
   public selectGraphNode(nodeId: string): void {
@@ -68,12 +74,14 @@ export class PlannerGraphBuildSlice {
   }
 
   public setPlanLocked(locked: boolean): void {
-    this.options.updateActiveProject((project) => projectMutations.setPlanLocked(project, locked));
+    this.options.updateActiveProject((project) =>
+      mutatePlanGraph(project, { type: 'set-plan-locked', locked }),
+    );
   }
 
   public setNodeLayoutLocked(locked: boolean): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setNodeLayoutLocked(project, locked),
+      mutatePlanGraph(project, { type: 'set-node-layout-locked', locked }),
     );
   }
 
@@ -96,12 +104,12 @@ export class PlannerGraphBuildSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setGraphNodeNote(project, selectedNodeId, note),
+      mutatePlanGraph(project, { type: 'set-node-note', nodeId: selectedNodeId, note }),
     );
   }
 
   public activeLayout(): GraphLayoutState {
-    return this.options.activeProject()?.graphLayout ?? projectMutations.defaultGraphLayout();
+    return this.options.activeProject()?.graphLayout ?? defaultGraphLayout();
   }
 
   public flushPendingGraphNodePositions(): void {
@@ -114,7 +122,7 @@ export class PlannerGraphBuildSlice {
     }
     this.pendingGraphNodePositionCommit = null;
     this.options.updateProjectById(pending.projectId, (project) =>
-      projectMutations.setGraphNodePositions(project, pending.positions),
+      mutatePlanGraph(project, { type: 'set-node-positions', positions: pending.positions }),
     );
   }
 
@@ -128,7 +136,7 @@ export class PlannerGraphBuildSlice {
 
   private setGraphNodeDone(nodeId: string, done: boolean): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setGraphNodeDone(project, nodeId, done),
+      mutatePlanGraph(project, { type: 'set-node-done', nodeId, done }),
     );
   }
 

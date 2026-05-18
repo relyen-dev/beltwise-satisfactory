@@ -19,6 +19,7 @@ import {
   selectActivePlannerSession,
   selectPlannerProjectInWorkspace,
   selectPlannerSessionInWorkspace,
+  updateProjectInList,
   type CreatePlannerWorkspaceProject,
   type PlannerWorkspaceLifecycleResult,
   type PlannerProject,
@@ -26,7 +27,6 @@ import {
   type PlannerUserDefaults,
 } from '@beltwise/planner-core';
 import { type LoadedPlannerState } from './planner-persistence.service';
-import * as projectMutations from './planner-project-mutations';
 import {
   type ConfigurationTab,
   type WorkbenchFocusMode,
@@ -214,9 +214,7 @@ export class PlannerWorkspaceSlice {
       return;
     }
     const now = new Date().toISOString();
-    this.projects.update((projects) =>
-      projectMutations.updateProjectInList(projects, activeId, now, mapper),
-    );
+    this.projects.update((projects) => updateProjectInList(projects, activeId, now, mapper));
   }
 
   public updateProjectById(
