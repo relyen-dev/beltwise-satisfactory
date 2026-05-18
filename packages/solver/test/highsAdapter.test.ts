@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dumpProductionLpAsHighsLp,
   HighsLinearSolverAdapter,
+  solveLexicographicProductionLp,
   type ProductionLpModel,
 } from '@beltwise/solver';
 
@@ -91,5 +92,12 @@ describe('HighsLinearSolverAdapter', () => {
 
     expect(lpText).toContain('x0');
     expect(lpText).not.toContain('unsafe:x/with/slashes');
+  });
+
+  it('keeps the package-level lexicographic helper backed by HiGHS by default', async () => {
+    const result = await solveLexicographicProductionLp(smokeModel());
+
+    expect(result.status).toBe('optimal');
+    expect(result.variables['unsafe:x/with/slashes']).toBeCloseTo(5, 8);
   });
 });

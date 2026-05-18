@@ -1,4 +1,7 @@
 export * from './highsAdapter';
+export * from './highsLpSerialization';
+export * from './highsSolutionMapping';
+export * from './lexicographicProductionLp';
 export * from './lpModel';
 export * from './productionResultMapping';
 export * from './rawResourceCost';
