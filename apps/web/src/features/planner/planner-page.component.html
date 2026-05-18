@@ -205,7 +205,12 @@
 
       <div class="status-strip" aria-label="Global actions">
         <details class="command-menu">
-          <summary aria-label="Open plan actions">Actions</summary>
+          <summary aria-label="Open plan actions">
+            Actions
+            <svg class="button-caret" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="m7 10 5 5 5-5H7Z" />
+            </svg>
+          </summary>
           <div class="command-menu__panel" aria-label="Plan actions">
             @if (store.activeSession(); as session) {
               <button
