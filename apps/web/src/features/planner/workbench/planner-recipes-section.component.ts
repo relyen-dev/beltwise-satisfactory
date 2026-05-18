@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { type RecipeId } from '@beltwise/game-data';
-import { GameIconComponent } from './game-icon.component';
-import { PlannerStoreService } from './planner-store.service';
-import { type RecipeRow } from './planner-store.selectors';
+import { GameIconComponent } from '../shared-ui/game-icon.component';
+import { PlannerStoreService } from '../state/planner-store.service';
+import { type RecipeRow } from '../state/planner-store.selectors';
 
 type BaseRecipePanel = 'standard' | 'converterResources';
 

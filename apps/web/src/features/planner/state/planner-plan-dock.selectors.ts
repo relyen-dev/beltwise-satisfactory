@@ -1,6 +1,6 @@
 import type { GameDataset } from '@beltwise/game-data';
 import type { PlannerProject, ProductTarget } from '@beltwise/planner-core';
-import { gameIconPathForItemId } from './game-icon.helpers';
+import { gameIconPathForItemId } from '../shared-ui/game-icon.helpers';
 
 export interface PlanDockItem {
   readonly id: string;

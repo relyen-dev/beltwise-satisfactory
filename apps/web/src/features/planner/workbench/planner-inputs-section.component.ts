@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
-import { PlannerStoreService } from './planner-store.service';
-import { parsePlannerNumber } from './planner-ui.helpers';
-import { TargetItemPickerComponent } from './target-item-picker.component';
+import { PlannerStoreService } from '../state/planner-store.service';
+import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
+import { TargetItemPickerComponent } from '../shared-ui/target-item-picker.component';
 
 interface DraftExternalInputRow {
   id: string;

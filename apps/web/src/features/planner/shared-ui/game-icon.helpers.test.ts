@@ -10,7 +10,7 @@ import {
 } from './game-icon.helpers';
 import { plannerRelevantMachineIds } from './planner-domain.helpers';
 
-const REPO_ROOT = fileURLToPath(new URL('../../../../../', import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url));
 const CURRENT_DATASET_PATH = join(REPO_ROOT, 'data/generated/satisfactory-current.json');
 const PUBLIC_GAME_ICONS_DIR = join(REPO_ROOT, 'apps/web/public/game-icons');
 const GAME_ICON_PATH_PREFIX = '/game-icons/';

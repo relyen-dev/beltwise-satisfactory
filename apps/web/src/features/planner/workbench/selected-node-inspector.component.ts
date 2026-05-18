@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { GameIconComponent } from './game-icon.component';
-import { PlannerStoreService } from './planner-store.service';
+import { GameIconComponent } from '../shared-ui/game-icon.component';
+import { PlannerStoreService } from '../state/planner-store.service';
 
 @Component({
   selector: 'bw-selected-node-inspector',

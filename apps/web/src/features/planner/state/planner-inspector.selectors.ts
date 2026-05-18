@@ -20,9 +20,9 @@ import {
   type ResourceCapSource,
   type SelectedNodeReportDetails,
 } from '@beltwise/planner-core';
-import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
-import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
-import { formatResourceCap } from './planner-domain.helpers';
+import { gameIconPathForItemId, gameIconPathForMachineId } from '../shared-ui/game-icon.helpers';
+import { formatPlannerInteger, formatPlannerNumber } from '../shared-ui/planner-format.helpers';
+import { formatResourceCap } from '../shared-ui/planner-domain.helpers';
 
 export type InspectorIconKind = 'item' | 'machine';
 

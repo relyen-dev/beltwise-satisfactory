@@ -17,26 +17,26 @@ import {
 import { FormsModule } from '@angular/forms';
 import { type ProductionPlanStatus } from '@beltwise/planner-core';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
-import { PlannerDefaultsPanelComponent } from './planner-defaults-panel.component';
-import { PlannerDisplaySectionComponent } from './planner-display-section.component';
-import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
-import { PlannerInspectorComponent } from './planner-inspector.component';
-import { PlannerMachinesSectionComponent } from './planner-machines-section.component';
-import { PlannerObjectivesSectionComponent } from './planner-objectives-section.component';
+import { PlannerDefaultsPanelComponent } from './workbench/planner-defaults-panel.component';
+import { PlannerDisplaySectionComponent } from './workbench/planner-display-section.component';
+import { PlannerInputsSectionComponent } from './workbench/planner-inputs-section.component';
+import { PlannerInspectorComponent } from './workbench/planner-inspector.component';
+import { PlannerMachinesSectionComponent } from './workbench/planner-machines-section.component';
+import { PlannerObjectivesSectionComponent } from './workbench/planner-objectives-section.component';
 import {
   PlannerPlanTransferService,
   type PlanTransferStatus,
-} from './planner-plan-transfer.service';
-import { PlannerRecipesSectionComponent } from './planner-recipes-section.component';
-import { PlannerResourcesSectionComponent } from './planner-resources-section.component';
-import { GameIconComponent } from './game-icon.component';
-import { selectCompactPlanDockItems, selectPlanDockItems } from './planner-plan-dock.selectors';
+} from './transfer/planner-plan-transfer.service';
+import { PlannerRecipesSectionComponent } from './workbench/planner-recipes-section.component';
+import { PlannerResourcesSectionComponent } from './workbench/planner-resources-section.component';
+import { GameIconComponent } from './shared-ui/game-icon.component';
+import { selectCompactPlanDockItems, selectPlanDockItems } from './state/planner-plan-dock.selectors';
 import {
   projectRequiresDeleteConfirmation,
   sessionRequiresDeleteConfirmation,
-} from './planner-session-delete.helpers';
-import { PlannerStoreService, type ConfigurationTab } from './planner-store.service';
-import { PlannerTargetsSectionComponent } from './planner-targets-section.component';
+} from './persistence/planner-session-delete.helpers';
+import { PlannerStoreService, type ConfigurationTab } from './state/planner-store.service';
+import { PlannerTargetsSectionComponent } from './workbench/planner-targets-section.component';
 
 interface ConfigurationTabDefinition {
   id: ConfigurationTab;

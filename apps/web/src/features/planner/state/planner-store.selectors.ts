@@ -20,15 +20,15 @@ import {
   type RateDecimalPlaces,
   summarizeMachineUsageByMachineId,
 } from '@beltwise/planner-core';
-import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
-import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
+import { formatPlannerInteger, formatPlannerNumber } from '../shared-ui/planner-format.helpers';
+import { gameIconPathForItemId, gameIconPathForMachineId } from '../shared-ui/game-icon.helpers';
 import {
   defaultResourceCapPerMinute,
   formatResourceCap,
   plannerRelevantMachineIds,
   resourceCapInputValue,
   solveReadyProject,
-} from './planner-domain.helpers';
+} from '../shared-ui/planner-domain.helpers';
 
 export interface ResourceRow {
   resource: ResourceInfo;

@@ -15,7 +15,7 @@ import {
   createStoredPlannerState,
   type PlannerPersistenceStorage,
 } from './planner-persistence.service';
-import { plannerRelevantMachineIds } from './planner-domain.helpers';
+import { plannerRelevantMachineIds } from '../shared-ui/planner-domain.helpers';
 
 const STORAGE_KEY = 'beltwise.workspace.v1';
 

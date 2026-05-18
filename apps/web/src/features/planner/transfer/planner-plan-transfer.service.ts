@@ -7,7 +7,7 @@ import {
   encodePlannerShareCode,
   readPlannerShareCodeFromLocation,
 } from './planner-share-codec';
-import { PlannerStoreService, type PlannerPlanImportResult } from './planner-store.service';
+import { PlannerStoreService, type PlannerPlanImportResult } from '../state/planner-store.service';
 
 export interface PlanTransferStatus {
   kind: 'success' | 'warning' | 'error';

@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
-import { GameIconComponent } from './game-icon.component';
-import { PlannerStoreService } from './planner-store.service';
-import { parsePlannerNumber } from './planner-ui.helpers';
+import { GameIconComponent } from '../shared-ui/game-icon.component';
+import { PlannerStoreService } from '../state/planner-store.service';
+import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 
 @Component({
   selector: 'bw-planner-resources-section',

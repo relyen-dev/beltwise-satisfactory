@@ -21,29 +21,29 @@ import {
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import { DatasetService } from './dataset.service';
-import { PlannerPersistenceCoordinatorService } from './planner-persistence-coordinator.service';
+import { DatasetService } from '../dataset.service';
+import { PlannerPersistenceCoordinatorService } from '../persistence/planner-persistence-coordinator.service';
 import { PlannerStoreConnections } from './planner-store-connections';
 import { PlannerGraphBuildSlice } from './planner-store-graph-build';
 import { PlannerDefaultsCommandSlice } from './planner-store-defaults';
 import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
-import { PlannerSolverService } from './planner-solver.service';
+import { PlannerSolverService } from '../solving/planner-solver.service';
 
-export { plannerRelevantMachineIds } from './planner-domain.helpers';
+export { plannerRelevantMachineIds } from '../shared-ui/planner-domain.helpers';
 export {
   createGameDatasetSolveKey,
   createPlannerSolveKey,
   selectPlannerSolveInput,
-} from './planner-solve-input';
-export type { PlannerSolveInput, PlannerSolveKey } from './planner-solve-input';
+} from '../solving/planner-solve-input';
+export type { PlannerSolveInput, PlannerSolveKey } from '../solving/planner-solve-input';
 export {
   PLANNER_SOLVE_DEBOUNCE_MS,
   PlannerSolveScheduler,
   PlannerSolverService,
-} from './planner-solver.service';
-export type { SolveStatus } from './planner-solver.service';
+} from '../solving/planner-solver.service';
+export type { SolveStatus } from '../solving/planner-solver.service';
 export { GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS } from './planner-store-graph-build';
 export type {
   ConfigurationTab,

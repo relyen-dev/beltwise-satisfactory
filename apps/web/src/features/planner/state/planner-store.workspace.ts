@@ -26,7 +26,7 @@ import {
   type PlannerSession,
   type PlannerUserDefaults,
 } from '@beltwise/planner-core';
-import { type LoadedPlannerState } from './planner-persistence.service';
+import { type LoadedPlannerState } from '../persistence/planner-persistence.service';
 import {
   type ConfigurationTab,
   type WorkbenchFocusMode,
