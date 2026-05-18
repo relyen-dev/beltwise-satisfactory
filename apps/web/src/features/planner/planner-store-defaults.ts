@@ -3,15 +3,15 @@ import { type GameDataset, type ItemId, type MachineId, type RecipeId } from '@b
 import {
   type ConveyorBeltTier,
   type GraphEdgeStyle,
+  defaultResourceCapPerMinute,
   type ObjectivePresetId,
+  type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
   type PlannerUserDefaults,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import { defaultResourceCapPerMinute } from './planner-domain.helpers';
 import * as defaultsMutations from './planner-defaults-mutations';
-import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 interface PlannerDefaultsCommandSliceOptions {
   readonly dataset: Signal<GameDataset | null>;

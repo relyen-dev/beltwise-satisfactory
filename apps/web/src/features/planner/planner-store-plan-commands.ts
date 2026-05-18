@@ -2,16 +2,22 @@ import { type Signal } from '@angular/core';
 import { type GameDataset, type Item, type ItemId, type RecipeId } from '@beltwise/game-data';
 import {
   createStableId,
+  defaultResourceCapPerMinute,
+  mutatePlanGraph,
+  mutatePlanItemInputs,
+  mutatePlanMetadata,
+  mutatePlanObjective,
+  mutatePlanOverrides,
+  mutatePlanTargets,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type ObjectivePresetId,
+  type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import { defaultResourceCapPerMinute } from './planner-domain.helpers';
-import * as projectMutations from './planner-project-mutations';
 
 interface PlannerPlanCommandSliceOptions {
   readonly dataset: Signal<GameDataset | null>;
@@ -29,7 +35,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.addDraftTarget(project, createStableTargetId()),
+      mutatePlanTargets(project, { type: 'add-draft-target', targetId: createStableTargetId() }),
     );
   }
 
@@ -38,7 +44,11 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.duplicateTarget(project, target, createStableTargetId()),
+      mutatePlanTargets(project, {
+        type: 'duplicate-target',
+        target,
+        targetId: createStableTargetId(),
+      }),
     );
   }
 
@@ -46,7 +56,9 @@ export class PlannerPlanCommandSlice {
     if (this.options.planLocked()) {
       return;
     }
-    this.options.updateActiveProject((project) => projectMutations.removeTarget(project, targetId));
+    this.options.updateActiveProject((project) =>
+      mutatePlanTargets(project, { type: 'remove-target', targetId }),
+    );
   }
 
   public updateTargetItem(targetId: string, itemId: ItemId): void {
@@ -54,7 +66,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setTargetItem(project, targetId, itemId),
+      mutatePlanTargets(project, { type: 'set-target-item', targetId, itemId }),
     );
   }
 
@@ -63,7 +75,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setTargetMode(project, targetId, mode),
+      mutatePlanTargets(project, { type: 'set-target-mode', targetId, mode }),
     );
   }
 
@@ -72,7 +84,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setTargetAmount(project, targetId, amountPerMinute),
+      mutatePlanTargets(project, { type: 'set-target-amount', targetId, amountPerMinute }),
     );
   }
 
@@ -81,7 +93,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setRecipeEnabled(project, recipeId, enabled),
+      mutatePlanOverrides(project, { type: 'set-recipe-enabled', recipeId, enabled }),
     );
   }
 
@@ -90,7 +102,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setRecipeGroupEnabled(project, recipeIds, enabled),
+      mutatePlanOverrides(project, { type: 'set-recipe-group-enabled', recipeIds, enabled }),
     );
   }
 
@@ -108,7 +120,7 @@ export class PlannerPlanCommandSlice {
       .map((recipe) => recipe.id);
 
     this.options.updateActiveProject((project) =>
-      projectMutations.setRecipeGroupEnabled(project, recipeIds, enabled),
+      mutatePlanOverrides(project, { type: 'set-recipe-group-enabled', recipeIds, enabled }),
     );
   }
 
@@ -117,7 +129,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setItemInput(project, itemId, amountPerMinute),
+      mutatePlanItemInputs(project, { type: 'set-item-input', itemId, amountPerMinute }),
     );
   }
 
@@ -142,7 +154,7 @@ export class PlannerPlanCommandSlice {
     }
 
     this.options.updateActiveProject((project) =>
-      projectMutations.moveItemInput(project, previousItemId, nextItemId),
+      mutatePlanItemInputs(project, { type: 'move-item-input', previousItemId, nextItemId }),
     );
   }
 
@@ -151,7 +163,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.removeItemInput(project, itemId),
+      mutatePlanItemInputs(project, { type: 'remove-item-input', itemId }),
     );
   }
 
@@ -164,7 +176,12 @@ export class PlannerPlanCommandSlice {
       ? defaultResourceCapPerMinute(dataset.resources[itemId])
       : undefined;
     this.options.updateActiveProject((project) =>
-      projectMutations.setResourceCap(project, itemId, maxPerMinute, baselineCapPerMinute),
+      mutatePlanOverrides(project, {
+        type: 'set-resource-cap',
+        itemId,
+        maxPerMinute,
+        baselineCapPerMinute,
+      }),
     );
   }
 
@@ -178,7 +195,12 @@ export class PlannerPlanCommandSlice {
       : undefined;
 
     this.options.updateActiveProject((project) =>
-      projectMutations.setResourceEnabled(project, itemId, enabled, baselineCapPerMinute),
+      mutatePlanOverrides(project, {
+        type: 'set-resource-enabled',
+        itemId,
+        enabled,
+        baselineCapPerMinute,
+      }),
     );
   }
 
@@ -186,7 +208,9 @@ export class PlannerPlanCommandSlice {
     if (this.options.planLocked()) {
       return;
     }
-    this.options.updateActiveProject((project) => projectMutations.resetResource(project, itemId));
+    this.options.updateActiveProject((project) =>
+      mutatePlanOverrides(project, { type: 'reset-resource', itemId }),
+    );
   }
 
   public resetAllResources(): void {
@@ -199,7 +223,7 @@ export class PlannerPlanCommandSlice {
     }
     const resourceIds = Object.keys(dataset.resources);
     this.options.updateActiveProject((project) =>
-      projectMutations.resetResources(project, resourceIds),
+      mutatePlanOverrides(project, { type: 'reset-resources', resourceIds }),
     );
   }
 
@@ -213,7 +237,11 @@ export class PlannerPlanCommandSlice {
     }
 
     this.options.updateActiveProject((project) =>
-      projectMutations.setAllResourcesEnabled(project, Object.values(dataset.resources), enabled),
+      mutatePlanOverrides(project, {
+        type: 'set-all-resources-enabled',
+        resources: Object.values(dataset.resources),
+        enabled,
+      }),
     );
   }
 
@@ -222,7 +250,7 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setMachineEnabled(project, machineId, enabled),
+      mutatePlanOverrides(project, { type: 'set-machine-enabled', machineId, enabled }),
     );
   }
 
@@ -231,57 +259,59 @@ export class PlannerPlanCommandSlice {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setObjectivePreset(project, presetId),
+      mutatePlanObjective(project, { type: 'set-objective-preset', presetId }),
     );
   }
 
-  public setObjectiveWeight(key: projectMutations.ObjectiveWeightKey, value: number): void {
+  public setObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
     if (this.options.planLocked()) {
       return;
     }
     this.options.updateActiveProject((project) =>
-      projectMutations.setObjectiveWeight(project, key, value),
+      mutatePlanObjective(project, { type: 'set-objective-weight', key, value }),
     );
   }
 
   public setMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setMaxBeltTier(project, maxBeltTier),
+      mutatePlanGraph(project, { type: 'set-display', patch: { maxBeltTier } }),
     );
   }
 
   public setMaxPipeTier(maxPipeTier: PipelineTier): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setMaxPipeTier(project, maxPipeTier),
+      mutatePlanGraph(project, { type: 'set-display', patch: { maxPipeTier } }),
     );
   }
 
   public setRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setRateDecimalPlaces(project, rateDecimalPlaces),
+      mutatePlanGraph(project, { type: 'set-display', patch: { rateDecimalPlaces } }),
     );
   }
 
   public setGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setGraphEdgeStyle(project, edgeStyle),
+      mutatePlanGraph(project, { type: 'set-display', patch: { edgeStyle } }),
     );
   }
 
   public setShowTransportLabels(showTransportLabels: boolean): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setShowTransportLabels(project, showTransportLabels),
+      mutatePlanGraph(project, { type: 'set-display', patch: { showTransportLabels } }),
     );
   }
 
   public setAnimateFlowLines(animateFlowLines: boolean): void {
     this.options.updateActiveProject((project) =>
-      projectMutations.setAnimateFlowLines(project, animateFlowLines),
+      mutatePlanGraph(project, { type: 'set-display', patch: { animateFlowLines } }),
     );
   }
 
   public setPlanNotes(notes: string): void {
-    this.options.updateActiveProject((project) => projectMutations.setPlanNotes(project, notes));
+    this.options.updateActiveProject((project) =>
+      mutatePlanMetadata(project, { type: 'set-notes', notes }),
+    );
   }
 }
 

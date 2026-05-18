@@ -1,16 +1,17 @@
-import {
-  type GameDataset,
-  type Machine,
-  type MachineId,
-  type Recipe,
-  type ResourceInfo,
-} from '@beltwise/game-data';
+import { type GameDataset, type Machine, type MachineId, type Recipe } from '@beltwise/game-data';
 import {
   createPlannerProject,
+  isUnlimitedResourceCap,
   type PlannerProject,
   type PlannerUserDefaults,
   type ProductTarget,
-  type ResourceOverride,
+} from '@beltwise/planner-core';
+
+export {
+  defaultResourceCapPerMinute,
+  isUnlimitedResourceCap,
+  normalizeResourceOverride,
+  resourceCapsEqual,
 } from '@beltwise/planner-core';
 
 export function createStarterProject(
@@ -58,10 +59,6 @@ export function plannerRelevantMachineIds(dataset: GameDataset): Set<MachineId> 
   return machineIds;
 }
 
-export function defaultResourceCapPerMinute(resource: ResourceInfo): number | undefined {
-  return resource.extraction?.baselineMaxPerMinute;
-}
-
 export function resourceCapInputValue(capPerMinute: number | undefined): number | null {
   return capPerMinute === undefined || isUnlimitedResourceCap(capPerMinute) ? null : capPerMinute;
 }
@@ -71,38 +68,6 @@ export function formatResourceCap(capPerMinute: number | undefined): string {
     return 'Unlimited';
   }
   return `${formatResourceNumber(capPerMinute)}/min`;
-}
-
-export function isUnlimitedResourceCap(capPerMinute: number | undefined): boolean {
-  return capPerMinute === undefined || capPerMinute >= 1_000_000_000;
-}
-
-export function resourceCapsEqual(
-  left: number | undefined,
-  right: number | undefined,
-): boolean {
-  if (left === undefined || right === undefined) {
-    return left === right;
-  }
-  return (
-    Math.abs(left - right) < 0.000001 ||
-    (isUnlimitedResourceCap(left) && isUnlimitedResourceCap(right))
-  );
-}
-
-export function normalizeResourceOverride(
-  override: ResourceOverride,
-  baselineCapPerMinute: number | undefined,
-): ResourceOverride | undefined {
-  const enabled = override.enabled ?? true;
-  const maxPerMinute = override.maxPerMinute;
-  if (
-    enabled &&
-    (maxPerMinute === undefined || resourceCapsEqual(maxPerMinute, baselineCapPerMinute))
-  ) {
-    return undefined;
-  }
-  return override;
 }
 
 function isPlannerRelevantRecipe(recipe: Recipe): boolean {
