@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlannerProject, PlannerSession } from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
+import { PlannerPlanTransferService } from './planner-plan-transfer.service';
 import {
   PlannerStoreService,
   type ConfigurationTab,
@@ -563,7 +564,7 @@ function createComponentHarness(): {
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
   const injector = Injector.create({
-    providers: [{ provide: PlannerStoreService, useValue: store }],
+    providers: [PlannerPlanTransferService, { provide: PlannerStoreService, useValue: store }],
   });
   const component = runInInjectionContext(injector, () => new PlannerPageComponent());
 
