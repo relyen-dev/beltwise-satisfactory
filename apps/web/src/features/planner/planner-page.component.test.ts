@@ -415,6 +415,9 @@ describe('PlannerPageComponent', () => {
       kind: 'error',
       message: 'HiGHS returned an error',
     });
+
+    store.solveResult.set({ status: 'error', warnings: [{ message: '   ' }] });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {

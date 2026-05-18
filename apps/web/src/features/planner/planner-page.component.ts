@@ -559,15 +559,16 @@ function blurFocusedGraphNode(): void {
 }
 
 function solveProblemMessage(status: ProductionPlanStatus, detail?: string): string | null {
+  const message = detail?.trim();
   switch (status) {
     case 'optimal':
       return null;
     case 'infeasible':
-      return detail ?? 'Infeasible plan';
+      return message || 'Infeasible plan';
     case 'unbounded':
-      return detail ?? 'Unbounded plan';
+      return message || 'Unbounded plan';
     case 'error':
-      return detail ?? 'Solve error';
+      return message || 'Solve error';
   }
 }
 
