@@ -12,12 +12,14 @@ import {
   buildMachinePanelReport,
   type GraphNodeBuildState,
   normalizePlainTextNote,
+  plannerRelevantMachineIds,
   type PlannerProject,
   type ProductionGraph,
   type ProductionGraphNode,
   type ProductionPlanResult,
   type ProductTarget,
   type RateDecimalPlaces,
+  solveReadyProject,
   summarizeMachineUsageByMachineId,
 } from '@beltwise/planner-core';
 import { formatPlannerInteger, formatPlannerNumber } from '../shared-ui/planner-format.helpers';
@@ -25,9 +27,7 @@ import { gameIconPathForItemId, gameIconPathForMachineId } from '../shared-ui/ga
 import {
   defaultResourceCapPerMinute,
   formatResourceCap,
-  plannerRelevantMachineIds,
   resourceCapInputValue,
-  solveReadyProject,
 } from '../shared-ui/planner-domain.helpers';
 
 export interface ResourceRow {

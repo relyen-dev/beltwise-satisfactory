@@ -1,6 +1,6 @@
 import { Injector } from '@angular/core';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
+import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
   createDefaultUserDefaults,
   createPlannerProject,
@@ -15,7 +15,6 @@ import {
   createStoredPlannerState,
   type PlannerPersistenceStorage,
 } from './planner-persistence.service';
-import { plannerRelevantMachineIds } from '../shared-ui/planner-domain.helpers';
 
 const STORAGE_KEY = 'beltwise.workspace.v1';
 
@@ -460,68 +459,6 @@ describe('PlannerPersistenceService', () => {
       maxPerMinute: 180,
     });
     expect(state?.userDefaults.graphDisplay.maxBeltTier).toBe(5);
-  });
-});
-
-describe('plannerRelevantMachineIds', () => {
-  it('keeps only automated recipe machines that can affect solving', () => {
-    const dataset: GameDataset = {
-      ...tinySatisfactoryDataset,
-      recipes: {
-        ...tinySatisfactoryDataset.recipes,
-        Recipe_TestPower_C: {
-          id: 'Recipe_TestPower_C',
-          className: 'Recipe_TestPower_C',
-          displayName: 'Test Power',
-          ingredients: [{ itemId: 'Desc_OreIron_C', amount: 1 }],
-          products: [{ itemId: 'Desc_IngotIron_C', amount: 1 }],
-          durationSeconds: 4,
-          producedIn: ['Build_GeneratorCoal_C'],
-          isAlternate: false,
-          isHandCraftOnly: false,
-          tags: [],
-        },
-        Recipe_MysteryProduction_C: {
-          id: 'Recipe_MysteryProduction_C',
-          className: 'Recipe_MysteryProduction_C',
-          displayName: 'Mystery Production',
-          ingredients: [{ itemId: 'Desc_OreCopper_C', amount: 1 }],
-          products: [{ itemId: 'Desc_CopperIngot_C', amount: 1 }],
-          durationSeconds: 4,
-          producedIn: ['Build_MysteryCrafter_C'],
-          isAlternate: false,
-          isHandCraftOnly: false,
-          tags: [],
-        },
-      },
-      machines: {
-        ...tinySatisfactoryDataset.machines,
-        Build_GeneratorCoal_C: {
-          id: 'Build_GeneratorCoal_C',
-          className: 'Build_GeneratorCoal_C',
-          displayName: 'Coal-Powered Generator',
-          type: 'generator',
-          powerMw: 0,
-        },
-        Build_MysteryCrafter_C: {
-          id: 'Build_MysteryCrafter_C',
-          className: 'Build_MysteryCrafter_C',
-          displayName: 'Mystery Crafter',
-          type: 'unknown',
-          powerMw: 6,
-          manufacturingSpeed: 1,
-        },
-      },
-    };
-
-    const machineIds = plannerRelevantMachineIds(dataset);
-
-    expect(machineIds.has('Build_AssemblerMk1_C')).toBe(true);
-    expect(machineIds.has('Build_ConstructorMk1_C')).toBe(true);
-    expect(machineIds.has('Build_SmelterMk1_C')).toBe(true);
-    expect(machineIds.has('Build_MinerMk1_C')).toBe(false);
-    expect(machineIds.has('Build_GeneratorCoal_C')).toBe(false);
-    expect(machineIds.has('Build_MysteryCrafter_C')).toBe(true);
   });
 });
 

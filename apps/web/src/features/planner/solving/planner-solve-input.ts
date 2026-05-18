@@ -1,6 +1,5 @@
 import { stableStringify, type GameDataset, type ItemId } from '@beltwise/game-data';
-import { type PlannerProject, type ProductTarget } from '@beltwise/planner-core';
-import { solveReadyProject } from '../shared-ui/planner-domain.helpers';
+import { solveReadyProject, type PlannerProject, type ProductTarget } from '@beltwise/planner-core';
 
 export type PlannerSolveKey = string;
 

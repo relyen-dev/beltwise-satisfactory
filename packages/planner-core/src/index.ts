@@ -8,5 +8,6 @@ export * from './plannerPlanShareCodec';
 export * from './planTransferFieldCodecs';
 export * from './planIntentMutations';
 export * from './planReport';
+export * from './plannerRules';
 export * from './resourceLimits';
 export * from './workspaceLifecycle';

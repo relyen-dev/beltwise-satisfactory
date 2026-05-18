@@ -3,12 +3,12 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type GameDataset, gameDatasetSchema } from '@beltwise/game-data';
+import { plannerRelevantMachineIds } from '@beltwise/planner-core';
 import {
   gameIconDescriptorIdForMachineId,
   gameIconPathForItemId,
   gameIconPathForMachineId,
 } from './game-icon.helpers';
-import { plannerRelevantMachineIds } from './planner-domain.helpers';
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url));
 const CURRENT_DATASET_PATH = join(REPO_ROOT, 'data/generated/satisfactory-current.json');

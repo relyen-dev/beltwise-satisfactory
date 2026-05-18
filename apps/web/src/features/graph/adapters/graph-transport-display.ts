@@ -5,6 +5,7 @@ import type {
   GraphRendererEdge,
   PipelineTier,
 } from '@beltwise/planner-core';
+import { formatRate } from './graph-display-formatting';
 
 export interface BeltwiseFoblexEdgeLabelLines {
   itemName: string;
@@ -28,8 +29,13 @@ export interface GraphTransportDisplayOptions {
   dataset: GameDataset | null;
   displaySettings: Pick<
     GraphDisplaySettings,
-    'maxBeltTier' | 'maxPipeTier' | 'showTransportLabels'
+    'maxBeltTier' | 'maxPipeTier' | 'rateDecimalPlaces' | 'showTransportLabels'
   >;
+}
+
+interface EdgeLabelLinesOptions {
+  dataset: GameDataset | null;
+  displaySettings: Pick<GraphDisplaySettings, 'rateDecimalPlaces'>;
 }
 
 const BELT_CAPACITY_PER_MINUTE: Record<ConveyorBeltTier, number> = {
@@ -46,14 +52,12 @@ const PIPE_CAPACITY_PER_MINUTE: Record<PipelineTier, number> = {
   2: 600,
 };
 
-const EDGE_LABEL_PATTERN = /^(.+?)\s+(\d+(?:\.\d+)?\/min)$/;
-
 export function buildEdgeTransportDisplay(
   edge: GraphRendererEdge,
   options: GraphTransportDisplayOptions,
 ): GraphTransportDisplay {
   const transport = edgeTransport(edge, options);
-  const labelLines = splitEdgeLabel(edge.label);
+  const labelLines = edgeLabelLines(edge, options);
   if (options.displaySettings.showTransportLabels && transport.kind !== 'none') {
     return {
       transport,
@@ -65,6 +69,19 @@ export function buildEdgeTransportDisplay(
   }
 
   return { transport, labelLines };
+}
+
+export function edgeLabelLines(
+  edge: GraphRendererEdge,
+  options: EdgeLabelLinesOptions,
+): BeltwiseFoblexEdgeLabelLines {
+  return {
+    itemName: edgeItemDisplayName(edge, options.dataset),
+    amountPerMinute: `${formatRate(
+      edge.data.amountPerMinute,
+      options.displaySettings.rateDecimalPlaces,
+    )}/min`,
+  };
 }
 
 export function edgeTransport(
@@ -92,21 +109,15 @@ export function edgeTransport(
   return { kind: 'none', lineCount: 0, tierLabel: '' };
 }
 
-export function splitEdgeLabel(label: string): BeltwiseFoblexEdgeLabelLines {
-  const match = EDGE_LABEL_PATTERN.exec(label.trim());
-  const itemName = match?.[1];
-  const amountPerMinute = match?.[2];
-  if (!itemName || !amountPerMinute) {
-    return { itemName: label, amountPerMinute: '' };
-  }
-
-  return { itemName, amountPerMinute };
-}
-
 export function formatTransportLines(transport: BeltwiseFoblexEdgeTransport): string {
   const noun = transport.kind === 'pipe' ? 'pipe' : 'belt';
   const suffix = transport.lineCount === 1 ? noun : `${noun}s`;
   return `${transport.lineCount}x ${transport.tierLabel} ${suffix}`;
+}
+
+function edgeItemDisplayName(edge: GraphRendererEdge, dataset: GameDataset | null): string {
+  const item = dataset?.items[edge.data.itemId];
+  return (item?.displayName ?? edge.data.itemId) || edge.label;
 }
 
 function transportKindForItem(item: Item): BeltwiseFoblexEdgeTransport['kind'] {

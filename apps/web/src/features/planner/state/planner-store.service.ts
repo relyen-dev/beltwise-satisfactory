@@ -31,7 +31,7 @@ import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 
-export { plannerRelevantMachineIds } from '../shared-ui/planner-domain.helpers';
+export { plannerRelevantMachineIds } from '@beltwise/planner-core';
 export {
   createGameDatasetSolveKey,
   createPlannerSolveKey,
