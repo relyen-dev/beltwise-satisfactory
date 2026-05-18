@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES } from '@beltwise/planner-core';
 import {
   clearPlannerShareCodeFromLocation,
   createPlannerShareUrl,
@@ -55,6 +56,13 @@ export class PlannerPlanTransferService {
   }
 
   public async importPlanFile(file: File): Promise<PlanImportTransferResult> {
+    if (file.size > MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES) {
+      return {
+        imported: false,
+        status: errorStatus('The selected plan file is too large to import.'),
+      };
+    }
+
     try {
       return this.importPlanJson(await file.text());
     } catch {

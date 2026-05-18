@@ -24,6 +24,7 @@ import {
   booleanOverrideEntriesForTransfer,
   graphNodePositionEntriesForTransfer,
   isPlanTransferRecord,
+  isSafePlanTransferRecordKey,
   normalizePlanTransferNote,
   objectiveStageOrdersEqual,
   readTransferConveyorBeltTier,
@@ -33,6 +34,7 @@ import {
   readTransferObjectivePresetId,
   readTransferPipelineTier,
   readTransferRateDecimalPlaces,
+  readSafePlanTransferRecordKey,
   readTransferString,
   resourceOverrideEntriesForTransfer,
 } from './planTransferFieldCodecs';
@@ -355,6 +357,9 @@ function decodeBooleanOverrides(
 ): Record<string, { enabled: boolean }> {
   const overrides: Record<string, { enabled: boolean }> = {};
   for (const [id, enabled] of value ?? []) {
+    if (!isSafePlanTransferRecordKey(id)) {
+      continue;
+    }
     overrides[id] = { enabled };
   }
   return overrides;
@@ -377,6 +382,9 @@ function decodeResourceOverrides(
 ): PlannerProject['resourceOverrides'] {
   const overrides: PlannerProject['resourceOverrides'] = {};
   for (const override of value ?? []) {
+    if (!isSafePlanTransferRecordKey(override.i)) {
+      continue;
+    }
     overrides[override.i] = {
       ...(override.e !== undefined ? { enabled: override.e } : {}),
       ...(override.m !== undefined ? { maxPerMinute: override.m } : {}),
@@ -399,6 +407,9 @@ function decodeAmountOverrides(
 ): Record<ItemId, { amountPerMinute: number }> {
   const overrides: Record<ItemId, { amountPerMinute: number }> = {};
   for (const [itemId, amountPerMinute] of value ?? []) {
+    if (!isSafePlanTransferRecordKey(itemId)) {
+      continue;
+    }
     overrides[itemId] = { amountPerMinute };
   }
   return overrides;
@@ -450,7 +461,9 @@ function decodeObjectiveProfile(value: CompactObjectiveProfileV1 | undefined): O
     powerWeight: value?.p ?? defaults.powerWeight,
     machineCountWeight: value?.m ?? defaults.machineCountWeight,
     surplusWeight: value?.s ?? defaults.surplusWeight,
-    rawResourceMultipliers: Object.fromEntries(value?.r ?? []),
+    rawResourceMultipliers: Object.fromEntries(
+      (value?.r ?? []).filter(([itemId]) => isSafePlanTransferRecordKey(itemId)),
+    ),
   };
   return {
     ...profile,
@@ -509,7 +522,11 @@ function encodeGraphLayout(
 function decodeGraphLayout(
   value: CompactGraphNodePositionV1[] | undefined,
 ): PlannerProject['graphLayout']['nodePositions'] {
-  return Object.fromEntries((value ?? []).map(([nodeId, x, y]) => [nodeId, { x, y }]));
+  return Object.fromEntries(
+    (value ?? [])
+      .filter(([nodeId]) => isSafePlanTransferRecordKey(nodeId))
+      .map(([nodeId, x, y]) => [nodeId, { x, y }]),
+  );
 }
 
 function encodeBuildState(buildState: PlanBuildState): CompactPlanBuildStateV1 | null {
@@ -546,6 +563,9 @@ function encodeNodeBuildState(
 function decodeBuildState(value: CompactPlanBuildStateV1 | undefined): PlanBuildState {
   const nodeStates: Record<string, GraphNodeBuildState> = {};
   for (const compact of value?.n ?? []) {
+    if (!isSafePlanTransferRecordKey(compact.id)) {
+      continue;
+    }
     const note = compact.n === undefined ? '' : normalizePlanTransferNote(compact.n);
     nodeStates[compact.id] = {
       ...(compact.d ? { done: true } : {}),
@@ -692,8 +712,8 @@ function readCompactProductTarget(value: unknown): CompactProductTargetV1 | null
   if (!isPlanTransferRecord(value)) {
     return null;
   }
-  const id = readTransferString(value['id']);
-  const itemId = readTransferString(value['i']);
+  const id = readSafePlanTransferRecordKey(value['id']);
+  const itemId = readSafePlanTransferRecordKey(value['i']);
   const mode = value['m'];
   const sortOrder = readTransferFiniteNumber(value['s']);
   if (

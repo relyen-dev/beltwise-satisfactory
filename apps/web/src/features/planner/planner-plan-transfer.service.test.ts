@@ -89,6 +89,25 @@ describe('PlannerPlanTransferService', () => {
     expect(store.importPlanJson).not.toHaveBeenCalled();
   });
 
+  it('rejects oversized plan JSON files before reading their contents', async () => {
+    const store = createStoreHarness();
+    const { service } = createServiceHarness(store);
+    const file = {
+      size: 5_242_881,
+      text: vi.fn(),
+    } as unknown as File;
+
+    await expect(service.importPlanFile(file)).resolves.toEqual({
+      imported: false,
+      status: {
+        kind: 'error',
+        message: 'The selected plan file is too large to import.',
+      },
+    });
+    expect(file.text).not.toHaveBeenCalled();
+    expect(store.importPlanJson).not.toHaveBeenCalled();
+  });
+
   it('imports a share code and clears the plan hash after success', async () => {
     const payload = createSharePayload('Shared plan');
     const code = await encodePlannerShareCode(payload);

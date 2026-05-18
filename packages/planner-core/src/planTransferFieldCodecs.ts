@@ -21,6 +21,12 @@ import type {
 
 export type PlanTransferRecord = Record<string, unknown>;
 
+const UNSAFE_TRANSFER_RECORD_KEYS = new Set([
+  '__proto__',
+  'prototype',
+  ...Object.getOwnPropertyNames(Object.prototype),
+]);
+
 export interface BooleanOverrideEntry<Id extends string = string> {
   id: Id;
   enabled: boolean;
@@ -45,6 +51,15 @@ export interface GraphNodePositionEntry {
 
 export function isPlanTransferRecord(value: unknown): value is PlanTransferRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isSafePlanTransferRecordKey(key: string): boolean {
+  return !UNSAFE_TRANSFER_RECORD_KEYS.has(key);
+}
+
+export function readSafePlanTransferRecordKey(value: unknown): string | undefined {
+  const key = readTransferString(value);
+  return key !== undefined && isSafePlanTransferRecordKey(key) ? key : undefined;
 }
 
 export function readTransferString(value: unknown): string | undefined {
@@ -106,7 +121,7 @@ export function readProductTargetsForTransfer(
     }
 
     const baseTarget = {
-      id: readTransferString(target['id']) ?? createTargetId(),
+      id: readSafePlanTransferRecordKey(target['id']) ?? createTargetId(),
       itemId,
       mode,
       sortOrder: readTransferFiniteNumber(target['sortOrder']) ?? index,
@@ -182,6 +197,9 @@ export function readBooleanOverridesForTransfer<Id extends string>(
   }
 
   for (const [id, override] of Object.entries(value)) {
+    if (!isSafePlanTransferRecordKey(id)) {
+      continue;
+    }
     if (!isPlanTransferRecord(override) || typeof override['enabled'] !== 'boolean') {
       continue;
     }
@@ -226,6 +244,9 @@ export function readResourceOverridesForTransfer(value: unknown): Record<ItemId,
   }
 
   for (const [itemId, override] of Object.entries(value)) {
+    if (!isSafePlanTransferRecordKey(itemId)) {
+      continue;
+    }
     if (!isPlanTransferRecord(override)) {
       continue;
     }
@@ -268,6 +289,9 @@ export function readItemInputsForTransfer(value: unknown): Record<ItemId, ItemIn
   }
 
   for (const [itemId, input] of Object.entries(value)) {
+    if (!isSafePlanTransferRecordKey(itemId)) {
+      continue;
+    }
     if (!isPlanTransferRecord(input)) {
       continue;
     }
@@ -297,6 +321,9 @@ export function readNumberRecordForTransfer(value: unknown): Record<ItemId, numb
   }
 
   for (const [itemId, multiplier] of Object.entries(value)) {
+    if (!isSafePlanTransferRecordKey(itemId)) {
+      continue;
+    }
     const numericMultiplier = readTransferNonNegativeFiniteNumber(multiplier);
     if (numericMultiplier !== undefined) {
       record[itemId] = numericMultiplier;
@@ -332,6 +359,9 @@ export function readGraphLayoutForTransfer(value: unknown): GraphLayoutState {
 
   const nodePositions: GraphLayoutState['nodePositions'] = {};
   for (const [nodeId, position] of Object.entries(value['nodePositions'])) {
+    if (!isSafePlanTransferRecordKey(nodeId)) {
+      continue;
+    }
     const point = readPointForTransfer(position);
     if (point !== null) {
       nodePositions[nodeId] = point;
@@ -438,6 +468,9 @@ export function readGraphNodeStatesForTransfer(
   }
 
   for (const [nodeId, nodeState] of Object.entries(value)) {
+    if (!isSafePlanTransferRecordKey(nodeId)) {
+      continue;
+    }
     if (!isPlanTransferRecord(nodeState)) {
       continue;
     }
@@ -527,7 +560,7 @@ export function objectiveStageOrdersEqual(
 }
 
 function readTransferTargetItemId(value: unknown): ItemId | undefined {
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === 'string' && isSafePlanTransferRecordKey(value) ? value : undefined;
 }
 
 function readPointForTransfer(value: unknown): Point | null {

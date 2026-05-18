@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
+import { tinySatisfactoryDataset, type GameDataset, type ItemId } from '@beltwise/game-data';
 import {
   createObjectiveProfileFromPreset,
   createPlannerProject,
@@ -95,6 +95,48 @@ describe('buildProductionLpModel', () => {
     expect(ingotBalance?.coefficients[recipeVariable('Recipe_IronRod_C')]).toBe(-1);
     expect(plateBalance?.rhs).toBe(25);
     expect(rodBalance?.rhs).toBe(20);
+  });
+
+  it('uses own dictionary semantics for inherited target item ids', () => {
+    const project = {
+      ...fixtureProject(),
+      targets: [
+        {
+          id: 'target-to-string',
+          itemId: 'toString' as ItemId,
+          mode: 'fixed' as const,
+          amountPerMinute: 5,
+          sortOrder: 0,
+        },
+        {
+          id: 'target-has-own',
+          itemId: 'hasOwnProperty' as ItemId,
+          mode: 'fixed' as const,
+          amountPerMinute: 7,
+          sortOrder: 1,
+        },
+      ],
+    };
+
+    const model = buildProductionLpModel({
+      dataset: tinySatisfactoryDataset,
+      project,
+    });
+    const toStringBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:toString',
+    );
+    const hasOwnBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:hasOwnProperty',
+    );
+
+    expect(toStringBalance?.rhs).toBe(5);
+    expect(toStringBalance?.coefficients['surplus:toString']).toBe(-1);
+    expect(hasOwnBalance?.rhs).toBe(7);
+    expect(hasOwnBalance?.coefficients['surplus:hasOwnProperty']).toBe(-1);
+    expect(model.metadata.rawInputVariableByItemId['toString' as ItemId]).toBeUndefined();
+    expect(
+      model.metadata.externalInputVariableByItemId['hasOwnProperty' as ItemId],
+    ).toBeUndefined();
   });
 
   it('bounds raw input variables from generated resource limits', () => {

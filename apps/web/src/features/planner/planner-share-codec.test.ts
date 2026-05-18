@@ -4,6 +4,8 @@ import {
   createPlannerShareUrl,
   decodePlannerShareCode,
   encodePlannerShareCode,
+  MAX_PLANNER_SHARE_CODE_CHARACTERS,
+  MAX_PLANNER_SHARE_JSON_BYTES,
   readPlannerShareCodeFromLocation,
 } from './planner-share-codec';
 
@@ -23,9 +25,17 @@ describe('planner share code helpers', () => {
   });
 
   it('parses share codes from full URLs, query strings, and location hashes', async () => {
-    const payload = { k: 'bw.p', v: 1, d: { id: 'dataset', gameVersionLabel: 'fixture' }, p: { n: 'A' } };
+    const payload = {
+      k: 'bw.p',
+      v: 1,
+      d: { id: 'dataset', gameVersionLabel: 'fixture' },
+      p: { n: 'A' },
+    };
     const code = await encodePlannerShareCode(payload);
-    const hashUrl = createPlannerShareUrl(code, 'https://beltwise.test/planner?mode=local#panel=plan');
+    const hashUrl = createPlannerShareUrl(
+      code,
+      'https://beltwise.test/planner?mode=local#panel=plan',
+    );
     const queryUrl = `https://beltwise.test/planner?plan=${encodeURIComponent(code)}`;
 
     expect(hashUrl).toBe(`https://beltwise.test/planner?mode=local#panel=plan&plan=${code}`);
@@ -56,6 +66,25 @@ describe('planner share code helpers', () => {
       { from: 'test' },
       '',
       'https://beltwise.test/planner#panel=plan',
+    );
+  });
+
+  it('rejects oversized share codes before decoding', async () => {
+    await expect(
+      decodePlannerShareCode(`bw1.${'a'.repeat(MAX_PLANNER_SHARE_CODE_CHARACTERS + 1)}`),
+    ).rejects.toThrow('That Beltwise plan code is too large.');
+  });
+
+  it('rejects compressed links with oversized decoded JSON payloads', async () => {
+    const code = await encodePlannerShareCode({
+      k: 'bw.p',
+      v: 1,
+      d: { id: 'dataset', gameVersionLabel: 'fixture' },
+      p: { n: 'A', no: 'x'.repeat(MAX_PLANNER_SHARE_JSON_BYTES + 1) },
+    });
+
+    await expect(decodePlannerShareCode(code)).rejects.toThrow(
+      'That Beltwise plan code is too large.',
     );
   });
 });
