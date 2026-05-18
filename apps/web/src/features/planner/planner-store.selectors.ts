@@ -10,6 +10,7 @@ import {
 import {
   buildProductionGraph,
   type GraphNodeBuildState,
+  normalizePlainTextNote,
   type PlannerProject,
   type ProductionGraph,
   type ProductionGraphNode,
@@ -301,9 +302,10 @@ export function selectGraphNodeNotes(
   }
 
   return Object.fromEntries(
-    Object.entries(project.buildState.nodeStates).flatMap(([nodeId, nodeState]) =>
-      nodeState.note ? [[nodeId, nodeState.note]] : [],
-    ),
+    Object.entries(project.buildState.nodeStates).flatMap(([nodeId, nodeState]) => {
+      const note = nodeState.note === undefined ? '' : normalizePlainTextNote(nodeState.note);
+      return note.length > 0 ? [[nodeId, note]] : [];
+    }),
   );
 }
 

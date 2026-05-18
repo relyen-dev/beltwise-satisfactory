@@ -37,14 +37,39 @@
       <span>Done</span>
     </label>
 
-    <label class="selected-node-note">
-      <span>Node note</span>
+    <div class="selected-node-note">
+      <div class="selected-node-note__heading">
+        <label for="selected-node-note-textarea">Node Note</label>
+        <button
+          type="button"
+          title="Clear node note"
+          aria-label="Clear node note"
+          [disabled]="(selectedNode.state.note ?? '').trim().length === 0"
+          (pointerdown)="$event.stopPropagation()"
+          (pointerup)="$event.stopPropagation()"
+          (mousedown)="$event.stopPropagation()"
+          (mouseup)="$event.stopPropagation()"
+          (touchstart)="$event.stopPropagation()"
+          (touchend)="$event.stopPropagation()"
+          (click)="store.clearSelectedGraphNodeNote()"
+        >
+          Clear
+        </button>
+      </div>
       <textarea
+        id="selected-node-note-textarea"
         rows="4"
+        placeholder="Add build notes for this graph node."
         [ngModel]="selectedNode.state.note ?? ''"
         (ngModelChange)="store.setSelectedGraphNodeNote($event)"
+        (pointerdown)="$event.stopPropagation()"
+        (pointerup)="$event.stopPropagation()"
+        (mousedown)="$event.stopPropagation()"
+        (mouseup)="$event.stopPropagation()"
+        (touchstart)="$event.stopPropagation()"
+        (touchend)="$event.stopPropagation()"
       ></textarea>
-    </label>
+    </div>
   </section>
 
   <div class="metric-grid inspector-metric-grid" aria-label="Selected node metrics">

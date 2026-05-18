@@ -28,6 +28,7 @@ The current app is a working local-first Angular planner:
 - Projects are saved in `localStorage` under a versioned schema and store user intent/configuration, not authoritative solver output.
 - Foblex Flow renders the graph through an app-layer adapter. Default graph positions are currently generated with Dagre inside the renderer-neutral graph model path.
 - The current graph supports resource, external input, recipe, output, and byproduct nodes, plus selected-path focus, manual node movement, node done state, node notes, transport labels, and configurable edge style.
+- Plans support plain-text plan notes and graph node notes that are stored locally, exported/imported, shared in compact plan payloads when non-empty, and surfaced in the inspector overview.
 
 Future plans in this document should be read as forward direction only when they are marked as future or not represented in the current source tree.
 
@@ -73,7 +74,7 @@ The first version should handle a useful early-to-mid-game slice:
 - Continuous LP solving.
 - Machine counts as fractional/rounded display, not integer solver constraints.
 - Angular-based interactive graph with resource, external input, recipe, output, and byproduct nodes.
-- Local browser persistence for multiple user projects/plans, manual node positions, graph display settings, and build-tracking notes.
+- Local browser persistence for multiple user projects/plans, manual node positions, graph display settings, plan notes, and build-tracking node notes.
 
 Do not include save-file parsing, seed-based randomized resource detection, train/logistics planning, blueprint generation, multiplayer sharing, or account/server features in the MVP. Nuclear and late-game recipes may be present in generated data and solver regression tests, but specialized nuclear UX remains future work.
 
@@ -586,6 +587,7 @@ Important: keep the LP model builder pure and testable. The UI should never asse
 interface PlannerProject {
   id: string;
   name: string;
+  notes: string;
   datasetId: string;
   createdAt: string;
   updatedAt: string;
@@ -690,7 +692,7 @@ Persistence rules:
 - Store project configuration locally under a versioned schema.
 - Keep projects as standalone plan records; sessions reference project ids instead of embedding plans.
 - Store global user defaults separately from projects and sessions.
-- Store targets, recipe overrides, machine overrides, resource caps, item inputs, objective profile, graph display settings, plan/node locks, node done state, node notes, and manual graph layout.
+- Store targets, recipe overrides, machine overrides, resource caps, item inputs, objective profile, graph display settings, plan/node locks, plan notes, node done state, node notes, and manual graph layout.
 - Do not persist full solver output, machine totals, or derived graph edges as authoritative state.
 - On project load, rerun the solver from the stored configuration and generated dataset.
 - If the solver is temporarily slow, cache the last result only as a non-authoritative convenience and invalidate it when inputs/dataset change.
@@ -800,7 +802,7 @@ Current primary layout:
 - Collapsible workbench panel: production targets and configuration sections.
 - Center: interactive graph.
 - Right inspector: selected node details, machine counts, item flows, power.
-- Inspector panel: selected node state, node notes, plan status, power, machine usage, and warnings.
+- Inspector panel: selected node state, node notes, note summary, plan status, power, machine usage, and warnings.
 
 Production targets table:
 
@@ -839,6 +841,7 @@ Current controls:
 - Reset manual node positions button.
 - Lock/unlock plan edits and lock/unlock graph node movement.
 - Select graph nodes, mark nodes done, and add node notes.
+- Add and clear plain-text plan notes.
 - Create, rename, duplicate, delete, and switch local projects/plans.
 - Save/load plans from local storage.
 
@@ -984,7 +987,7 @@ Completed baseline:
 6. Added parser, planner-core, solver, persistence, selector, mutation, and graph-adapter tests.
 7. Built graph model conversion and Dagre-backed default left-to-right layout.
 8. Built Angular planner screen with multi-row target table, workbench sections, graph, inspector, and project controls.
-9. Added local-only persistence for multiple projects/plans, storing user configuration, graph display settings, build-state notes, and manual node positions rather than authoritative solver output.
+9. Added local-only persistence for multiple projects/plans, storing user configuration, graph display settings, plan notes, build-state node notes, and manual node positions rather than authoritative solver output.
 10. Added docs explaining local workflow, architecture, data model, and data regeneration.
 
 Near-term follow-up:

@@ -26,8 +26,9 @@ Implementation note: Foblex listens for document-level `mousedown` and `touchsta
 - Double-click a node to toggle its `Done` state.
 - The selected-node inspector also exposes a `Done` checkbox.
 - Done state and node notes are persisted in the project build state.
-- Notes are edited from the selected-node inspector.
+- Notes are edited and cleared from the selected-node inspector.
 - Nodes with done or note state show small badges on the graph.
+- The inspector overview lists visible node notes and stale node notes whose node is not currently in the solved graph; stale notes are preserved rather than deleted automatically.
 
 ## Output Target Editing
 

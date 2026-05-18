@@ -3,6 +3,7 @@ import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   buildProductionGraph,
   createPlannerProject,
+  type ProductionGraph,
   type PlannerProject,
   type ProductionGraphNode,
   type ProductionPlanResult,
@@ -23,6 +24,7 @@ describe('planner inspector selectors', () => {
       context.dataset,
       context.project,
       context.result,
+      context.graph,
       null,
       {},
     );
@@ -72,6 +74,56 @@ describe('planner inspector selectors', () => {
     expect(viewModel?.overview?.hiddenMachineSummaryCount).toBe(0);
   });
 
+  it('summarizes plan, visible node, and stale node notes', () => {
+    const context = createInspectorContext();
+    const project: PlannerProject = {
+      ...context.project,
+      notes: 'Bring power shards\nCheck belt lifts',
+      buildState: {
+        ...context.project.buildState,
+        nodeStates: {
+          'recipe:Recipe_IronPlate_C': { note: 'Build on floor 2' },
+          'recipe:Recipe_Missing_C': { note: 'Old recipe note' },
+          'resource:Desc_OreIron_C': { done: true },
+        },
+      },
+    };
+
+    const viewModel = selectInspectorViewModel(
+      context.dataset,
+      project,
+      context.result,
+      context.graph,
+      null,
+      {},
+    );
+
+    expect(viewModel?.overview?.notes).toEqual({
+      hasPlanNote: true,
+      planNote: 'Bring power shards\nCheck belt lifts',
+      visibleNodeNoteCount: 1,
+      staleNodeNoteCount: 1,
+      nodeNotes: [
+        {
+          nodeId: 'recipe:Recipe_IronPlate_C',
+          label: 'Iron Plate',
+          kindLabel: 'Recipe',
+          note: 'Build on floor 2',
+          visible: true,
+          visibilityLabel: 'Visible in graph',
+        },
+        {
+          nodeId: 'recipe:Recipe_Missing_C',
+          label: 'recipe:Recipe_Missing_C',
+          kindLabel: 'Not visible',
+          note: 'Old recipe note',
+          visible: false,
+          visibilityLabel: 'Not currently visible',
+        },
+      ],
+    });
+  });
+
   it('summarizes overview machines by type for build planning', () => {
     const context = createInspectorContext();
     const result: ProductionPlanResult = {
@@ -90,7 +142,17 @@ describe('planner inspector selectors', () => {
       ],
     };
 
-    const viewModel = selectInspectorViewModel(context.dataset, context.project, result, null, {});
+    const viewModel = selectInspectorViewModel(
+      context.dataset,
+      context.project,
+      result,
+      {
+        nodes: context.nodes,
+        edges: context.graph.edges,
+      },
+      null,
+      {},
+    );
 
     expect(viewModel?.overview?.machineSummary).toEqual([
       {
@@ -191,6 +253,7 @@ describe('planner inspector selectors', () => {
     const duplicateContext: InspectorTestContext = {
       ...context,
       result,
+      graph,
       nodes: graph.nodes,
     };
 
@@ -309,6 +372,7 @@ describe('planner inspector selectors', () => {
       dataset,
       project,
       result,
+      graph,
       nodes: graph.nodes,
     };
 
@@ -378,6 +442,7 @@ describe('planner inspector selectors', () => {
       dataset,
       project,
       result,
+      graph,
       nodes: graph.nodes,
     };
 
@@ -452,10 +517,11 @@ describe('planner inspector selectors', () => {
       dataset: context.dataset,
       project,
       result,
+      graph,
       nodes: graph.nodes,
     };
 
-    const overview = selectInspectorViewModel(context.dataset, project, result, null, {});
+    const overview = selectInspectorViewModel(context.dataset, project, result, graph, null, {});
     const selection = selectSelection(
       duplicateContext,
       nodeById(duplicateContext, 'output:target-wire-maximize'),
@@ -517,6 +583,7 @@ interface InspectorTestContext {
   dataset: GameDataset;
   project: PlannerProject;
   result: ProductionPlanResult;
+  graph: ProductionGraph;
   nodes: ProductionGraphNode[];
 }
 
@@ -661,6 +728,7 @@ function createInspectorContext(): InspectorTestContext {
     dataset,
     project: projectWithInputs,
     result,
+    graph,
     nodes: graph.nodes,
   };
 }
@@ -721,6 +789,7 @@ function selectSelection(
     context.dataset,
     context.project,
     context.result,
+    context.graph,
     node,
     {
       done: true,

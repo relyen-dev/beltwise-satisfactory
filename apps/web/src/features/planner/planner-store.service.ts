@@ -567,6 +567,14 @@ export class PlannerStoreService implements OnDestroy {
     this.planCommands.setAnimateFlowLines(animateFlowLines);
   }
 
+  public setPlanNotes(notes: string): void {
+    this.planCommands.setPlanNotes(notes);
+  }
+
+  public clearPlanNotes(): void {
+    this.planCommands.setPlanNotes('');
+  }
+
   public setDefaultAnimateFlowLines(animateFlowLines: boolean): void {
     this.defaultsCommands.setAnimateFlowLines(animateFlowLines);
   }
@@ -581,6 +589,10 @@ export class PlannerStoreService implements OnDestroy {
 
   public setSelectedGraphNodeNote(note: string): void {
     this.graphBuild.setSelectedGraphNodeNote(note);
+  }
+
+  public clearSelectedGraphNodeNote(): void {
+    this.graphBuild.setSelectedGraphNodeNote('');
   }
 
   public activeLayout(): GraphLayoutState {

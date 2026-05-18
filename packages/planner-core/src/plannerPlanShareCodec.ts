@@ -6,6 +6,7 @@ import {
   createObjectiveProfileFromPreset,
   createPlannerProject,
   createStableId,
+  normalizePlainTextNote,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
   type GraphNodeBuildState,
@@ -43,6 +44,7 @@ export type BeltwisePlanSharePayload = BeltwisePlanShareV1;
 
 export interface CompactPlannerProjectV1 {
   n: string;
+  no?: string;
   t?: CompactProductTargetV1[];
   r?: CompactBooleanOverrideV1[];
   m?: CompactBooleanOverrideV1[];
@@ -205,6 +207,10 @@ function encodeCompactPlannerProject(
   const compact: CompactPlannerProjectV1 = {
     n: project.name,
   };
+  const notes = normalizePlainTextNote(project.notes);
+  if (notes.length > 0) {
+    compact.no = notes;
+  }
   if (project.targets.length > 0) {
     compact.t = project.targets.map(encodeTarget);
   }
@@ -274,6 +280,7 @@ function applyCompactProjectToCanonicalDefaults(
 
   return {
     ...defaults,
+    notes: normalizePlainTextNote(compact.no ?? ''),
     targets: decodeTargets(compact.t),
     recipeOverrides,
     machineOverrides: decodeBooleanOverrides(compact.m),
@@ -518,7 +525,7 @@ function encodeNodeBuildState(
     compact.d = true;
   }
   if (nodeState.note && nodeState.note.trim().length > 0) {
-    compact.n = nodeState.note;
+    compact.n = normalizePlainTextNote(nodeState.note);
   }
   return compact.d || compact.n ? compact : null;
 }
@@ -526,9 +533,10 @@ function encodeNodeBuildState(
 function decodeBuildState(value: CompactPlanBuildStateV1 | undefined): PlanBuildState {
   const nodeStates: Record<string, GraphNodeBuildState> = {};
   for (const compact of value?.n ?? []) {
+    const note = compact.n === undefined ? '' : normalizePlainTextNote(compact.n);
     nodeStates[compact.id] = {
       ...(compact.d ? { done: true } : {}),
-      ...(compact.n !== undefined ? { note: compact.n } : {}),
+      ...(note.length > 0 ? { note } : {}),
     };
   }
   return {
@@ -604,6 +612,10 @@ function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | nu
     return null;
   }
   const compact: CompactPlannerProjectV1 = { n: name };
+  const notes = readString(value['no']);
+  if (notes !== undefined && normalizePlainTextNote(notes).length > 0) {
+    compact.no = notes;
+  }
 
   const targets = readArray(value['t'], readCompactProductTarget);
   if (targets === null) {
@@ -838,13 +850,14 @@ function readCompactNodeBuildState(value: unknown): CompactGraphNodeBuildStateV1
   }
   const done = value['d'] === true;
   const note = readString(value['n']);
-  if (!done && note === undefined) {
+  const normalizedNote = note === undefined ? '' : normalizePlainTextNote(note);
+  if (!done && normalizedNote.length === 0) {
     return null;
   }
   return {
     id,
     ...(done ? { d: true } : {}),
-    ...(note !== undefined ? { n: note } : {}),
+    ...(normalizedNote.length > 0 ? { n: normalizedNote } : {}),
   };
 }
 

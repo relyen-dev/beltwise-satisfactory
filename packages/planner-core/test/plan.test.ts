@@ -90,6 +90,7 @@ describe('createPlannerProject', () => {
       now: '2026-05-12T00:00:00.000Z',
     });
 
+    expect(project.notes).toBe('');
     expect(project.targets).toEqual([]);
     expect(project.buildState).toEqual({
       planLocked: false,
@@ -207,6 +208,7 @@ describe('createPlannerProject', () => {
     expect(project.graphDisplay.maxBeltTier).toBe(4);
     expect(project.graphDisplay.edgeStyle).toBe('curved');
     expect(project.targets).toEqual([]);
+    expect(project.notes).toBe('');
     expect(project.itemInputs).toEqual({});
     expect(project.graphLayout).toEqual({ nodePositions: {} });
     expect(project.buildState).toEqual({
@@ -266,6 +268,7 @@ describe('createPlannerProject', () => {
           },
         ],
       }),
+      notes: 'Bring power shards',
       recipeOverrides: { Recipe_IronWire_C: { enabled: true } },
       machineOverrides: { Build_ConstructorMk1_C: { enabled: false } },
       resourceOverrides: { Desc_OreIron_C: { maxPerMinute: 120 } },
@@ -285,6 +288,7 @@ describe('createPlannerProject', () => {
     expect(defaults.resourceOverrides).toEqual(project.resourceOverrides);
     expect(defaults.graphDisplay).toEqual(project.graphDisplay);
     expect('targets' in defaults).toBe(false);
+    expect('notes' in defaults).toBe(false);
     expect('itemInputs' in defaults).toBe(false);
     expect('graphLayout' in defaults).toBe(false);
     expect('buildState' in defaults).toBe(false);
@@ -317,6 +321,27 @@ describe('createPlannerProject', () => {
         sortOrder: 0,
       },
     ]);
+  });
+
+  it('hydrates older projects without notes and normalizes whitespace-only notes', () => {
+    const olderProject = hydratePlannerProject(
+      {
+        id: 'project-old',
+        name: 'Old plan',
+      },
+      tinySatisfactoryDataset,
+    );
+    const whitespaceProject = hydratePlannerProject(
+      {
+        id: 'project-whitespace',
+        name: 'Whitespace plan',
+        notes: '  \n\t  ',
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(olderProject?.notes).toBe('');
+    expect(whitespaceProject?.notes).toBe('');
   });
 });
 

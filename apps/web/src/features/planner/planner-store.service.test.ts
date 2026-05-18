@@ -40,6 +40,7 @@ describe('selectPlannerSolveInput', () => {
     const changedProject: PlannerProject = {
       ...project,
       name: 'Renamed factory',
+      notes: 'Bring coupons\nCheck belt lifts',
       updatedAt: '2026-05-13T00:00:00.000Z',
       graphLayout: {
         nodePositions: {
@@ -908,6 +909,20 @@ describe('PlannerStoreService', () => {
     });
   });
 
+  it('sets and clears plan notes even when the plan is locked', () => {
+    const { store, connectedSolveInput } = createInitializedStore();
+    const originalSolveInput = requiredSolveInput(connectedSolveInput);
+
+    store.setPlanLocked(true);
+    store.setPlanNotes('Bring power shards\nLabel floor');
+
+    expect(requiredProject(store).notes).toBe('Bring power shards\nLabel floor');
+    expect(requiredSolveInput(connectedSolveInput)).toBe(originalSolveInput);
+
+    store.clearPlanNotes();
+    expect(requiredProject(store).notes).toBe('');
+  });
+
   it('keeps the connected solve input stable for solve-irrelevant store commands', () => {
     const { store, connectedSolveInput } = createInitializedStore();
     const target = firstTarget(requiredProject(store));
@@ -1093,6 +1108,7 @@ describe('PlannerStoreService', () => {
       datasetId: tinySatisfactoryDataset.id,
       createdAt: '2026-05-15T00:00:00.000Z',
       updatedAt: '2026-05-15T00:00:00.000Z',
+      notes: importSource.notes,
       targets: importSource.targets,
       recipeOverrides: importSource.recipeOverrides,
       machineOverrides: importSource.machineOverrides,
@@ -1206,6 +1222,7 @@ describe('PlannerStoreService', () => {
       datasetId: tinySatisfactoryDataset.id,
       createdAt: '2026-05-15T00:00:00.000Z',
       updatedAt: '2026-05-15T00:00:00.000Z',
+      notes: importSource.notes,
       targets: importSource.targets,
       recipeOverrides: importSource.recipeOverrides,
       machineOverrides: importSource.machineOverrides,
@@ -1296,6 +1313,7 @@ function createImportSourceProject(id: string, name: string): PlannerProject {
     ...createProject(),
     id,
     name,
+    notes: 'Check belts\nBring power shards',
     targets: [
       {
         id: 'target-fixed',

@@ -7,6 +7,7 @@ import {
   type GraphDisplaySettings,
   type GraphLayoutState,
   type GraphNodeBuildState,
+  normalizePlainTextNote,
   type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
@@ -396,6 +397,13 @@ export function setNodeLayoutLocked(project: PlannerProject, locked: boolean): P
   };
 }
 
+export function setPlanNotes(project: PlannerProject, notes: string): PlannerProject {
+  return {
+    ...project,
+    notes: normalizePlainTextNote(notes),
+  };
+}
+
 export function setMaxBeltTier(
   project: PlannerProject,
   maxBeltTier: ConveyorBeltTier,
@@ -453,13 +461,16 @@ export function setGraphNodeNote(
 ): PlannerProject {
   return updateGraphNodeState(project, nodeId, (nodeState) => {
     const { note: _note, ...rest } = nodeState;
-    return note.trim().length > 0 ? { ...rest, note } : rest;
+    const normalizedNote = normalizePlainTextNote(note);
+    return normalizedNote.length > 0 ? { ...rest, note: normalizedNote } : rest;
   });
 }
 
 export function cleanGraphNodeState(nodeState: GraphNodeBuildState): GraphNodeBuildState | null {
   const done = nodeState.done === true ? true : undefined;
-  const note = nodeState.note && nodeState.note.trim().length > 0 ? nodeState.note : undefined;
+  const normalizedNote =
+    nodeState.note === undefined ? '' : normalizePlainTextNote(nodeState.note);
+  const note = normalizedNote.length > 0 ? normalizedNote : undefined;
   if (done === undefined && note === undefined) {
     return null;
   }

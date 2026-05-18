@@ -3,6 +3,7 @@ import {
   createPlannerSession,
   hydratePlannerProject,
   hydratePlannerUserDefaults,
+  normalizePlainTextNote,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
@@ -79,6 +80,7 @@ export interface StoredPlannerSessionV3 {
 export interface StoredPlannerProjectV1 {
   id: string;
   name: string;
+  notes: string;
   datasetId: string;
   createdAt: string;
   updatedAt: string;
@@ -648,9 +650,11 @@ function toStoredPlannerSessionV3(session: PlannerSession): StoredPlannerSession
 }
 
 function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProjectV1 {
+  const notes = normalizePlainTextNote(project.notes);
   return {
     id: project.id,
     name: project.name,
+    notes,
     datasetId: project.datasetId,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
@@ -847,9 +851,14 @@ function toStoredGraphNodeBuildStatesV1(
       storedNodeState.done = nodeState.done;
     }
     if (nodeState.note !== undefined) {
-      storedNodeState.note = nodeState.note;
+      const note = normalizePlainTextNote(nodeState.note);
+      if (note.length > 0) {
+        storedNodeState.note = note;
+      }
     }
-    stored[nodeId] = storedNodeState;
+    if (storedNodeState.done !== undefined || storedNodeState.note !== undefined) {
+      stored[nodeId] = storedNodeState;
+    }
   }
   return stored;
 }

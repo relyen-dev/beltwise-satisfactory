@@ -227,6 +227,7 @@ export class PlannerStoreViewSelectors {
         this.options.dataset(),
         this.options.activeProject(),
         this.options.solveResult(),
+        this.graph(),
         this.selectedGraphNode(),
         this.selectedGraphNodeState(),
       );

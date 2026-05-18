@@ -279,6 +279,10 @@ export class PlannerPlanCommandSlice {
       projectMutations.setAnimateFlowLines(project, animateFlowLines),
     );
   }
+
+  public setPlanNotes(notes: string): void {
+    this.options.updateActiveProject((project) => projectMutations.setPlanNotes(project, notes));
+  }
 }
 
 function createStableTargetId(): string {

@@ -17,11 +17,12 @@ User projects persist configuration, not solver output:
 - machine overrides
 - resource caps
 - item inputs supplied externally
+- plain-text plan notes
 - objective profile
 - graph display settings
 - manual graph node positions
 - plan/node lock state
-- graph node done flags and notes
+- graph node done flags and plain-text notes
 
 On load, the solver reruns from the stored project and generated dataset.
 
@@ -59,4 +60,6 @@ with the current app dataset.
 Plan sharing uses a separate compact `bw.p` payload. It stores deltas against
 Beltwise's schema-defined defaults for the current dataset, then compresses that
 payload for `#plan=` links or copy/paste codes. Missing compact fields never
-resolve from the importing user's defaults.
+resolve from the importing user's defaults. Plan notes and node notes are
+included when non-empty; session notes, logistics route notes, and map/location
+notes are not part of the current plan payload.

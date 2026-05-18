@@ -27,6 +27,10 @@ export class PlannerTargetsSectionComponent {
     return this.store.activeProject()?.targets ?? [];
   });
 
+  public readonly planNotes = computed(() => {
+    return this.store.activeProject()?.notes ?? '';
+  });
+
   public updateTargetItem(targetId: string, itemId: ItemId): void {
     this.store.updateTargetItem(targetId, itemId);
   }

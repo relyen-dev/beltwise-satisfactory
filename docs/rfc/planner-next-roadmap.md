@@ -218,7 +218,7 @@ Import/export should give users confidence that local-first planning does not me
 Plan export first:
 
 - Export one plan as a versioned JSON file.
-- Include persisted user intent: targets, recipe overrides, machine overrides, resource overrides, external inputs, objective profile, graph display settings, manual layout, build-state notes, and plan notes.
+- Include persisted user intent: targets, recipe overrides, machine overrides, resource overrides, external inputs, objective profile, graph display settings, manual layout, build-state node notes, and plan notes.
 - Include dataset identity and source fingerprint so stale or mismatched imports can be explained.
 - Do not export solver output as authoritative state.
 - Re-solve after import using the local generated dataset.
@@ -463,9 +463,9 @@ Notes can support both planning and construction tracking.
 
 Useful note scopes:
 
-- Plan notes.
+- Plan notes: implemented as plain-text project notes that persist locally and transfer through plan export/import and compact share payloads when non-empty.
+- Node notes: implemented as plain-text graph-node notes; visible and stale notes are summarized in the inspector without deleting stale state automatically.
 - Session notes.
-- Node notes.
 - Linked export/input notes.
 - Logistics route notes.
 - Map/location notes later.

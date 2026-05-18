@@ -40,6 +40,62 @@
         <p class="inspector-list-note">{{ overview.objective.detail }}</p>
       </section>
 
+      <section class="inspector-section" aria-labelledby="inspector-notes-heading">
+        <div class="inspector-section-heading">
+          <h3 id="inspector-notes-heading">Notes</h3>
+          <span>
+            {{ overview.notes.nodeNotes.length }}
+            {{ overview.notes.nodeNotes.length === 1 ? 'node' : 'nodes' }}
+          </span>
+        </div>
+        <div class="inspector-fact-list">
+          <div>
+            <span>Plan note</span>
+            <strong>{{ overview.notes.hasPlanNote ? 'Present' : 'Empty' }}</strong>
+          </div>
+          <div>
+            <span>Node notes</span>
+            <strong>
+              {{ overview.notes.visibleNodeNoteCount }} visible /
+              {{ overview.notes.staleNodeNoteCount }} hidden
+            </strong>
+          </div>
+        </div>
+        @if (overview.notes.hasPlanNote) {
+          <p class="inspector-note-preview">{{ overview.notes.planNote }}</p>
+        }
+        @if (overview.notes.nodeNotes.length > 0) {
+          <div class="inspector-list">
+            @for (note of overview.notes.nodeNotes; track note.nodeId) {
+              @if (note.visible) {
+                <button
+                  type="button"
+                  class="inspector-row inspector-note-row inspector-note-row--action"
+                  [title]="'Select ' + note.label"
+                  (click)="store.selectGraphNode(note.nodeId)"
+                >
+                  <span class="inspector-row__copy">
+                    <strong>{{ note.label }}</strong>
+                    <span>{{ note.kindLabel }} / {{ note.visibilityLabel }}</span>
+                    <span class="inspector-note-row__note">{{ note.note }}</span>
+                  </span>
+                </button>
+              } @else {
+                <div class="inspector-row inspector-note-row inspector-note-row--stale">
+                  <span class="inspector-row__copy">
+                    <strong>{{ note.label }}</strong>
+                    <span>{{ note.visibilityLabel }}</span>
+                    <span class="inspector-note-row__note">{{ note.note }}</span>
+                  </span>
+                </div>
+              }
+            }
+          </div>
+        } @else {
+          <p class="inspector-empty">No graph node notes yet.</p>
+        }
+      </section>
+
       <section class="inspector-section" aria-labelledby="inspector-targets-heading">
         <div class="inspector-section-heading">
           <h3 id="inspector-targets-heading">Targets</h3>

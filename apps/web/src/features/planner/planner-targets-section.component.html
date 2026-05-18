@@ -103,4 +103,26 @@
       }
     </div>
   }
+
+  <div class="plan-notes">
+    <div class="plan-notes__heading">
+      <label for="plan-notes-textarea">Plan Notes</label>
+      <button
+        type="button"
+        title="Clear plan notes"
+        aria-label="Clear plan notes"
+        [disabled]="planNotes().trim().length === 0"
+        (click)="store.clearPlanNotes()"
+      >
+        Clear
+      </button>
+    </div>
+    <textarea
+      id="plan-notes-textarea"
+      rows="5"
+      placeholder="Add plain-text planning notes for this factory."
+      [ngModel]="planNotes()"
+      (ngModelChange)="store.setPlanNotes($event)"
+    ></textarea>
+  </div>
 </section>

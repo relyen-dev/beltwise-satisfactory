@@ -26,6 +26,7 @@ describe('Beltwise compact plan share payloads', () => {
       },
       p: {
         n: 'Iron floor',
+        no: 'Check belts\nBring power shards',
         t: [
           {
             id: 'target-fixed',
@@ -102,6 +103,7 @@ describe('Beltwise compact plan share payloads', () => {
       createdAt: '2026-05-14T00:00:00.000Z',
       updatedAt: '2026-05-14T00:00:00.000Z',
       targets: sourceProject.targets,
+      notes: sourceProject.notes,
       recipeOverrides: sourceProject.recipeOverrides,
       machineOverrides: sourceProject.machineOverrides,
       resourceOverrides: sourceProject.resourceOverrides,
@@ -290,6 +292,7 @@ function createSharedPlannerProject(): PlannerProject {
       dataset: tinySatisfactoryDataset,
       now: '2026-05-12T00:00:00.000Z',
     }),
+    notes: 'Check belts\nBring power shards',
     targets: [
       {
         id: 'target-fixed',

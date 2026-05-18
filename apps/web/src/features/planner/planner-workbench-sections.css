@@ -281,6 +281,37 @@
   white-space: nowrap;
 }
 
+.planner-shell .plan-notes {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 82%, black);
+}
+
+.planner-shell .plan-notes__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.planner-shell .plan-notes__heading label {
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.planner-shell .plan-notes textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 118px;
+  resize: vertical;
+}
+
 .planner-shell .recipe-toolbar {
   display: grid;
   grid-template-columns: minmax(260px, 460px);
@@ -1198,7 +1229,7 @@
   min-width: 0;
 }
 
-.planner-shell :is(.selected-node-heading span, .selected-node-note span) {
+.planner-shell :is(.selected-node-heading span, .selected-node-note label) {
   display: block;
   color: var(--color-text-muted);
   font-size: 10px;
@@ -1230,6 +1261,19 @@
 .planner-shell .selected-node-note {
   display: grid;
   gap: 5px;
+}
+
+.planner-shell .selected-node-note__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.planner-shell .selected-node-note textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
 }
 
 .planner-shell .metric-grid span {
@@ -1289,6 +1333,47 @@
   grid-template-columns: auto minmax(0, 1fr) minmax(72px, auto);
   gap: 8px;
   align-items: center;
+}
+
+.planner-shell .inspector-note-preview {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-panel-raised) 66%, black);
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.planner-shell .inspector-note-row {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  text-align: left;
+}
+
+.planner-shell button.inspector-note-row {
+  color: inherit;
+}
+
+.planner-shell .inspector-note-row--action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 46%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-panel-raised));
+}
+
+.planner-shell .inspector-note-row--stale {
+  border-style: dashed;
+}
+
+.planner-shell .inspector-row__copy .inspector-note-row__note {
+  margin-top: 3px;
+  color: var(--color-text);
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: pre-wrap;
 }
 
 .planner-shell .inspector-row__copy {

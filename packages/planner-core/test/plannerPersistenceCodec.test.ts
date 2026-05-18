@@ -38,6 +38,7 @@ describe('encodePlannerPersistenceState', () => {
         {
           id: 'project-a',
           name: 'Project A',
+          notes: 'Check belts\nBring power shards',
           datasetId: tinySatisfactoryDataset.id,
           createdAt: '2026-05-12T00:00:00.000Z',
           updatedAt: '2026-05-12T00:00:00.000Z',
@@ -352,6 +353,19 @@ describe('decodePlannerPersistenceState', () => {
     expect(decoded?.userDefaults.objectiveProfile).toEqual(userDefaults.objectiveProfile);
   });
 
+  it('round-trips plan notes and node notes through persistence', () => {
+    const project = createDomainPlannerProject();
+    const encoded = encodePlannerPersistenceState(
+      [project],
+      project.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+    );
+    const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
+
+    expect(decoded?.projects[0]?.notes).toBe(project.notes);
+    expect(decoded?.projects[0]?.buildState.nodeStates).toEqual(project.buildState.nodeStates);
+  });
+
   it('hydrates old objective profiles without preset fields on the Resource Efficient order', () => {
     const state = decodePlannerPersistenceState(
       {
@@ -548,6 +562,7 @@ function createDomainPlannerProject(): PlannerProject {
       dataset: tinySatisfactoryDataset,
       now: '2026-05-12T00:00:00.000Z',
     }),
+    notes: 'Check belts\nBring power shards',
     targets: [
       {
         id: 'target-fixed',

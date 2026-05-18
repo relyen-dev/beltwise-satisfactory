@@ -30,6 +30,7 @@ export interface PlannerProjectSummary {
 export interface PlannerProject {
   id: string;
   name: string;
+  notes: string;
   datasetId: string;
   createdAt: string;
   updatedAt: string;
@@ -151,6 +152,7 @@ export interface PlannerProjectCreateOptions {
   name: string;
   dataset: GameDataset;
   targets?: ProductTarget[];
+  notes?: string;
   userDefaults?: PlannerUserDefaults;
   now?: string;
 }
@@ -414,6 +416,7 @@ export function createPlannerProject(options: PlannerProjectCreateOptions): Plan
   return {
     id: options.id ?? createStableId('project'),
     name: options.name,
+    notes: normalizePlainTextNote(options.notes ?? ''),
     datasetId: options.dataset.id,
     createdAt: now,
     updatedAt: now,
@@ -471,6 +474,7 @@ export function hydratePlannerProject(value: unknown, dataset: GameDataset): Pla
     datasetId: readString(value['datasetId']) ?? dataset.id,
     createdAt,
     updatedAt,
+    notes: readPlainTextNote(value['notes']),
     targets: readProductTargets(value['targets']),
     recipeOverrides: {
       ...createLegacyProjectHydrationRecipeOverrides(dataset),
@@ -521,6 +525,10 @@ export function createStableId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export function normalizePlainTextNote(note: string): string {
+  return note.trim().length > 0 ? note : '';
+}
+
 type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -529,6 +537,10 @@ function isRecord(value: unknown): value is UnknownRecord {
 
 function readString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function readPlainTextNote(value: unknown): string {
+  return typeof value === 'string' ? normalizePlainTextNote(value) : '';
 }
 
 function readFiniteNumber(value: unknown): number | undefined {
@@ -1018,7 +1030,9 @@ function readGraphNodeStates(value: unknown): Record<string, GraphNodeBuildState
       continue;
     }
     const done = typeof nodeState['done'] === 'boolean' ? nodeState['done'] : undefined;
-    const note = typeof nodeState['note'] === 'string' ? nodeState['note'] : undefined;
+    const normalizedNote =
+      typeof nodeState['note'] === 'string' ? normalizePlainTextNote(nodeState['note']) : '';
+    const note = normalizedNote.length > 0 ? normalizedNote : undefined;
     if (done === undefined && note === undefined) {
       continue;
     }

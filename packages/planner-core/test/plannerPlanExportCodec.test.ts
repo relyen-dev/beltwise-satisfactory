@@ -50,6 +50,7 @@ describe('Beltwise plan export files', () => {
       project: {
         id: 'project-export',
         name: 'Iron floor',
+        notes: 'Check belts\nBring power shards',
         datasetId: tinySatisfactoryDataset.id,
         createdAt: '2026-05-12T00:00:00.000Z',
         updatedAt: '2026-05-12T00:00:00.000Z',
@@ -148,6 +149,7 @@ describe('Beltwise plan export files', () => {
     ]);
     expect(decoded.project.graphLayout).toEqual(project.graphLayout);
     expect(decoded.project.buildState).toEqual(project.buildState);
+    expect(decoded.project.notes).toBe(project.notes);
     expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
   });
 
@@ -197,6 +199,7 @@ describe('Beltwise plan export files', () => {
       'target-fixed',
       'target-maximize',
     ]);
+    expect(prepared.notes).toBe('Check belts\nBring power shards');
     expect(prepared.graphLayout.nodePositions).toEqual({
       'recipe:Recipe_IronPlate_C': { x: 25, y: 50 },
     });
@@ -313,6 +316,7 @@ function createDomainPlannerProject(): PlannerProject {
       now: '2026-05-12T00:00:00.000Z',
       userDefaults: createDefaultUserDefaults(tinySatisfactoryDataset),
     }),
+    notes: 'Check belts\nBring power shards',
     targets: [
       {
         id: 'target-fixed',

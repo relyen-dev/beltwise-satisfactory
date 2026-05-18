@@ -8,6 +8,7 @@ import {
   removeTarget,
   setGraphNodeDone,
   setGraphNodeNote,
+  setPlanNotes,
   setResourceCap,
   setResourceEnabled,
   setTargetAmount,
@@ -122,6 +123,17 @@ describe('planner project mutations', () => {
     const cleared = setGraphNodeNote(noteOnly, 'recipe:Recipe_IronPlate_C', '   ');
     expect(cleared.buildState.nodeStates).toEqual({});
     expect(cleanGraphNodeState({ done: false, note: '' })).toBeNull();
+  });
+
+  it('sets and clears plain-text plan notes without touching solver configuration', () => {
+    const project = createProject();
+
+    const noted = setPlanNotes(project, 'Check belts\nBring power shards');
+    const cleared = setPlanNotes(noted, '  \n  ');
+
+    expect(noted.notes).toBe('Check belts\nBring power shards');
+    expect(noted.targets).toBe(project.targets);
+    expect(cleared.notes).toBe('');
   });
 });
 

@@ -2,8 +2,10 @@ import { type GameDataset, type ItemId, type MachineId, type RecipeId } from '@b
 import {
   type GraphNodeBuildState,
   type ItemFlowEndpoint,
+  normalizePlainTextNote,
   objectivePresetDefinition,
   type PlannerProject,
+  type ProductionGraph,
   type ProductionGraphNode,
   type ProductionPlanResult,
   type ProductTarget,
@@ -80,6 +82,7 @@ export interface InspectorObjectiveSummary {
 export interface InspectorOverviewViewModel {
   metrics: InspectorMetric[];
   objective: InspectorObjectiveSummary;
+  notes: InspectorNotesSummary;
   targets: InspectorTargetSummary[];
   topRawInputs: InspectorItemRateRow[];
   externalInputs: InspectorItemRateRow[];
@@ -88,6 +91,23 @@ export interface InspectorOverviewViewModel {
   machineSummaryTotalCount: number;
   hiddenMachineSummaryCount: number;
   warnings: InspectorWarningViewModel[];
+}
+
+export interface InspectorNotesSummary {
+  hasPlanNote: boolean;
+  planNote: string;
+  nodeNotes: InspectorNodeNoteSummary[];
+  visibleNodeNoteCount: number;
+  staleNodeNoteCount: number;
+}
+
+export interface InspectorNodeNoteSummary {
+  nodeId: string;
+  label: string;
+  kindLabel: string;
+  note: string;
+  visible: boolean;
+  visibilityLabel: string;
 }
 
 export type SelectedNodeDetails =
@@ -208,6 +228,7 @@ export function selectInspectorViewModel(
   dataset: GameDataset | null,
   project: PlannerProject | null,
   result: ProductionPlanResult | null,
+  graph: ProductionGraph | null,
   selectedNode: ProductionGraphNode | null,
   selectedNodeState: GraphNodeBuildState,
 ): InspectorViewModel | null {
@@ -231,7 +252,7 @@ export function selectInspectorViewModel(
 
   return {
     mode: 'overview',
-    overview: selectOverviewViewModel(dataset, project, result),
+    overview: selectOverviewViewModel(dataset, project, result, graph),
     selection: null,
   };
 }
@@ -240,6 +261,7 @@ function selectOverviewViewModel(
   dataset: GameDataset,
   project: PlannerProject,
   result: ProductionPlanResult | null,
+  graph: ProductionGraph | null,
 ): InspectorOverviewViewModel {
   const machineUsage = result?.machineUsage ?? [];
   const totalMachineCount = machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
@@ -260,6 +282,7 @@ function selectOverviewViewModel(
       metric('Targets', formatPlannerInteger(project.targets.length), 'configured outputs'),
     ],
     objective: objectiveSummary(project),
+    notes: selectNotesSummary(project, graph),
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
       .map((target) => targetSummary(dataset, result, target)),
@@ -272,6 +295,41 @@ function selectOverviewViewModel(
     machineSummaryTotalCount: machineSummaryRows.length,
     hiddenMachineSummaryCount: Math.max(0, machineSummaryRows.length - MAX_OVERVIEW_MACHINE_ROWS),
     warnings: warningRows(result?.warnings ?? []),
+  };
+}
+
+export function selectNotesSummary(
+  project: PlannerProject,
+  graph: ProductionGraph | null,
+): InspectorNotesSummary {
+  const graphNodesById = new Map((graph?.nodes ?? []).map((node) => [node.id, node]));
+  const nodeNotes = Object.entries(project.buildState.nodeStates)
+    .flatMap(([nodeId, nodeState]) => {
+      const note = normalizePlainTextNote(nodeState.note ?? '');
+      if (note.length === 0) {
+        return [];
+      }
+      const graphNode = graphNodesById.get(nodeId);
+      return [
+        {
+          nodeId,
+          label: graphNode?.label ?? nodeId,
+          kindLabel: graphNode ? nodeKindLabel(graphNode.kind) : 'Not visible',
+          note,
+          visible: graphNode !== undefined,
+          visibilityLabel: graphNode ? 'Visible in graph' : 'Not currently visible',
+        },
+      ];
+    })
+    .toSorted(compareNodeNoteSummaries);
+  const planNote = normalizePlainTextNote(project.notes);
+
+  return {
+    hasPlanNote: planNote.length > 0,
+    planNote,
+    nodeNotes,
+    visibleNodeNoteCount: nodeNotes.filter((row) => row.visible).length,
+    staleNodeNoteCount: nodeNotes.filter((row) => !row.visible).length,
   };
 }
 
@@ -874,6 +932,20 @@ function nodeKindLabel(kind: ProductionGraphNode['kind']): string {
     case 'byproduct':
       return 'Byproduct';
   }
+}
+
+function compareNodeNoteSummaries(
+  left: InspectorNodeNoteSummary,
+  right: InspectorNodeNoteSummary,
+): number {
+  if (left.visible !== right.visible) {
+    return left.visible ? -1 : 1;
+  }
+  return (
+    left.kindLabel.localeCompare(right.kindLabel) ||
+    left.label.localeCompare(right.label) ||
+    left.nodeId.localeCompare(right.nodeId)
+  );
 }
 
 function endpointKindLabel(kind: ItemFlowEndpoint['kind']): string {
