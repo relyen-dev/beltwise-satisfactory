@@ -268,7 +268,7 @@ describe('PlannerPageComponent', () => {
     expect(selectProject).toHaveBeenLastCalledWith('project-1');
   });
 
-  it('keeps create plan available outside the compact strip when many plans exist', () => {
+  it('keeps create plan available beside the active selector when many plans exist', () => {
     const { component, createProject, store } = createComponentHarness();
     store.activeSessionProjects.set(createPageProjectList(10));
     store.activeProjectId.set('project-10');
