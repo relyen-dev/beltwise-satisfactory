@@ -1,14 +1,30 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { type GameDataset } from '@beltwise/game-data';
 import {
+  addPlannerProjectToWorkspaceSession,
+  createDefaultStarterPlannerWorkspace,
   createDefaultUserDefaults,
-  createPlannerSession,
+  createNextPlannerPlanName,
+  createPlannerProjectInActiveSession,
+  createPlannerSessionInWorkspace,
   createStableId,
+  createStarterPlannerProject,
+  deletePlannerProjectFromActiveSession,
+  deletePlannerSessionFromWorkspace,
+  duplicatePlannerProjectInWorkspace,
+  initializePlannerWorkspace,
+  listPlannerSessionProjects,
+  renamePlannerSessionInWorkspace,
+  selectActivePlannerProject,
+  selectActivePlannerSession,
+  selectPlannerProjectInWorkspace,
+  selectPlannerSessionInWorkspace,
+  type CreatePlannerWorkspaceProject,
+  type PlannerWorkspaceLifecycleResult,
   type PlannerProject,
   type PlannerSession,
   type PlannerUserDefaults,
 } from '@beltwise/planner-core';
-import { createStarterProject } from './planner-domain.helpers';
 import { type LoadedPlannerState } from './planner-persistence.service';
 import * as projectMutations from './planner-project-mutations';
 import {
@@ -27,17 +43,11 @@ interface PlannerWorkspaceGraphHooks {
   readonly clearGraphSelection: () => void;
 }
 
-interface DefaultStarterWorkspace {
-  readonly project: PlannerProject;
-  readonly session: PlannerSession;
-}
-
 const noopGraphHooks: PlannerWorkspaceGraphHooks = {
   flushPendingGraphState: () => undefined,
   clearPendingGraphState: () => undefined,
   clearGraphSelection: () => undefined,
 };
-const DEFAULT_SESSION_NAME = 'Default session';
 
 export class PlannerWorkspaceSlice {
   private graphHooks = noopGraphHooks;
@@ -52,34 +62,15 @@ export class PlannerWorkspaceSlice {
   public readonly workbenchFocusRequest = signal<WorkbenchFocusRequest | null>(null);
 
   public readonly activeSession = computed(() => {
-    const activeId = this.activeSessionId();
-    return this.sessions().find((session) => session.id === activeId) ?? this.sessions()[0] ?? null;
+    return selectActivePlannerSession(this.workspaceState()) ?? null;
   });
 
   public readonly activeSessionProjects = computed(() => {
-    const session = this.activeSession();
-    const projects = this.projects();
-    if (!session) {
-      return projects;
-    }
-
-    const projectsById = new Map(projects.map((project) => [project.id, project]));
-    return session.projectIds.flatMap((projectId) => {
-      const project = projectsById.get(projectId);
-      return project ? [project] : [];
-    });
+    return listPlannerSessionProjects(this.projects(), this.activeSession() ?? undefined);
   });
 
   public readonly activeProject = computed(() => {
-    const activeId = this.activeProjectId();
-    const sessionProjects = this.activeSessionProjects();
-    return (
-      sessionProjects.find((project) => project.id === activeId) ??
-      sessionProjects[0] ??
-      this.projects().find((project) => project.id === activeId) ??
-      this.projects()[0] ??
-      null
-    );
+    return selectActivePlannerProject(this.workspaceState()) ?? null;
   });
 
   public constructor(private readonly options: PlannerWorkspaceSliceOptions) {}
@@ -90,29 +81,18 @@ export class PlannerWorkspaceSlice {
 
   public selectProject(projectId: string): void {
     this.graphHooks.flushPendingGraphState();
-    const project = this.activeSessionProjects().find((candidate) => candidate.id === projectId);
-    if (!project) {
-      return;
-    }
-    this.activateProject(project, projectFocusMode(project), this.activeSession()?.id);
+    this.applyLifecycleResult(selectPlannerProjectInWorkspace(this.workspaceState(), projectId));
   }
 
   public selectSession(sessionId: string): void {
     this.graphHooks.flushPendingGraphState();
-    const session = this.sessions().find((candidate) => candidate.id === sessionId);
-    if (!session) {
-      return;
-    }
-
-    let project = this.selectProjectForSession(session);
-    if (!project) {
-      project = this.createStarterProjectInSession(session, []);
-      if (!project) {
-        return;
-      }
-    }
-    this.activeSessionId.set(session.id);
-    this.activateProject(project, projectFocusMode(project), session.id);
+    const dataset = this.options.dataset();
+    const result = selectPlannerSessionInWorkspace(this.workspaceState(), {
+      sessionId,
+      now: this.now(),
+      ...(dataset ? { createProject: this.createProjectFactory(dataset) } : {}),
+    });
+    this.applyLifecycleResult(result);
   }
 
   public createSession(): void {
@@ -122,65 +102,28 @@ export class PlannerWorkspaceSlice {
       return;
     }
 
-    const project = createStarterProject(
-      dataset,
-      createNextPlanName([]),
-      this.requireUserDefaults(dataset),
-    );
-    const session = createPlannerSession({
-      name: createUniqueSessionName(this.sessions().map((candidate) => candidate.name)),
-      datasetId: dataset.id,
-      projectIds: [project.id],
-      activeProjectId: project.id,
-      now: project.createdAt,
+    const project = createStarterPlannerProject(dataset, {
+      name: createNextPlannerPlanName([]),
+      userDefaults: this.requireUserDefaults(dataset),
     });
-    this.projects.update((projects) => [...projects, project]);
-    this.sessions.update((sessions) => [...sessions, session]);
-    this.activeSessionId.set(session.id);
-    this.activateProject(project, 'open-plan', session.id);
+    this.applyLifecycleResult(createPlannerSessionInWorkspace(this.workspaceState(), project));
   }
 
   public deleteSession(sessionId = this.activeSessionId()): void {
     this.graphHooks.flushPendingGraphState();
-    const sessions = this.sessions();
-    const session = sessions.find((candidate) => candidate.id === sessionId);
-    if (!session) {
-      return;
-    }
-
-    const nextSession = selectNeighborBeforeRemoval(sessions, session.id);
-    const remainingSessions = sessions.filter((candidate) => candidate.id !== session.id);
-    const projectIdsToRemove = projectIdsOwnedByDeletedSession(session, remainingSessions);
-    this.projects.update((projects) =>
-      projects.filter((project) => !projectIdsToRemove.has(project.id)),
-    );
-
-    if (remainingSessions.length === 0) {
-      this.createReplacementDefaultSession();
-      return;
-    }
-
-    this.sessions.set(remainingSessions);
-    if (this.activeSessionId() !== session.id) {
-      return;
-    }
-
-    if (!nextSession) {
-      return;
-    }
-
-    let nextProject = this.selectProjectForSession(nextSession);
-    if (!nextProject) {
-      nextProject = this.createStarterProjectInSession(nextSession, []);
-      if (!nextProject) {
-        this.activeSessionId.set(undefined);
-        this.activeProjectId.set(undefined);
-        return;
-      }
-    }
-
-    this.activeSessionId.set(nextSession.id);
-    this.activateProject(nextProject, projectFocusMode(nextProject), nextSession.id);
+    const dataset = this.options.dataset();
+    const result = deletePlannerSessionFromWorkspace(this.workspaceState(), {
+      now: this.now(),
+      ...(sessionId !== undefined ? { sessionId } : {}),
+      ...(dataset
+        ? {
+            createReplacementWorkspace: () =>
+              createDefaultStarterPlannerWorkspace(dataset, this.requireUserDefaults(dataset)),
+            createProject: this.createProjectFactory(dataset),
+          }
+        : {}),
+    });
+    this.applyLifecycleResult(result);
   }
 
   public createProject(): void {
@@ -189,77 +132,37 @@ export class PlannerWorkspaceSlice {
     if (!dataset) {
       return;
     }
-    const project = createStarterProject(
-      dataset,
-      createNextPlanName(this.activeSessionProjects()),
-      this.requireUserDefaults(dataset),
-    );
-    this.projects.update((projects) => [...projects, project]);
-    this.addProjectToActiveSession(project);
-    this.activateProject(project, 'open-plan');
+    const result = createPlannerProjectInActiveSession(this.workspaceState(), {
+      now: this.now(),
+      createProject: this.createProjectFactory(dataset),
+    });
+    this.applyLifecycleResult(result);
   }
 
   public duplicateProject(): void {
     this.graphHooks.flushPendingGraphState();
-    const project = this.activeProject();
-    if (!project) {
-      return;
-    }
-    const now = new Date().toISOString();
-    const clone = projectMutations.duplicatePlannerProject(project, {
+    const result = duplicatePlannerProjectInWorkspace(this.workspaceState(), {
       id: createStableId('project'),
-      now,
+      now: this.now(),
     });
-    this.projects.update((projects) => [...projects, clone]);
-    this.addProjectToActiveSession(clone);
-    this.activateProject(clone, projectFocusMode(clone));
+    this.applyLifecycleResult(result);
   }
 
   public importProject(project: PlannerProject): void {
     this.graphHooks.flushPendingGraphState();
-    this.projects.update((projects) => [...projects, project]);
-    this.addProjectToActiveSession(project);
-    this.activateProject(project, projectFocusMode(project));
+    this.applyLifecycleResult(
+      addPlannerProjectToWorkspaceSession(this.workspaceState(), project, this.now()),
+    );
   }
 
   public deleteProject(): void {
     this.graphHooks.flushPendingGraphState();
-    const activeId = this.activeProjectId();
-    const activeSession = this.activeSession();
-    const sessionProjects = this.activeSessionProjects();
-    if (
-      !activeId ||
-      !activeSession ||
-      !sessionProjects.some((project) => project.id === activeId)
-    ) {
-      return;
-    }
-    if (sessionProjects.length <= 1) {
-      const dataset = this.options.dataset();
-      if (!dataset) {
-        return;
-      }
-      const remainingSessionProjects = sessionProjects.filter((project) => project.id !== activeId);
-      const replacement = createStarterProject(
-        dataset,
-        createNextPlanName(remainingSessionProjects),
-        this.requireUserDefaults(dataset),
-      );
-      this.projects.update((projects) => [
-        ...projects.filter((project) => project.id !== activeId),
-        replacement,
-      ]);
-      this.replaceProjectInActiveSession(activeId, replacement, activeSession.id);
-      this.activateProject(replacement, 'open-plan', activeSession.id);
-      return;
-    }
-    const remainingProjects = this.projects().filter((project) => project.id !== activeId);
-    const nextProject = selectNeighborBeforeRemoval(sessionProjects, activeId);
-    this.projects.set(remainingProjects);
-    this.removeProjectFromSessions(activeId, activeSession.id, nextProject?.id);
-    if (nextProject) {
-      this.activateProject(nextProject, projectFocusMode(nextProject), activeSession.id);
-    }
+    const dataset = this.options.dataset();
+    const result = deletePlannerProjectFromActiveSession(this.workspaceState(), {
+      now: this.now(),
+      ...(dataset ? { createReplacementProject: this.createProjectFactory(dataset) } : {}),
+    });
+    this.applyLifecycleResult(result);
   }
 
   public renameProject(name: string): void {
@@ -267,51 +170,29 @@ export class PlannerWorkspaceSlice {
   }
 
   public renameSession(name: string): void {
-    const activeSessionId = this.activeSessionId();
-    const trimmedName = name.trim();
-    if (!activeSessionId || trimmedName.length === 0) {
-      return;
-    }
-    this.touchSession(activeSessionId, (session, now) =>
-      session.name === trimmedName
-        ? session
-        : {
-            ...session,
-            name: trimmedName,
-            updatedAt: now,
-          },
+    this.applyLifecycleResult(
+      renamePlannerSessionInWorkspace(this.workspaceState(), name, this.now()),
     );
   }
 
   public initializeFromStoredState(state: LoadedPlannerState): void {
     this.graphHooks.clearPendingGraphState();
     this.userDefaults.set(state.userDefaults);
-    this.projects.set(state.projects);
-    this.sessions.set(state.sessions);
-    const activeSession =
-      state.sessions.find((session) => session.id === state.activeSessionId) ?? state.sessions[0];
-    this.activeSessionId.set(activeSession?.id);
-    const activeProject =
-      (activeSession
-        ? this.selectProjectForSession(activeSession, state.activeProjectId)
-        : undefined) ?? state.projects[0];
-    if (activeProject) {
-      this.activateProject(activeProject, projectFocusMode(activeProject), activeSession?.id);
-      return;
-    }
-    this.activeProjectId.set(undefined);
-    this.activeSessionId.set(undefined);
+    this.applyLifecycleResult(initializePlannerWorkspace(state));
   }
 
   public initializeStarterProject(dataset: GameDataset, userDefaults?: PlannerUserDefaults): void {
     this.graphHooks.clearPendingGraphState();
     const defaults = userDefaults ?? this.requireUserDefaults(dataset);
     this.userDefaults.set(defaults);
-    const { project, session } = createDefaultStarterWorkspace(dataset, defaults);
-    this.projects.set([project]);
-    this.sessions.set([session]);
-    this.activeSessionId.set(session.id);
-    this.activateProject(project, 'open-plan', session.id);
+    const { project, session } = createDefaultStarterPlannerWorkspace(dataset, defaults);
+    this.applyLifecycleResult({
+      projects: [project],
+      sessions: [session],
+      activeSessionId: session.id,
+      activeProjectId: project.id,
+      activation: { project, sessionId: session.id },
+    });
   }
 
   public updateUserDefaults(
@@ -363,15 +244,8 @@ export class PlannerWorkspaceSlice {
     });
   }
 
-  private activateProject(
-    project: PlannerProject,
-    focusMode: WorkbenchFocusMode,
-    sessionId = this.activeSessionId(),
-  ): void {
+  private activateProject(project: PlannerProject, focusMode: WorkbenchFocusMode): void {
     this.activeProjectId.set(project.id);
-    if (sessionId !== undefined) {
-      this.setSessionActiveProject(sessionId, project.id);
-    }
     this.graphHooks.clearGraphSelection();
     if (focusMode === 'open-plan') {
       this.activeConfigTab.set('plan');
@@ -383,188 +257,42 @@ export class PlannerWorkspaceSlice {
     });
   }
 
-  private selectProjectForSession(
-    session: PlannerSession,
-    preferredProjectId = session.activeProjectId,
-  ): PlannerProject | undefined {
-    const projectsById = new Map(this.projects().map((project) => [project.id, project]));
-    if (preferredProjectId !== undefined && session.projectIds.includes(preferredProjectId)) {
-      return projectsById.get(preferredProjectId);
+  private applyLifecycleResult(result: PlannerWorkspaceLifecycleResult): void {
+    this.projects.set(result.projects);
+    this.sessions.set(result.sessions);
+    this.activeSessionId.set(result.activeSessionId);
+    this.activeProjectId.set(result.activeProjectId);
+    if (result.activation) {
+      this.activateProject(result.activation.project, projectFocusMode(result.activation.project));
     }
-
-    for (const projectId of session.projectIds) {
-      const project = projectsById.get(projectId);
-      if (project) {
-        return project;
-      }
-    }
-    return undefined;
   }
 
-  private addProjectToActiveSession(project: PlannerProject): void {
-    const activeSession = this.activeSession();
-    if (!activeSession) {
-      const session = createPlannerSession({
-        name: DEFAULT_SESSION_NAME,
-        datasetId: project.datasetId,
-        projectIds: [project.id],
-        activeProjectId: project.id,
-        now: project.createdAt,
+  private createProjectFactory(dataset: GameDataset): CreatePlannerWorkspaceProject {
+    return ({ name }) =>
+      createStarterPlannerProject(dataset, {
+        name,
+        userDefaults: this.requireUserDefaults(dataset),
       });
-      this.sessions.update((sessions) => [...sessions, session]);
-      this.activeSessionId.set(session.id);
-      return;
-    }
-
-    this.activeSessionId.set(activeSession.id);
-    this.touchSession(activeSession.id, (session, now) => ({
-      ...session,
-      projectIds: uniqueProjectIds([...session.projectIds, project.id]),
-      updatedAt: now,
-    }));
   }
 
-  private createReplacementDefaultSession(): void {
-    const dataset = this.options.dataset();
-    if (!dataset) {
-      this.sessions.set([]);
-      this.activeSessionId.set(undefined);
-      this.activeProjectId.set(undefined);
-      return;
-    }
-
-    const { project, session } = createDefaultStarterWorkspace(
-      dataset,
-      this.requireUserDefaults(dataset),
-    );
-
-    this.projects.update((projects) => [...projects, project]);
-    this.sessions.set([session]);
-    this.activeSessionId.set(session.id);
-    this.activateProject(project, 'open-plan', session.id);
+  private workspaceState(): {
+    readonly sessions: readonly PlannerSession[];
+    readonly projects: readonly PlannerProject[];
+    readonly activeSessionId?: string;
+    readonly activeProjectId?: string;
+  } {
+    const activeSessionId = this.activeSessionId();
+    const activeProjectId = this.activeProjectId();
+    return {
+      sessions: this.sessions(),
+      projects: this.projects(),
+      ...(activeSessionId !== undefined ? { activeSessionId } : {}),
+      ...(activeProjectId !== undefined ? { activeProjectId } : {}),
+    };
   }
 
-  private createStarterProjectInSession(
-    session: PlannerSession,
-    existingProjects: readonly PlannerProject[],
-  ): PlannerProject | undefined {
-    const dataset = this.options.dataset();
-    if (!dataset) {
-      return undefined;
-    }
-    const project = createStarterProject(
-      dataset,
-      createNextPlanName(existingProjects),
-      this.requireUserDefaults(dataset),
-    );
-    this.projects.update((projects) => [...projects, project]);
-    this.touchSession(session.id, (currentSession, now) => ({
-      ...currentSession,
-      projectIds: [project.id],
-      activeProjectId: project.id,
-      updatedAt: now,
-    }));
-    return project;
-  }
-
-  private replaceProjectInActiveSession(
-    projectId: string,
-    replacementProject: PlannerProject,
-    activeSessionId: string,
-  ): void {
-    const now = new Date().toISOString();
-    this.sessions.update((sessions) =>
-      sessions.map((session) => {
-        if (session.id !== activeSessionId) {
-          return session;
-        }
-
-        const replacedProjectIds = uniqueProjectIds(
-          session.projectIds.map((candidate) =>
-            candidate === projectId ? replacementProject.id : candidate,
-          ),
-        );
-        const projectIds = replacedProjectIds.includes(replacementProject.id)
-          ? replacedProjectIds
-          : [...replacedProjectIds, replacementProject.id];
-        return {
-          ...session,
-          projectIds,
-          activeProjectId: replacementProject.id,
-          updatedAt: now,
-        };
-      }),
-    );
-  }
-
-  private removeProjectFromSessions(
-    projectId: string,
-    activeSessionId: string,
-    nextActiveProjectId: string | undefined,
-  ): void {
-    const now = new Date().toISOString();
-    this.sessions.update((sessions) =>
-      sessions.map((session) => {
-        if (session.id !== activeSessionId) {
-          return session;
-        }
-        const projectIds = session.projectIds.filter((candidate) => candidate !== projectId);
-        if (projectIds.length === 0) {
-          return session;
-        }
-        const activeProjectId = nextActiveProjectId ?? projectIds[0];
-        if (activeProjectId === undefined) {
-          return session;
-        }
-        return {
-          ...session,
-          projectIds,
-          activeProjectId,
-          updatedAt: session.projectIds.length === projectIds.length ? session.updatedAt : now,
-        };
-      }),
-    );
-  }
-
-  private setSessionActiveProject(sessionId: string, projectId: string): void {
-    this.sessions.update((sessions) => {
-      let changed = false;
-      const nextSessions = sessions.map((session) => {
-        if (session.id !== sessionId || !session.projectIds.includes(projectId)) {
-          return session;
-        }
-        if (session.activeProjectId === projectId) {
-          return session;
-        }
-        changed = true;
-        return {
-          ...session,
-          activeProjectId: projectId,
-        };
-      });
-      return changed ? nextSessions : sessions;
-    });
-  }
-
-  private touchSession(
-    sessionId: string,
-    mapper: (session: PlannerSession, now: string) => PlannerSession,
-  ): void {
-    const now = new Date().toISOString();
-    this.sessions.update((sessions) => {
-      let changed = false;
-      const nextSessions = sessions.map((session) => {
-        if (session.id !== sessionId) {
-          return session;
-        }
-        const nextSession = mapper(session, now);
-        if (nextSession !== session) {
-          changed = true;
-        }
-        return nextSession;
-      });
-      return changed ? nextSessions : sessions;
-    });
+  private now(): string {
+    return new Date().toISOString();
   }
 
   private requireUserDefaults(dataset: GameDataset): PlannerUserDefaults {
@@ -575,104 +303,6 @@ export class PlannerWorkspaceSlice {
     const createdDefaults = createDefaultUserDefaults(dataset);
     this.userDefaults.set(createdDefaults);
     return createdDefaults;
-  }
-}
-
-function uniqueProjectIds(projectIds: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const uniqueIds: string[] = [];
-  for (const projectId of projectIds) {
-    if (seen.has(projectId)) {
-      continue;
-    }
-    seen.add(projectId);
-    uniqueIds.push(projectId);
-  }
-  return uniqueIds;
-}
-
-function createDefaultStarterWorkspace(
-  dataset: GameDataset,
-  userDefaults: PlannerUserDefaults,
-): DefaultStarterWorkspace {
-  const project = createStarterProject(dataset, 'Starter factory', userDefaults);
-  return {
-    project,
-    session: createPlannerSession({
-      name: DEFAULT_SESSION_NAME,
-      datasetId: dataset.id,
-      projectIds: [project.id],
-      activeProjectId: project.id,
-      now: project.createdAt,
-    }),
-  };
-}
-
-function selectNeighborBeforeRemoval<TItem extends { id: string }>(
-  items: readonly TItem[],
-  removedId: string,
-): TItem | undefined {
-  const removedIndex = items.findIndex((item) => item.id === removedId);
-  if (removedIndex < 0) {
-    return undefined;
-  }
-  return items[removedIndex - 1] ?? items[removedIndex + 1];
-}
-
-function projectIdsOwnedByDeletedSession(
-  deletedSession: PlannerSession,
-  remainingSessions: readonly PlannerSession[],
-): ReadonlySet<string> {
-  const remainingProjectIds = new Set(remainingSessions.flatMap((session) => session.projectIds));
-  return new Set(
-    deletedSession.projectIds.filter((projectId) => !remainingProjectIds.has(projectId)),
-  );
-}
-
-function createNextPlanName(existingProjects: readonly PlannerProject[]): string {
-  const baseName = 'Plan';
-  const existingNames = new Set(
-    existingProjects.map((project) => project.name.trim().toLowerCase()),
-  );
-  let nextIndex = 1;
-
-  while (true) {
-    const candidate = `${baseName} ${nextIndex}`;
-    if (!existingNames.has(candidate.toLowerCase())) {
-      return candidate;
-    }
-    nextIndex += 1;
-  }
-}
-
-function createUniqueSessionName(existingNames: readonly string[]): string {
-  const baseName = 'Session';
-  const normalizedNames = new Set(existingNames.map((name) => name.trim().toLowerCase()));
-  let nextIndex = 1;
-
-  for (const name of existingNames) {
-    const trimmedName = name.trim();
-    if (trimmedName.toLowerCase() === baseName.toLowerCase()) {
-      nextIndex = Math.max(nextIndex, 2);
-      continue;
-    }
-
-    const match = /^Session (\d+)$/i.exec(trimmedName);
-    if (!match) {
-      continue;
-    }
-    const index = Number.parseInt(match[1] ?? '', 10);
-    if (Number.isInteger(index)) {
-      nextIndex = Math.max(nextIndex, index + 1);
-    }
-  }
-
-  while (true) {
-    const candidate = `${baseName} ${nextIndex}`;
-    if (!normalizedNames.has(candidate.toLowerCase())) {
-      return candidate;
-    }
-    nextIndex += 1;
   }
 }
 
