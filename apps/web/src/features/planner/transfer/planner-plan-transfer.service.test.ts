@@ -1,9 +1,17 @@
 import '@angular/compiler';
 import { Injector } from '@angular/core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PlannerProject } from '@beltwise/planner-core';
 import { encodePlannerShareCode } from './planner-share-codec';
 import { PlannerPlanTransferService } from './planner-plan-transfer.service';
+import {
+  PLANNER_CLIPBOARD_ADAPTER,
+  PLANNER_PLAN_DOWNLOAD_ADAPTER,
+  PLANNER_SHARE_LOCATION_ADAPTER,
+  type PlannerClipboardAdapter,
+  type PlannerPlanDownloadAdapter,
+  type PlannerShareLocationAdapter,
+} from './planner-transfer-browser-adapters';
 import {
   PlannerStoreService,
   type PlannerPlanExportResult,
@@ -12,12 +20,7 @@ import {
 } from '../state/planner-store.service';
 
 describe('PlannerPlanTransferService', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it('downloads exported plan JSON and reports success', () => {
-    const click = vi.fn();
     const store = createStoreHarness({
       exportActivePlan: () => ({
         ok: true,
@@ -25,49 +28,39 @@ describe('PlannerPlanTransferService', () => {
         json: '{"kind":"beltwise.plan"}',
       }),
     });
-    const { service } = createServiceHarness(store);
-    const createObjectUrl = vi.fn(() => 'blob:plan-export');
-    const revokeObjectUrl = vi.fn();
-    vi.stubGlobal('URL', {
-      createObjectURL: createObjectUrl,
-      revokeObjectURL: revokeObjectUrl,
-    });
-    vi.stubGlobal('document', {
-      createElement: vi.fn(() => ({
-        click,
-        download: '',
-        href: '',
-        rel: '',
-      })),
-    });
+    const downloadAdapter = createDownloadAdapterHarness();
+    const { service } = createServiceHarness(store, { downloadAdapter });
 
     expect(service.exportActivePlan()).toEqual({
       kind: 'success',
       message: 'Exported iron-factory.beltwise-plan.json.',
     });
-    expect(createObjectUrl).toHaveBeenCalledOnce();
-    expect(click).toHaveBeenCalledOnce();
-    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:plan-export');
+    expect(downloadAdapter.downloadJsonFile).toHaveBeenCalledWith(
+      'iron-factory.beltwise-plan.json',
+      '{"kind":"beltwise.plan"}',
+    );
   });
 
   it('copies a generated self-contained plan link', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
     const store = createStoreHarness({
       exportActivePlanSharePayload: () => ({
         ok: true,
         payload: createSharePayload('Copied plan'),
       }),
     });
-    const { service } = createServiceHarness(store);
-    vi.stubGlobal('navigator', { clipboard: { writeText } });
-    vi.stubGlobal('location', { href: 'https://beltwise.test/planner#panel=plan' });
+    const clipboardAdapter = createClipboardAdapterHarness();
+    const shareLocationAdapter = createShareLocationAdapterHarness({
+      createShareUrl: vi.fn((code) => `https://beltwise.test/planner#panel=plan&plan=${code}`),
+    });
+    const { service } = createServiceHarness(store, { clipboardAdapter, shareLocationAdapter });
 
     await expect(service.copyActivePlanShareLink()).resolves.toEqual({
       kind: 'success',
       message: 'Copied a self-contained plan link.',
     });
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0]?.[0]).toMatch(
+    expect(shareLocationAdapter.createShareUrl).toHaveBeenCalledOnce();
+    expect(clipboardAdapter.writeText).toHaveBeenCalledOnce();
+    expect(clipboardAdapter.writeText.mock.calls[0]?.[0]).toMatch(
       /^https:\/\/beltwise\.test\/planner#panel=plan&plan=bw1\./,
     );
   });
@@ -111,7 +104,6 @@ describe('PlannerPlanTransferService', () => {
   it('imports a share code and clears the plan hash after success', async () => {
     const payload = createSharePayload('Shared plan');
     const code = await encodePlannerShareCode(payload);
-    const replaceState = vi.fn();
     const store = createStoreHarness({
       importPlanSharePayload: vi.fn(() => ({
         ok: true,
@@ -119,15 +111,8 @@ describe('PlannerPlanTransferService', () => {
         warnings: [],
       })),
     });
-    const { service } = createServiceHarness(store);
-    vi.stubGlobal('location', {
-      hash: `#panel=plan&plan=${code}`,
-      href: `https://beltwise.test/planner#panel=plan&plan=${code}`,
-    });
-    vi.stubGlobal('history', {
-      replaceState,
-      state: { source: 'test' },
-    });
+    const shareLocationAdapter = createShareLocationAdapterHarness();
+    const { service } = createServiceHarness(store, { shareLocationAdapter });
 
     await expect(service.importPlanShareCode(code, 'Shared plan link')).resolves.toEqual({
       imported: true,
@@ -137,11 +122,7 @@ describe('PlannerPlanTransferService', () => {
       },
     });
     expect(store.importPlanSharePayload).toHaveBeenCalledWith(payload);
-    expect(replaceState).toHaveBeenCalledWith(
-      { source: 'test' },
-      '',
-      'https://beltwise.test/planner#panel=plan',
-    );
+    expect(shareLocationAdapter.clearShareCode).toHaveBeenCalledOnce();
   });
 
   it('runs the share import preparation hook after decoding even when import is rejected', async () => {
@@ -169,6 +150,28 @@ describe('PlannerPlanTransferService', () => {
     expect(store.importPlanSharePayload).toHaveBeenCalledWith(payload);
   });
 
+  it('does not clear the plan hash when decoded share import is rejected', async () => {
+    const payload = createSharePayload('Rejected plan');
+    const code = await encodePlannerShareCode(payload);
+    const shareLocationAdapter = createShareLocationAdapterHarness();
+    const store = createStoreHarness({
+      importPlanSharePayload: vi.fn(() => ({
+        ok: false,
+        message: 'Unsupported shared plan.',
+      })),
+    });
+    const { service } = createServiceHarness(store, { shareLocationAdapter });
+
+    await expect(service.importPlanShareCode(code, 'Shared plan link')).resolves.toEqual({
+      imported: false,
+      status: {
+        kind: 'error',
+        message: 'Unsupported shared plan.',
+      },
+    });
+    expect(shareLocationAdapter.clearShareCode).not.toHaveBeenCalled();
+  });
+
   it('preserves import warnings in the returned status', () => {
     const store = createStoreHarness({
       importPlanJson: vi.fn(() => ({
@@ -189,15 +192,59 @@ describe('PlannerPlanTransferService', () => {
   });
 });
 
-function createServiceHarness(store: PlannerTransferStoreHarness): {
+function createServiceHarness(
+  store: PlannerTransferStoreHarness,
+  overrides: Partial<PlannerTransferAdapterHarness> = {},
+): {
   service: PlannerPlanTransferService;
 } {
+  const adapters: PlannerTransferAdapterHarness = {
+    downloadAdapter: createDownloadAdapterHarness(),
+    clipboardAdapter: createClipboardAdapterHarness(),
+    shareLocationAdapter: createShareLocationAdapterHarness(),
+    ...overrides,
+  };
   const injector = Injector.create({
-    providers: [PlannerPlanTransferService, { provide: PlannerStoreService, useValue: store }],
+    providers: [
+      PlannerPlanTransferService,
+      { provide: PlannerStoreService, useValue: store },
+      { provide: PLANNER_PLAN_DOWNLOAD_ADAPTER, useValue: adapters.downloadAdapter },
+      { provide: PLANNER_CLIPBOARD_ADAPTER, useValue: adapters.clipboardAdapter },
+      { provide: PLANNER_SHARE_LOCATION_ADAPTER, useValue: adapters.shareLocationAdapter },
+    ],
   });
 
   return {
     service: injector.get(PlannerPlanTransferService),
+  };
+}
+
+function createDownloadAdapterHarness(
+  overrides: Partial<PlannerPlanDownloadAdapter> = {},
+): PlannerPlanDownloadAdapterHarness {
+  return {
+    downloadJsonFile: vi.fn(),
+    ...overrides,
+  };
+}
+
+function createClipboardAdapterHarness(
+  overrides: Partial<PlannerClipboardAdapter> = {},
+): PlannerClipboardAdapterHarness {
+  return {
+    writeText: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function createShareLocationAdapterHarness(
+  overrides: Partial<PlannerShareLocationAdapter> = {},
+): PlannerShareLocationAdapterHarness {
+  return {
+    createShareUrl: vi.fn((code) => `https://beltwise.test/planner#plan=${code}`),
+    readShareCode: vi.fn(() => null),
+    clearShareCode: vi.fn(),
+    ...overrides,
   };
 }
 
@@ -227,4 +274,24 @@ interface PlannerTransferStoreHarness {
   exportActivePlanSharePayload: () => PlannerPlanShareExportResult;
   importPlanJson: (json: string) => PlannerPlanImportResult;
   importPlanSharePayload: (payload: unknown) => PlannerPlanImportResult;
+}
+
+interface PlannerTransferAdapterHarness {
+  downloadAdapter: PlannerPlanDownloadAdapterHarness;
+  clipboardAdapter: PlannerClipboardAdapterHarness;
+  shareLocationAdapter: PlannerShareLocationAdapterHarness;
+}
+
+interface PlannerPlanDownloadAdapterHarness extends PlannerPlanDownloadAdapter {
+  downloadJsonFile: ReturnType<typeof vi.fn>;
+}
+
+interface PlannerClipboardAdapterHarness extends PlannerClipboardAdapter {
+  writeText: ReturnType<typeof vi.fn>;
+}
+
+interface PlannerShareLocationAdapterHarness extends PlannerShareLocationAdapter {
+  createShareUrl: ReturnType<typeof vi.fn>;
+  readShareCode: ReturnType<typeof vi.fn>;
+  clearShareCode: ReturnType<typeof vi.fn>;
 }

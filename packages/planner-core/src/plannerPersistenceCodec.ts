@@ -18,18 +18,14 @@ import {
 } from './plan';
 import { uniqueStrings } from './internal/uniqueStrings';
 import {
-  copyBooleanOverridesForTransfer,
-  copyGraphDisplaySettingsForTransfer,
-  copyGraphLayoutNodePositionsForTransfer,
-  copyItemInputsForTransfer,
-  copyNumberRecordForTransfer,
-  copyPlanBuildStateForTransfer,
-  copyProductTargetForTransfer,
-  copyResourceOverridesForTransfer,
   isPlanTransferRecord,
   normalizePlanTransferNote,
   readTransferString,
 } from './planTransferFieldCodecs';
+import {
+  copyPlannerProjectIntentSnapshot,
+  copyPlannerUserDefaultsIntentSnapshot,
+} from './internal/plannerIntentTransfer';
 
 export type PlannerStorageSchemaVersion = typeof PLANNER_STORAGE_SCHEMA_VERSION;
 
@@ -657,6 +653,7 @@ function toStoredPlannerSessionV3(session: PlannerSession): StoredPlannerSession
 
 function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProjectV1 {
   const notes = normalizePlanTransferNote(project.notes);
+  const intent = copyPlannerProjectIntentSnapshot(project);
   return {
     id: project.id,
     name: project.name,
@@ -664,29 +661,28 @@ function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProject
     datasetId: project.datasetId,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
-    targets: project.targets.map(copyProductTargetForTransfer),
-    recipeOverrides: copyBooleanOverridesForTransfer(project.recipeOverrides),
-    machineOverrides: copyBooleanOverridesForTransfer(project.machineOverrides),
-    resourceOverrides: copyResourceOverridesForTransfer(project.resourceOverrides),
-    itemInputs: copyItemInputsForTransfer(project.itemInputs),
-    objectiveProfile: toStoredObjectiveProfileV1(project.objectiveProfile),
-    graphLayout: {
-      nodePositions: copyGraphLayoutNodePositionsForTransfer(project.graphLayout.nodePositions),
-    },
-    graphDisplay: copyGraphDisplaySettingsForTransfer(project.graphDisplay),
-    buildState: copyPlanBuildStateForTransfer(project.buildState),
+    targets: intent.targets,
+    recipeOverrides: intent.recipeOverrides,
+    machineOverrides: intent.machineOverrides,
+    resourceOverrides: intent.resourceOverrides,
+    itemInputs: intent.itemInputs,
+    objectiveProfile: toStoredObjectiveProfileV1(intent.objectiveProfile),
+    graphLayout: intent.graphLayout,
+    graphDisplay: intent.graphDisplay,
+    buildState: intent.buildState,
   };
 }
 
 function toStoredPlannerUserDefaultsV2(
   userDefaults: PlannerUserDefaults,
 ): StoredPlannerUserDefaultsV2 {
+  const intent = copyPlannerUserDefaultsIntentSnapshot(userDefaults);
   return {
-    recipeOverrides: copyBooleanOverridesForTransfer(userDefaults.recipeOverrides),
-    machineOverrides: copyBooleanOverridesForTransfer(userDefaults.machineOverrides),
-    resourceOverrides: copyResourceOverridesForTransfer(userDefaults.resourceOverrides),
-    objectiveProfile: toStoredObjectiveProfileV1(userDefaults.objectiveProfile),
-    graphDisplay: copyGraphDisplaySettingsForTransfer(userDefaults.graphDisplay),
+    recipeOverrides: intent.recipeOverrides,
+    machineOverrides: intent.machineOverrides,
+    resourceOverrides: intent.resourceOverrides,
+    objectiveProfile: toStoredObjectiveProfileV1(intent.objectiveProfile),
+    graphDisplay: intent.graphDisplay,
   };
 }
 
@@ -734,6 +730,6 @@ function toStoredObjectiveProfileV1(
     powerWeight: objectiveProfile.powerWeight,
     machineCountWeight: objectiveProfile.machineCountWeight,
     surplusWeight: objectiveProfile.surplusWeight,
-    rawResourceMultipliers: copyNumberRecordForTransfer(objectiveProfile.rawResourceMultipliers),
+    rawResourceMultipliers: objectiveProfile.rawResourceMultipliers,
   };
 }

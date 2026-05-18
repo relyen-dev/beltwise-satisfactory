@@ -11,6 +11,14 @@ import type { PlannerProject, PlannerSession, ProductionPlanStatus } from '@belt
 import { PlannerPageComponent } from './planner-page.component';
 import { PlannerPlanTransferService } from './transfer/planner-plan-transfer.service';
 import {
+  PLANNER_CLIPBOARD_ADAPTER,
+  PLANNER_PLAN_DOWNLOAD_ADAPTER,
+  PLANNER_SHARE_LOCATION_ADAPTER,
+  type PlannerClipboardAdapter,
+  type PlannerPlanDownloadAdapter,
+  type PlannerShareLocationAdapter,
+} from './transfer/planner-transfer-browser-adapters';
+import {
   PlannerStoreService,
   type ConfigurationTab,
   type WorkbenchFocusRequest,
@@ -510,16 +518,14 @@ describe('PlannerPageComponent', () => {
   });
 
   it('copies a self-contained plan link and reports success', async () => {
-    const { component, exportActivePlanSharePayload } = createComponentHarness();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal('navigator', { clipboard: { writeText } });
-    vi.stubGlobal('location', { href: 'https://beltwise.test/planner#panel=plan' });
+    const { clipboardAdapter, component, exportActivePlanSharePayload } =
+      createComponentHarness();
 
     await component.copyActivePlanShareLink();
 
     expect(exportActivePlanSharePayload).toHaveBeenCalledOnce();
-    expect(writeText).toHaveBeenCalledOnce();
-    const copied = writeText.mock.calls[0]?.[0] as string;
+    expect(clipboardAdapter.writeText).toHaveBeenCalledOnce();
+    const copied = clipboardAdapter.writeText.mock.calls[0]?.[0] as string;
     expect(copied).toMatch(/^https:\/\/beltwise\.test\/planner#panel=plan&plan=bw1\./);
     expect(component.planTransferStatus()).toEqual({
       kind: 'success',
@@ -571,6 +577,7 @@ describe('PlannerPageComponent', () => {
 });
 
 function createComponentHarness(): {
+  clipboardAdapter: PlannerPageClipboardAdapterHarness;
   clearSelectedGraphNode: ReturnType<typeof vi.fn>;
   component: PlannerPageComponent;
   createProject: ReturnType<typeof vi.fn>;
@@ -584,6 +591,7 @@ function createComponentHarness(): {
   importPlanSharePayload: ReturnType<typeof vi.fn>;
   renameProject: ReturnType<typeof vi.fn>;
   renameSession: ReturnType<typeof vi.fn>;
+  shareLocationAdapter: PlannerPageShareLocationAdapterHarness;
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
   store: PlannerPageStoreHarness;
@@ -609,6 +617,17 @@ function createComponentHarness(): {
     project: { name: 'Pasted plan' },
     warnings: [],
   }));
+  const clipboardAdapter: PlannerPageClipboardAdapterHarness = {
+    writeText: vi.fn().mockResolvedValue(undefined),
+  };
+  const downloadAdapter: PlannerPlanDownloadAdapter = {
+    downloadJsonFile: vi.fn(),
+  };
+  const shareLocationAdapter: PlannerPageShareLocationAdapterHarness = {
+    createShareUrl: vi.fn((code: string) => `https://beltwise.test/planner#panel=plan&plan=${code}`),
+    readShareCode: vi.fn(() => null),
+    clearShareCode: vi.fn(),
+  };
   const renameProject = vi.fn();
   const renameSession = vi.fn();
   let store: PlannerPageStoreHarness;
@@ -658,11 +677,18 @@ function createComponentHarness(): {
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
   const injector = Injector.create({
-    providers: [PlannerPlanTransferService, { provide: PlannerStoreService, useValue: store }],
+    providers: [
+      PlannerPlanTransferService,
+      { provide: PlannerStoreService, useValue: store },
+      { provide: PLANNER_CLIPBOARD_ADAPTER, useValue: clipboardAdapter },
+      { provide: PLANNER_PLAN_DOWNLOAD_ADAPTER, useValue: downloadAdapter },
+      { provide: PLANNER_SHARE_LOCATION_ADAPTER, useValue: shareLocationAdapter },
+    ],
   });
   const component = runInInjectionContext(injector, () => new PlannerPageComponent());
 
   return {
+    clipboardAdapter,
     clearSelectedGraphNode,
     component,
     createProject,
@@ -676,6 +702,7 @@ function createComponentHarness(): {
     importPlanSharePayload,
     renameProject,
     renameSession,
+    shareLocationAdapter,
     selectProject,
     selectSession,
     store,
@@ -732,6 +759,16 @@ interface PlannerPageStoreHarness {
 interface PlannerPageSolveResult {
   readonly status: ProductionPlanStatus;
   readonly warnings?: ReadonlyArray<{ readonly message: string }>;
+}
+
+interface PlannerPageClipboardAdapterHarness extends PlannerClipboardAdapter {
+  writeText: ReturnType<typeof vi.fn>;
+}
+
+interface PlannerPageShareLocationAdapterHarness extends PlannerShareLocationAdapter {
+  createShareUrl: ReturnType<typeof vi.fn>;
+  readShareCode: ReturnType<typeof vi.fn>;
+  clearShareCode: ReturnType<typeof vi.fn>;
 }
 
 function stubInputViewChild(

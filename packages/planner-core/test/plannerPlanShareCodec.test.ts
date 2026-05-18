@@ -219,8 +219,19 @@ describe('Beltwise compact plan share payloads', () => {
     });
 
     const payload = encodeBeltwisePlanShare(project, tinySatisfactoryDataset);
+    const decoded = decodeBeltwisePlanShare(payload, tinySatisfactoryDataset, {
+      id: 'project-imported',
+      now: '2026-05-14T00:00:00.000Z',
+    });
 
     expect(payload.p).toEqual({ n: 'Default plan' });
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
+    expect(decoded.project.recipeOverrides).toEqual(project.recipeOverrides);
+    expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
+    expect(decoded.project.graphDisplay).toEqual(project.graphDisplay);
   });
 
   it('omits no-op resource overrides so encoded plans still round-trip', () => {

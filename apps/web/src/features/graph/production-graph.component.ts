@@ -20,7 +20,6 @@ import { FCanvasComponent, F_CONNECTION_BUILDERS, FFlowModule } from '@foblex/fl
 import {
   FOBLEX_CONNECTION_BUILDERS,
   type BeltwiseFoblexFlowEdge,
-  type BeltwiseFoblexFlowModel,
   type BeltwiseFoblexFlowNode,
   foblexInputId,
   foblexOutputId,
@@ -28,29 +27,20 @@ import {
   toFoblexFlowModel,
 } from './adapters/foblex-flow.adapter';
 import { toDefaultGraphRendererModel } from './production-graph.layout';
+import { GraphInteractionController } from './graph-interaction.controller';
+import {
+  buildDirectFocusScope,
+  emptyGraphFocusScope,
+  formatTargetAmountInputValue,
+  normalizeTargetAmount,
+  parseTargetAmount,
+  type GraphFocusScope,
+} from './graph-interaction.presenter';
 
 const GRAPH_ZOOM_MINIMUM = 0.2;
 const GRAPH_ZOOM_MAXIMUM = 2.5;
 const GRAPH_ZOOM_STEP = 0.12;
-const NODE_CLICK_MOVE_TOLERANCE_PX = 5;
-const NODE_DESELECTION_DELAY_MS = 300;
-const NODE_DOUBLE_CLICK_RESTORE_WINDOW_MS = 500;
 const GRAPH_AUTO_FIT_PADDING = { x: 72, y: 56 };
-
-interface GraphFocusScope {
-  nodeIds: ReadonlySet<string>;
-  edgeIds: ReadonlySet<string>;
-}
-
-interface NodePointerStart {
-  x: number;
-  y: number;
-}
-
-interface ImmediateSelectionSnapshot {
-  nodeId: string;
-  previousSelectedNodeId: string | null;
-}
 
 type CanvasFitTarget = Pick<FCanvasComponent, 'fitToScreen'>;
 
@@ -85,12 +75,16 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly graphZoomMaximum = GRAPH_ZOOM_MAXIMUM;
   public readonly graphZoomStep = GRAPH_ZOOM_STEP;
   private readonly canvas = viewChild<FCanvasComponent>('graphCanvas');
-  private readonly nodePointerStarts = new Map<string, NodePointerStart>();
-  private readonly movedNodeIds = new Set<string>();
-  private immediateSelectionSnapshot: ImmediateSelectionSnapshot | null = null;
+  private readonly interactionController = new GraphInteractionController({
+    getSelectedNodeId: () => this.selectedNodeId(),
+    isInteractionLocked: () => this.interactionLocked(),
+    onNodeDoneToggled: (nodeId) => this.nodeDoneToggled.emit(nodeId),
+    onNodeMoved: (move) => this.nodeMoved.emit(move),
+    onNodeMoveEnded: () => this.nodeMoveEnded.emit(),
+    onNodeSelectionSet: (nodeId) => this.nodeSelectionSet.emit(nodeId),
+    onNodeSelectionToggled: (nodeId) => this.nodeSelectionToggled.emit(nodeId),
+  });
   private autoFittedGraph: ProductionGraph | null = null;
-  private clearImmediateSelectionSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
-  private pendingNodeDeselectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private readonly defaultRendererModel = computed(() => {
     const graph = this.graph();
@@ -114,7 +108,7 @@ export class ProductionGraphComponent implements OnDestroy {
     const selectedNodeId = this.selectedNodeId();
     const flow = this.flowModel();
     if (!selectedNodeId || !flow) {
-      return { nodeIds: new Set<string>(), edgeIds: new Set<string>() };
+      return emptyGraphFocusScope();
     }
     return buildDirectFocusScope(flow, selectedNodeId);
   });
@@ -252,118 +246,32 @@ export class ProductionGraphComponent implements OnDestroy {
   }
 
   public handleNodePointerDown(nodeId: string, event: PointerEvent): void {
-    this.nodePointerStarts.set(nodeId, { x: event.clientX, y: event.clientY });
+    this.interactionController.handleNodePointerDown(nodeId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
   }
 
   public handleNodePointerUp(nodeId: string, event: PointerEvent): void {
-    const start = this.nodePointerStarts.get(nodeId);
-    this.nodePointerStarts.delete(nodeId);
-    if (this.movedNodeIds.delete(nodeId)) {
-      this.nodeMoveEnded.emit();
-      return;
-    }
-    if (!start) {
-      return;
-    }
-
-    const movedDistance = Math.hypot(event.clientX - start.x, event.clientY - start.y);
-    if (movedDistance <= NODE_CLICK_MOVE_TOLERANCE_PX) {
-      this.handleNodeClick(nodeId);
-    }
+    this.interactionController.handleNodePointerUp(nodeId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
   }
 
   public handleNodeDoubleClick(nodeId: string, event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    const selectionSnapshot = this.immediateSelectionSnapshot;
-    this.clearPendingNodeDeselection();
-    this.clearImmediateSelectionSnapshot();
-    if (selectionSnapshot?.nodeId === nodeId) {
-      this.nodeSelectionSet.emit(selectionSnapshot.previousSelectedNodeId);
-    }
-    this.nodeDoneToggled.emit(nodeId);
+    this.interactionController.handleNodeDoubleClick(nodeId);
   }
 
   public handleNodePosition(nodeId: string, position: { x: number; y: number }): void {
-    if (this.interactionLocked()) {
-      return;
-    }
-    this.movedNodeIds.add(nodeId);
-    this.nodeMoved.emit({ nodeId, position });
+    this.interactionController.handleNodePosition(nodeId, position);
   }
 
   public ngOnDestroy(): void {
-    this.clearPendingNodeDeselection();
-    this.clearImmediateSelectionSnapshot();
+    this.interactionController.destroy();
   }
-
-  private handleNodeClick(nodeId: string): void {
-    const selectedNodeId = this.selectedNodeId();
-    if (selectedNodeId === nodeId) {
-      this.scheduleNodeDeselection(nodeId);
-      return;
-    }
-
-    this.clearPendingNodeDeselection();
-    this.rememberImmediateSelection(nodeId, selectedNodeId);
-    this.nodeSelectionToggled.emit(nodeId);
-  }
-
-  private scheduleNodeDeselection(nodeId: string): void {
-    this.clearPendingNodeDeselection();
-    this.pendingNodeDeselectionTimeout = setTimeout(() => {
-      this.pendingNodeDeselectionTimeout = null;
-      this.nodeSelectionToggled.emit(nodeId);
-    }, NODE_DESELECTION_DELAY_MS);
-  }
-
-  private clearPendingNodeDeselection(): void {
-    if (this.pendingNodeDeselectionTimeout === null) {
-      return;
-    }
-    clearTimeout(this.pendingNodeDeselectionTimeout);
-    this.pendingNodeDeselectionTimeout = null;
-  }
-
-  private rememberImmediateSelection(nodeId: string, previousSelectedNodeId: string | null): void {
-    this.clearImmediateSelectionSnapshot();
-    this.immediateSelectionSnapshot = { nodeId, previousSelectedNodeId };
-    this.clearImmediateSelectionSnapshotTimeout = setTimeout(() => {
-      this.immediateSelectionSnapshot = null;
-      this.clearImmediateSelectionSnapshotTimeout = null;
-    }, NODE_DOUBLE_CLICK_RESTORE_WINDOW_MS);
-  }
-
-  private clearImmediateSelectionSnapshot(): void {
-    if (this.clearImmediateSelectionSnapshotTimeout !== null) {
-      clearTimeout(this.clearImmediateSelectionSnapshotTimeout);
-      this.clearImmediateSelectionSnapshotTimeout = null;
-    }
-    this.immediateSelectionSnapshot = null;
-  }
-}
-
-function buildDirectFocusScope(
-  flow: BeltwiseFoblexFlowModel,
-  selectedNodeId: string,
-): GraphFocusScope {
-  const selectedNode = flow.nodes.find((node) => node.id === selectedNodeId);
-  if (!selectedNode) {
-    return { nodeIds: new Set<string>(), edgeIds: new Set<string>() };
-  }
-
-  const nodeIds = new Set<string>([selectedNode.id]);
-  const edgeIds = new Set<string>();
-  for (const edge of flow.edges) {
-    if (edge.sourceNodeId !== selectedNodeId && edge.targetNodeId !== selectedNodeId) {
-      continue;
-    }
-    edgeIds.add(edge.id);
-    nodeIds.add(edge.sourceNodeId);
-    nodeIds.add(edge.targetNodeId);
-  }
-
-  return { nodeIds, edgeIds };
 }
 
 interface GraphControlTarget extends EventTarget {
@@ -380,19 +288,4 @@ function isGraphControlTarget(target: EventTarget | null): target is GraphContro
   }
   const candidate = target as { value?: unknown };
   return typeof candidate.value === 'string';
-}
-
-function parseTargetAmount(value: string): number {
-  const parsed = Number(value.replace(/,/g, ''));
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
-}
-
-function formatTargetAmountInputValue(amountPerMinute: number | undefined): string {
-  return normalizeTargetAmount(amountPerMinute).toString();
-}
-
-function normalizeTargetAmount(amountPerMinute: number | undefined): number {
-  return amountPerMinute !== undefined && Number.isFinite(amountPerMinute)
-    ? Math.max(0, amountPerMinute)
-    : 0;
 }

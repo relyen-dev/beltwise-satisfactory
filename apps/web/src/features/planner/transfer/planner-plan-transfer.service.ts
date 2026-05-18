@@ -1,12 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { MAX_BELTWISE_PLAN_EXPORT_JSON_BYTES } from '@beltwise/planner-core';
 import {
-  clearPlannerShareCodeFromLocation,
-  createPlannerShareUrl,
   decodePlannerShareCode,
   encodePlannerShareCode,
-  readPlannerShareCodeFromLocation,
 } from './planner-share-codec';
+import {
+  PLANNER_CLIPBOARD_ADAPTER,
+  PLANNER_PLAN_DOWNLOAD_ADAPTER,
+  PLANNER_SHARE_LOCATION_ADAPTER,
+} from './planner-transfer-browser-adapters';
 import { PlannerStoreService, type PlannerPlanImportResult } from '../state/planner-store.service';
 
 export interface PlanTransferStatus {
@@ -22,6 +24,9 @@ export interface PlanImportTransferResult {
 @Injectable({ providedIn: 'root' })
 export class PlannerPlanTransferService {
   private readonly store = inject(PlannerStoreService);
+  private readonly downloadAdapter = inject(PLANNER_PLAN_DOWNLOAD_ADAPTER);
+  private readonly clipboardAdapter = inject(PLANNER_CLIPBOARD_ADAPTER);
+  private readonly shareLocationAdapter = inject(PLANNER_SHARE_LOCATION_ADAPTER);
 
   public exportActivePlan(): PlanTransferStatus {
     const result = this.store.exportActivePlan();
@@ -30,7 +35,7 @@ export class PlannerPlanTransferService {
     }
 
     try {
-      downloadJsonFile(result.filename, result.json);
+      this.downloadAdapter.downloadJsonFile(result.filename, result.json);
       return successStatus(`Exported ${result.filename}.`);
     } catch {
       return errorStatus('The plan export could not be downloaded.');
@@ -48,7 +53,7 @@ export class PlannerPlanTransferService {
         encodePlannerShareCode(result.payload),
         'The plan link could not be compressed.',
       );
-      await copyTextToClipboard(createPlannerShareUrl(code));
+      await this.clipboardAdapter.writeText(this.shareLocationAdapter.createShareUrl(code));
       return successStatus('Copied a self-contained plan link.');
     } catch (error) {
       return errorStatus(shareErrorMessage(error));
@@ -87,7 +92,7 @@ export class PlannerPlanTransferService {
       beforeImport?.();
       const result = createImportTransferResult(this.store.importPlanSharePayload(payload));
       if (result.imported) {
-        clearPlannerShareCodeFromLocation();
+        this.shareLocationAdapter.clearShareCode();
       }
       return result;
     } catch (error) {
@@ -99,7 +104,7 @@ export class PlannerPlanTransferService {
   }
 
   public readShareCodeFromLocation(): string | null {
-    return readPlannerShareCodeFromLocation();
+    return this.shareLocationAdapter.readShareCode();
   }
 }
 
@@ -129,45 +134,6 @@ function successStatus(message: string): PlanTransferStatus {
 
 function errorStatus(message: string): PlanTransferStatus {
   return { kind: 'error', message };
-}
-
-function downloadJsonFile(filename: string, json: string): void {
-  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  try {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.rel = 'noopener';
-    link.click();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-async function copyTextToClipboard(value: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await withTimeout(navigator.clipboard.writeText(value), 'Clipboard copy timed out.');
-      return;
-    } catch {
-      // Fall back to the textarea path below.
-    }
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = value;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  document.body.append(textarea);
-  textarea.select();
-  try {
-    if (!document.execCommand('copy')) {
-      throw new Error('Copy command failed');
-    }
-  } finally {
-    textarea.remove();
-  }
 }
 
 async function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {

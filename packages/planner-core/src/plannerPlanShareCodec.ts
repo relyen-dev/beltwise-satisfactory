@@ -2,9 +2,7 @@ import type { GameDataset, ItemId } from '@beltwise/game-data';
 import {
   createDefaultGraphDisplaySettings,
   createDefaultObjectiveProfile,
-  createDefaultRecipeOverrides,
   createObjectiveProfileFromPreset,
-  createPlannerProject,
   createStableId,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
@@ -20,9 +18,6 @@ import {
 } from './plan';
 import type { BeltwisePlanImportWarning } from './plannerPlanExportCodec';
 import {
-  amountOverrideEntriesForTransfer,
-  booleanOverrideEntriesForTransfer,
-  graphNodePositionEntriesForTransfer,
   isPlanTransferRecord,
   isSafePlanTransferRecordKey,
   normalizePlanTransferNote,
@@ -36,8 +31,18 @@ import {
   readTransferRateDecimalPlaces,
   readSafePlanTransferRecordKey,
   readTransferString,
-  resourceOverrideEntriesForTransfer,
 } from './planTransferFieldCodecs';
+import {
+  applyPlannerProjectIntentToCanonicalDefaults,
+  canonicalGraphNodePositionEntries,
+  canonicalItemInputEntries,
+  canonicalMachineOverrideEntries,
+  canonicalRawResourceMultiplierEntries,
+  canonicalRecipeOverrideEntries,
+  canonicalResourceOverrideEntries,
+  graphDisplayDiffersFromCanonicalDefault,
+  objectiveProfileDiffersFromCanonicalDefault,
+} from './internal/plannerIntentTransfer';
 
 export const BELTWISE_PLAN_SHARE_KIND = 'bw.p';
 export const BELTWISE_PLAN_SHARE_FORMAT_VERSION = 1;
@@ -231,26 +236,22 @@ function encodeCompactPlannerProject(
     compact.t = project.targets.map(encodeTarget);
   }
 
-  const recipeOverrides = encodeBooleanOverrides(
-    project.recipeOverrides,
-    createDefaultRecipeOverrides(dataset),
-    true,
-  );
+  const recipeOverrides = encodeBooleanOverrides(canonicalRecipeOverrideEntries(project, dataset));
   if (recipeOverrides.length > 0) {
     compact.r = recipeOverrides;
   }
 
-  const machineOverrides = encodeBooleanOverrides(project.machineOverrides, {}, true);
+  const machineOverrides = encodeBooleanOverrides(canonicalMachineOverrideEntries(project));
   if (machineOverrides.length > 0) {
     compact.m = machineOverrides;
   }
 
-  const resourceOverrides = encodeResourceOverrides(project.resourceOverrides);
+  const resourceOverrides = encodeResourceOverrides(project);
   if (resourceOverrides.length > 0) {
     compact.rc = resourceOverrides;
   }
 
-  const itemInputs = encodeAmountOverrides(project.itemInputs);
+  const itemInputs = encodeAmountOverrides(canonicalItemInputEntries(project));
   if (itemInputs.length > 0) {
     compact.i = itemInputs;
   }
@@ -265,7 +266,7 @@ function encodeCompactPlannerProject(
     compact.g = graphDisplay;
   }
 
-  const graphLayout = encodeGraphLayout(project.graphLayout.nodePositions);
+  const graphLayout = encodeGraphLayout(project);
   if (graphLayout.length > 0) {
     compact.l = graphLayout;
   }
@@ -283,30 +284,26 @@ function applyCompactProjectToCanonicalDefaults(
   dataset: GameDataset,
   options: { id: string; now: string },
 ): PlannerProject {
-  const defaults = createPlannerProject({
-    id: options.id,
-    name: compact.n,
-    dataset,
-    now: options.now,
-  });
-  const recipeOverrides = {
-    ...defaults.recipeOverrides,
-    ...decodeBooleanOverrides(compact.r),
-  };
-
-  return {
-    ...defaults,
-    notes: normalizePlanTransferNote(compact.no ?? ''),
-    targets: decodeTargets(compact.t),
-    recipeOverrides,
-    machineOverrides: decodeBooleanOverrides(compact.m),
-    resourceOverrides: decodeResourceOverrides(compact.rc),
-    itemInputs: decodeAmountOverrides(compact.i),
-    objectiveProfile: decodeObjectiveProfile(compact.o),
-    graphDisplay: decodeGraphDisplay(compact.g),
-    graphLayout: { nodePositions: decodeGraphLayout(compact.l) },
-    buildState: decodeBuildState(compact.b),
-  };
+  return applyPlannerProjectIntentToCanonicalDefaults(
+    {
+      notes: normalizePlanTransferNote(compact.no ?? ''),
+      targets: decodeTargets(compact.t),
+      recipeOverrides: decodeBooleanOverrides(compact.r),
+      machineOverrides: decodeBooleanOverrides(compact.m),
+      resourceOverrides: decodeResourceOverrides(compact.rc),
+      itemInputs: decodeAmountOverrides(compact.i),
+      objectiveProfile: decodeObjectiveProfile(compact.o),
+      graphDisplay: decodeGraphDisplay(compact.g),
+      graphLayout: { nodePositions: decodeGraphLayout(compact.l) },
+      buildState: decodeBuildState(compact.b),
+    },
+    {
+      id: options.id,
+      name: compact.n,
+      dataset,
+      now: options.now,
+    },
+  );
 }
 
 function encodeTarget(target: ProductTarget): CompactProductTargetV1 {
@@ -343,13 +340,9 @@ function decodeTargets(value: CompactProductTargetV1[] | undefined): ProductTarg
 }
 
 function encodeBooleanOverrides(
-  overrides: Record<string, { enabled: boolean }>,
-  defaults: Record<string, { enabled: boolean }>,
-  implicitDefaultEnabled: boolean,
+  overrides: readonly { id: string; enabled: boolean }[],
 ): CompactBooleanOverrideV1[] {
-  return booleanOverrideEntriesForTransfer(overrides, defaults, implicitDefaultEnabled).map(
-    (override) => [override.id, override.enabled],
-  );
+  return overrides.map((override) => [override.id, override.enabled]);
 }
 
 function decodeBooleanOverrides(
@@ -365,16 +358,12 @@ function decodeBooleanOverrides(
   return overrides;
 }
 
-function encodeResourceOverrides(
-  overrides: PlannerProject['resourceOverrides'],
-): CompactResourceOverrideV1[] {
-  return resourceOverrideEntriesForTransfer(overrides, { omitEnabledWhenTrue: true }).map(
-    (override) => ({
-      i: override.id,
-      ...(override.enabled !== undefined ? { e: override.enabled } : {}),
-      ...(override.maxPerMinute !== undefined ? { m: override.maxPerMinute } : {}),
-    }),
-  );
+function encodeResourceOverrides(project: PlannerProject): CompactResourceOverrideV1[] {
+  return canonicalResourceOverrideEntries(project).map((override) => ({
+    i: override.id,
+    ...(override.enabled !== undefined ? { e: override.enabled } : {}),
+    ...(override.maxPerMinute !== undefined ? { m: override.maxPerMinute } : {}),
+  }));
 }
 
 function decodeResourceOverrides(
@@ -394,12 +383,9 @@ function decodeResourceOverrides(
 }
 
 function encodeAmountOverrides(
-  overrides: Record<string, { amountPerMinute: number }>,
+  overrides: readonly { id: string; amountPerMinute: number }[],
 ): CompactAmountOverrideV1[] {
-  return amountOverrideEntriesForTransfer(overrides).map((override) => [
-    override.id,
-    override.amountPerMinute,
-  ]);
+  return overrides.map((override) => [override.id, override.amountPerMinute]);
 }
 
 function decodeAmountOverrides(
@@ -439,13 +425,13 @@ function encodeObjectiveProfile(profile: ObjectiveProfile): CompactObjectiveProf
   if (profile.surplusWeight !== defaults.surplusWeight) {
     compact.s = profile.surplusWeight;
   }
-  const rawResourceMultipliers = Object.entries(profile.rawResourceMultipliers).map(
-    ([itemId, amountPerMinute]) => [itemId, amountPerMinute] satisfies CompactAmountOverrideV1,
+  const rawResourceMultipliers = encodeAmountOverrides(
+    canonicalRawResourceMultiplierEntries(profile),
   );
   if (rawResourceMultipliers.length > 0) {
     compact.r = rawResourceMultipliers;
   }
-  return Object.keys(compact).length > 0 ? compact : null;
+  return objectiveProfileDiffersFromCanonicalDefault(profile) ? compact : null;
 }
 
 function decodeObjectiveProfile(value: CompactObjectiveProfileV1 | undefined): ObjectiveProfile {
@@ -492,7 +478,7 @@ function encodeGraphDisplay(settings: GraphDisplaySettings): CompactGraphDisplay
   if (settings.animateFlowLines !== defaults.animateFlowLines) {
     compact.a = settings.animateFlowLines;
   }
-  return Object.keys(compact).length > 0 ? compact : null;
+  return graphDisplayDiffersFromCanonicalDefault(settings) ? compact : null;
 }
 
 function decodeGraphDisplay(
@@ -509,10 +495,8 @@ function decodeGraphDisplay(
   };
 }
 
-function encodeGraphLayout(
-  nodePositions: PlannerProject['graphLayout']['nodePositions'],
-): CompactGraphNodePositionV1[] {
-  return graphNodePositionEntriesForTransfer(nodePositions).map((position) => [
+function encodeGraphLayout(project: PlannerProject): CompactGraphNodePositionV1[] {
+  return canonicalGraphNodePositionEntries(project).map((position) => [
     position.nodeId,
     position.x,
     position.y,
