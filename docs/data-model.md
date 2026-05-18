@@ -18,7 +18,7 @@ User projects persist configuration, not solver output:
 - resource caps
 - item inputs supplied externally
 - plain-text plan notes
-- objective profile
+- objective profile, including preset/strategy/order and custom weights
 - graph display settings
 - manual graph node positions
 - plan/node lock state
@@ -54,8 +54,8 @@ Individual plans can be exported as readable Beltwise JSON files with `kind:
 beltwise.plan` and `formatVersion: 1`. A plan export contains one persisted
 project payload plus dataset metadata for mismatch warnings. It does not include
 global user defaults, whole-session state, save-game data, share links, or solver
-output. Imported plans are added as separate local projects and are solved again
-with the current app dataset.
+output. Imported plans are added as separate local projects in the active
+session and are solved again with the current app dataset.
 
 Plan sharing uses a separate compact `bw.p` payload. It stores deltas against
 Beltwise's schema-defined defaults for the current dataset, then compresses that
