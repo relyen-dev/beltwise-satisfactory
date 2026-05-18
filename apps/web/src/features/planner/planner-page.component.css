@@ -290,9 +290,6 @@
 
 .plan-delete-button {
   flex: 0 0 auto;
-}
-
-.plan-delete-button {
   border-color: color-mix(in srgb, var(--color-warning) 46%, var(--color-border));
   color: color-mix(in srgb, var(--color-warning) 72%, var(--color-text));
 }
@@ -569,6 +566,15 @@
   font-size: 12px;
 }
 
+.graph-solve-notice {
+  color: var(--color-accent-strong);
+  font-weight: 750;
+}
+
+.graph-solve-notice--error {
+  color: var(--color-warning);
+}
+
 .work-panel {
   z-index: 3;
   grid-column: 2;
@@ -774,6 +780,9 @@ h2 {
 
   .plan-strip {
     flex: 1 1 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
   }
 
   .plan-direct-actions {
@@ -781,6 +790,7 @@ h2 {
   }
 
   .plan-chip {
+    flex: 0 0 auto;
     max-width: none;
   }
 

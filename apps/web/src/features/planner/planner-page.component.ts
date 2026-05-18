@@ -40,6 +40,11 @@ interface ConfigurationTabDefinition {
   label: string;
 }
 
+interface GraphSolveNotice {
+  kind: 'info' | 'error';
+  message: string;
+}
+
 const VISIBLE_PLAN_CHIP_COUNT = 6;
 const RECENT_PLAN_MEMORY_LIMIT = 12;
 
@@ -107,6 +112,21 @@ export class PlannerPageComponent implements OnInit {
   public readonly activeSectionLabel = computed(() => {
     return this.tabs.find((tab) => tab.id === this.store.activeConfigTab())?.label ?? 'Plan';
   });
+  public readonly graphSolveNotice = computed<GraphSolveNotice | null>(() => {
+    const status = this.store.solveStatus();
+    if (status === 'solving') {
+      return { kind: 'info', message: 'Solving plan' };
+    }
+    if (status === 'error') {
+      return { kind: 'error', message: this.store.solveError() ?? 'Solve error' };
+    }
+
+    const result = this.store.solveResult();
+    if (result?.status === 'infeasible') {
+      return { kind: 'error', message: 'Infeasible plan' };
+    }
+    return null;
+  });
   public readonly planDockItems = computed(() =>
     selectPlanDockItems(
       this.store.activeSessionProjects(),
@@ -161,6 +181,12 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public selectProject(projectId: string): void {
+    if (projectId === this.store.activeProjectId()) {
+      this.clearTransientNavigationState();
+      this.touchProject(projectId);
+      return;
+    }
+
     this.clearTransientNavigationState();
     this.store.selectProject(projectId);
     this.touchProject(projectId);
@@ -298,8 +324,14 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public syncActionMenuOpen(event: Event): void {
-    if (isDetailsElement(event.currentTarget)) {
-      this.actionMenuOpen.set(event.currentTarget.open);
+    if (!isDetailsElement(event.currentTarget)) {
+      return;
+    }
+
+    this.actionMenuOpen.set(event.currentTarget.open);
+    if (event.currentTarget.open) {
+      this.clearInlineEdits();
+      this.closePlanSelector();
     }
   }
 
@@ -384,7 +416,7 @@ export class PlannerPageComponent implements OnInit {
   }
 
   @HostListener('document:keydown.escape', ['$event'])
-  public clearGraphSelectionFromKeyboard(event: KeyboardEvent): void {
+  public handleEscapeKey(event: KeyboardEvent): void {
     if (this.projectNameEditing() || this.sessionNameEditing()) {
       event.preventDefault();
       this.clearInlineEdits();

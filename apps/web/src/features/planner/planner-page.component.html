@@ -68,7 +68,12 @@
               <button
                 type="button"
                 class="active-plan-trigger"
-                aria-label="Choose active plan"
+                [attr.aria-label]="
+                  'Choose active plan: ' +
+                  project.name +
+                  ', ' +
+                  (activePlanDockItem()?.targetSummary ?? 'Draft plan')
+                "
                 aria-controls="active-plan-selector-panel"
                 [attr.aria-expanded]="planSelectorOpen()"
                 (click)="togglePlanSelector()"
@@ -394,6 +399,14 @@
               <span>{{ activeSectionLabel() }} workbench open</span>
             } @else {
               <span>Full canvas focus</span>
+            }
+            @if (graphSolveNotice(); as notice) {
+              <span
+                class="graph-solve-notice"
+                [class.graph-solve-notice--error]="notice.kind === 'error'"
+              >
+                {{ notice.message }}
+              </span>
             }
           </div>
           <div class="graph-toolbar__actions">

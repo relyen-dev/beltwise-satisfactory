@@ -46,7 +46,7 @@ describe('PlannerPageComponent', () => {
     const { component, store, clearSelectedGraphNode } = createComponentHarness();
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(clearSelectedGraphNode).toHaveBeenCalledOnce();
     expect(store.selectedGraphNodeId()).toBeNull();
@@ -65,7 +65,7 @@ describe('PlannerPageComponent', () => {
     for (const target of editableTargets) {
       const event = keyboardEvent(target);
 
-      component.clearGraphSelectionFromKeyboard(event);
+      component.handleEscapeKey(event);
 
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
       expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
@@ -78,7 +78,7 @@ describe('PlannerPageComponent', () => {
     component.defaultsPanelOpen.set(true);
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.defaultsPanelOpen()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -91,7 +91,7 @@ describe('PlannerPageComponent', () => {
     component.defaultsPanelOpen.set(true);
     const event = keyboardEvent(new TestHTMLElement('input'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.defaultsPanelOpen()).toBe(true);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -286,7 +286,7 @@ describe('PlannerPageComponent', () => {
     component.openPlanSelector();
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.planSelectorOpen()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -303,7 +303,7 @@ describe('PlannerPageComponent', () => {
     vi.useFakeTimers();
 
     try {
-      component.clearGraphSelectionFromKeyboard(event);
+      component.handleEscapeKey(event);
       vi.runOnlyPendingTimers();
 
       expect(component.actionMenuOpen()).toBe(false);
@@ -334,7 +334,7 @@ describe('PlannerPageComponent', () => {
     component.startProjectNameEdit('project-a', 'Draft factory');
     const event = keyboardEvent(new TestHTMLElement('input'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.projectNameEditing()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
