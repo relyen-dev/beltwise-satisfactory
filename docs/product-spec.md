@@ -550,14 +550,20 @@ recipeExecutionsPerMinuteAt100Percent = 60 / durationSeconds
 machineCount = recipeRate / recipeExecutionsPerMinuteAt100Percent / machineSpeed
 ```
 
-Implemented lexicographic objective stages:
+Implemented objective behavior:
 
 1. Satisfy fixed outputs through equality constraints.
 2. For maximize targets, maximize requested output rates.
-3. Minimize weighted raw resource usage.
-4. Minimize surplus, except where surplus is unavoidable due to byproducts.
-5. Minimize recipe activity/machine count.
-6. Minimize power.
+3. Apply the plan's objective preset to choose among feasible production routes.
+
+Objective presets:
+
+- Resource Efficient: current default behavior; minimize weighted raw resource usage first, then surplus, machines, and power.
+- Low Power: keep maximize targets first, then minimize power before raw-resource tie breakers.
+- Few Machines: keep maximize targets first, then minimize machine/recipe activity before raw-resource tie breakers.
+- Low Surplus: keep maximize targets first, then minimize unused byproducts before raw-resource tie breakers.
+- Balanced: use one blended weighted stage across resources, power, machines, and surplus, followed by tie breakers.
+- Custom: user-edited weights while preserving the current strategy/order.
 
 The HiGHS adapter solves these stages lexicographically, adding lock constraints between stages:
 
@@ -569,7 +575,8 @@ Resource preference:
 
 - Weight raw resources by scarcity, roughly `consumedPerMinute / baselineMaxPerMinute`.
 - Allow manual preference multipliers in `ObjectiveProfile`, such as "prefer iron over copper" or "avoid oil".
-- Objective profile editing remains future UI work; the data model and solver path already support it.
+- Expose plan-level and new-plan-default objective controls in the planner UI.
+- Fixed outputs remain fixed; objectives only decide which feasible route to use.
 
 Important: keep the LP model builder pure and testable. The UI should never assemble LP strings directly.
 
@@ -646,6 +653,9 @@ interface ItemInputOverride {
 }
 
 interface ObjectiveProfile {
+  presetId: ObjectivePresetId;
+  strategy: 'lexicographic' | 'weighted';
+  stageOrder: ObjectiveStageId[];
   resourceScarcityWeight: number;
   powerWeight: number;
   machineCountWeight: number;
@@ -821,6 +831,7 @@ Current controls:
 - Recipe search and enable/disable.
 - Base/alternate recipe grouping with enable-all/disable-all controls.
 - External input add/remove/item/rate controls.
+- Objective preset cards and custom weight controls.
 - Resource cap editor.
 - Resource enable/disable, reset all, disable all, and enable all.
 - Machine enable/disable.
@@ -833,8 +844,7 @@ Current controls:
 
 Future controls:
 
-- Objective preset/profile editor for raw resource multipliers and objective weights.
-- JSON import/export and compressed share strings.
+- Raw resource multiplier editing inside the Objective custom controls.
 - Row drag/reorder if target ordering needs direct manipulation.
 - Richer graph relayout controls if resetting all manual positions is not enough.
 
@@ -979,10 +989,9 @@ Completed baseline:
 
 Near-term follow-up:
 
-1. Add objective profile controls for raw resource multipliers and objective weights.
-2. Add JSON import/export for local project transfer before any account or server storage.
-3. Add browser smoke tests for graph rendering, planner editing, persistence reload, and infeasible/error states.
-4. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
-5. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
-6. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
-7. Keep save-file import, randomized node seeds, share links, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
+1. Add raw resource multiplier controls to the Objective custom editor.
+2. Add browser smoke tests for graph rendering, planner editing, persistence reload, and infeasible/error states.
+3. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
+4. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
+5. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
+6. Keep save-file import, randomized node seeds, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.

@@ -5,7 +5,12 @@
       <h2>New plan defaults</h2>
       <p>Future plans start with these settings. Existing plans stay unchanged.</p>
     </div>
-    <button type="button" title="Close defaults" aria-label="Close defaults" (click)="closed.emit()">
+    <button
+      type="button"
+      title="Close defaults"
+      aria-label="Close defaults"
+      (click)="closed.emit()"
+    >
       Close
     </button>
   </header>
@@ -14,9 +19,7 @@
     <button type="button" class="primary-action" (click)="store.saveActivePlanAsDefaults()">
       Save current plan settings as defaults
     </button>
-    <button type="button" (click)="store.resetUserDefaults()">
-      Reset to Beltwise defaults
-    </button>
+    <button type="button" (click)="store.resetUserDefaults()">Reset to Beltwise defaults</button>
   </div>
 
   <nav class="defaults-tabs" aria-label="Default setting sections">
@@ -76,14 +79,15 @@
                 </div>
               </div>
 
-              <div class="recipe-subtabs recipe-subtabs--three" aria-label="Default recipe category">
+              <div
+                class="recipe-subtabs recipe-subtabs--three"
+                aria-label="Default recipe category"
+              >
                 <button
                   type="button"
                   class="recipe-subtab"
                   [class.recipe-subtab--active]="activeRecipePanel() === 'standard'"
-                  [attr.aria-pressed]="
-                    activeRecipePanel() === 'standard' ? 'true' : 'false'
-                  "
+                  [attr.aria-pressed]="activeRecipePanel() === 'standard' ? 'true' : 'false'"
                   (click)="activeRecipePanel.set('standard')"
                 >
                   <span>Standard</span>
@@ -105,9 +109,7 @@
                   type="button"
                   class="recipe-subtab"
                   [class.recipe-subtab--active]="activeRecipePanel() === 'alternates'"
-                  [attr.aria-pressed]="
-                    activeRecipePanel() === 'alternates' ? 'true' : 'false'
-                  "
+                  [attr.aria-pressed]="activeRecipePanel() === 'alternates' ? 'true' : 'false'"
                   (click)="activeRecipePanel.set('alternates')"
                 >
                   <span>Alternates</span>
@@ -165,7 +167,9 @@
                         </span>
                       </span>
                       <span class="recipe-detail-tooltip" role="tooltip">
-                        <span class="recipe-detail-tooltip__title">{{ row.recipe.displayName }}</span>
+                        <span class="recipe-detail-tooltip__title">{{
+                          row.recipe.displayName
+                        }}</span>
                         <span class="recipe-detail-tooltip__stat">
                           {{ row.machineName }} - {{ row.details.durationLabel }}
                         </span>
@@ -218,7 +222,9 @@
               <span>Allowed recipe machines for new plans.</span>
             </div>
             <div class="section-actions">
-              <button type="button" (click)="setMachineRowsEnabled(rows, false)">Disable all</button>
+              <button type="button" (click)="setMachineRowsEnabled(rows, false)">
+                Disable all
+              </button>
               <button type="button" (click)="setMachineRowsEnabled(rows, true)">Enable all</button>
             </div>
           </div>
@@ -355,6 +361,67 @@
               </div>
             }
           </div>
+        </section>
+      }
+
+      @case ('objectives') {
+        <section class="defaults-section">
+          <div class="section-heading">
+            <div>
+              <h3>Objective defaults</h3>
+              @if (store.userDefaults(); as defaults) {
+                <span
+                  >{{ activeObjectivePresetLabel(defaults.objectiveProfile) }} for future
+                  plans.</span
+                >
+              }
+            </div>
+          </div>
+
+          @if (store.userDefaults(); as defaults) {
+            @let profile = defaults.objectiveProfile;
+            @let activePreset = activeObjectivePresetId(profile);
+
+            <div class="objective-preset-grid" aria-label="Default objective presets">
+              @for (preset of objectivePresets; track preset.id) {
+                <button
+                  type="button"
+                  class="objective-preset-card"
+                  [class.objective-preset-card--active]="activePreset === preset.id"
+                  [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
+                  [title]="preset.description"
+                  (click)="store.setDefaultObjectivePreset(preset.id)"
+                >
+                  <strong>{{ preset.label }}</strong>
+                  <span>{{ preset.description }}</span>
+                </button>
+              }
+            </div>
+
+            <section class="objective-custom-panel" aria-label="Default custom objective weights">
+              <div class="section-heading">
+                <div>
+                  <h4>Custom weights</h4>
+                  <span>Editing a value switches future plans to Custom.</span>
+                </div>
+              </div>
+
+              <div class="objective-weight-grid">
+                @for (control of objectiveWeightControls; track control.key) {
+                  <label class="display-setting-card objective-weight-card">
+                    <span class="display-setting-card__label">{{ control.label }}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      [step]="control.step"
+                      [ngModel]="weightValue(profile, control.key)"
+                      (ngModelChange)="setObjectiveWeight(control.key, $event)"
+                    />
+                  </label>
+                }
+              </div>
+            </section>
+          }
         </section>
       }
 

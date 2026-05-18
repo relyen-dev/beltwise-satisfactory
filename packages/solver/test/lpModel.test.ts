@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
-import { createPlannerProject, type PlannerProject } from '@beltwise/planner-core';
+import {
+  createObjectiveProfileFromPreset,
+  createPlannerProject,
+  type PlannerProject,
+} from '@beltwise/planner-core';
 import {
   buildMachineUsage,
   buildProductionLpModel,
   DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS,
   rawInputVariable,
   rawResourceCost,
-  recipeVariable
+  recipeVariable,
 } from '@beltwise/solver';
 
 function fixtureProject(): PlannerProject {
@@ -16,7 +20,7 @@ function fixtureProject(): PlannerProject {
       id: 'project-test',
       name: 'Test',
       dataset: tinySatisfactoryDataset,
-      now: '2026-05-12T00:00:00.000Z'
+      now: '2026-05-12T00:00:00.000Z',
     }),
     targets: [
       {
@@ -24,16 +28,16 @@ function fixtureProject(): PlannerProject {
         itemId: 'Desc_IronPlate_C',
         mode: 'fixed',
         amountPerMinute: 25,
-        sortOrder: 0
+        sortOrder: 0,
       },
       {
         id: 'target-rod',
         itemId: 'Desc_IronRod_C',
         mode: 'fixed',
         amountPerMinute: 20,
-        sortOrder: 1
-      }
-    ]
+        sortOrder: 1,
+      },
+    ],
   };
 }
 
@@ -54,18 +58,18 @@ function variablePowerMachineDataset(): GameDataset {
         type: 'variablePowerManufacturer',
         powerRangeMw: {
           min: 20,
-          max: 40
+          max: 40,
         },
-        manufacturingSpeed: 2
-      }
+        manufacturingSpeed: 2,
+      },
     },
     recipes: {
       ...tinySatisfactoryDataset.recipes,
       Recipe_IronPlate_C: {
         ...ironPlateRecipe,
-        producedIn: ['Build_FastVariableConstructor_C', 'Build_ConstructorMk1_C']
-      }
-    }
+        producedIn: ['Build_FastVariableConstructor_C', 'Build_ConstructorMk1_C'],
+      },
+    },
   };
 }
 
@@ -73,12 +77,18 @@ describe('buildProductionLpModel', () => {
   it('builds item balance constraints for multiple fixed outputs together', () => {
     const model = buildProductionLpModel({
       dataset: tinySatisfactoryDataset,
-      project: fixtureProject()
+      project: fixtureProject(),
     });
 
-    const ingotBalance = model.constraints.find((constraint) => constraint.name === 'balance:Desc_IngotIron_C');
-    const plateBalance = model.constraints.find((constraint) => constraint.name === 'balance:Desc_IronPlate_C');
-    const rodBalance = model.constraints.find((constraint) => constraint.name === 'balance:Desc_IronRod_C');
+    const ingotBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:Desc_IngotIron_C',
+    );
+    const plateBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:Desc_IronPlate_C',
+    );
+    const rodBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:Desc_IronRod_C',
+    );
 
     expect(ingotBalance?.coefficients[recipeVariable('Recipe_IronIngot_C')]).toBe(1);
     expect(ingotBalance?.coefficients[recipeVariable('Recipe_IronPlate_C')]).toBe(-2);
@@ -90,12 +100,14 @@ describe('buildProductionLpModel', () => {
   it('bounds raw input variables from generated resource limits', () => {
     const model = buildProductionLpModel({
       dataset: tinySatisfactoryDataset,
-      project: fixtureProject()
+      project: fixtureProject(),
     });
 
-    expect(model.variables.find((variable) => variable.name === rawInputVariable('Desc_OreIron_C'))).toMatchObject({
+    expect(
+      model.variables.find((variable) => variable.name === rawInputVariable('Desc_OreIron_C')),
+    ).toMatchObject({
       lowerBound: 0,
-      upperBound: 600
+      upperBound: 600,
     });
   });
 
@@ -105,7 +117,7 @@ describe('buildProductionLpModel', () => {
 
     const model = buildProductionLpModel({
       dataset: tinySatisfactoryDataset,
-      project
+      project,
     });
 
     expect(model.metadata.recipeVariableById['Recipe_IronPlate_C']).toBeUndefined();
@@ -118,7 +130,7 @@ describe('buildProductionLpModel', () => {
 
     const model = buildProductionLpModel({
       dataset: tinySatisfactoryDataset,
-      project
+      project,
     });
 
     expect(model.objective.coefficients[recipeVariable('Recipe_IronIngot_C')]).toBe(0);
@@ -133,10 +145,10 @@ describe('buildProductionLpModel', () => {
     project.objectiveProfile.powerWeight = 5;
     const model = buildProductionLpModel({
       dataset,
-      project
+      project,
     });
     const oneRateUsage = buildMachineUsage(dataset, project, {
-      Recipe_IronPlate_C: 1
+      Recipe_IronPlate_C: 1,
     })[0];
     const recipeVar = recipeVariable('Recipe_IronPlate_C');
     const recipeActivityStage = model.objectiveStages.find(
@@ -161,6 +173,62 @@ describe('buildProductionLpModel', () => {
       10,
     );
   });
+
+  it('orders objective stages from the selected preset priority', () => {
+    const lowPowerProject = fixtureProject();
+    lowPowerProject.objectiveProfile = createObjectiveProfileFromPreset('low-power');
+    const fewMachinesProject = fixtureProject();
+    fewMachinesProject.objectiveProfile = createObjectiveProfileFromPreset('few-machines');
+    const lowSurplusProject = fixtureProject();
+    lowSurplusProject.objectiveProfile = createObjectiveProfileFromPreset('low-surplus');
+
+    expect(
+      buildProductionLpModel({
+        dataset: tinySatisfactoryDataset,
+        project: lowPowerProject,
+      }).objectiveStages.map((stage) => stage.name),
+    ).toEqual(['power', 'raw-resources', 'surplus', 'recipe-activity']);
+    expect(
+      buildProductionLpModel({
+        dataset: tinySatisfactoryDataset,
+        project: fewMachinesProject,
+      }).objectiveStages.map((stage) => stage.name),
+    ).toEqual(['recipe-activity', 'raw-resources', 'surplus', 'power']);
+    expect(
+      buildProductionLpModel({
+        dataset: tinySatisfactoryDataset,
+        project: lowSurplusProject,
+      }).objectiveStages.map((stage) => stage.name),
+    ).toEqual(['surplus', 'raw-resources', 'recipe-activity', 'power']);
+  });
+
+  it('keeps maximize-target stages before preset priorities', () => {
+    const project = {
+      ...fixtureProject(),
+      targets: [
+        {
+          id: 'target-plate',
+          itemId: 'Desc_IronPlate_C',
+          mode: 'maximize' as const,
+          sortOrder: 0,
+        },
+      ],
+      objectiveProfile: createObjectiveProfileFromPreset('low-power'),
+    };
+
+    const model = buildProductionLpModel({
+      dataset: tinySatisfactoryDataset,
+      project,
+    });
+
+    expect(model.objectiveStages.map((stage) => stage.name)).toEqual([
+      'target-output',
+      'power',
+      'raw-resources',
+      'surplus',
+      'recipe-activity',
+    ]);
+  });
 });
 
 describe('rawResourceCost', () => {
@@ -184,7 +252,7 @@ describe('rawResourceCost', () => {
       rawResourceCost({
         itemId: 'Desc_Water_C',
         dataset: tinySatisfactoryDataset,
-        project
+        project,
       }),
     ).toBe(0);
   });
@@ -194,7 +262,7 @@ describe('rawResourceCost', () => {
     const baseCost = rawResourceCost({
       itemId: 'Desc_OreIron_C',
       dataset: tinySatisfactoryDataset,
-      project
+      project,
     });
 
     project.objectiveProfile.rawResourceMultipliers['Desc_OreIron_C'] = 2;
@@ -203,7 +271,7 @@ describe('rawResourceCost', () => {
       rawResourceCost({
         itemId: 'Desc_OreIron_C',
         dataset: tinySatisfactoryDataset,
-        project
+        project,
       }),
     ).toBeCloseTo(baseCost * 2, 10);
   });
@@ -215,7 +283,7 @@ describe('rawResourceCost', () => {
       rawResourceCost({
         itemId: 'Desc_UnmappedOre_C',
         dataset: tinySatisfactoryDataset,
-        project
+        project,
       }),
     ).toBe(1);
   });
@@ -228,7 +296,7 @@ describe('rawResourceCost', () => {
       rawResourceCost({
         itemId: 'Desc_OreIron_C',
         dataset: tinySatisfactoryDataset,
-        project
+        project,
       }),
     ).toBeCloseTo(1 / 600, 10);
   });
@@ -243,10 +311,10 @@ describe('rawResourceCost', () => {
           ...tinySatisfactoryDataset.resources['Desc_OreIron_C'],
           extraction: {
             ...tinySatisfactoryDataset.resources['Desc_OreIron_C']?.extraction,
-            baselineMaxPerMinute: 600
-          }
-        }
-      }
+            baselineMaxPerMinute: 600,
+          },
+        },
+      },
     };
 
     expect(
@@ -262,10 +330,10 @@ describe('rawResourceCost', () => {
             Desc_OreIron_C: {
               itemId: 'Desc_OreIron_C',
               maxPerMinute: 400,
-              source: 'manual-map-count'
-            }
-          }
-        }
+              source: 'manual-map-count',
+            },
+          },
+        },
       }),
     ).toBeCloseTo(1 / 400, 10);
   });

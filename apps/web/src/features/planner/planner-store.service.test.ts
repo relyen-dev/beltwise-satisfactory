@@ -3,6 +3,7 @@ import { Injector, runInInjectionContext, signal, type Signal } from '@angular/c
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
+  createObjectiveProfileFromPreset,
   createDefaultUserDefaults,
   createPlannerSession,
   createPlannerProject,
@@ -13,6 +14,7 @@ import {
   type PlannerProject,
   type PlannerSession,
   type PlannerUserDefaults,
+  type ObjectivePresetId,
   type ProductionPlanResult,
   type ProductTarget,
 } from '@beltwise/planner-core';
@@ -522,6 +524,78 @@ describe('PlannerStoreService', () => {
     expect(newProject.graphDisplay.maxBeltTier).toBe(5);
     expect(storedOriginal).toEqual(originalProject);
     expect(store.activeSessionProjects().map((project) => project.id)).toContain(newProject.id);
+  });
+
+  it('applies each objective preset to the active project', () => {
+    const { store } = createInitializedStore();
+    const presetIds: readonly ObjectivePresetId[] = [
+      'resource-efficient',
+      'low-power',
+      'few-machines',
+      'low-surplus',
+      'balanced',
+    ];
+
+    for (const presetId of presetIds) {
+      store.setObjectivePreset(presetId);
+      expect(requiredProject(store).objectiveProfile).toEqual(
+        createObjectiveProfileFromPreset(presetId),
+      );
+    }
+
+    store.setObjectivePreset('low-power');
+    store.setObjectivePreset('custom');
+
+    expect(requiredProject(store).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      stageOrder: ['power', 'raw-resources', 'surplus', 'recipe-activity'],
+    });
+  });
+
+  it('marks manual objective weight edits as Custom and clamps unsafe values', () => {
+    const { store } = createInitializedStore();
+
+    store.setObjectiveWeight('powerWeight', Number.NaN);
+    store.setObjectiveWeight('machineCountWeight', -5);
+    store.setObjectiveWeight('surplusWeight', 2);
+
+    expect(requiredProject(store).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      powerWeight: 0,
+      machineCountWeight: 0,
+      surplusWeight: 2,
+    });
+  });
+
+  it('applies objective defaults only to newly created projects', () => {
+    const originalProject = createProject();
+    const { store } = createInitializedStore([originalProject], originalProject.id);
+
+    store.setDefaultObjectivePreset('low-power');
+
+    expect(loadedStoreProject(store, originalProject.id).objectiveProfile).toEqual(
+      originalProject.objectiveProfile,
+    );
+
+    store.createProject();
+
+    expect(requiredProject(store).objectiveProfile).toEqual(
+      createObjectiveProfileFromPreset('low-power'),
+    );
+    expect(loadedStoreProject(store, originalProject.id).objectiveProfile).toEqual(
+      originalProject.objectiveProfile,
+    );
+  });
+
+  it('does not change objectives while the active plan is locked', () => {
+    const { store } = createInitializedStore();
+    const before = requiredProject(store).objectiveProfile;
+
+    store.setPlanLocked(true);
+    store.setObjectivePreset('low-power');
+    store.setObjectiveWeight('powerWeight', 5);
+
+    expect(requiredProject(store).objectiveProfile).toEqual(before);
   });
 
   it('duplicates the active project exactly without reapplying user defaults', () => {
@@ -1250,6 +1324,9 @@ function createImportSourceProject(id: string, name: string): PlannerProject {
       Desc_IngotIron_C: { amountPerMinute: 15 },
     },
     objectiveProfile: {
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
       resourceScarcityWeight: 2,
       powerWeight: 0.3,
       machineCountWeight: 0.4,

@@ -388,24 +388,24 @@ Design direction:
 
 ## Solver Objectives
 
-The solver currently emphasizes resource efficiency first. Future controls can expose this without making users understand LP internals.
+The planner now exposes objective presets without requiring users to understand LP internals. Fixed outputs remain fixed; objective priorities only choose among feasible production routes. Maximize targets still solve before any route preference.
 
-Possible objective presets:
+Implemented objective presets:
 
-- `Resource efficient`: current default direction.
-- `Low power`: prefer lower total power when alternatives exist.
-- `Few machines`: prefer lower machine count for simpler builds.
-- `Low surplus`: avoid extra byproducts and unused outputs where possible.
-- `Balanced`: blend resource, power, surplus, and machine count weights.
-- `Custom`: user-edited weights and raw resource multipliers.
+- `Resource Efficient`: default raw-resource-first behavior, then surplus, machines, and power.
+- `Low Power`: prioritizes lower power before raw-resource tie breakers.
+- `Few Machines`: prioritizes lower machine/recipe activity before raw-resource tie breakers.
+- `Low Surplus`: prioritizes lower unused byproducts before raw-resource tie breakers.
+- `Balanced`: uses one blended weighted stage across resources, power, machines, and surplus.
+- `Custom`: user-edited weights while preserving the current objective strategy/order.
 
 UX notes:
 
 - Explain presets through concise labels and tooltips, not solver math.
-- Keep advanced weights tucked behind a custom editor.
-- Show the active objective profile in the inspector or plan summary.
-- Make it clear that fixed output targets remain fixed; objective priorities only choose among feasible ways to satisfy them.
+- Keep advanced weights in the custom editor.
+- Show the active objective profile in the Objectives workbench and inspector summary.
 - Add focused solver tests whenever objective behavior changes.
+- Future follow-up: add raw resource multiplier controls to the custom editor.
 
 ## Inspector
 
@@ -582,7 +582,7 @@ Recommended path:
 3. Overhaul the inspector into context-specific sections and actions.
 4. Add user defaults for new plans.
 5. Add plan JSON import/export.
-6. Expose objective presets and custom objective profiles.
+6. Add raw resource multiplier controls to the custom objective editor.
 7. Add richer notes at plan and node scope.
 8. Add graph connection display controls and drill-in views.
 9. Extend the session data model before implementing save imports or linked plans.

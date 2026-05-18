@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
   createDefaultUserDefaults,
+  createObjectiveProfileFromPreset,
   createPlannerProject,
   decodePlannerPersistenceState,
   encodePlannerPersistenceState,
@@ -68,6 +69,9 @@ describe('encodePlannerPersistenceState', () => {
             Desc_IngotIron_C: { amountPerMinute: 15 },
           },
           objectiveProfile: {
+            presetId: 'custom',
+            strategy: 'lexicographic',
+            stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
             resourceScarcityWeight: 2,
             powerWeight: 0.3,
             machineCountWeight: 0.4,
@@ -112,6 +116,9 @@ describe('encodePlannerPersistenceState', () => {
           Desc_OreIron_C: { maxPerMinute: 180 },
         },
         objectiveProfile: {
+          presetId: 'custom',
+          strategy: 'lexicographic',
+          stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
           resourceScarcityWeight: 1,
           powerWeight: 0.2,
           machineCountWeight: 0.25,
@@ -324,6 +331,62 @@ describe('decodePlannerPersistenceState', () => {
     ]);
   });
 
+  it('round-trips objective preset strategy and stage order through persistence', () => {
+    const project = {
+      ...createDomainPlannerProject(),
+      objectiveProfile: createObjectiveProfileFromPreset('low-power', {
+        rawResourceMultipliers: {
+          Desc_OreIron_C: 1.25,
+        },
+      }),
+    };
+    const userDefaults = {
+      ...createDomainUserDefaults(),
+      objectiveProfile: createObjectiveProfileFromPreset('balanced'),
+    };
+
+    const encoded = encodePlannerPersistenceState([project], project.id, userDefaults);
+    const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
+
+    expect(decoded?.projects[0]?.objectiveProfile).toEqual(project.objectiveProfile);
+    expect(decoded?.userDefaults.objectiveProfile).toEqual(userDefaults.objectiveProfile);
+  });
+
+  it('hydrates old objective profiles without preset fields on the Resource Efficient order', () => {
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        projects: [
+          rawPlannerProject({
+            objectiveProfile: {
+              resourceScarcityWeight: 2,
+              powerWeight: 0.3,
+              machineCountWeight: 0.4,
+              surplusWeight: 0.1,
+              rawResourceMultipliers: {
+                Desc_OreIron_C: 1.5,
+              },
+            },
+          }),
+        ],
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.projects[0]?.objectiveProfile).toEqual({
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
+      resourceScarcityWeight: 2,
+      powerWeight: 0.3,
+      machineCountWeight: 0.4,
+      surplusWeight: 0.1,
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 1.5,
+      },
+    });
+  });
+
   it('filters stale session project ids and chooses a valid active project', () => {
     const state = decodePlannerPersistenceState(
       {
@@ -513,6 +576,9 @@ function createDomainPlannerProject(): PlannerProject {
       Desc_IngotIron_C: { amountPerMinute: 15 },
     },
     objectiveProfile: {
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
       resourceScarcityWeight: 2,
       powerWeight: 0.3,
       machineCountWeight: 0.4,
@@ -560,6 +626,9 @@ function createDomainUserDefaults(): PlannerUserDefaults {
       Desc_OreIron_C: { maxPerMinute: 180 },
     },
     objectiveProfile: {
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
       resourceScarcityWeight: 1,
       powerWeight: 0.2,
       machineCountWeight: 0.25,

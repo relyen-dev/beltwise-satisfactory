@@ -4,6 +4,7 @@ import {
   createStableId,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
+  type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
   type ProductTarget,
@@ -222,6 +223,24 @@ export class PlannerPlanCommandSlice {
     }
     this.options.updateActiveProject((project) =>
       projectMutations.setMachineEnabled(project, machineId, enabled),
+    );
+  }
+
+  public setObjectivePreset(presetId: ObjectivePresetId): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      projectMutations.setObjectivePreset(project, presetId),
+    );
+  }
+
+  public setObjectiveWeight(key: projectMutations.ObjectiveWeightKey, value: number): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      projectMutations.setObjectiveWeight(project, key, value),
     );
   }
 

@@ -3,6 +3,7 @@ import { type GameDataset, type ItemId, type MachineId, type RecipeId } from '@b
 import {
   type ConveyorBeltTier,
   type GraphEdgeStyle,
+  type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
   type PlannerUserDefaults,
@@ -10,6 +11,7 @@ import {
 } from '@beltwise/planner-core';
 import { defaultResourceCapPerMinute } from './planner-domain.helpers';
 import * as defaultsMutations from './planner-defaults-mutations';
+import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 interface PlannerDefaultsCommandSliceOptions {
   readonly dataset: Signal<GameDataset | null>;
@@ -96,6 +98,18 @@ export class PlannerDefaultsCommandSlice {
     );
   }
 
+  public setObjectivePreset(presetId: ObjectivePresetId): void {
+    this.options.updateUserDefaults((userDefaults) =>
+      defaultsMutations.setDefaultObjectivePreset(userDefaults, presetId),
+    );
+  }
+
+  public setObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
+    this.options.updateUserDefaults((userDefaults) =>
+      defaultsMutations.setDefaultObjectiveWeight(userDefaults, key, value),
+    );
+  }
+
   public setMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
     this.options.updateUserDefaults((userDefaults) =>
       defaultsMutations.setDefaultMaxBeltTier(userDefaults, maxBeltTier),
@@ -147,10 +161,7 @@ export class PlannerDefaultsCommandSlice {
   }
 }
 
-function baselineResourceCapPerMinute(
-  dataset: GameDataset,
-  itemId: ItemId,
-): number | undefined {
+function baselineResourceCapPerMinute(dataset: GameDataset, itemId: ItemId): number | undefined {
   const resource = dataset.resources[itemId];
   return resource ? defaultResourceCapPerMinute(resource) : undefined;
 }

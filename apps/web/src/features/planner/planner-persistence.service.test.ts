@@ -139,7 +139,9 @@ describe('PlannerPersistenceService', () => {
     const userDefaults = createDefaultUserDefaults(tinySatisfactoryDataset);
 
     expect(() => failingService.saveProjects([], undefined, userDefaults)).not.toThrow();
-    expect(() => createPersistenceService(null).saveProjects([], undefined, userDefaults)).not.toThrow();
+    expect(() =>
+      createPersistenceService(null).saveProjects([], undefined, userDefaults),
+    ).not.toThrow();
   });
 
   it('writes saved planner state JSON to storage', () => {
@@ -599,6 +601,9 @@ function createDomainUserDefaults(): PlannerUserDefaults {
       animateFlowLines: true,
     },
     objectiveProfile: {
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
       resourceScarcityWeight: 1,
       powerWeight: 0.2,
       machineCountWeight: 0.25,

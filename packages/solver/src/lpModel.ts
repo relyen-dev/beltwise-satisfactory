@@ -1,5 +1,5 @@
 import type { GameDataset, ItemId, Recipe, RecipeId } from '@beltwise/game-data';
-import type { PlannerProject, ProductTarget } from '@beltwise/planner-core';
+import type { ObjectiveStageId, PlannerProject, ProductTarget } from '@beltwise/planner-core';
 import { buildResourceCapsPerMinute, type BaselineResourceLimits } from '@beltwise/planner-core';
 import { machineCountPerRecipeRate, machinePowerMw, selectRecipeMachine } from './machineLogic';
 import { rawResourceCost } from './rawResourceCost';
@@ -30,7 +30,8 @@ export type ProductionObjectiveStageName =
   | 'raw-resources'
   | 'surplus'
   | 'recipe-activity'
-  | 'power';
+  | 'power'
+  | 'balanced';
 
 export interface ProductionObjectiveStage {
   name: ProductionObjectiveStageName;
@@ -61,6 +62,12 @@ const SURPLUS_BASE_COST = 0.1;
 const MIN_SURPLUS_COST = 0.000001;
 const RECIPE_ACTIVITY_TIEBREAKER_COST = 0.000001;
 const EFFECTIVELY_UNLIMITED_RESOURCE_CAP = 1_000_000_000;
+const DEFAULT_OBJECTIVE_STAGE_ORDER: readonly ObjectiveStageId[] = [
+  'raw-resources',
+  'surplus',
+  'recipe-activity',
+  'power',
+];
 
 export function buildProductionLpModel(input: ProductionPlanInput): ProductionLpModel {
   const enabledRecipes = getEnabledRecipes(input.dataset, input.project);
@@ -219,34 +226,12 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
           },
         ]
       : []),
-    {
-      name: 'raw-resources',
-      objective: {
-        direction: 'minimize',
-        coefficients: rawResourceCoefficients,
-      },
-    },
-    {
-      name: 'surplus',
-      objective: {
-        direction: 'minimize',
-        coefficients: surplusCoefficients,
-      },
-    },
-    {
-      name: 'recipe-activity',
-      objective: {
-        direction: 'minimize',
-        coefficients: recipeActivityCoefficients,
-      },
-    },
-    {
-      name: 'power',
-      objective: {
-        direction: 'minimize',
-        coefficients: powerCoefficients,
-      },
-    },
+    ...buildProductionObjectiveStages(input.project, {
+      'raw-resources': rawResourceCoefficients,
+      surplus: surplusCoefficients,
+      'recipe-activity': recipeActivityCoefficients,
+      power: powerCoefficients,
+    }),
   ];
 
   return {
@@ -349,6 +334,64 @@ function initializeObjectiveCoefficients(
   for (const coefficients of objectiveCoefficientSets) {
     coefficients[variableName] = 0;
   }
+}
+
+function buildProductionObjectiveStages(
+  project: PlannerProject,
+  coefficientSets: Readonly<Record<ObjectiveStageId, Record<string, number>>>,
+): ProductionObjectiveStage[] {
+  const stageOrder = normalizeObjectiveStageOrder(project.objectiveProfile.stageOrder);
+  const stages = stageOrder.map((stageId) => objectiveStage(stageId, coefficientSets[stageId]));
+
+  if (project.objectiveProfile.strategy !== 'weighted') {
+    return stages;
+  }
+
+  return [
+    {
+      name: 'balanced',
+      objective: {
+        direction: 'minimize',
+        coefficients: combineObjectiveCoefficients(Object.values(coefficientSets)),
+      },
+    },
+    ...stages,
+  ];
+}
+
+function normalizeObjectiveStageOrder(stageOrder: readonly ObjectiveStageId[]): ObjectiveStageId[] {
+  const normalized: ObjectiveStageId[] = [];
+  for (const stageId of [...stageOrder, ...DEFAULT_OBJECTIVE_STAGE_ORDER]) {
+    if (!normalized.includes(stageId)) {
+      normalized.push(stageId);
+    }
+  }
+  return normalized;
+}
+
+function objectiveStage(
+  stageId: ObjectiveStageId,
+  coefficients: Record<string, number>,
+): ProductionObjectiveStage {
+  return {
+    name: stageId,
+    objective: {
+      direction: 'minimize',
+      coefficients,
+    },
+  };
+}
+
+function combineObjectiveCoefficients(
+  coefficientSets: ReadonlyArray<Record<string, number>>,
+): Record<string, number> {
+  const combined: Record<string, number> = {};
+  for (const coefficients of coefficientSets) {
+    for (const [variableName, coefficient] of Object.entries(coefficients)) {
+      combined[variableName] = (combined[variableName] ?? 0) + coefficient;
+    }
+  }
+  return combined;
 }
 
 function recipeActivityUnitCost(

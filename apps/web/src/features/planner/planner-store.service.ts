@@ -14,6 +14,7 @@ import {
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type GraphLayoutState,
+  type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
   type ProductTarget,
@@ -28,6 +29,7 @@ import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from './planner-solver.service';
+import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 export { plannerRelevantMachineIds } from './planner-domain.helpers';
 export {
@@ -429,6 +431,14 @@ export class PlannerStoreService implements OnDestroy {
     this.planCommands.setMachineEnabled(machineId, enabled);
   }
 
+  public setObjectivePreset(presetId: ObjectivePresetId): void {
+    this.planCommands.setObjectivePreset(presetId);
+  }
+
+  public setObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
+    this.planCommands.setObjectiveWeight(key, value);
+  }
+
   public setDefaultRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
     this.defaultsCommands.setRecipeEnabled(recipeId, enabled);
   }
@@ -463,6 +473,14 @@ export class PlannerStoreService implements OnDestroy {
 
   public setAllDefaultResourcesEnabled(enabled: boolean): void {
     this.defaultsCommands.setAllResourcesEnabled(enabled);
+  }
+
+  public setDefaultObjectivePreset(presetId: ObjectivePresetId): void {
+    this.defaultsCommands.setObjectivePreset(presetId);
+  }
+
+  public setDefaultObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
+    this.defaultsCommands.setObjectiveWeight(key, value);
   }
 
   public saveActivePlanAsDefaults(): void {

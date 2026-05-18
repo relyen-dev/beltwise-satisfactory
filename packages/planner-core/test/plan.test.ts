@@ -1,14 +1,87 @@
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
+  createCustomObjectiveProfile,
+  createDefaultObjectiveProfile,
   createDefaultUserDefaults,
+  createObjectiveProfileFromPreset,
   createPlannerProject,
   createUserDefaultsFromProject,
   hydratePlannerProject,
   hydratePlannerUserDefaults,
+  isCustomObjectiveProfile,
+  resolveObjectivePresetId,
 } from '@beltwise/planner-core';
 
 describe('createPlannerProject', () => {
+  it('keeps the default objective equivalent to Resource Efficient', () => {
+    expect(createDefaultObjectiveProfile()).toEqual(
+      createObjectiveProfileFromPreset('resource-efficient'),
+    );
+  });
+
+  it('creates objective profiles from presets while preserving raw resource multipliers', () => {
+    const profile = createObjectiveProfileFromPreset('low-power', {
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 2,
+      },
+    });
+
+    expect(profile).toMatchObject({
+      presetId: 'low-power',
+      strategy: 'lexicographic',
+      stageOrder: ['power', 'raw-resources', 'surplus', 'recipe-activity'],
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 2,
+      },
+    });
+    expect(resolveObjectivePresetId(profile)).toBe('low-power');
+    expect(isCustomObjectiveProfile(profile)).toBe(false);
+  });
+
+  it('detects manually edited objective weights as Custom', () => {
+    const profile = createCustomObjectiveProfile(createObjectiveProfileFromPreset('low-power'), {
+      powerWeight: 2,
+    });
+
+    expect(profile.presetId).toBe('custom');
+    expect(profile.stageOrder).toEqual(['power', 'raw-resources', 'surplus', 'recipe-activity']);
+    expect(resolveObjectivePresetId(profile)).toBe('custom');
+    expect(isCustomObjectiveProfile(profile)).toBe(true);
+  });
+
+  it('hydrates legacy objective profiles onto the current Resource Efficient priority order', () => {
+    const project = hydratePlannerProject(
+      {
+        id: 'project-test',
+        name: 'Test',
+        objectiveProfile: {
+          resourceScarcityWeight: 3,
+          powerWeight: 0.4,
+          machineCountWeight: 0.7,
+          surplusWeight: 0.2,
+          rawResourceMultipliers: {
+            Desc_OreIron_C: 1.5,
+          },
+        },
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(project?.objectiveProfile).toEqual({
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
+      resourceScarcityWeight: 3,
+      powerWeight: 0.4,
+      machineCountWeight: 0.7,
+      surplusWeight: 0.2,
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 1.5,
+      },
+    });
+  });
+
   it('starts new projects with no product targets by default', () => {
     const project = createPlannerProject({
       id: 'project-test',

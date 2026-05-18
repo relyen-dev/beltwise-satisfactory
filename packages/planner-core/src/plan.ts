@@ -78,12 +78,43 @@ export interface ItemInputOverride {
   amountPerMinute: number;
 }
 
+export type ObjectivePresetId =
+  | 'resource-efficient'
+  | 'low-power'
+  | 'few-machines'
+  | 'low-surplus'
+  | 'balanced'
+  | 'custom';
+
+export type ObjectiveStrategy = 'lexicographic' | 'weighted';
+
+export type ObjectiveStageId = 'raw-resources' | 'surplus' | 'recipe-activity' | 'power';
+
 export interface ObjectiveProfile {
+  presetId: ObjectivePresetId;
+  strategy: ObjectiveStrategy;
+  stageOrder: ObjectiveStageId[];
   resourceScarcityWeight: number;
   powerWeight: number;
   machineCountWeight: number;
   surplusWeight: number;
   rawResourceMultipliers: Record<ItemId, number>;
+}
+
+export interface ObjectivePresetProfileValues {
+  strategy: ObjectiveStrategy;
+  stageOrder: readonly ObjectiveStageId[];
+  resourceScarcityWeight: number;
+  powerWeight: number;
+  machineCountWeight: number;
+  surplusWeight: number;
+}
+
+export interface ObjectivePresetDefinition {
+  id: ObjectivePresetId;
+  label: string;
+  description: string;
+  profile: ObjectivePresetProfileValues;
 }
 
 export interface GraphLayoutState {
@@ -137,6 +168,131 @@ export interface PlannerSessionCreateOptions {
 
 export const PLANNER_STORAGE_SCHEMA_VERSION = 3;
 const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
+const RESOURCE_EFFICIENT_RESOURCE_SCARCITY_WEIGHT = 1;
+const RESOURCE_EFFICIENT_POWER_WEIGHT = 0.15;
+const RESOURCE_EFFICIENT_MACHINE_COUNT_WEIGHT = 0.25;
+const RESOURCE_EFFICIENT_SURPLUS_WEIGHT = 0.5;
+const LOW_POWER_RESOURCE_SCARCITY_WEIGHT = 0.75;
+const LOW_POWER_POWER_WEIGHT = 1;
+const LOW_POWER_MACHINE_COUNT_WEIGHT = 0.2;
+const LOW_POWER_SURPLUS_WEIGHT = 0.5;
+const FEW_MACHINES_RESOURCE_SCARCITY_WEIGHT = 0.75;
+const FEW_MACHINES_POWER_WEIGHT = 0.15;
+const FEW_MACHINES_MACHINE_COUNT_WEIGHT = 1;
+const FEW_MACHINES_SURPLUS_WEIGHT = 0.4;
+const LOW_SURPLUS_RESOURCE_SCARCITY_WEIGHT = 0.8;
+const LOW_SURPLUS_POWER_WEIGHT = 0.15;
+const LOW_SURPLUS_MACHINE_COUNT_WEIGHT = 0.2;
+const LOW_SURPLUS_SURPLUS_WEIGHT = 1.5;
+const BALANCED_RESOURCE_SCARCITY_WEIGHT = 1;
+const BALANCED_POWER_WEIGHT = 0.45;
+const BALANCED_MACHINE_COUNT_WEIGHT = 0.6;
+const BALANCED_SURPLUS_WEIGHT = 0.9;
+const RAW_RESOURCE_FIRST_STAGE_ORDER = [
+  'raw-resources',
+  'surplus',
+  'recipe-activity',
+  'power',
+] as const satisfies readonly ObjectiveStageId[];
+const POWER_FIRST_STAGE_ORDER = [
+  'power',
+  'raw-resources',
+  'surplus',
+  'recipe-activity',
+] as const satisfies readonly ObjectiveStageId[];
+const MACHINES_FIRST_STAGE_ORDER = [
+  'recipe-activity',
+  'raw-resources',
+  'surplus',
+  'power',
+] as const satisfies readonly ObjectiveStageId[];
+const SURPLUS_FIRST_STAGE_ORDER = [
+  'surplus',
+  'raw-resources',
+  'recipe-activity',
+  'power',
+] as const satisfies readonly ObjectiveStageId[];
+
+export const OBJECTIVE_PRESET_DEFINITIONS: readonly ObjectivePresetDefinition[] = [
+  {
+    id: 'resource-efficient',
+    label: 'Resource Efficient',
+    description: 'Prefer routes that consume the least scarce raw material before other tradeoffs.',
+    profile: {
+      strategy: 'lexicographic',
+      stageOrder: RAW_RESOURCE_FIRST_STAGE_ORDER,
+      resourceScarcityWeight: RESOURCE_EFFICIENT_RESOURCE_SCARCITY_WEIGHT,
+      powerWeight: RESOURCE_EFFICIENT_POWER_WEIGHT,
+      machineCountWeight: RESOURCE_EFFICIENT_MACHINE_COUNT_WEIGHT,
+      surplusWeight: RESOURCE_EFFICIENT_SURPLUS_WEIGHT,
+    },
+  },
+  {
+    id: 'low-power',
+    label: 'Low Power',
+    description: 'Prefer lower-power routes, then resolve ties with raw resources and surplus.',
+    profile: {
+      strategy: 'lexicographic',
+      stageOrder: POWER_FIRST_STAGE_ORDER,
+      resourceScarcityWeight: LOW_POWER_RESOURCE_SCARCITY_WEIGHT,
+      powerWeight: LOW_POWER_POWER_WEIGHT,
+      machineCountWeight: LOW_POWER_MACHINE_COUNT_WEIGHT,
+      surplusWeight: LOW_POWER_SURPLUS_WEIGHT,
+    },
+  },
+  {
+    id: 'few-machines',
+    label: 'Few Machines',
+    description: 'Prefer plans with fewer active machines before raw-resource tie breakers.',
+    profile: {
+      strategy: 'lexicographic',
+      stageOrder: MACHINES_FIRST_STAGE_ORDER,
+      resourceScarcityWeight: FEW_MACHINES_RESOURCE_SCARCITY_WEIGHT,
+      powerWeight: FEW_MACHINES_POWER_WEIGHT,
+      machineCountWeight: FEW_MACHINES_MACHINE_COUNT_WEIGHT,
+      surplusWeight: FEW_MACHINES_SURPLUS_WEIGHT,
+    },
+  },
+  {
+    id: 'low-surplus',
+    label: 'Low Surplus',
+    description: 'Prefer routes that leave fewer unused byproducts before resource tie breakers.',
+    profile: {
+      strategy: 'lexicographic',
+      stageOrder: SURPLUS_FIRST_STAGE_ORDER,
+      resourceScarcityWeight: LOW_SURPLUS_RESOURCE_SCARCITY_WEIGHT,
+      powerWeight: LOW_SURPLUS_POWER_WEIGHT,
+      machineCountWeight: LOW_SURPLUS_MACHINE_COUNT_WEIGHT,
+      surplusWeight: LOW_SURPLUS_SURPLUS_WEIGHT,
+    },
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    description: 'Use one blended score so resources, power, machines, and surplus can trade off.',
+    profile: {
+      strategy: 'weighted',
+      stageOrder: RAW_RESOURCE_FIRST_STAGE_ORDER,
+      resourceScarcityWeight: BALANCED_RESOURCE_SCARCITY_WEIGHT,
+      powerWeight: BALANCED_POWER_WEIGHT,
+      machineCountWeight: BALANCED_MACHINE_COUNT_WEIGHT,
+      surplusWeight: BALANCED_SURPLUS_WEIGHT,
+    },
+  },
+  {
+    id: 'custom',
+    label: 'Custom',
+    description: 'Use manually edited objective weights while keeping the current priority order.',
+    profile: {
+      strategy: 'lexicographic',
+      stageOrder: RAW_RESOURCE_FIRST_STAGE_ORDER,
+      resourceScarcityWeight: RESOURCE_EFFICIENT_RESOURCE_SCARCITY_WEIGHT,
+      powerWeight: RESOURCE_EFFICIENT_POWER_WEIGHT,
+      machineCountWeight: RESOURCE_EFFICIENT_MACHINE_COUNT_WEIGHT,
+      surplusWeight: RESOURCE_EFFICIENT_SURPLUS_WEIGHT,
+    },
+  },
+];
 
 export function createDefaultGraphDisplaySettings(): GraphDisplaySettings {
   return {
@@ -150,13 +306,68 @@ export function createDefaultGraphDisplaySettings(): GraphDisplaySettings {
 }
 
 export function createDefaultObjectiveProfile(): ObjectiveProfile {
+  return createObjectiveProfileFromPreset('resource-efficient');
+}
+
+export function createObjectiveProfileFromPreset(
+  presetId: ObjectivePresetId,
+  options: {
+    readonly rawResourceMultipliers?: Readonly<Record<ItemId, number>>;
+  } = {},
+): ObjectiveProfile {
+  const definition = objectivePresetDefinition(presetId);
   return {
-    resourceScarcityWeight: 1,
-    powerWeight: 0.15,
-    machineCountWeight: 0.25,
-    surplusWeight: 0.5,
-    rawResourceMultipliers: {},
+    presetId,
+    strategy: definition.profile.strategy,
+    stageOrder: [...definition.profile.stageOrder],
+    resourceScarcityWeight: definition.profile.resourceScarcityWeight,
+    powerWeight: definition.profile.powerWeight,
+    machineCountWeight: definition.profile.machineCountWeight,
+    surplusWeight: definition.profile.surplusWeight,
+    rawResourceMultipliers: copyNumberRecord(options.rawResourceMultipliers ?? {}),
   };
+}
+
+export function createCustomObjectiveProfile(
+  profile: ObjectiveProfile,
+  overrides: Partial<
+    Pick<
+      ObjectiveProfile,
+      'resourceScarcityWeight' | 'powerWeight' | 'machineCountWeight' | 'surplusWeight'
+    >
+  > = {},
+): ObjectiveProfile {
+  return {
+    ...copyObjectiveProfile(profile),
+    ...sanitizeObjectiveWeightOverrides(overrides),
+    presetId: 'custom',
+  };
+}
+
+export function resolveObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId {
+  if (profile.presetId === 'custom') {
+    return 'custom';
+  }
+  if (objectiveProfileMatchesPreset(profile, profile.presetId)) {
+    return profile.presetId;
+  }
+  return findMatchingObjectivePresetId(profile) ?? 'custom';
+}
+
+export function isCustomObjectiveProfile(profile: ObjectiveProfile): boolean {
+  return resolveObjectivePresetId(profile) === 'custom';
+}
+
+export function objectivePresetDefinition(presetId: ObjectivePresetId): ObjectivePresetDefinition {
+  const definition = OBJECTIVE_PRESET_DEFINITIONS.find((candidate) => candidate.id === presetId);
+  if (!definition) {
+    throw new Error(`Unknown objective preset ${presetId}`);
+  }
+  return definition;
+}
+
+export function sanitizeObjectiveWeight(value: number): number {
+  return Math.max(0, Number.isFinite(value) ? value : 0);
 }
 
 export function createDefaultRecipeOverrides(
@@ -477,6 +688,9 @@ function copyResourceOverrides(
 
 function copyObjectiveProfile(objectiveProfile: ObjectiveProfile): ObjectiveProfile {
   return {
+    presetId: resolveObjectivePresetId(objectiveProfile),
+    strategy: objectiveProfile.strategy,
+    stageOrder: [...objectiveProfile.stageOrder],
     resourceScarcityWeight: objectiveProfile.resourceScarcityWeight,
     powerWeight: objectiveProfile.powerWeight,
     machineCountWeight: objectiveProfile.machineCountWeight,
@@ -548,14 +762,40 @@ function hydrateObjectiveProfile(value: unknown): ObjectiveProfile {
     return defaults;
   }
 
-  return {
+  const explicitPresetId = readObjectivePresetId(value['presetId']);
+  const presetDefaults =
+    explicitPresetId === undefined ? defaults : createObjectiveProfileFromPreset(explicitPresetId);
+  const strategy = readObjectiveStrategy(value['strategy']) ?? presetDefaults.strategy;
+  const stageOrder = readObjectiveStageOrder(value['stageOrder']) ?? presetDefaults.stageOrder;
+  const profile: ObjectiveProfile = {
+    presetId: explicitPresetId ?? defaults.presetId,
+    strategy,
+    stageOrder,
     resourceScarcityWeight:
-      readFiniteNumber(value['resourceScarcityWeight']) ?? defaults.resourceScarcityWeight,
-    powerWeight: readFiniteNumber(value['powerWeight']) ?? defaults.powerWeight,
+      readNonNegativeFiniteNumber(value['resourceScarcityWeight']) ??
+      presetDefaults.resourceScarcityWeight,
+    powerWeight: readNonNegativeFiniteNumber(value['powerWeight']) ?? presetDefaults.powerWeight,
     machineCountWeight:
-      readFiniteNumber(value['machineCountWeight']) ?? defaults.machineCountWeight,
-    surplusWeight: readFiniteNumber(value['surplusWeight']) ?? defaults.surplusWeight,
+      readNonNegativeFiniteNumber(value['machineCountWeight']) ?? presetDefaults.machineCountWeight,
+    surplusWeight:
+      readNonNegativeFiniteNumber(value['surplusWeight']) ?? presetDefaults.surplusWeight,
     rawResourceMultipliers: readNumberRecord(value['rawResourceMultipliers']),
+  };
+
+  if (explicitPresetId === 'custom') {
+    return { ...profile, presetId: 'custom' };
+  }
+  if (explicitPresetId !== undefined) {
+    return {
+      ...profile,
+      presetId: objectiveProfileMatchesPreset(profile, explicitPresetId)
+        ? explicitPresetId
+        : 'custom',
+    };
+  }
+  return {
+    ...profile,
+    presetId: findMatchingObjectivePresetId(profile) ?? 'custom',
   };
 }
 
@@ -566,7 +806,7 @@ function readNumberRecord(value: unknown): Record<ItemId, number> {
   }
 
   for (const [itemId, multiplier] of Object.entries(value)) {
-    const numericMultiplier = readFiniteNumber(multiplier);
+    const numericMultiplier = readNonNegativeFiniteNumber(multiplier);
     if (numericMultiplier !== undefined) {
       record[itemId] = numericMultiplier;
     }
@@ -625,6 +865,126 @@ function readConveyorBeltTier(value: unknown): ConveyorBeltTier | undefined {
 
 function readPipelineTier(value: unknown): PipelineTier | undefined {
   return value === 1 || value === 2 ? value : undefined;
+}
+
+function readNonNegativeFiniteNumber(value: unknown): number | undefined {
+  const number = readFiniteNumber(value);
+  return number !== undefined && number >= 0 ? number : undefined;
+}
+
+function readObjectivePresetId(value: unknown): ObjectivePresetId | undefined {
+  return value === 'resource-efficient' ||
+    value === 'low-power' ||
+    value === 'few-machines' ||
+    value === 'low-surplus' ||
+    value === 'balanced' ||
+    value === 'custom'
+    ? value
+    : undefined;
+}
+
+function readObjectiveStrategy(value: unknown): ObjectiveStrategy | undefined {
+  return value === 'lexicographic' || value === 'weighted' ? value : undefined;
+}
+
+function readObjectiveStageId(value: unknown): ObjectiveStageId | undefined {
+  return value === 'raw-resources' ||
+    value === 'surplus' ||
+    value === 'recipe-activity' ||
+    value === 'power'
+    ? value
+    : undefined;
+}
+
+function readObjectiveStageOrder(value: unknown): ObjectiveStageId[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const stageOrder: ObjectiveStageId[] = [];
+  for (const item of value) {
+    const stageId = readObjectiveStageId(item);
+    if (stageId === undefined) {
+      return undefined;
+    }
+    if (!stageOrder.includes(stageId)) {
+      stageOrder.push(stageId);
+    }
+  }
+  return stageOrder.length > 0 ? stageOrder : undefined;
+}
+
+function findMatchingObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId | undefined {
+  return OBJECTIVE_PRESET_DEFINITIONS.find(
+    (definition) =>
+      definition.id !== 'custom' && objectiveProfileMatchesPreset(profile, definition.id),
+  )?.id;
+}
+
+function objectiveProfileMatchesPreset(
+  profile: ObjectiveProfile,
+  presetId: ObjectivePresetId,
+): boolean {
+  if (presetId === 'custom') {
+    return profile.presetId === 'custom';
+  }
+  const definition = objectivePresetDefinition(presetId);
+  return (
+    profile.strategy === definition.profile.strategy &&
+    objectiveStageOrdersEqual(profile.stageOrder, definition.profile.stageOrder) &&
+    profile.resourceScarcityWeight === definition.profile.resourceScarcityWeight &&
+    profile.powerWeight === definition.profile.powerWeight &&
+    profile.machineCountWeight === definition.profile.machineCountWeight &&
+    profile.surplusWeight === definition.profile.surplusWeight
+  );
+}
+
+function objectiveStageOrdersEqual(
+  left: readonly ObjectiveStageId[],
+  right: readonly ObjectiveStageId[],
+): boolean {
+  return left.length === right.length && left.every((stageId, index) => stageId === right[index]);
+}
+
+function sanitizeObjectiveWeightOverrides(
+  overrides: Partial<
+    Pick<
+      ObjectiveProfile,
+      'resourceScarcityWeight' | 'powerWeight' | 'machineCountWeight' | 'surplusWeight'
+    >
+  >,
+): Partial<
+  Pick<
+    ObjectiveProfile,
+    'resourceScarcityWeight' | 'powerWeight' | 'machineCountWeight' | 'surplusWeight'
+  >
+> {
+  const sanitized: Partial<
+    Pick<
+      ObjectiveProfile,
+      'resourceScarcityWeight' | 'powerWeight' | 'machineCountWeight' | 'surplusWeight'
+    >
+  > = {};
+  if (overrides.resourceScarcityWeight !== undefined) {
+    sanitized.resourceScarcityWeight = sanitizeObjectiveWeight(overrides.resourceScarcityWeight);
+  }
+  if (overrides.powerWeight !== undefined) {
+    sanitized.powerWeight = sanitizeObjectiveWeight(overrides.powerWeight);
+  }
+  if (overrides.machineCountWeight !== undefined) {
+    sanitized.machineCountWeight = sanitizeObjectiveWeight(overrides.machineCountWeight);
+  }
+  if (overrides.surplusWeight !== undefined) {
+    sanitized.surplusWeight = sanitizeObjectiveWeight(overrides.surplusWeight);
+  }
+  return sanitized;
+}
+
+function copyNumberRecord(value: Readonly<Record<ItemId, number>>): Record<ItemId, number> {
+  const copy: Record<ItemId, number> = {};
+  for (const [itemId, number] of Object.entries(value)) {
+    copy[itemId] = sanitizeObjectiveWeight(number);
+  }
+  return copy;
 }
 
 function readRateDecimalPlaces(value: unknown): RateDecimalPlaces | undefined {

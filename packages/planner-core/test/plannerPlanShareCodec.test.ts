@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   BELTWISE_PLAN_SHARE_KIND,
+  createObjectiveProfileFromPreset,
   createPlannerProject,
   decodeBeltwisePlanShare,
   encodeBeltwisePlanShare,
@@ -45,6 +46,7 @@ describe('Beltwise compact plan share payloads', () => {
         rc: [{ i: 'Desc_OreIron_C', e: false, m: 120 }],
         i: [['Desc_IngotIron_C', 15]],
         o: {
+          id: 'custom',
           rs: 2,
           p: 0.3,
           m: 0.4,
@@ -109,6 +111,33 @@ describe('Beltwise compact plan share payloads', () => {
       graphDisplay: sourceProject.graphDisplay,
       buildState: sourceProject.buildState,
     });
+  });
+
+  it('round-trips compact objective preset strategy and stage order', () => {
+    const sourceProject = {
+      ...createSharedPlannerProject(),
+      objectiveProfile: createObjectiveProfileFromPreset('low-surplus', {
+        rawResourceMultipliers: {
+          Desc_OreIron_C: 1.25,
+        },
+      }),
+    };
+    const payload = encodeBeltwisePlanShare(sourceProject, tinySatisfactoryDataset);
+
+    const decoded = decodeBeltwisePlanShare(payload, tinySatisfactoryDataset, {
+      id: 'project-imported',
+      now: '2026-05-14T00:00:00.000Z',
+    });
+
+    expect(payload.p.o).toMatchObject({
+      id: 'low-surplus',
+      g: ['s', 'r', 'm', 'p'],
+    });
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
+    expect(decoded.project.objectiveProfile).toEqual(sourceProject.objectiveProfile);
   });
 
   it('fails cleanly for malformed payloads and future versions', () => {
@@ -289,6 +318,9 @@ function createSharedPlannerProject(): PlannerProject {
       Desc_IngotIron_C: { amountPerMinute: 15 },
     },
     objectiveProfile: {
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
       resourceScarcityWeight: 2,
       powerWeight: 0.3,
       machineCountWeight: 0.4,

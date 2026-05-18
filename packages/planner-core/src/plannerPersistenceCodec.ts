@@ -9,6 +9,9 @@ import {
   type GraphNodeBuildState,
   type ItemInputOverride,
   type MachineOverride,
+  type ObjectivePresetId,
+  type ObjectiveStageId,
+  type ObjectiveStrategy,
   type PipelineTier,
   type PlanBuildState,
   type PlannerProject,
@@ -124,6 +127,9 @@ export interface StoredItemInputOverrideV1 {
 }
 
 export interface StoredObjectiveProfileV1 {
+  presetId: ObjectivePresetId;
+  strategy: ObjectiveStrategy;
+  stageOrder: ObjectiveStageId[];
   resourceScarcityWeight: number;
   powerWeight: number;
   machineCountWeight: number;
@@ -802,6 +808,9 @@ function toStoredObjectiveProfileV1(
   }
 
   return {
+    presetId: objectiveProfile.presetId,
+    strategy: objectiveProfile.strategy,
+    stageOrder: [...objectiveProfile.stageOrder],
     resourceScarcityWeight: objectiveProfile.resourceScarcityWeight,
     powerWeight: objectiveProfile.powerWeight,
     machineCountWeight: objectiveProfile.machineCountWeight,

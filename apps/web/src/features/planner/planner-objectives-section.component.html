@@ -1,0 +1,63 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>Objectives</h3>
+      @if (store.activeProject(); as project) {
+        <span>{{ activePresetLabel(project.objectiveProfile) }}</span>
+      }
+    </div>
+  </div>
+
+  @if (store.activeProject(); as project) {
+    @let profile = project.objectiveProfile;
+    @let activePreset = activePresetId(profile);
+
+    <div class="objective-summary">
+      <strong>{{ activePresetLabel(profile) }}</strong>
+      <span>{{ activePresetDescription(profile) }}</span>
+      <em>Fixed outputs stay fixed; objectives choose among feasible production routes.</em>
+    </div>
+
+    <div class="objective-preset-grid" aria-label="Objective presets">
+      @for (preset of presets; track preset.id) {
+        <button
+          type="button"
+          class="objective-preset-card"
+          [class.objective-preset-card--active]="activePreset === preset.id"
+          [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
+          [disabled]="store.planLocked()"
+          [title]="preset.description"
+          (click)="store.setObjectivePreset(preset.id)"
+        >
+          <strong>{{ preset.label }}</strong>
+          <span>{{ preset.description }}</span>
+        </button>
+      }
+    </div>
+
+    <section class="objective-custom-panel" aria-label="Custom objective weights">
+      <div class="section-heading">
+        <div>
+          <h4>Custom weights</h4>
+          <span>Editing a value switches this plan to Custom.</span>
+        </div>
+      </div>
+
+      <div class="objective-weight-grid">
+        @for (control of weightControls; track control.key) {
+          <label class="display-setting-card objective-weight-card">
+            <span class="display-setting-card__label">{{ control.label }}</span>
+            <input
+              type="number"
+              min="0"
+              [step]="control.step"
+              [disabled]="store.planLocked()"
+              [ngModel]="weightValue(profile, control.key)"
+              (ngModelChange)="setObjectiveWeight(control.key, $event)"
+            />
+          </label>
+        }
+      </div>
+    </section>
+  }
+</section>

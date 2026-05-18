@@ -1,10 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
 import {
+  OBJECTIVE_PRESET_DEFINITIONS,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
+  objectivePresetDefinition,
+  resolveObjectivePresetId,
+  type ObjectivePresetId,
+  type ObjectiveProfile,
   type PipelineTier,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
@@ -12,8 +24,9 @@ import { GameIconComponent } from './game-icon.component';
 import { PlannerStoreService } from './planner-store.service';
 import { type MachineRow, type RecipeRow } from './planner-store.selectors';
 import { parsePlannerNumber } from './planner-ui.helpers';
+import { type ObjectiveWeightKey } from './planner-project-mutations';
 
-type DefaultsPanelTab = 'recipes' | 'machines' | 'resources' | 'display';
+type DefaultsPanelTab = 'recipes' | 'machines' | 'resources' | 'objectives' | 'display';
 type RecipeDefaultsPanel = 'standard' | 'converterResources' | 'alternates';
 
 interface DefaultsPanelTabDefinition {
@@ -43,6 +56,12 @@ interface EdgeStyleOption {
   label: string;
 }
 
+interface ObjectiveWeightControl {
+  key: ObjectiveWeightKey;
+  label: string;
+  step: number;
+}
+
 @Component({
   selector: 'bw-planner-defaults-panel',
   standalone: true,
@@ -60,6 +79,7 @@ export class PlannerDefaultsPanelComponent {
     { id: 'recipes', label: 'Recipes' },
     { id: 'machines', label: 'Machines' },
     { id: 'resources', label: 'Resources' },
+    { id: 'objectives', label: 'Objectives' },
     { id: 'display', label: 'Display' },
   ];
 
@@ -96,6 +116,13 @@ export class PlannerDefaultsPanelComponent {
     { value: 'straight', label: 'Straight lines' },
     { value: 'curved', label: 'Curved lines' },
   ];
+  public readonly objectivePresets = OBJECTIVE_PRESET_DEFINITIONS;
+  public readonly objectiveWeightControls: readonly ObjectiveWeightControl[] = [
+    { key: 'resourceScarcityWeight', label: 'Raw resources', step: 0.05 },
+    { key: 'powerWeight', label: 'Power', step: 0.05 },
+    { key: 'machineCountWeight', label: 'Machines', step: 0.05 },
+    { key: 'surplusWeight', label: 'Surplus', step: 0.05 },
+  ];
 
   public setRecipeRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {
     this.store.setDefaultRecipesEnabled(
@@ -113,5 +140,21 @@ export class PlannerDefaultsPanelComponent {
 
   public setResourceCap(itemId: ItemId, value: string | number | null): void {
     this.store.setDefaultResourceCap(itemId, parsePlannerNumber(value));
+  }
+
+  public activeObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId {
+    return resolveObjectivePresetId(profile);
+  }
+
+  public activeObjectivePresetLabel(profile: ObjectiveProfile): string {
+    return objectivePresetDefinition(this.activeObjectivePresetId(profile)).label;
+  }
+
+  public weightValue(profile: ObjectiveProfile, key: ObjectiveWeightKey): number {
+    return profile[key];
+  }
+
+  public setObjectiveWeight(key: ObjectiveWeightKey, value: string | number | null): void {
+    this.store.setDefaultObjectiveWeight(key, parsePlannerNumber(value));
   }
 }

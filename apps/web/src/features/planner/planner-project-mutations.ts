@@ -1,24 +1,30 @@
 import { type ItemId, type MachineId, type RecipeId, type ResourceInfo } from '@beltwise/game-data';
 import {
+  createCustomObjectiveProfile,
+  createObjectiveProfileFromPreset,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
   type GraphDisplaySettings,
   type GraphLayoutState,
   type GraphNodeBuildState,
+  type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import {
-  defaultResourceCapPerMinute,
-  normalizeResourceOverride,
-} from './planner-domain.helpers';
+import { defaultResourceCapPerMinute, normalizeResourceOverride } from './planner-domain.helpers';
 
 export interface DuplicateProjectOptions {
   id: string;
   now: string;
 }
+
+export type ObjectiveWeightKey =
+  | 'resourceScarcityWeight'
+  | 'powerWeight'
+  | 'machineCountWeight'
+  | 'surplusWeight';
 
 export function duplicatePlannerProject(
   project: PlannerProject,
@@ -296,6 +302,34 @@ export function setMachineEnabled(
   };
 }
 
+export function setObjectivePreset(
+  project: PlannerProject,
+  presetId: ObjectivePresetId,
+): PlannerProject {
+  return {
+    ...project,
+    objectiveProfile:
+      presetId === 'custom'
+        ? createCustomObjectiveProfile(project.objectiveProfile)
+        : createObjectiveProfileFromPreset(presetId, {
+            rawResourceMultipliers: project.objectiveProfile.rawResourceMultipliers,
+          }),
+  };
+}
+
+export function setObjectiveWeight(
+  project: PlannerProject,
+  key: ObjectiveWeightKey,
+  value: number,
+): PlannerProject {
+  return {
+    ...project,
+    objectiveProfile: createCustomObjectiveProfile(project.objectiveProfile, {
+      [key]: value,
+    }),
+  };
+}
+
 export function setGraphNodePosition(
   project: PlannerProject,
   nodeId: string,
@@ -369,10 +403,7 @@ export function setMaxBeltTier(
   return setGraphDisplay(project, { maxBeltTier });
 }
 
-export function setMaxPipeTier(
-  project: PlannerProject,
-  maxPipeTier: PipelineTier,
-): PlannerProject {
+export function setMaxPipeTier(project: PlannerProject, maxPipeTier: PipelineTier): PlannerProject {
   return setGraphDisplay(project, { maxPipeTier });
 }
 
@@ -426,9 +457,7 @@ export function setGraphNodeNote(
   });
 }
 
-export function cleanGraphNodeState(
-  nodeState: GraphNodeBuildState,
-): GraphNodeBuildState | null {
+export function cleanGraphNodeState(nodeState: GraphNodeBuildState): GraphNodeBuildState | null {
   const done = nodeState.done === true ? true : undefined;
   const note = nodeState.note && nodeState.note.trim().length > 0 ? nodeState.note : undefined;
   if (done === undefined && note === undefined) {

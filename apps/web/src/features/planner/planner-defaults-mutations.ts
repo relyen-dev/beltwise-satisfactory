@@ -6,20 +6,21 @@ import {
   type ResourceInfo,
 } from '@beltwise/game-data';
 import {
+  createCustomObjectiveProfile,
   createDefaultUserDefaults,
+  createObjectiveProfileFromPreset,
   createUserDefaultsFromProject,
   type ConveyorBeltTier,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
+  type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
   type PlannerUserDefaults,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
-import {
-  defaultResourceCapPerMinute,
-  normalizeResourceOverride,
-} from './planner-domain.helpers';
+import { defaultResourceCapPerMinute, normalizeResourceOverride } from './planner-domain.helpers';
+import { type ObjectiveWeightKey } from './planner-project-mutations';
 
 export function setDefaultRecipeEnabled(
   userDefaults: PlannerUserDefaults,
@@ -166,6 +167,34 @@ export function setAllDefaultResourcesEnabled(
     resourceOverrides = withOptionalOverride(resourceOverrides, resource.itemId, nextOverride);
   }
   return { ...userDefaults, resourceOverrides };
+}
+
+export function setDefaultObjectivePreset(
+  userDefaults: PlannerUserDefaults,
+  presetId: ObjectivePresetId,
+): PlannerUserDefaults {
+  return {
+    ...userDefaults,
+    objectiveProfile:
+      presetId === 'custom'
+        ? createCustomObjectiveProfile(userDefaults.objectiveProfile)
+        : createObjectiveProfileFromPreset(presetId, {
+            rawResourceMultipliers: userDefaults.objectiveProfile.rawResourceMultipliers,
+          }),
+  };
+}
+
+export function setDefaultObjectiveWeight(
+  userDefaults: PlannerUserDefaults,
+  key: ObjectiveWeightKey,
+  value: number,
+): PlannerUserDefaults {
+  return {
+    ...userDefaults,
+    objectiveProfile: createCustomObjectiveProfile(userDefaults.objectiveProfile, {
+      [key]: value,
+    }),
+  };
 }
 
 export function setDefaultMaxBeltTier(

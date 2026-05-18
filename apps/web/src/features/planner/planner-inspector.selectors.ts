@@ -2,10 +2,12 @@ import { type GameDataset, type ItemId, type MachineId, type RecipeId } from '@b
 import {
   type GraphNodeBuildState,
   type ItemFlowEndpoint,
+  objectivePresetDefinition,
   type PlannerProject,
   type ProductionGraphNode,
   type ProductionPlanResult,
   type ProductTarget,
+  resolveObjectivePresetId,
 } from '@beltwise/planner-core';
 import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
 import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
@@ -70,8 +72,14 @@ export interface InspectorMachineSummaryRow {
   recipeGroupCountLabel: string;
 }
 
+export interface InspectorObjectiveSummary {
+  label: string;
+  detail: string;
+}
+
 export interface InspectorOverviewViewModel {
   metrics: InspectorMetric[];
+  objective: InspectorObjectiveSummary;
   targets: InspectorTargetSummary[];
   topRawInputs: InspectorItemRateRow[];
   externalInputs: InspectorItemRateRow[];
@@ -251,6 +259,7 @@ function selectOverviewViewModel(
       metric('Raw inputs', formatPlannerInteger(rawInputRows.length), 'resource types'),
       metric('Targets', formatPlannerInteger(project.targets.length), 'configured outputs'),
     ],
+    objective: objectiveSummary(project),
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
       .map((target) => targetSummary(dataset, result, target)),
@@ -263,6 +272,17 @@ function selectOverviewViewModel(
     machineSummaryTotalCount: machineSummaryRows.length,
     hiddenMachineSummaryCount: Math.max(0, machineSummaryRows.length - MAX_OVERVIEW_MACHINE_ROWS),
     warnings: warningRows(result?.warnings ?? []),
+  };
+}
+
+function objectiveSummary(project: PlannerProject): InspectorObjectiveSummary {
+  const definition = objectivePresetDefinition(resolveObjectivePresetId(project.objectiveProfile));
+  const hasMaximizeTarget = project.targets.some((target) => target.mode === 'maximize');
+  return {
+    label: definition.label,
+    detail: hasMaximizeTarget
+      ? 'Maximize targets solve first; this preset breaks route ties.'
+      : 'Fixed outputs stay fixed; this preset chooses feasible routes.',
   };
 }
 

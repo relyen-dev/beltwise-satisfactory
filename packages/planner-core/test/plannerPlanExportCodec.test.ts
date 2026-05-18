@@ -4,6 +4,7 @@ import {
   BELTWISE_PLAN_EXPORT_KIND,
   createBeltwisePlanExportFilename,
   createDefaultUserDefaults,
+  createObjectiveProfileFromPreset,
   createPlannerProject,
   createUniqueImportedPlannerProjectName,
   decodeBeltwisePlanExport,
@@ -80,6 +81,9 @@ describe('Beltwise plan export files', () => {
           Desc_IngotIron_C: { amountPerMinute: 15 },
         },
         objectiveProfile: {
+          presetId: 'custom',
+          strategy: 'lexicographic',
+          stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
           resourceScarcityWeight: 2,
           powerWeight: 0.3,
           machineCountWeight: 0.4,
@@ -144,6 +148,32 @@ describe('Beltwise plan export files', () => {
     ]);
     expect(decoded.project.graphLayout).toEqual(project.graphLayout);
     expect(decoded.project.buildState).toEqual(project.buildState);
+    expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
+  });
+
+  it('round-trips objective preset strategy and stage order', () => {
+    const project = {
+      ...createDomainPlannerProject(),
+      objectiveProfile: createObjectiveProfileFromPreset('few-machines', {
+        rawResourceMultipliers: {
+          Desc_OreIron_C: 1.25,
+        },
+      }),
+    };
+
+    const decoded = parseBeltwisePlanExportJson(
+      stringifyBeltwisePlanExport(
+        encodeBeltwisePlanExport(project, {
+          dataset: tinySatisfactoryDataset,
+        }),
+      ),
+      tinySatisfactoryDataset,
+    );
+
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
     expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
   });
 
@@ -311,6 +341,9 @@ function createDomainPlannerProject(): PlannerProject {
       Desc_IngotIron_C: { amountPerMinute: 15 },
     },
     objectiveProfile: {
+      presetId: 'custom',
+      strategy: 'lexicographic',
+      stageOrder: ['raw-resources', 'surplus', 'recipe-activity', 'power'],
       resourceScarcityWeight: 2,
       powerWeight: 0.3,
       machineCountWeight: 0.4,

@@ -22,6 +22,7 @@ import { PlannerDisplaySectionComponent } from './planner-display-section.compon
 import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
 import { PlannerInspectorComponent } from './planner-inspector.component';
 import { PlannerMachinesSectionComponent } from './planner-machines-section.component';
+import { PlannerObjectivesSectionComponent } from './planner-objectives-section.component';
 import {
   PlannerPlanTransferService,
   type PlanTransferStatus,
@@ -62,6 +63,7 @@ const RECENT_PLAN_MEMORY_LIMIT = 12;
     PlannerInputsSectionComponent,
     PlannerInspectorComponent,
     PlannerMachinesSectionComponent,
+    PlannerObjectivesSectionComponent,
     PlannerRecipesSectionComponent,
     PlannerResourcesSectionComponent,
     PlannerTargetsSectionComponent,
@@ -92,8 +94,7 @@ export class PlannerPageComponent implements OnInit {
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
   public readonly activePlanTrigger = viewChild<ElementRef<HTMLElement>>('activePlanTrigger');
-  public readonly planSelectorOptions =
-    viewChildren<ElementRef<HTMLElement>>('planSelectorOption');
+  public readonly planSelectorOptions = viewChildren<ElementRef<HTMLElement>>('planSelectorOption');
   public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
   private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
   private readonly projectNameEditProjectId = signal<string | null>(null);
@@ -108,6 +109,7 @@ export class PlannerPageComponent implements OnInit {
   });
   public readonly tabs: ConfigurationTabDefinition[] = [
     { id: 'plan', label: 'Plan' },
+    { id: 'objectives', label: 'Objectives' },
     { id: 'recipes', label: 'Recipes' },
     { id: 'inputs', label: 'Inputs' },
     { id: 'resources', label: 'Resources' },

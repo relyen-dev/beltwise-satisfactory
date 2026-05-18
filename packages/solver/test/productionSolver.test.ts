@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { gameDatasetSchema, tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   buildProductionGraph,
+  createObjectiveProfileFromPreset,
   createPlannerProject,
   type PlannerProject,
   type ProductTarget,
@@ -125,6 +126,67 @@ function resourceChoiceDataset(): GameDataset {
   };
 }
 
+function machineChoiceDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Widget_C: {
+        id: 'Desc_Widget_C',
+        className: 'Desc_Widget_C',
+        displayName: 'Widget',
+        form: 'solid',
+      },
+    },
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_SlowWidgetConstructor_C: {
+        id: 'Build_SlowWidgetConstructor_C',
+        className: 'Build_SlowWidgetConstructor_C',
+        displayName: 'Slow Widget Constructor',
+        type: 'manufacturer',
+        powerMw: 4,
+        manufacturingSpeed: 1,
+      },
+      Build_BulkWidgetManufacturer_C: {
+        id: 'Build_BulkWidgetManufacturer_C',
+        className: 'Build_BulkWidgetManufacturer_C',
+        displayName: 'Bulk Widget Manufacturer',
+        type: 'manufacturer',
+        powerMw: 80,
+        manufacturingSpeed: 1,
+      },
+    },
+    recipes: {
+      ...tinySatisfactoryDataset.recipes,
+      Recipe_IronWidget_C: {
+        id: 'Recipe_IronWidget_C',
+        className: 'Recipe_IronWidget_C',
+        displayName: 'Iron Widget',
+        ingredients: [{ itemId: 'Desc_OreIron_C', amount: 1 }],
+        products: [{ itemId: 'Desc_Widget_C', amount: 1 }],
+        durationSeconds: 60,
+        producedIn: ['Build_SlowWidgetConstructor_C'],
+        isAlternate: false,
+        isHandCraftOnly: false,
+        tags: [],
+      },
+      Recipe_CopperBulkWidget_C: {
+        id: 'Recipe_CopperBulkWidget_C',
+        className: 'Recipe_CopperBulkWidget_C',
+        displayName: 'Copper Bulk Widget',
+        ingredients: [{ itemId: 'Desc_OreCopper_C', amount: 10 }],
+        products: [{ itemId: 'Desc_Widget_C', amount: 10 }],
+        durationSeconds: 60,
+        producedIn: ['Build_BulkWidgetManufacturer_C'],
+        isAlternate: false,
+        isHandCraftOnly: false,
+        tags: [],
+      },
+    },
+  };
+}
+
 function cycleDataset(): GameDataset {
   return {
     ...tinySatisfactoryDataset,
@@ -195,9 +257,12 @@ function flowAmount(
   targetId: string,
 ): number | undefined {
   return result.itemFlows.find(
-    (flow) =>
-      flow.itemId === itemId && flow.source.id === sourceId && flow.target.id === targetId,
+    (flow) => flow.itemId === itemId && flow.source.id === sourceId && flow.target.id === targetId,
   )?.amountPerMinute;
+}
+
+function totalMachineCount(result: Awaited<ReturnType<typeof solveProductionPlan>>): number {
+  return result.machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
 }
 
 describe('solveProductionPlan real LP solver', () => {
@@ -454,12 +519,7 @@ describe('solveProductionPlan real LP solver', () => {
       ),
     ).toBeCloseTo(533.3333, 4);
     expect(
-      flowAmount(
-        result,
-        'Desc_Rubber_C',
-        'Recipe_Alternate_RecycledRubber_C',
-        'target-rubber',
-      ),
+      flowAmount(result, 'Desc_Rubber_C', 'Recipe_Alternate_RecycledRubber_C', 'target-rubber'),
     ).toBeCloseTo(900, 4);
     expect(
       flowAmount(result, 'Desc_Rubber_C', 'Recipe_ResidualRubber_C', 'target-rubber') ?? 0,
@@ -522,6 +582,51 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.status).toBe('optimal');
     expect(result.recipeRates['Recipe_IronWidget_C']).toBeCloseTo(10, 6);
     expect(result.recipeRates['Recipe_CopperWidget_C']).toBeUndefined();
+  });
+
+  it('uses Low Power to choose a lower-power route over the resource-efficient route', async () => {
+    const dataset = resourceChoiceDataset();
+    const project = fixtureProject([fixedTarget('target-widget', 'Desc_Widget_C', 10)], dataset);
+    project.objectiveProfile = createObjectiveProfileFromPreset('low-power');
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.recipeRates['Recipe_CopperWidget_C']).toBeCloseTo(10, 6);
+    expect(result.recipeRates['Recipe_IronWidget_C']).toBeUndefined();
+    expect(result.powerMw).toBeLessThan(10);
+  });
+
+  it('uses Few Machines to choose a lower-machine route over the resource-efficient route', async () => {
+    const dataset = machineChoiceDataset();
+    const defaultProject = fixtureProject(
+      [fixedTarget('target-widget', 'Desc_Widget_C', 10)],
+      dataset,
+    );
+    const fewMachinesProject = {
+      ...fixtureProject([fixedTarget('target-widget', 'Desc_Widget_C', 10)], dataset),
+      objectiveProfile: createObjectiveProfileFromPreset('few-machines'),
+    };
+
+    const defaultResult = await solveProductionPlan({
+      dataset,
+      project: defaultProject,
+    });
+    const fewMachinesResult = await solveProductionPlan({
+      dataset,
+      project: fewMachinesProject,
+    });
+
+    expect(defaultResult.status).toBe('optimal');
+    expect(defaultResult.recipeRates['Recipe_IronWidget_C']).toBeCloseTo(10, 6);
+    expect(defaultResult.recipeRates['Recipe_CopperBulkWidget_C']).toBeUndefined();
+    expect(fewMachinesResult.status).toBe('optimal');
+    expect(fewMachinesResult.recipeRates['Recipe_CopperBulkWidget_C']).toBeCloseTo(1, 6);
+    expect(fewMachinesResult.recipeRates['Recipe_IronWidget_C']).toBeUndefined();
+    expect(totalMachineCount(fewMachinesResult)).toBeLessThan(totalMachineCount(defaultResult));
   });
 
   it('can use Insulated Crystal Oscillator at 10 per minute when it is the only Crystal Oscillator route', async () => {

@@ -3,15 +3,20 @@ import {
   createDefaultGraphDisplaySettings,
   createDefaultObjectiveProfile,
   createDefaultRecipeOverrides,
+  createObjectiveProfileFromPreset,
   createPlannerProject,
   createStableId,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
   type GraphNodeBuildState,
   type ObjectiveProfile,
+  type ObjectivePresetId,
+  type ObjectiveStageId,
+  type ObjectiveStrategy,
   type PlanBuildState,
   type PlannerProject,
   type ProductTarget,
+  resolveObjectivePresetId,
 } from './plan';
 import type { BeltwisePlanImportWarning } from './plannerPlanExportCodec';
 
@@ -68,12 +73,18 @@ export interface CompactResourceOverrideV1 {
 }
 
 export interface CompactObjectiveProfileV1 {
+  id?: ObjectivePresetId;
+  y?: CompactObjectiveStrategyV1;
+  g?: CompactObjectiveStageIdV1[];
   rs?: number;
   p?: number;
   m?: number;
   s?: number;
   r?: CompactAmountOverrideV1[];
 }
+
+export type CompactObjectiveStrategyV1 = 'l' | 'w';
+export type CompactObjectiveStageIdV1 = 'r' | 's' | 'm' | 'p';
 
 export interface CompactGraphDisplaySettingsV1 {
   b?: GraphDisplaySettings['maxBeltTier'];
@@ -156,10 +167,7 @@ export function decodeBeltwisePlanShare(
   }
 
   if (value['v'] !== BELTWISE_PLAN_SHARE_FORMAT_VERSION) {
-    if (
-      typeof value['v'] === 'number' &&
-      value['v'] > BELTWISE_PLAN_SHARE_FORMAT_VERSION
-    ) {
+    if (typeof value['v'] === 'number' && value['v'] > BELTWISE_PLAN_SHARE_FORMAT_VERSION) {
       return fail('unsupported-version', 'This plan link uses a newer Beltwise format.');
     }
     return fail('invalid-envelope', 'That Beltwise plan link has an invalid version.');
@@ -317,7 +325,9 @@ function encodeBooleanOverrides(
   implicitDefaultEnabled: boolean,
 ): CompactBooleanOverrideV1[] {
   return Object.entries(overrides)
-    .filter(([id, override]) => override.enabled !== (defaults[id]?.enabled ?? implicitDefaultEnabled))
+    .filter(
+      ([id, override]) => override.enabled !== (defaults[id]?.enabled ?? implicitDefaultEnabled),
+    )
     .map(([id, override]) => [id, override.enabled]);
 }
 
@@ -337,7 +347,9 @@ function encodeResourceOverrides(
   return Object.entries(overrides)
     .map(([itemId, override]) => ({
       i: itemId,
-      ...(override.enabled !== undefined && override.enabled !== true ? { e: override.enabled } : {}),
+      ...(override.enabled !== undefined && override.enabled !== true
+        ? { e: override.enabled }
+        : {}),
       ...(override.maxPerMinute !== undefined ? { m: override.maxPerMinute } : {}),
     }))
     .filter((override) => override.e !== undefined || override.m !== undefined);
@@ -375,6 +387,15 @@ function decodeAmountOverrides(
 function encodeObjectiveProfile(profile: ObjectiveProfile): CompactObjectiveProfileV1 | null {
   const defaults = createDefaultObjectiveProfile();
   const compact: CompactObjectiveProfileV1 = {};
+  if (profile.presetId !== defaults.presetId) {
+    compact.id = profile.presetId;
+  }
+  if (profile.strategy !== defaults.strategy) {
+    compact.y = encodeObjectiveStrategy(profile.strategy);
+  }
+  if (!objectiveStageOrdersEqual(profile.stageOrder, defaults.stageOrder)) {
+    compact.g = profile.stageOrder.map(encodeObjectiveStageId);
+  }
   if (profile.resourceScarcityWeight !== defaults.resourceScarcityWeight) {
     compact.rs = profile.resourceScarcityWeight;
   }
@@ -397,19 +418,27 @@ function encodeObjectiveProfile(profile: ObjectiveProfile): CompactObjectiveProf
 }
 
 function decodeObjectiveProfile(value: CompactObjectiveProfileV1 | undefined): ObjectiveProfile {
-  const defaults = createDefaultObjectiveProfile();
-  return {
+  const defaults =
+    value?.id === undefined
+      ? createDefaultObjectiveProfile()
+      : createObjectiveProfileFromPreset(value.id);
+  const profile: ObjectiveProfile = {
+    presetId: value?.id ?? defaults.presetId,
+    strategy: decodeObjectiveStrategy(value?.y) ?? defaults.strategy,
+    stageOrder: decodeObjectiveStageOrder(value?.g) ?? defaults.stageOrder,
     resourceScarcityWeight: value?.rs ?? defaults.resourceScarcityWeight,
     powerWeight: value?.p ?? defaults.powerWeight,
     machineCountWeight: value?.m ?? defaults.machineCountWeight,
     surplusWeight: value?.s ?? defaults.surplusWeight,
     rawResourceMultipliers: Object.fromEntries(value?.r ?? []),
   };
+  return {
+    ...profile,
+    presetId: value?.id === 'custom' ? 'custom' : resolveObjectivePresetId(profile),
+  };
 }
 
-function encodeGraphDisplay(
-  settings: GraphDisplaySettings,
-): CompactGraphDisplaySettingsV1 | null {
+function encodeGraphDisplay(settings: GraphDisplaySettings): CompactGraphDisplaySettingsV1 | null {
   const defaults = createDefaultGraphDisplaySettings();
   const compact: CompactGraphDisplaySettingsV1 = {};
   if (settings.maxBeltTier !== defaults.maxBeltTier) {
@@ -433,7 +462,9 @@ function encodeGraphDisplay(
   return Object.keys(compact).length > 0 ? compact : null;
 }
 
-function decodeGraphDisplay(value: CompactGraphDisplaySettingsV1 | undefined): GraphDisplaySettings {
+function decodeGraphDisplay(
+  value: CompactGraphDisplaySettingsV1 | undefined,
+): GraphDisplaySettings {
   const defaults = createDefaultGraphDisplaySettings();
   return {
     maxBeltTier: value?.b ?? defaults.maxBeltTier,
@@ -511,7 +542,9 @@ function encodeDatasetMetadata(dataset: GameDataset): BeltwisePlanShareDatasetMe
   return {
     id: dataset.id,
     gameVersionLabel: dataset.gameVersionLabel,
-    ...(dataset.source.fingerprint !== undefined ? { fingerprint: dataset.source.fingerprint } : {}),
+    ...(dataset.source.fingerprint !== undefined
+      ? { fingerprint: dataset.source.fingerprint }
+      : {}),
   };
 }
 
@@ -726,15 +759,28 @@ function readCompactObjectiveProfile(value: unknown): CompactObjectiveProfileV1 
   if (!isRecord(value)) {
     return null;
   }
-  const rawResourceMultipliers = readArray(value['r'], readCompactAmountOverride);
+  const rawResourceMultipliers = readArray(value['r'], readCompactNonNegativeAmountOverride);
   if (rawResourceMultipliers === null) {
     return null;
   }
-  const resourceScarcityWeight = readFiniteNumber(value['rs']);
-  const powerWeight = readFiniteNumber(value['p']);
-  const machineCountWeight = readFiniteNumber(value['m']);
-  const surplusWeight = readFiniteNumber(value['s']);
+  const presetId = readObjectivePresetId(value['id']);
+  const strategy = readCompactObjectiveStrategy(value['y']);
+  const stageOrder = readCompactObjectiveStageOrder(value['g']);
+  if (
+    (value['id'] !== undefined && presetId === undefined) ||
+    (value['y'] !== undefined && strategy === undefined) ||
+    stageOrder === null
+  ) {
+    return null;
+  }
+  const resourceScarcityWeight = readNonNegativeFiniteNumber(value['rs']);
+  const powerWeight = readNonNegativeFiniteNumber(value['p']);
+  const machineCountWeight = readNonNegativeFiniteNumber(value['m']);
+  const surplusWeight = readNonNegativeFiniteNumber(value['s']);
   return {
+    ...(presetId !== undefined ? { id: presetId } : {}),
+    ...(strategy !== undefined ? { y: strategy } : {}),
+    ...(stageOrder !== undefined ? { g: stageOrder } : {}),
     ...(resourceScarcityWeight !== undefined ? { rs: resourceScarcityWeight } : {}),
     ...(powerWeight !== undefined ? { p: powerWeight } : {}),
     ...(machineCountWeight !== undefined ? { m: machineCountWeight } : {}),
@@ -802,10 +848,7 @@ function readCompactNodeBuildState(value: unknown): CompactGraphNodeBuildStateV1
   };
 }
 
-function readArray<T>(
-  value: unknown,
-  readItem: (item: unknown) => T | null,
-): T[] | null {
+function readArray<T>(value: unknown, readItem: (item: unknown) => T | null): T[] | null {
   if (value === undefined) {
     return [];
   }
@@ -823,10 +866,7 @@ function readArray<T>(
   return items;
 }
 
-function fail(
-  code: BeltwisePlanShareErrorCode,
-  message: string,
-): DecodeBeltwisePlanShareFailure {
+function fail(code: BeltwisePlanShareErrorCode, message: string): DecodeBeltwisePlanShareFailure {
   return { ok: false, error: { code, message } };
 }
 
@@ -845,6 +885,108 @@ function readFiniteNumber(value: unknown): number | undefined {
 function readNonNegativeFiniteNumber(value: unknown): number | undefined {
   const number = readFiniteNumber(value);
   return number !== undefined && number >= 0 ? number : undefined;
+}
+
+function encodeObjectiveStrategy(strategy: ObjectiveStrategy): CompactObjectiveStrategyV1 {
+  return strategy === 'weighted' ? 'w' : 'l';
+}
+
+function decodeObjectiveStrategy(
+  strategy: CompactObjectiveStrategyV1 | undefined,
+): ObjectiveStrategy | undefined {
+  if (strategy === 'w') {
+    return 'weighted';
+  }
+  if (strategy === 'l') {
+    return 'lexicographic';
+  }
+  return undefined;
+}
+
+function encodeObjectiveStageId(stageId: ObjectiveStageId): CompactObjectiveStageIdV1 {
+  switch (stageId) {
+    case 'raw-resources':
+      return 'r';
+    case 'surplus':
+      return 's';
+    case 'recipe-activity':
+      return 'm';
+    case 'power':
+      return 'p';
+  }
+}
+
+function decodeObjectiveStageId(stageId: CompactObjectiveStageIdV1): ObjectiveStageId | undefined {
+  switch (stageId) {
+    case 'r':
+      return 'raw-resources';
+    case 's':
+      return 'surplus';
+    case 'm':
+      return 'recipe-activity';
+    case 'p':
+      return 'power';
+  }
+}
+
+function decodeObjectiveStageOrder(
+  stageOrder: readonly CompactObjectiveStageIdV1[] | undefined,
+): ObjectiveStageId[] | undefined {
+  if (stageOrder === undefined) {
+    return undefined;
+  }
+  const decoded = stageOrder
+    .map(decodeObjectiveStageId)
+    .filter((stageId): stageId is ObjectiveStageId => stageId !== undefined);
+  return decoded.length > 0 ? decoded : undefined;
+}
+
+function objectiveStageOrdersEqual(
+  left: readonly ObjectiveStageId[],
+  right: readonly ObjectiveStageId[],
+): boolean {
+  return left.length === right.length && left.every((stageId, index) => stageId === right[index]);
+}
+
+function readObjectivePresetId(value: unknown): ObjectivePresetId | undefined {
+  return value === 'resource-efficient' ||
+    value === 'low-power' ||
+    value === 'few-machines' ||
+    value === 'low-surplus' ||
+    value === 'balanced' ||
+    value === 'custom'
+    ? value
+    : undefined;
+}
+
+function readCompactObjectiveStrategy(value: unknown): CompactObjectiveStrategyV1 | undefined {
+  return value === 'l' || value === 'w' ? value : undefined;
+}
+
+function readCompactObjectiveStageId(value: unknown): CompactObjectiveStageIdV1 | undefined {
+  return value === 'r' || value === 's' || value === 'm' || value === 'p' ? value : undefined;
+}
+
+function readCompactObjectiveStageOrder(
+  value: unknown,
+): CompactObjectiveStageIdV1[] | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const stageOrder: CompactObjectiveStageIdV1[] = [];
+  for (const item of value) {
+    const stageId = readCompactObjectiveStageId(item);
+    if (stageId === undefined) {
+      return null;
+    }
+    if (!stageOrder.includes(stageId)) {
+      stageOrder.push(stageId);
+    }
+  }
+  return stageOrder.length > 0 ? stageOrder : null;
 }
 
 function readConveyorBeltTier(value: unknown): GraphDisplaySettings['maxBeltTier'] | undefined {
