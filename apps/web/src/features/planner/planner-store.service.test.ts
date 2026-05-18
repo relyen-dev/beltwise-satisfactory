@@ -404,6 +404,88 @@ describe('PlannerStoreService', () => {
     ]);
   });
 
+  it('deletes the active session and selects the next available session', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB: PlannerProject = { ...createProject(), id: 'project-b', name: 'Factory B' };
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const sessionB = createSession([projectB], projectB.id, 'session-b');
+    const { store } = createInitializedStore(
+      [projectA, projectB],
+      projectA.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA, sessionB],
+      sessionA.id,
+    );
+
+    store.deleteSession(sessionA.id);
+
+    expect(store.sessions().map((session) => session.id)).toEqual([sessionB.id]);
+    expect(store.projects().map((project) => project.id)).toEqual([projectB.id]);
+    expect(store.activeSessionId()).toBe(sessionB.id);
+    expect(store.activeProjectId()).toBe(projectB.id);
+  });
+
+  it('deletes the active session and selects the previous session when available', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const sessionB = createSession([projectB], projectB.id, 'session-b');
+    const sessionC = createSession([projectC], projectC.id, 'session-c');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectC.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA, sessionB, sessionC],
+      sessionC.id,
+    );
+
+    store.deleteSession(sessionC.id);
+
+    expect(store.sessions().map((session) => session.id)).toEqual([sessionA.id, sessionB.id]);
+    expect(store.projects().map((project) => project.id)).toEqual([projectA.id, projectB.id]);
+    expect(store.activeSessionId()).toBe(sessionB.id);
+    expect(store.activeProjectId()).toBe(projectB.id);
+  });
+
+  it('deletes a middle active session and selects the previous neighboring session', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const sessionB = createSession([projectB], projectB.id, 'session-b');
+    const sessionC = createSession([projectC], projectC.id, 'session-c');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectB.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [sessionA, sessionB, sessionC],
+      sessionB.id,
+    );
+
+    store.deleteSession(sessionB.id);
+
+    expect(store.sessions().map((session) => session.id)).toEqual([sessionA.id, sessionC.id]);
+    expect(store.activeSessionId()).toBe(sessionA.id);
+    expect(store.activeProjectId()).toBe(projectA.id);
+  });
+
+  it('replaces the only deleted session with a blank default session', () => {
+    const project = createProject();
+    const { store } = createInitializedStore([project], project.id);
+
+    store.deleteSession();
+
+    const replacementProject = requiredProject(store);
+    expect(store.sessions()).toHaveLength(1);
+    expect(store.activeSession()?.name).toBe('Default session');
+    expect(replacementProject.id).not.toBe(project.id);
+    expect(replacementProject.name).toBe('Starter factory');
+    expect(replacementProject.targets).toEqual([]);
+    expect(store.projects().map((candidate) => candidate.id)).toEqual([replacementProject.id]);
+    expect(store.activeProjectId()).toBe(replacementProject.id);
+  });
+
   it('updates the session active project without touching the session timestamp', () => {
     const projectA = createEmptyProject('project-a', 'Factory A');
     const projectB = createEmptyProject('project-b', 'Factory B');
@@ -539,6 +621,69 @@ describe('PlannerStoreService', () => {
       replacementProject.id,
     ]);
     expect(store.activeProjectId()).toBe(replacementProject.id);
+  });
+
+  it('selects the previous plan after deleting the last active plan', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectC.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [createSession([projectA, projectB, projectC], projectC.id)],
+    );
+
+    store.deleteProject();
+
+    expect(store.projects().map((project) => project.id)).toEqual([projectA.id, projectB.id]);
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      projectA.id,
+      projectB.id,
+    ]);
+    expect(store.activeProjectId()).toBe(projectB.id);
+  });
+
+  it('selects the next plan after deleting the first active plan', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC],
+      projectA.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [createSession([projectA, projectB, projectC], projectA.id)],
+    );
+
+    store.deleteProject();
+
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      projectB.id,
+      projectC.id,
+    ]);
+    expect(store.activeProjectId()).toBe(projectB.id);
+  });
+
+  it('selects the previous neighboring plan after deleting a middle active plan', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const projectC = createEmptyProject('project-c', 'Factory C');
+    const projectD = createEmptyProject('project-d', 'Factory D');
+    const { store } = createInitializedStore(
+      [projectA, projectB, projectC, projectD],
+      projectC.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [createSession([projectA, projectB, projectC, projectD], projectC.id)],
+    );
+
+    store.deleteProject();
+
+    expect(store.activeSessionProjects().map((project) => project.id)).toEqual([
+      projectA.id,
+      projectB.id,
+      projectD.id,
+    ]);
+    expect(store.activeProjectId()).toBe(projectB.id);
   });
 
   it('keeps defaults commands separate from the active project', () => {

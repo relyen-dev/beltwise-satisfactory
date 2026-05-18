@@ -8,8 +8,10 @@ import {
   effect,
   inject,
   linkedSignal,
+  type ElementRef,
   type OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
@@ -18,15 +20,18 @@ import { PlannerDisplaySectionComponent } from './planner-display-section.compon
 import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
 import { PlannerInspectorComponent } from './planner-inspector.component';
 import { PlannerMachinesSectionComponent } from './planner-machines-section.component';
+import {
+  PlannerPlanTransferService,
+  type PlanTransferStatus,
+} from './planner-plan-transfer.service';
 import { PlannerRecipesSectionComponent } from './planner-recipes-section.component';
 import { PlannerResourcesSectionComponent } from './planner-resources-section.component';
+import { GameIconComponent } from './game-icon.component';
+import { selectCompactPlanDockItems, selectPlanDockItems } from './planner-plan-dock.selectors';
 import {
-  clearPlannerShareCodeFromLocation,
-  createPlannerShareUrl,
-  decodePlannerShareCode,
-  encodePlannerShareCode,
-  readPlannerShareCodeFromLocation,
-} from './planner-share-codec';
+  projectRequiresDeleteConfirmation,
+  sessionRequiresDeleteConfirmation,
+} from './planner-session-delete.helpers';
 import { PlannerStoreService, type ConfigurationTab } from './planner-store.service';
 import { PlannerTargetsSectionComponent } from './planner-targets-section.component';
 
@@ -35,10 +40,13 @@ interface ConfigurationTabDefinition {
   label: string;
 }
 
-interface PlanTransferStatus {
-  kind: 'success' | 'warning' | 'error';
+interface GraphSolveNotice {
+  kind: 'info' | 'error';
   message: string;
 }
+
+const VISIBLE_PLAN_CHIP_COUNT = 6;
+const RECENT_PLAN_MEMORY_LIMIT = 12;
 
 @Component({
   selector: 'bw-planner-page',
@@ -48,6 +56,7 @@ interface PlanTransferStatus {
     FormsModule,
     PlannerDefaultsPanelComponent,
     PlannerDisplaySectionComponent,
+    GameIconComponent,
     PlannerInputsSectionComponent,
     PlannerInspectorComponent,
     PlannerMachinesSectionComponent,
@@ -63,6 +72,7 @@ interface PlanTransferStatus {
 export class PlannerPageComponent implements OnInit {
   public readonly store = inject(PlannerStoreService);
   private readonly injector = inject(Injector);
+  private readonly planTransfer = inject(PlannerPlanTransferService);
   private lastProcessedShareCode: string | null = null;
 
   public readonly workPanelOpen = linkedSignal({
@@ -71,11 +81,26 @@ export class PlannerPageComponent implements OnInit {
       return request ? request.mode === 'open-plan' : (previous?.value ?? false);
     },
   });
-  public readonly inspectorOpen = signal(true);
   public readonly defaultsPanelOpen = signal(false);
+  public readonly planSelectorOpen = signal(false);
+  public readonly actionMenuOpen = signal(false);
   public readonly shareImportOpen = signal(false);
   public readonly shareCodeText = signal('');
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
+  public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
+  public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
+  public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
+  private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
+  private readonly projectNameEditProjectId = signal<string | null>(null);
+  private readonly sessionNameEditSessionId = signal<string | null>(null);
+  public readonly projectNameDraft = signal('');
+  public readonly sessionNameDraft = signal('');
+  public readonly projectNameEditing = computed(() => {
+    return this.projectNameEditProjectId() === this.store.activeProjectId();
+  });
+  public readonly sessionNameEditing = computed(() => {
+    return this.sessionNameEditSessionId() === this.store.activeSessionId();
+  });
   public readonly tabs: ConfigurationTabDefinition[] = [
     { id: 'plan', label: 'Plan' },
     { id: 'recipes', label: 'Recipes' },
@@ -87,6 +112,39 @@ export class PlannerPageComponent implements OnInit {
   public readonly activeSectionLabel = computed(() => {
     return this.tabs.find((tab) => tab.id === this.store.activeConfigTab())?.label ?? 'Plan';
   });
+  public readonly graphSolveNotice = computed<GraphSolveNotice | null>(() => {
+    const status = this.store.solveStatus();
+    if (status === 'solving') {
+      return { kind: 'info', message: 'Solving plan' };
+    }
+    if (status === 'error') {
+      return { kind: 'error', message: this.store.solveError() ?? 'Solve error' };
+    }
+
+    const result = this.store.solveResult();
+    if (result?.status === 'infeasible') {
+      return { kind: 'error', message: 'Infeasible plan' };
+    }
+    return null;
+  });
+  public readonly planDockItems = computed(() =>
+    selectPlanDockItems(
+      this.store.activeSessionProjects(),
+      this.store.dataset(),
+      this.store.activeProjectId(),
+    ),
+  );
+  public readonly activePlanDockItem = computed(() => {
+    return this.planDockItems().find((item) => item.isActive) ?? null;
+  });
+  public readonly visiblePlanDockItems = computed(() =>
+    selectCompactPlanDockItems(
+      this.planDockItems(),
+      this.store.activeProjectId(),
+      this.recentlyTouchedProjectIds(),
+      VISIBLE_PLAN_CHIP_COUNT,
+    ),
+  );
 
   public ngOnInit(): void {
     effect(
@@ -115,53 +173,196 @@ export class PlannerPageComponent implements OnInit {
     this.workPanelOpen.set(false);
   }
 
+  public selectSession(sessionId: string): void {
+    this.clearTransientNavigationState();
+    this.recentlyTouchedProjectIds.set([]);
+    this.store.selectSession(sessionId);
+    this.touchActiveProject();
+  }
+
+  public selectProject(projectId: string): void {
+    if (projectId === this.store.activeProjectId()) {
+      this.clearTransientNavigationState();
+      this.touchProject(projectId);
+      return;
+    }
+
+    this.clearTransientNavigationState();
+    this.store.selectProject(projectId);
+    this.touchProject(projectId);
+  }
+
+  public createSession(): void {
+    this.clearTransientNavigationState();
+    this.recentlyTouchedProjectIds.set([]);
+    this.store.createSession();
+    this.touchActiveProject();
+  }
+
+  public createProject(): void {
+    this.clearTransientNavigationState();
+    this.store.createProject();
+    this.touchActiveProject();
+  }
+
+  public duplicateProject(): void {
+    this.clearTransientNavigationState();
+    this.store.duplicateProject();
+    this.touchActiveProject();
+  }
+
+  public startSessionNameEdit(sessionId: string, name: string): void {
+    this.closePlanSelector();
+    this.closeActionMenu();
+    this.sessionNameEditSessionId.set(sessionId);
+    this.sessionNameDraft.set(name);
+    this.focusSessionNameInput();
+  }
+
+  public saveSessionNameEdit(): void {
+    const name = this.sessionNameDraft().trim();
+    const editedSessionId = this.sessionNameEditSessionId();
+    if (name.length > 0 && editedSessionId === this.store.activeSessionId()) {
+      this.store.renameSession(name);
+    }
+    this.sessionNameEditSessionId.set(null);
+  }
+
+  public cancelSessionNameEdit(): void {
+    this.sessionNameEditSessionId.set(null);
+  }
+
+  public deleteActiveSession(): void {
+    const session = this.store.activeSession();
+    if (!session) {
+      return;
+    }
+
+    if (
+      sessionRequiresDeleteConfirmation(this.store.activeSessionProjects()) &&
+      !confirm(`Delete "${session.name}" and every plan in it? This cannot be undone.`)
+    ) {
+      return;
+    }
+
+    this.clearTransientNavigationState();
+    this.recentlyTouchedProjectIds.set([]);
+    this.store.deleteSession(session.id);
+    this.touchActiveProject();
+  }
+
+  public deleteActiveProject(): void {
+    const project = this.store.activeProject();
+    if (!project) {
+      return;
+    }
+
+    if (
+      projectRequiresDeleteConfirmation(project) &&
+      !confirm(`Delete "${project.name}"? This cannot be undone.`)
+    ) {
+      return;
+    }
+
+    this.clearTransientNavigationState();
+    this.store.deleteProject();
+    this.touchActiveProject();
+  }
+
+  public startProjectNameEdit(projectId: string, name: string): void {
+    this.closePlanSelector();
+    this.closeActionMenu();
+    this.projectNameEditProjectId.set(projectId);
+    this.projectNameDraft.set(name);
+    this.focusProjectNameInput();
+  }
+
+  public saveProjectNameEdit(): void {
+    const name = this.projectNameDraft().trim();
+    const editedProjectId = this.projectNameEditProjectId();
+    if (name.length > 0 && editedProjectId === this.store.activeProjectId()) {
+      this.store.renameProject(name);
+    }
+    this.projectNameEditProjectId.set(null);
+  }
+
+  public cancelProjectNameEdit(): void {
+    this.projectNameEditProjectId.set(null);
+  }
+
   public toggleDefaultsPanel(): void {
+    this.closeActionMenu();
     this.defaultsPanelOpen.update((open) => !open);
   }
 
   public toggleShareImport(): void {
+    this.closeActionMenu();
     this.shareImportOpen.update((open) => !open);
   }
 
-  public exportActivePlan(): void {
-    const result = this.store.exportActivePlan();
-    if (!result.ok) {
-      this.showPlanTransferStatus('error', result.message);
+  public togglePlanSelector(): void {
+    if (this.planSelectorOpen()) {
+      this.closePlanSelector();
       return;
     }
 
-    try {
-      downloadJsonFile(result.filename, result.json);
-      this.showPlanTransferStatus('success', `Exported ${result.filename}.`);
-    } catch {
-      this.showPlanTransferStatus('error', 'The plan export could not be downloaded.');
+    this.openPlanSelector();
+  }
+
+  public openPlanSelector(): void {
+    this.clearInlineEdits();
+    this.closeActionMenu();
+    this.planSelectorOpen.set(true);
+  }
+
+  public closePlanSelector(): void {
+    this.planSelectorOpen.set(false);
+  }
+
+  public selectProjectFromSelector(projectId: string): void {
+    this.selectProject(projectId);
+  }
+
+  public syncActionMenuOpen(event: Event): void {
+    if (!isDetailsElement(event.currentTarget)) {
+      return;
+    }
+
+    this.actionMenuOpen.set(event.currentTarget.open);
+    if (event.currentTarget.open) {
+      this.clearInlineEdits();
+      this.closePlanSelector();
     }
   }
 
-  public async copyActivePlanShareLink(): Promise<void> {
-    const result = this.store.exportActivePlanSharePayload();
-    if (!result.ok) {
-      this.showPlanTransferStatus('error', result.message);
+  public closeActionMenu(restoreFocus = false): void {
+    if (!this.actionMenuOpen()) {
       return;
     }
 
-    try {
-      const code = await withTimeout(
-        encodePlannerShareCode(result.payload),
-        'The plan link could not be compressed.',
-      );
-      const url = createPlannerShareUrl(code);
-      await copyTextToClipboard(url);
-      this.showPlanTransferStatus('success', 'Copied a self-contained plan link.');
-    } catch (error) {
-      this.showPlanTransferStatus('error', shareErrorMessage(error));
+    this.actionMenuOpen.set(false);
+    if (restoreFocus) {
+      focusElementAfterRender(() => this.actionMenuSummary()?.nativeElement);
     }
+  }
+
+  public exportActivePlan(): void {
+    this.closeActionMenu();
+    this.showPlanTransferStatus(this.planTransfer.exportActivePlan());
+  }
+
+  public async copyActivePlanShareLink(): Promise<void> {
+    this.closeActionMenu();
+    this.showPlanTransferStatus(await this.planTransfer.copyActivePlanShareLink());
   }
 
   public async importPlanShareCodeInput(): Promise<void> {
     const code = this.shareCodeText().trim();
     if (!code) {
-      this.showPlanTransferStatus('error', 'Paste a Beltwise plan link or code first.');
+      this.showPlanTransferStatus({
+        kind: 'error',
+        message: 'Paste a Beltwise plan link or code first.',
+      });
       return;
     }
 
@@ -180,15 +381,12 @@ export class PlannerPageComponent implements OnInit {
     }
 
     try {
-      const result = this.store.importPlanJson(await file.text());
-      if (!result.ok) {
-        this.showPlanTransferStatus('error', result.message);
-        return;
+      this.clearTransientNavigationState();
+      const result = await this.planTransfer.importPlanFile(file);
+      if (result.imported) {
+        this.touchActiveProject();
       }
-
-      this.showPlanImportResult(result.project.name, result.warnings);
-    } catch {
-      this.showPlanTransferStatus('error', 'The selected plan file could not be read.');
+      this.showPlanTransferStatus(result.status);
     } finally {
       if (input) {
         input.value = '';
@@ -208,7 +406,7 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
 
-    const code = readPlannerShareCodeFromLocation();
+    const code = this.planTransfer.readShareCodeFromLocation();
     if (!code || code === this.lastProcessedShareCode) {
       return;
     }
@@ -218,7 +416,22 @@ export class PlannerPageComponent implements OnInit {
   }
 
   @HostListener('document:keydown.escape', ['$event'])
-  public clearGraphSelectionFromKeyboard(event: KeyboardEvent): void {
+  public handleEscapeKey(event: KeyboardEvent): void {
+    if (this.projectNameEditing() || this.sessionNameEditing()) {
+      event.preventDefault();
+      this.clearInlineEdits();
+      return;
+    }
+    if (this.planSelectorOpen()) {
+      event.preventDefault();
+      this.closePlanSelector();
+      return;
+    }
+    if (this.actionMenuOpen()) {
+      event.preventDefault();
+      this.closeActionMenu(true);
+      return;
+    }
     if (this.defaultsPanelOpen() && !isEditableKeyboardTarget(event.target)) {
       event.preventDefault();
       this.defaultsPanelOpen.set(false);
@@ -232,39 +445,58 @@ export class PlannerPageComponent implements OnInit {
     blurFocusedGraphNode();
   }
 
-  private showPlanTransferStatus(kind: PlanTransferStatus['kind'], message: string): void {
-    this.planTransferStatus.set({ kind, message });
+  private showPlanTransferStatus(status: PlanTransferStatus): void {
+    this.planTransferStatus.set(status);
   }
 
-  private showPlanImportResult(
-    projectName: string,
-    warnings: ReadonlyArray<{ message: string }>,
-  ): void {
-    const datasetWarning = warnings[0];
-    this.showPlanTransferStatus(
-      datasetWarning ? 'warning' : 'success',
-      datasetWarning
-        ? `Imported ${projectName}. ${datasetWarning.message}`
-        : `Imported ${projectName}.`,
+  private clearInlineEdits(): void {
+    this.projectNameEditProjectId.set(null);
+    this.sessionNameEditSessionId.set(null);
+  }
+
+  private clearTransientNavigationState(): void {
+    this.clearInlineEdits();
+    this.closePlanSelector();
+    this.closeActionMenu();
+  }
+
+  private touchActiveProject(): void {
+    this.touchProject(this.store.activeProjectId());
+  }
+
+  private touchProject(projectId: string | undefined): void {
+    if (
+      !projectId ||
+      !this.store.activeSessionProjects().some((project) => project.id === projectId)
+    ) {
+      return;
+    }
+
+    this.recentlyTouchedProjectIds.update((projectIds) =>
+      [projectId, ...projectIds.filter((candidateId) => candidateId !== projectId)].slice(
+        0,
+        RECENT_PLAN_MEMORY_LIMIT,
+      ),
     );
   }
 
-  private async importPlanShareCode(value: string, sourceLabel: string): Promise<boolean> {
-    try {
-      const payload = await decodePlannerShareCode(value);
-      const result = this.store.importPlanSharePayload(payload);
-      if (!result.ok) {
-        this.showPlanTransferStatus('error', result.message);
-        return false;
-      }
+  private focusProjectNameInput(): void {
+    focusElementAfterRender(() => this.projectNameInput()?.nativeElement);
+  }
 
-      clearPlannerShareCodeFromLocation();
-      this.showPlanImportResult(result.project.name, result.warnings);
-      return true;
-    } catch (error) {
-      this.showPlanTransferStatus('error', `${sourceLabel} could not be imported. ${shareErrorMessage(error)}`);
-      return false;
+  private focusSessionNameInput(): void {
+    focusElementAfterRender(() => this.sessionNameInput()?.nativeElement);
+  }
+
+  private async importPlanShareCode(value: string, sourceLabel: string): Promise<boolean> {
+    const result = await this.planTransfer.importPlanShareCode(value, sourceLabel, () =>
+      this.clearTransientNavigationState(),
+    );
+    if (result.imported) {
+      this.touchActiveProject();
     }
+    this.showPlanTransferStatus(result.status);
+    return result.imported;
   }
 }
 
@@ -281,6 +513,12 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
+function isDetailsElement(target: EventTarget | null): target is HTMLDetailsElement {
+  return (
+    target instanceof HTMLElement && target.tagName.toLowerCase() === 'details' && 'open' in target
+  );
+}
+
 function blurFocusedGraphNode(): void {
   const activeElement = document.activeElement;
   if (!(activeElement instanceof HTMLElement)) {
@@ -291,59 +529,15 @@ function blurFocusedGraphNode(): void {
   }
 }
 
-function downloadJsonFile(filename: string, json: string): void {
-  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  try {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.rel = 'noopener';
-    link.click();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-async function copyTextToClipboard(value: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await withTimeout(navigator.clipboard.writeText(value), 'Clipboard copy timed out.');
+function focusElementAfterRender(element: () => HTMLElement | undefined, attempts = 4): void {
+  setTimeout(() => {
+    const target = element();
+    if (target) {
+      target.focus();
       return;
-    } catch {
-      // Fall back to the textarea path below.
     }
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = value;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  document.body.append(textarea);
-  textarea.select();
-  try {
-    if (!document.execCommand('copy')) {
-      throw new Error('Copy command failed');
+    if (attempts > 0) {
+      focusElementAfterRender(element, attempts - 1);
     }
-  } finally {
-    textarea.remove();
-  }
-}
-
-async function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_resolve, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(message)), 2000);
   });
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId);
-    }
-  }
-}
-
-function shareErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'The plan link could not be processed.';
 }

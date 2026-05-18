@@ -253,6 +253,10 @@ export class PlannerStoreService implements OnDestroy {
     this.workspace.createSession();
   }
 
+  public deleteSession(sessionId?: string): void {
+    this.workspace.deleteSession(sessionId);
+  }
+
   public renameSession(name: string): void {
     this.workspace.renameSession(name);
   }

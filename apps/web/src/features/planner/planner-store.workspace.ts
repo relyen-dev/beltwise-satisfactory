@@ -135,6 +135,49 @@ export class PlannerWorkspaceSlice {
     this.activateProject(project, 'open-plan', session.id);
   }
 
+  public deleteSession(sessionId = this.activeSessionId()): void {
+    this.graphHooks.flushPendingGraphState();
+    const sessions = this.sessions();
+    const session = sessions.find((candidate) => candidate.id === sessionId);
+    if (!session) {
+      return;
+    }
+
+    const nextSession = selectNeighborBeforeRemoval(sessions, session.id);
+    const remainingSessions = sessions.filter((candidate) => candidate.id !== session.id);
+    const projectIdsToRemove = projectIdsOwnedByDeletedSession(session, remainingSessions);
+    this.projects.update((projects) =>
+      projects.filter((project) => !projectIdsToRemove.has(project.id)),
+    );
+
+    if (remainingSessions.length === 0) {
+      this.createReplacementDefaultSession();
+      return;
+    }
+
+    this.sessions.set(remainingSessions);
+    if (this.activeSessionId() !== session.id) {
+      return;
+    }
+
+    if (!nextSession) {
+      return;
+    }
+
+    let nextProject = this.selectProjectForSession(nextSession);
+    if (!nextProject) {
+      nextProject = this.createStarterProjectInSession(nextSession, []);
+      if (!nextProject) {
+        this.activeSessionId.set(undefined);
+        this.activeProjectId.set(undefined);
+        return;
+      }
+    }
+
+    this.activeSessionId.set(nextSession.id);
+    this.activateProject(nextProject, projectFocusMode(nextProject), nextSession.id);
+  }
+
   public createProject(): void {
     this.graphHooks.flushPendingGraphState();
     const dataset = this.options.dataset();
@@ -206,8 +249,7 @@ export class PlannerWorkspaceSlice {
       return;
     }
     const remainingProjects = this.projects().filter((project) => project.id !== activeId);
-    const nextProject =
-      sessionProjects.find((project) => project.id !== activeId) ?? remainingProjects[0];
+    const nextProject = selectNeighborBeforeRemoval(sessionProjects, activeId);
     this.projects.set(remainingProjects);
     this.removeProjectFromSessions(activeId, activeSession.id, nextProject?.id);
     if (nextProject) {
@@ -384,6 +426,34 @@ export class PlannerWorkspaceSlice {
     }));
   }
 
+  private createReplacementDefaultSession(): void {
+    const dataset = this.options.dataset();
+    if (!dataset) {
+      this.sessions.set([]);
+      this.activeSessionId.set(undefined);
+      this.activeProjectId.set(undefined);
+      return;
+    }
+
+    const project = createStarterProject(
+      dataset,
+      'Starter factory',
+      this.requireUserDefaults(dataset),
+    );
+    const session = createPlannerSession({
+      name: DEFAULT_SESSION_NAME,
+      datasetId: dataset.id,
+      projectIds: [project.id],
+      activeProjectId: project.id,
+      now: project.createdAt,
+    });
+
+    this.projects.update((projects) => [...projects, project]);
+    this.sessions.set([session]);
+    this.activeSessionId.set(session.id);
+    this.activateProject(project, 'open-plan', session.id);
+  }
+
   private createStarterProjectInSession(
     session: PlannerSession,
     existingProjects: readonly PlannerProject[],
@@ -529,6 +599,27 @@ function uniqueProjectIds(projectIds: readonly string[]): string[] {
     uniqueIds.push(projectId);
   }
   return uniqueIds;
+}
+
+function selectNeighborBeforeRemoval<TItem extends { id: string }>(
+  items: readonly TItem[],
+  removedId: string,
+): TItem | undefined {
+  const removedIndex = items.findIndex((item) => item.id === removedId);
+  if (removedIndex < 0) {
+    return undefined;
+  }
+  return items[removedIndex - 1] ?? items[removedIndex + 1];
+}
+
+function projectIdsOwnedByDeletedSession(
+  deletedSession: PlannerSession,
+  remainingSessions: readonly PlannerSession[],
+): ReadonlySet<string> {
+  const remainingProjectIds = new Set(remainingSessions.flatMap((session) => session.projectIds));
+  return new Set(
+    deletedSession.projectIds.filter((projectId) => !remainingProjectIds.has(projectId)),
+  );
 }
 
 function createNextPlanName(existingProjects: readonly PlannerProject[]): string {
