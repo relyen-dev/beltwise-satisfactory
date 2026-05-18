@@ -329,9 +329,9 @@ describe('PlannerPageComponent', () => {
     const { clearSelectedGraphNode, component, store } = createComponentHarness();
     const focus = vi.fn();
     stubElementViewChild(component, 'activePlanTrigger', focus);
+    vi.useFakeTimers();
     component.openPlanSelector();
     const event = keyboardEvent(new TestHTMLElement('div'));
-    vi.useFakeTimers();
 
     try {
       component.handleEscapeKey(event);
@@ -406,6 +406,15 @@ describe('PlannerPageComponent', () => {
 
     store.solveResult.set({ status: 'error' });
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
+
+    store.solveResult.set({
+      status: 'error',
+      warnings: [{ message: 'HiGHS returned an error' }],
+    });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'HiGHS returned an error',
+    });
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
@@ -719,6 +728,7 @@ interface PlannerPageStoreHarness {
 
 interface PlannerPageSolveResult {
   readonly status: ProductionPlanStatus;
+  readonly warnings?: ReadonlyArray<{ readonly message: string }>;
 }
 
 function stubInputViewChild(

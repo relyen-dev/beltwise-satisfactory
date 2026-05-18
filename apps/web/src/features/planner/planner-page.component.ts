@@ -126,8 +126,10 @@ export class PlannerPageComponent implements OnInit {
       return { kind: 'error', message: this.store.solveError() ?? 'Solve error' };
     }
 
-    const resultStatus = this.store.solveResult()?.status;
-    const problemMessage = resultStatus ? solveProblemMessage(resultStatus) : null;
+    const result = this.store.solveResult();
+    const problemMessage = result
+      ? solveProblemMessage(result.status, result.warnings?.[0]?.message)
+      : null;
     return problemMessage ? { kind: 'error', message: problemMessage } : null;
   });
   public readonly planDockItems = computed(() =>
@@ -556,16 +558,16 @@ function blurFocusedGraphNode(): void {
   }
 }
 
-function solveProblemMessage(status: ProductionPlanStatus): string | null {
+function solveProblemMessage(status: ProductionPlanStatus, detail?: string): string | null {
   switch (status) {
     case 'optimal':
       return null;
     case 'infeasible':
-      return 'Infeasible plan';
+      return detail ?? 'Infeasible plan';
     case 'unbounded':
-      return 'Unbounded plan';
+      return detail ?? 'Unbounded plan';
     case 'error':
-      return 'Solve error';
+      return detail ?? 'Solve error';
   }
 }
 
