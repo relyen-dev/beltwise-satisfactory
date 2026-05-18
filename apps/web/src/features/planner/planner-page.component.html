@@ -66,6 +66,7 @@
           } @else {
             <div class="active-plan-selector">
               <button
+                #activePlanTrigger
                 type="button"
                 class="active-plan-trigger"
                 [attr.aria-label]="
@@ -75,6 +76,7 @@
                   (activePlanDockItem()?.targetSummary ?? 'Draft plan')
                 "
                 aria-controls="active-plan-selector-panel"
+                aria-haspopup="dialog"
                 [attr.aria-expanded]="planSelectorOpen()"
                 (click)="togglePlanSelector()"
               >
@@ -140,10 +142,12 @@
                 <div
                   id="active-plan-selector-panel"
                   class="plan-selector-panel"
+                  role="dialog"
                   aria-label="All plans in this save session"
                 >
                   @for (plan of planDockItems(); track plan.id) {
                     <button
+                      #planSelectorOption
                       type="button"
                       class="plan-selector-option"
                       [class.is-active]="plan.isActive"

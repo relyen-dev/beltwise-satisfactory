@@ -27,6 +27,11 @@ interface PlannerWorkspaceGraphHooks {
   readonly clearGraphSelection: () => void;
 }
 
+interface DefaultStarterWorkspace {
+  readonly project: PlannerProject;
+  readonly session: PlannerSession;
+}
+
 const noopGraphHooks: PlannerWorkspaceGraphHooks = {
   flushPendingGraphState: () => undefined,
   clearPendingGraphState: () => undefined,
@@ -302,18 +307,11 @@ export class PlannerWorkspaceSlice {
     this.graphHooks.clearPendingGraphState();
     const defaults = userDefaults ?? this.requireUserDefaults(dataset);
     this.userDefaults.set(defaults);
-    const starter = createStarterProject(dataset, 'Starter factory', defaults);
-    const session = createPlannerSession({
-      name: DEFAULT_SESSION_NAME,
-      datasetId: dataset.id,
-      projectIds: [starter.id],
-      activeProjectId: starter.id,
-      now: starter.createdAt,
-    });
-    this.projects.set([starter]);
+    const { project, session } = createDefaultStarterWorkspace(dataset, defaults);
+    this.projects.set([project]);
     this.sessions.set([session]);
     this.activeSessionId.set(session.id);
-    this.activateProject(starter, 'open-plan', session.id);
+    this.activateProject(project, 'open-plan', session.id);
   }
 
   public updateUserDefaults(
@@ -435,18 +433,10 @@ export class PlannerWorkspaceSlice {
       return;
     }
 
-    const project = createStarterProject(
+    const { project, session } = createDefaultStarterWorkspace(
       dataset,
-      'Starter factory',
       this.requireUserDefaults(dataset),
     );
-    const session = createPlannerSession({
-      name: DEFAULT_SESSION_NAME,
-      datasetId: dataset.id,
-      projectIds: [project.id],
-      activeProjectId: project.id,
-      now: project.createdAt,
-    });
 
     this.projects.update((projects) => [...projects, project]);
     this.sessions.set([session]);
@@ -599,6 +589,23 @@ function uniqueProjectIds(projectIds: readonly string[]): string[] {
     uniqueIds.push(projectId);
   }
   return uniqueIds;
+}
+
+function createDefaultStarterWorkspace(
+  dataset: GameDataset,
+  userDefaults: PlannerUserDefaults,
+): DefaultStarterWorkspace {
+  const project = createStarterProject(dataset, 'Starter factory', userDefaults);
+  return {
+    project,
+    session: createPlannerSession({
+      name: DEFAULT_SESSION_NAME,
+      datasetId: dataset.id,
+      projectIds: [project.id],
+      activeProjectId: project.id,
+      now: project.createdAt,
+    }),
+  };
 }
 
 function selectNeighborBeforeRemoval<TItem extends { id: string }>(

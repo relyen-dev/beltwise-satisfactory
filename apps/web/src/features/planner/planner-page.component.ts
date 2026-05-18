@@ -12,8 +12,10 @@ import {
   type OnInit,
   signal,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { type ProductionPlanStatus } from '@beltwise/planner-core';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
 import { PlannerDefaultsPanelComponent } from './planner-defaults-panel.component';
 import { PlannerDisplaySectionComponent } from './planner-display-section.component';
@@ -89,6 +91,9 @@ export class PlannerPageComponent implements OnInit {
   public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
+  public readonly activePlanTrigger = viewChild<ElementRef<HTMLElement>>('activePlanTrigger');
+  public readonly planSelectorOptions =
+    viewChildren<ElementRef<HTMLElement>>('planSelectorOption');
   public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
   private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
   private readonly projectNameEditProjectId = signal<string | null>(null);
@@ -122,10 +127,10 @@ export class PlannerPageComponent implements OnInit {
     }
 
     const result = this.store.solveResult();
-    if (result?.status === 'infeasible') {
-      return { kind: 'error', message: 'Infeasible plan' };
-    }
-    return null;
+    const problemMessage = result
+      ? solveProblemMessage(result.status, result.warnings?.[0]?.message)
+      : null;
+    return problemMessage ? { kind: 'error', message: problemMessage } : null;
   });
   public readonly planDockItems = computed(() =>
     selectPlanDockItems(
@@ -313,14 +318,20 @@ export class PlannerPageComponent implements OnInit {
     this.clearInlineEdits();
     this.closeActionMenu();
     this.planSelectorOpen.set(true);
+    this.focusActivePlanSelectorOption();
   }
 
-  public closePlanSelector(): void {
+  public closePlanSelector(restoreFocus = false): void {
+    const wasOpen = this.planSelectorOpen();
     this.planSelectorOpen.set(false);
+    if (restoreFocus && wasOpen) {
+      this.focusPlanSelectorTrigger();
+    }
   }
 
   public selectProjectFromSelector(projectId: string): void {
     this.selectProject(projectId);
+    this.focusPlanSelectorTrigger();
   }
 
   public syncActionMenuOpen(event: Event): void {
@@ -424,7 +435,7 @@ export class PlannerPageComponent implements OnInit {
     }
     if (this.planSelectorOpen()) {
       event.preventDefault();
-      this.closePlanSelector();
+      this.closePlanSelector(true);
       return;
     }
     if (this.actionMenuOpen()) {
@@ -488,6 +499,24 @@ export class PlannerPageComponent implements OnInit {
     focusElementAfterRender(() => this.sessionNameInput()?.nativeElement);
   }
 
+  private focusPlanSelectorTrigger(): void {
+    if (!this.activePlanTrigger()) {
+      return;
+    }
+    focusElementAfterRender(() => this.activePlanTrigger()?.nativeElement);
+  }
+
+  private focusActivePlanSelectorOption(): void {
+    focusElementAfterRender(() => {
+      const options = this.planSelectorOptions();
+      if (options.length === 0) {
+        return undefined;
+      }
+      const activeIndex = this.planDockItems().findIndex((item) => item.isActive);
+      return options[Math.max(activeIndex, 0)]?.nativeElement ?? options[0]?.nativeElement;
+    });
+  }
+
   private async importPlanShareCode(value: string, sourceLabel: string): Promise<boolean> {
     const result = await this.planTransfer.importPlanShareCode(value, sourceLabel, () =>
       this.clearTransientNavigationState(),
@@ -526,6 +555,20 @@ function blurFocusedGraphNode(): void {
   }
   if (activeElement.closest('.production-node')) {
     activeElement.blur();
+  }
+}
+
+function solveProblemMessage(status: ProductionPlanStatus, detail?: string): string | null {
+  const message = detail?.trim();
+  switch (status) {
+    case 'optimal':
+      return null;
+    case 'infeasible':
+      return message || 'Infeasible plan';
+    case 'unbounded':
+      return message || 'Unbounded plan';
+    case 'error':
+      return message || 'Solve error';
   }
 }
 

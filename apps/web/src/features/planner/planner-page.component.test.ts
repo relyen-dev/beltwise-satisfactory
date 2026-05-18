@@ -7,7 +7,7 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PlannerProject, PlannerSession } from '@beltwise/planner-core';
+import type { PlannerProject, PlannerSession, ProductionPlanStatus } from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
 import { PlannerPlanTransferService } from './planner-plan-transfer.service';
 import {
@@ -243,6 +243,26 @@ describe('PlannerPageComponent', () => {
     expect(component.planSelectorOpen()).toBe(false);
   });
 
+  it('focuses the active plan option when opening the selector', () => {
+    const { component, store } = createComponentHarness();
+    const firstFocus = vi.fn();
+    const activeFocus = vi.fn();
+    store.activeSessionProjects.set(createPageProjectList(2));
+    store.activeProjectId.set('project-2');
+    stubElementViewChildren(component, 'planSelectorOptions', [firstFocus, activeFocus]);
+    vi.useFakeTimers();
+
+    try {
+      component.openPlanSelector();
+      vi.runOnlyPendingTimers();
+
+      expect(firstFocus).not.toHaveBeenCalled();
+      expect(activeFocus).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps the visible plan strip bounded around recently touched plans', () => {
     const { component, selectProject, store } = createComponentHarness();
     store.activeSessionProjects.set(createPageProjectList(8));
@@ -281,17 +301,50 @@ describe('PlannerPageComponent', () => {
     expect(component.visiblePlanDockItems()).toHaveLength(6);
   });
 
+  it('keeps active plan reselection as a navigation no-op', () => {
+    const { component, selectProject, store } = createComponentHarness();
+    component.openPlanSelector();
+    component.actionMenuOpen.set(true);
+
+    component.selectProject('project-a');
+
+    expect(selectProject).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(component.planSelectorOpen()).toBe(false);
+    expect(component.actionMenuOpen()).toBe(false);
+  });
+
+  it('closes the selector without reactivating when choosing the active plan option', () => {
+    const { component, selectProject, store } = createComponentHarness();
+    component.openPlanSelector();
+
+    component.selectProjectFromSelector('project-a');
+
+    expect(selectProject).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(component.planSelectorOpen()).toBe(false);
+  });
+
   it('closes the active plan selector from Escape before graph selection handling', () => {
     const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    const focus = vi.fn();
+    stubElementViewChild(component, 'activePlanTrigger', focus);
+    vi.useFakeTimers();
     component.openPlanSelector();
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.handleEscapeKey(event);
+    try {
+      component.handleEscapeKey(event);
+      vi.runOnlyPendingTimers();
 
-    expect(component.planSelectorOpen()).toBe(false);
-    expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
-    expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(component.planSelectorOpen()).toBe(false);
+      expect(clearSelectedGraphNode).not.toHaveBeenCalled();
+      expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(focus).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('closes the actions menu from Escape before graph selection handling', () => {
@@ -319,14 +372,52 @@ describe('PlannerPageComponent', () => {
   it('syncs the actions menu with the native details open state', () => {
     const { component } = createComponentHarness();
     const details = new TestDetailsElement();
+    component.openPlanSelector();
 
     details.open = true;
     component.syncActionMenuOpen({ currentTarget: details } as unknown as Event);
     expect(component.actionMenuOpen()).toBe(true);
+    expect(component.planSelectorOpen()).toBe(false);
 
     details.open = false;
     component.syncActionMenuOpen({ currentTarget: details } as unknown as Event);
     expect(component.actionMenuOpen()).toBe(false);
+  });
+
+  it('shows graph solve notices only for pending or problem states', () => {
+    const { component, store } = createComponentHarness();
+
+    expect(component.graphSolveNotice()).toBeNull();
+
+    store.solveStatus.set('solving');
+    expect(component.graphSolveNotice()).toEqual({ kind: 'info', message: 'Solving plan' });
+
+    store.solveStatus.set('error');
+    store.solveError.set('LP failed');
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'LP failed' });
+
+    store.solveStatus.set('solved');
+    store.solveError.set(null);
+    store.solveResult.set({ status: 'infeasible' });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Infeasible plan' });
+
+    store.solveResult.set({ status: 'unbounded' });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Unbounded plan' });
+
+    store.solveResult.set({ status: 'error' });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
+
+    store.solveResult.set({
+      status: 'error',
+      warnings: [{ message: 'HiGHS returned an error' }],
+    });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'HiGHS returned an error',
+    });
+
+    store.solveResult.set({ status: 'error', warnings: [{ message: '   ' }] });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
@@ -561,6 +652,9 @@ function createComponentHarness(): {
     selectProject,
     selectSession,
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
+    solveError: signal<string | null>(null),
+    solveResult: signal<PlannerPageSolveResult | null>({ status: 'optimal' }),
+    solveStatus: signal<'idle' | 'solving' | 'solved' | 'error'>('solved'),
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
   const injector = Injector.create({
@@ -629,7 +723,15 @@ interface PlannerPageStoreHarness {
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
+  solveError: WritableSignal<string | null>;
+  solveResult: WritableSignal<PlannerPageSolveResult | null>;
+  solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
+}
+
+interface PlannerPageSolveResult {
+  readonly status: ProductionPlanStatus;
+  readonly warnings?: ReadonlyArray<{ readonly message: string }>;
 }
 
 function stubInputViewChild(
@@ -648,7 +750,7 @@ function stubInputViewChild(
 
 function stubElementViewChild(
   component: PlannerPageComponent,
-  property: 'actionMenuSummary',
+  property: 'actionMenuSummary' | 'activePlanTrigger',
   focus: () => void,
 ): void {
   const elementRef: ElementRef<HTMLElement> = {
@@ -657,6 +759,20 @@ function stubElementViewChild(
   Object.defineProperty(component, property, {
     configurable: true,
     value: () => elementRef,
+  });
+}
+
+function stubElementViewChildren(
+  component: PlannerPageComponent,
+  property: 'planSelectorOptions',
+  focusCallbacks: readonly (() => void)[],
+): void {
+  const elementRefs: ElementRef<HTMLElement>[] = focusCallbacks.map((focus) => ({
+    nativeElement: { focus } as unknown as HTMLElement,
+  }));
+  Object.defineProperty(component, property, {
+    configurable: true,
+    value: () => elementRefs,
   });
 }
 
