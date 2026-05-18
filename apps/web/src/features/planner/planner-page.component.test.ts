@@ -45,7 +45,7 @@ describe('PlannerPageComponent', () => {
     const { component, store, clearSelectedGraphNode } = createComponentHarness();
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(clearSelectedGraphNode).toHaveBeenCalledOnce();
     expect(store.selectedGraphNodeId()).toBeNull();
@@ -64,7 +64,7 @@ describe('PlannerPageComponent', () => {
     for (const target of editableTargets) {
       const event = keyboardEvent(target);
 
-      component.clearGraphSelectionFromKeyboard(event);
+      component.handleEscapeKey(event);
 
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
       expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
@@ -77,7 +77,7 @@ describe('PlannerPageComponent', () => {
     component.defaultsPanelOpen.set(true);
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.defaultsPanelOpen()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe('PlannerPageComponent', () => {
     component.defaultsPanelOpen.set(true);
     const event = keyboardEvent(new TestHTMLElement('input'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.defaultsPanelOpen()).toBe(true);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -280,12 +280,36 @@ describe('PlannerPageComponent', () => {
     expect(component.visiblePlanDockItems()).toHaveLength(6);
   });
 
+  it('keeps active plan reselection as a navigation no-op', () => {
+    const { component, selectProject, store } = createComponentHarness();
+    component.openPlanSelector();
+    component.actionMenuOpen.set(true);
+
+    component.selectProject('project-a');
+
+    expect(selectProject).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(component.planSelectorOpen()).toBe(false);
+    expect(component.actionMenuOpen()).toBe(false);
+  });
+
+  it('closes the selector without reactivating when choosing the active plan option', () => {
+    const { component, selectProject, store } = createComponentHarness();
+    component.openPlanSelector();
+
+    component.selectProjectFromSelector('project-a');
+
+    expect(selectProject).not.toHaveBeenCalled();
+    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(component.planSelectorOpen()).toBe(false);
+  });
+
   it('closes the active plan selector from Escape before graph selection handling', () => {
     const { clearSelectedGraphNode, component, store } = createComponentHarness();
     component.openPlanSelector();
     const event = keyboardEvent(new TestHTMLElement('div'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.planSelectorOpen()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -302,7 +326,7 @@ describe('PlannerPageComponent', () => {
     vi.useFakeTimers();
 
     try {
-      component.clearGraphSelectionFromKeyboard(event);
+      component.handleEscapeKey(event);
       vi.runOnlyPendingTimers();
 
       expect(component.actionMenuOpen()).toBe(false);
@@ -318,14 +342,34 @@ describe('PlannerPageComponent', () => {
   it('syncs the actions menu with the native details open state', () => {
     const { component } = createComponentHarness();
     const details = new TestDetailsElement();
+    component.openPlanSelector();
 
     details.open = true;
     component.syncActionMenuOpen({ currentTarget: details } as unknown as Event);
     expect(component.actionMenuOpen()).toBe(true);
+    expect(component.planSelectorOpen()).toBe(false);
 
     details.open = false;
     component.syncActionMenuOpen({ currentTarget: details } as unknown as Event);
     expect(component.actionMenuOpen()).toBe(false);
+  });
+
+  it('shows graph solve notices only for pending or problem states', () => {
+    const { component, store } = createComponentHarness();
+
+    expect(component.graphSolveNotice()).toBeNull();
+
+    store.solveStatus.set('solving');
+    expect(component.graphSolveNotice()).toEqual({ kind: 'info', message: 'Solving plan' });
+
+    store.solveStatus.set('error');
+    store.solveError.set('LP failed');
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'LP failed' });
+
+    store.solveStatus.set('solved');
+    store.solveError.set(null);
+    store.solveResult.set({ status: 'infeasible' });
+    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Infeasible plan' });
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
@@ -333,7 +377,7 @@ describe('PlannerPageComponent', () => {
     component.startProjectNameEdit('project-a', 'Draft factory');
     const event = keyboardEvent(new TestHTMLElement('input'));
 
-    component.clearGraphSelectionFromKeyboard(event);
+    component.handleEscapeKey(event);
 
     expect(component.projectNameEditing()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
@@ -560,6 +604,9 @@ function createComponentHarness(): {
     selectProject,
     selectSession,
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
+    solveError: signal<string | null>(null),
+    solveResult: signal<{ status: 'optimal' | 'infeasible' } | null>({ status: 'optimal' }),
+    solveStatus: signal<'idle' | 'solving' | 'solved' | 'error'>('solved'),
     workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
   const injector = Injector.create({
@@ -628,6 +675,9 @@ interface PlannerPageStoreHarness {
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
+  solveError: WritableSignal<string | null>;
+  solveResult: WritableSignal<{ status: 'optimal' | 'infeasible' } | null>;
+  solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
 }
 
