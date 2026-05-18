@@ -1,24 +1,28 @@
 import { type GameDataset, type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
 import {
+  buildPlanNotesSummary,
+  buildPlanOverviewReport,
+  buildSelectedNodeReport,
   type GraphNodeBuildState,
-  type ItemFlowEndpoint,
-  normalizePlainTextNote,
-  objectivePresetDefinition,
+  type OutputFuelPowerNoteKind,
+  type PlanReportFlow,
+  type PlanReportIconRef,
+  type PlanReportItemRate,
+  type PlanReportItemRateRole,
+  type PlanReportMachineSummary,
+  type PlanReportNodeNoteSummary,
+  type PlanReportTargetSummary,
+  type PlanReportWarning,
   type PlannerProject,
   type ProductionGraph,
   type ProductionGraphNode,
   type ProductionPlanResult,
-  type ProductTarget,
-  resolveObjectivePresetId,
+  type ResourceCapSource,
+  type SelectedNodeReportDetails,
 } from '@beltwise/planner-core';
 import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
 import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
-import {
-  defaultResourceCapPerMinute,
-  formatResourceCap,
-  isUnlimitedResourceCap,
-  resourceCapsEqual,
-} from './planner-domain.helpers';
+import { formatResourceCap } from './planner-domain.helpers';
 
 export type InspectorIconKind = 'item' | 'machine';
 
@@ -192,37 +196,6 @@ export interface InspectorViewModel {
 
 const MAX_OVERVIEW_RAW_INPUTS = 5;
 const MAX_OVERVIEW_MACHINE_ROWS = 4;
-const MIN_DISPLAY_RATE = 0.000001;
-
-interface GeneratorFuelDefinition {
-  generatorId: MachineId;
-  generatorName: string;
-  generatorPowerMw: number;
-  fuelPerGeneratorPerMinute: number;
-  wasteItemId?: ItemId;
-  wastePerGeneratorPerMinute?: number;
-  note: string;
-}
-
-const GENERATOR_FUELS: Readonly<Record<ItemId, GeneratorFuelDefinition>> = {
-  Desc_Leaves_C: biomassGeneratorFuel(120),
-  Desc_Wood_C: biomassGeneratorFuel(18),
-  Desc_Mycelia_C: biomassGeneratorFuel(90),
-  Desc_GenericBiomass_C: biomassGeneratorFuel(10),
-  Desc_Biofuel_C: biomassGeneratorFuel(4),
-  Desc_PackagedBiofuel_C: biomassGeneratorFuel(2.4),
-  Desc_Coal_C: coalGeneratorFuel(15),
-  Desc_CompactedCoal_C: coalGeneratorFuel(7.142857142857143),
-  Desc_PetroleumCoke_C: coalGeneratorFuel(25),
-  Desc_LiquidBiofuel_C: fuelGeneratorFuel(20),
-  Desc_LiquidFuel_C: fuelGeneratorFuel(20),
-  Desc_LiquidTurboFuel_C: fuelGeneratorFuel(7.5),
-  Desc_RocketFuel_C: fuelGeneratorFuel(4.166666666666667),
-  Desc_IonizedFuel_C: fuelGeneratorFuel(3),
-  Desc_NuclearFuelRod_C: nuclearGeneratorFuel(0.2, 'Desc_NuclearWaste_C', 10),
-  Desc_PlutoniumFuelRod_C: nuclearGeneratorFuel(0.1, 'Desc_PlutoniumWaste_C', 1),
-  Desc_FicsoniumFuelRod_C: nuclearGeneratorFuel(1, null, null),
-};
 
 export function selectInspectorViewModel(
   dataset: GameDataset | null,
@@ -263,38 +236,39 @@ function selectOverviewViewModel(
   result: ProductionPlanResult | null,
   graph: ProductionGraph | null,
 ): InspectorOverviewViewModel {
-  const machineUsage = result?.machineUsage ?? [];
-  const totalMachineCount = machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
-  const rawInputRows = itemRateRows(dataset, result?.rawInputs ?? {});
-  const machineSummaryRows = summarizeMachinesByType(machineUsage);
+  const report = buildPlanOverviewReport(dataset, project, result, graph);
+  const machineSummaryRows = report.machineSummary.map(machineSummaryRow);
 
   return {
     metrics: [
-      metric('Solve status', result ? formatStatus(result.status) : 'No result'),
-      metric('Power', result ? formatPower(result.powerMw) : '0 MW'),
-      metric('Recipes', formatPlannerInteger(machineUsage.length), 'active recipe groups'),
+      metric('Solve status', report.status ? formatStatus(report.status) : 'No result'),
+      metric('Power', formatPower(report.powerMw)),
+      metric(
+        'Recipes',
+        formatPlannerInteger(report.activeRecipeGroupCount),
+        'active recipe groups',
+      ),
       metric(
         'Machines',
-        `${formatPlannerNumber(totalMachineCount)}x`,
+        `${formatPlannerNumber(report.totalMachineCount)}x`,
         'total constructors, smelters, etc.',
       ),
-      metric('Raw inputs', formatPlannerInteger(rawInputRows.length), 'resource types'),
-      metric('Targets', formatPlannerInteger(project.targets.length), 'configured outputs'),
+      metric('Raw inputs', formatPlannerInteger(report.rawInputTypeCount), 'resource types'),
+      metric('Targets', formatPlannerInteger(report.targetCount), 'configured outputs'),
     ],
-    objective: objectiveSummary(project),
-    notes: selectNotesSummary(project, graph),
-    targets: project.targets
-      .toSorted((left, right) => left.sortOrder - right.sortOrder)
-      .map((target) => targetSummary(dataset, result, target)),
-    topRawInputs: rawInputRows
+    objective: objectiveSummary(report.objective),
+    notes: notesSummary(report.notes),
+    targets: report.targets.map(targetSummary),
+    topRawInputs: report.rawInputs
       .toSorted((left, right) => right.amountPerMinute - left.amountPerMinute)
-      .slice(0, MAX_OVERVIEW_RAW_INPUTS),
-    externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
-    surplus: itemRateRows(dataset, result?.surplus ?? {}),
+      .slice(0, MAX_OVERVIEW_RAW_INPUTS)
+      .map(itemRateRow),
+    externalInputs: report.externalInputs.map(itemRateRow),
+    surplus: report.surplus.map(itemRateRow),
     machineSummary: machineSummaryRows.slice(0, MAX_OVERVIEW_MACHINE_ROWS),
     machineSummaryTotalCount: machineSummaryRows.length,
     hiddenMachineSummaryCount: Math.max(0, machineSummaryRows.length - MAX_OVERVIEW_MACHINE_ROWS),
-    warnings: warningRows(result?.warnings ?? []),
+    warnings: report.warnings.map(warningRow),
   };
 }
 
@@ -302,98 +276,32 @@ export function selectNotesSummary(
   project: PlannerProject,
   graph: ProductionGraph | null,
 ): InspectorNotesSummary {
-  const graphNodesById = new Map((graph?.nodes ?? []).map((node) => [node.id, node]));
-  const nodeNotes = Object.entries(project.buildState.nodeStates)
-    .flatMap(([nodeId, nodeState]) => {
-      const note = normalizePlainTextNote(nodeState.note ?? '');
-      if (note.length === 0) {
-        return [];
-      }
-      const graphNode = graphNodesById.get(nodeId);
-      return [
-        {
-          nodeId,
-          label: graphNode?.label ?? nodeId,
-          kindLabel: graphNode ? nodeKindLabel(graphNode.kind) : 'Not visible',
-          note,
-          visible: graphNode !== undefined,
-          visibilityLabel: graphNode ? 'Visible in graph' : 'Not currently visible',
-        },
-      ];
-    })
-    .toSorted(compareNodeNoteSummaries);
-  const planNote = normalizePlainTextNote(project.notes);
-
-  return {
-    hasPlanNote: planNote.length > 0,
-    planNote,
-    nodeNotes,
-    visibleNodeNoteCount: nodeNotes.filter((row) => row.visible).length,
-    staleNodeNoteCount: nodeNotes.filter((row) => !row.visible).length,
-  };
+  return notesSummary(buildPlanNotesSummary(project, graph));
 }
 
-function objectiveSummary(project: PlannerProject): InspectorObjectiveSummary {
-  const definition = objectivePresetDefinition(resolveObjectivePresetId(project.objectiveProfile));
-  const hasMaximizeTarget = project.targets.some((target) => target.mode === 'maximize');
+function objectiveSummary(report: {
+  label: string;
+  hasMaximizeTarget: boolean;
+}): InspectorObjectiveSummary {
   return {
-    label: definition.label,
-    detail: hasMaximizeTarget
+    label: report.label,
+    detail: report.hasMaximizeTarget
       ? 'Maximize targets solve first; this preset breaks route ties.'
       : 'Fixed outputs stay fixed; this preset chooses feasible routes.',
   };
 }
 
-function summarizeMachinesByType(
-  machineUsage: readonly ProductionPlanResult['machineUsage'][number][],
-): InspectorMachineSummaryRow[] {
-  const summaries = new Map<
-    MachineId,
-    {
-      machineId: MachineId;
-      machineDisplayName: string;
-      machineCount: number;
-      powerMw: number;
-      recipeGroupCount: number;
-    }
-  >();
-
-  for (const usage of machineUsage) {
-    const machineId: MachineId = usage.machineId;
-    const existing = summaries.get(machineId);
-    if (existing) {
-      existing.machineCount += usage.machineCount;
-      existing.powerMw += usage.powerMw;
-      existing.recipeGroupCount += 1;
-      continue;
-    }
-
-    summaries.set(machineId, {
-      machineId,
-      machineDisplayName: usage.machineDisplayName,
-      machineCount: usage.machineCount,
-      powerMw: usage.powerMw,
-      recipeGroupCount: 1,
-    });
-  }
-
-  return Array.from(summaries.values())
-    .toSorted(
-      (left, right) =>
-        right.machineCount - left.machineCount ||
-        right.powerMw - left.powerMw ||
-        left.machineDisplayName.localeCompare(right.machineDisplayName),
-    )
-    .map((summary) => ({
-      machineId: summary.machineId,
-      machineDisplayName: summary.machineDisplayName,
-      machineIconSrc: gameIconPathForMachineId(summary.machineId),
-      machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
-      powerLabel: formatPower(summary.powerMw),
-      recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
-        summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
-      }`,
-    }));
+function machineSummaryRow(summary: PlanReportMachineSummary): InspectorMachineSummaryRow {
+  return {
+    machineId: summary.machineId,
+    machineDisplayName: summary.machineDisplayName,
+    machineIconSrc: gameIconPathForMachineId(summary.machineId),
+    machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
+    powerLabel: formatPower(summary.powerMw),
+    recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
+      summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
+    }`,
+  };
 }
 
 function selectSelectedNodeViewModel(
@@ -403,226 +311,134 @@ function selectSelectedNodeViewModel(
   selectedNode: ProductionGraphNode,
   selectedNodeState: GraphNodeBuildState,
 ): InspectorSelectedNodeViewModel {
-  const incomingFlows = flowRows(dataset, project, result, selectedNode, 'incoming');
-  const outgoingFlows = flowRows(dataset, project, result, selectedNode, 'outgoing');
-  const details = selectedNodeDetails(dataset, project, result, selectedNode, incomingFlows);
+  const report = buildSelectedNodeReport(dataset, project, result, selectedNode);
+  const details = selectedNodeDetails(report.details);
 
   return {
-    nodeId: selectedNode.id,
-    kindLabel: nodeKindLabel(selectedNode.kind),
-    label: selectedNode.label,
-    subtitle: selectedNode.subtitle,
-    icon: selectedNodeIcon(dataset, result, selectedNode),
+    nodeId: report.nodeId,
+    kindLabel: nodeKindLabel(report.kind),
+    label: report.label,
+    subtitle: report.subtitle,
+    icon: iconFromRef(report.icon),
     state: selectedNodeState,
     metrics: selectedNodeMetrics(details),
-    warnings: relatedWarnings(result, selectedNode),
-    incomingFlows,
-    outgoingFlows,
+    warnings: report.warnings.map(warningRow),
+    incomingFlows: report.incomingFlows.map(flowRow),
+    outgoingFlows: report.outgoingFlows.map(flowRow),
     details,
   };
 }
 
-function selectedNodeDetails(
-  dataset: GameDataset,
-  project: PlannerProject,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
-  incomingFlows: readonly InspectorFlowRow[],
-): SelectedNodeDetails {
-  switch (selectedNode.kind) {
+function selectedNodeDetails(details: SelectedNodeReportDetails): SelectedNodeDetails {
+  switch (details.kind) {
     case 'recipe':
-      return recipeNodeDetails(dataset, result, selectedNode);
+      return recipeNodeDetails(details);
     case 'resource':
-      return resourceNodeDetails(dataset, project, result, selectedNode);
+      return resourceNodeDetails(details);
     case 'externalInput':
-      return externalInputNodeDetails(dataset, project, result, selectedNode);
+      return externalInputNodeDetails(details);
     case 'output':
-      return outputNodeDetails(dataset, project, result, selectedNode, incomingFlows);
+      return outputNodeDetails(details);
     case 'byproduct':
-      return byproductNodeDetails(dataset, result, selectedNode, incomingFlows);
+      return byproductNodeDetails(details);
   }
 }
 
 function recipeNodeDetails(
-  dataset: GameDataset,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
+  details: Extract<SelectedNodeReportDetails, { kind: 'recipe' }>,
 ): RecipeNodeDetails {
-  const recipeId = selectedNode.recipeId;
-  const usage = recipeId
-    ? result?.machineUsage.find((candidate) => candidate.recipeId === recipeId)
-    : undefined;
-  const recipe = recipeId ? dataset.recipes[recipeId] : undefined;
-  const recipeRatePerMinute =
-    usage?.recipeRatePerMinute ??
-    selectedNode.amountPerMinute ??
-    (recipeId ? result?.recipeRates[recipeId] : undefined) ??
-    0;
-  const fallbackMachineId = recipe?.producedIn.find((machineId) => dataset.machines[machineId]);
-  const machineId: MachineId | undefined = usage?.machineId ?? fallbackMachineId;
-  const machine = machineId ? dataset.machines[machineId] : undefined;
-  const machineName =
-    usage?.machineDisplayName ??
-    selectedNode.machineDisplayName ??
-    machine?.displayName ??
-    'Unknown machine';
-  const machineIcon =
-    machineId === undefined
-      ? null
-      : {
-          src: gameIconPathForMachineId(machineId),
-          label: machineName,
-          kind: 'machine' as const,
-        };
-
   return {
     kind: 'recipe',
-    recipeName: recipe?.displayName ?? selectedNode.label,
-    machineName,
-    machineIcon,
-    machineCountLabel: `${formatPlannerNumber(
-      usage?.machineCount ?? selectedNode.machineCount ?? 0,
-    )}x`,
-    recipeRateLabel: `${formatPlannerNumber(recipeRatePerMinute)}/min`,
-    powerLabel: usage ? formatPower(usage.powerMw) : null,
-    inputs:
-      recipe?.ingredients.map((ingredient) =>
-        itemRateRow(
-          dataset,
-          ingredient.itemId,
-          ingredient.amount * recipeRatePerMinute,
-          'required input',
-        ),
-      ) ?? [],
-    outputs:
-      recipe?.products.map((product) =>
-        itemRateRow(dataset, product.itemId, product.amount * recipeRatePerMinute, 'recipe output'),
-      ) ?? [],
+    recipeName: details.recipeName,
+    machineName: details.machineName,
+    machineIcon:
+      details.machineId === null
+        ? null
+        : {
+            src: gameIconPathForMachineId(details.machineId),
+            label: details.machineName,
+            kind: 'machine' as const,
+          },
+    machineCountLabel: `${formatPlannerNumber(details.machineCount)}x`,
+    recipeRateLabel: `${formatPlannerNumber(details.recipeRatePerMinute)}/min`,
+    powerLabel: details.powerMw === null ? null : formatPower(details.powerMw),
+    inputs: details.inputs.map(itemRateRow),
+    outputs: details.outputs.map(itemRateRow),
   };
 }
 
 function resourceNodeDetails(
-  dataset: GameDataset,
-  project: PlannerProject,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
+  details: Extract<SelectedNodeReportDetails, { kind: 'resource' }>,
 ): ResourceNodeDetails {
-  const itemId = selectedNode.itemId ?? '';
-  const consumedAmountPerMinute =
-    selectedNode.amountPerMinute ?? (itemId ? result?.rawInputs[itemId] : undefined) ?? 0;
-  const resource = itemId ? dataset.resources[itemId] : undefined;
-  const baselineCapPerMinute = resource ? defaultResourceCapPerMinute(resource) : undefined;
-  const override = itemId ? project.resourceOverrides[itemId] : undefined;
-  const enabled = override?.enabled !== false;
-  const configuredCapPerMinute = override?.maxPerMinute ?? baselineCapPerMinute;
-  const effectiveCapPerMinute = enabled ? configuredCapPerMinute : 0;
-  const finiteCap =
-    enabled &&
-    effectiveCapPerMinute !== undefined &&
-    !isUnlimitedResourceCap(effectiveCapPerMinute);
-  const headroomLabel = finiteCap
-    ? `${formatPlannerNumber(effectiveCapPerMinute - consumedAmountPerMinute)}/min`
-    : null;
-
   return {
     kind: 'resource',
-    item: itemRateRow(dataset, itemId, consumedAmountPerMinute, 'consumed from raw resources'),
-    capLabel: enabled ? formatResourceCap(effectiveCapPerMinute) : '0/min',
-    capSourceLabel: resourceCapSourceLabel(enabled, override, baselineCapPerMinute),
-    headroomLabel,
+    item: itemRateRow(details.item),
+    capLabel: details.capSource === 'disabled' ? '0/min' : formatResourceCap(details.capPerMinute),
+    capSourceLabel: resourceCapSourceLabel(details.capSource),
+    headroomLabel:
+      details.headroomPerMinute === null
+        ? null
+        : `${formatPlannerNumber(details.headroomPerMinute)}/min`,
   };
 }
 
 function externalInputNodeDetails(
-  dataset: GameDataset,
-  project: PlannerProject,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
+  details: Extract<SelectedNodeReportDetails, { kind: 'externalInput' }>,
 ): ExternalInputNodeDetails {
-  const itemId = selectedNode.itemId ?? '';
-  const suppliedAmountPerMinute =
-    selectedNode.amountPerMinute ??
-    (itemId ? result?.externalInputs?.[itemId] : undefined) ??
-    (itemId ? project.itemInputs[itemId]?.amountPerMinute : undefined) ??
-    0;
-
   return {
     kind: 'externalInput',
-    item: itemRateRow(dataset, itemId, suppliedAmountPerMinute, 'supplied externally'),
+    item: itemRateRow(details.item),
     sourceNote: 'Manual supply from another factory.',
   };
 }
 
 function outputNodeDetails(
-  dataset: GameDataset,
-  project: PlannerProject,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
-  incomingFlows: readonly InspectorFlowRow[],
+  details: Extract<SelectedNodeReportDetails, { kind: 'output' }>,
 ): OutputNodeDetails {
-  const itemId = selectedNode.itemId ?? '';
-  const target = selectedNode.targetId
-    ? project.targets.find((candidate) => candidate.id === selectedNode.targetId)
-    : undefined;
-  const targetMode = selectedNode.targetMode ?? target?.mode ?? 'fixed';
-  const incomingAmountPerMinute = sumAmounts(incomingFlows);
-  const fixedRequest =
-    targetMode === 'fixed'
-      ? (target?.amountPerMinute ?? selectedNode.amountPerMinute ?? incomingAmountPerMinute)
-      : null;
-  const targetFlowAmountPerMinute =
-    selectedNode.targetId && result ? incomingAmountPerMinute : null;
-  const maximizedOutput =
-    targetMode === 'maximize'
-      ? (targetFlowAmountPerMinute ??
-        selectedNode.amountPerMinute ??
-        (itemId ? result?.outputs[itemId] : undefined) ??
-        incomingAmountPerMinute)
-      : null;
-  const displayAmountPerMinute =
-    targetMode === 'maximize'
-      ? (maximizedOutput ?? incomingAmountPerMinute)
-      : (selectedNode.amountPerMinute ?? incomingAmountPerMinute);
-  const fuelPower = outputFuelPowerDetails(dataset, itemId, displayAmountPerMinute);
-
   return {
     kind: 'output',
-    item: itemRateRow(
-      dataset,
-      itemId,
-      displayAmountPerMinute,
-      targetMode === 'maximize' ? 'maximized output' : 'requested output',
-    ),
-    targetModeLabel: targetMode === 'maximize' ? 'Maximize' : 'Fixed',
+    item: itemRateRow(details.item),
+    targetModeLabel: details.targetMode === 'maximize' ? 'Maximize' : 'Fixed',
     requestedAmountPerMinuteLabel:
-      fixedRequest === null ? null : `${formatPlannerNumber(fixedRequest)}/min`,
+      details.requestedAmountPerMinute === null
+        ? null
+        : `${formatPlannerNumber(details.requestedAmountPerMinute)}/min`,
     solvedAmountPerMinuteLabel:
-      maximizedOutput === null ? null : `${formatPlannerNumber(maximizedOutput)}/min`,
-    incomingAmountPerMinuteLabel: `${formatPlannerNumber(incomingAmountPerMinute)}/min`,
-    fuelPower,
+      details.solvedAmountPerMinute === null
+        ? null
+        : `${formatPlannerNumber(details.solvedAmountPerMinute)}/min`,
+    incomingAmountPerMinuteLabel: `${formatPlannerNumber(details.incomingAmountPerMinute)}/min`,
+    fuelPower:
+      details.fuelPower === null
+        ? null
+        : {
+            generatorName: generatorName(details.fuelPower.generatorId),
+            generatorIcon: {
+              src: gameIconPathForMachineId(details.fuelPower.generatorId),
+              label: generatorName(details.fuelPower.generatorId),
+              kind: 'machine',
+            },
+            generatorCountLabel: `${formatPlannerNumber(details.fuelPower.generatorCount)}x`,
+            grossPowerLabel: formatPower(details.fuelPower.grossPowerMw),
+            fuelPerGeneratorLabel: `${formatPlannerNumber(
+              details.fuelPower.fuelPerGeneratorPerMinute,
+            )}/min each`,
+            waste: details.fuelPower.waste === null ? null : itemRateRow(details.fuelPower.waste),
+            note: fuelPowerNote(details.fuelPower.noteKind),
+          },
   };
 }
 
 function byproductNodeDetails(
-  dataset: GameDataset,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
-  incomingFlows: readonly InspectorFlowRow[],
+  details: Extract<SelectedNodeReportDetails, { kind: 'byproduct' }>,
 ): ByproductNodeDetails {
-  const itemId = selectedNode.itemId ?? '';
-  const item = itemId ? dataset.items[itemId] : undefined;
-  const surplusAmountPerMinute =
-    selectedNode.amountPerMinute ??
-    (itemId ? result?.surplus[itemId] : undefined) ??
-    sumAmounts(incomingFlows);
-  const sinkPointsPerMinute =
-    item?.sinkPoints === undefined ? null : item.sinkPoints * surplusAmountPerMinute;
-
   return {
     kind: 'byproduct',
-    item: itemRateRow(dataset, itemId, surplusAmountPerMinute, 'unused surplus'),
+    item: itemRateRow(details.item),
     sinkPointsPerMinuteLabel:
-      sinkPointsPerMinute === null ? null : `${formatPlannerNumber(sinkPointsPerMinute)}/min`,
+      details.sinkPointsPerMinute === null
+        ? null
+        : `${formatPlannerNumber(details.sinkPointsPerMinute)}/min`,
     surplusNote: 'Unused surplus. Sink routing is not modeled yet.',
   };
 }
@@ -665,254 +481,147 @@ function selectedNodeMetrics(details: SelectedNodeDetails): InspectorMetric[] {
   }
 }
 
-function selectedNodeIcon(
-  dataset: GameDataset,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
-): InspectorIcon | null {
-  if (selectedNode.kind === 'recipe') {
-    const usage = selectedNode.recipeId
-      ? result?.machineUsage.find((candidate) => candidate.recipeId === selectedNode.recipeId)
-      : undefined;
-    const recipe = selectedNode.recipeId ? dataset.recipes[selectedNode.recipeId] : undefined;
-    const machineId = usage?.machineId ?? recipe?.producedIn.find((id) => dataset.machines[id]);
-    if (!machineId) {
-      return null;
-    }
-    return {
-      src: gameIconPathForMachineId(machineId),
-      label:
-        usage?.machineDisplayName ?? dataset.machines[machineId]?.displayName ?? selectedNode.label,
-      kind: 'machine',
-    };
-  }
-
-  if (!selectedNode.itemId) {
-    return null;
-  }
-
+function notesSummary(report: {
+  readonly hasPlanNote: boolean;
+  readonly planNote: string;
+  readonly nodeNotes: readonly PlanReportNodeNoteSummary[];
+  readonly visibleNodeNoteCount: number;
+  readonly staleNodeNoteCount: number;
+}): InspectorNotesSummary {
   return {
-    src: gameIconPathForItemId(selectedNode.itemId),
-    label: dataset.items[selectedNode.itemId]?.displayName ?? selectedNode.label,
-    kind: 'item',
+    hasPlanNote: report.hasPlanNote,
+    planNote: report.planNote,
+    nodeNotes: report.nodeNotes.map((note) => ({
+      nodeId: note.nodeId,
+      label: note.label,
+      kindLabel: note.kind === null ? 'Not visible' : nodeKindLabel(note.kind),
+      note: note.note,
+      visible: note.visible,
+      visibilityLabel: note.visible ? 'Visible in graph' : 'Not currently visible',
+    })),
+    visibleNodeNoteCount: report.visibleNodeNoteCount,
+    staleNodeNoteCount: report.staleNodeNoteCount,
   };
 }
 
-function targetSummary(
-  dataset: GameDataset,
-  result: ProductionPlanResult | null,
-  target: ProductTarget,
-): InspectorTargetSummary {
-  const item = dataset.items[target.itemId];
-  const amount =
-    target.mode === 'fixed'
-      ? (target.amountPerMinute ?? 0)
-      : (outputAmountForTarget(result, target.id) ?? result?.outputs[target.itemId] ?? 0);
-  const displayName =
-    target.itemId.length > 0 ? (item?.displayName ?? target.itemId) : 'Choose an item';
-
+function targetSummary(target: PlanReportTargetSummary): InspectorTargetSummary {
   return {
-    targetId: target.id,
+    targetId: target.targetId,
     itemId: target.itemId,
-    displayName,
+    displayName: target.itemDisplayName ?? 'Choose an item',
     iconSrc: target.itemId.length > 0 ? gameIconPathForItemId(target.itemId) : '',
     modeLabel: target.mode === 'maximize' ? 'Maximize' : 'Fixed',
     amountLabel:
       target.mode === 'maximize'
-        ? `${formatPlannerNumber(amount)}/min solved`
-        : `${formatPlannerNumber(amount)}/min requested`,
+        ? `${formatPlannerNumber(target.amountPerMinute)}/min solved`
+        : `${formatPlannerNumber(target.amountPerMinute)}/min requested`,
   };
 }
 
-function outputAmountForTarget(
-  result: ProductionPlanResult | null,
-  targetId: string | undefined,
-): number | null {
-  if (!result || !targetId) {
+function iconFromRef(icon: PlanReportIconRef | null): InspectorIcon | null {
+  if (icon === null) {
     return null;
   }
-
-  return result.itemFlows
-    .filter((flow) => flow.target.kind === 'output' && flow.target.id === targetId)
-    .reduce((total, flow) => total + flow.amountPerMinute, 0);
-}
-
-function flowRows(
-  dataset: GameDataset,
-  project: PlannerProject,
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
-  direction: 'incoming' | 'outgoing',
-): InspectorFlowRow[] {
-  return (result?.itemFlows ?? [])
-    .filter((flow) =>
-      endpointMatchesNode(direction === 'incoming' ? flow.target : flow.source, selectedNode),
-    )
-    .map((flow) => {
-      const endpoint = direction === 'incoming' ? flow.source : flow.target;
-      return {
-        ...itemRateRow(dataset, flow.itemId, flow.amountPerMinute, null),
-        flowKey: flowRowKey(flow, direction),
-        endpointKindLabel: endpointKindLabel(endpoint.kind),
-        endpointLabel: endpointDisplayName(dataset, project, endpoint),
-      };
-    })
-    .toSorted((left, right) => right.amountPerMinute - left.amountPerMinute);
-}
-
-function flowRowKey(
-  flow: ProductionPlanResult['itemFlows'][number],
-  direction: 'incoming' | 'outgoing',
-): string {
-  return [
-    direction,
-    flow.itemId,
-    flow.source.kind,
-    flow.source.id,
-    flow.target.kind,
-    flow.target.id,
-  ].join(':');
-}
-
-function outputFuelPowerDetails(
-  dataset: GameDataset,
-  itemId: ItemId,
-  amountPerMinute: number,
-): OutputFuelPowerDetails | null {
-  const definition = GENERATOR_FUELS[itemId];
-  if (!definition || amountPerMinute <= MIN_DISPLAY_RATE) {
-    return null;
-  }
-
-  const generatorCount = amountPerMinute / definition.fuelPerGeneratorPerMinute;
-  const grossPowerMw = generatorCount * definition.generatorPowerMw;
-  const waste =
-    definition.wasteItemId === undefined || definition.wastePerGeneratorPerMinute === undefined
-      ? null
-      : itemRateRow(
-          dataset,
-          definition.wasteItemId,
-          generatorCount * definition.wastePerGeneratorPerMinute,
-          'nuclear byproduct',
-        );
 
   return {
-    generatorName: definition.generatorName,
-    generatorIcon: {
-      src: gameIconPathForMachineId(definition.generatorId),
-      label: definition.generatorName,
-      kind: 'machine',
-    },
-    generatorCountLabel: `${formatPlannerNumber(generatorCount)}x`,
-    grossPowerLabel: formatPower(grossPowerMw),
-    fuelPerGeneratorLabel: `${formatPlannerNumber(definition.fuelPerGeneratorPerMinute)}/min each`,
-    waste,
-    note: definition.note,
+    src:
+      icon.kind === 'machine' ? gameIconPathForMachineId(icon.id) : gameIconPathForItemId(icon.id),
+    label: icon.label,
+    kind: icon.kind,
   };
 }
 
-function endpointMatchesNode(
-  endpoint: ItemFlowEndpoint,
-  selectedNode: ProductionGraphNode,
-): boolean {
-  switch (selectedNode.kind) {
-    case 'resource':
-      return endpoint.kind === 'resource' && endpoint.id === selectedNode.itemId;
-    case 'externalInput':
-      return endpoint.kind === 'externalInput' && endpoint.id === selectedNode.itemId;
-    case 'recipe':
-      return endpoint.kind === 'recipe' && endpoint.id === selectedNode.recipeId;
-    case 'output':
-      return endpoint.kind === 'output' && endpoint.id === selectedNode.targetId;
-    case 'byproduct':
-      return endpoint.kind === 'byproduct' && endpoint.id === selectedNode.itemId;
-  }
+function flowRow(flow: PlanReportFlow): InspectorFlowRow {
+  return {
+    ...itemRateRow(flow),
+    flowKey: flow.flowKey,
+    endpointKindLabel: endpointKindLabel(flow.endpointKind),
+    endpointLabel: flow.endpointLabel,
+  };
 }
 
-function endpointDisplayName(
-  dataset: GameDataset,
-  project: PlannerProject,
-  endpoint: ItemFlowEndpoint,
-): string {
-  switch (endpoint.kind) {
-    case 'resource':
-    case 'externalInput':
-    case 'byproduct':
-      return dataset.items[endpoint.id]?.displayName ?? endpoint.id;
-    case 'recipe':
-      return dataset.recipes[endpoint.id]?.displayName ?? endpoint.id;
-    case 'output': {
-      const target = project.targets.find((candidate) => candidate.id === endpoint.id);
-      return target ? (dataset.items[target.itemId]?.displayName ?? target.itemId) : endpoint.id;
-    }
-  }
-}
-
-function relatedWarnings(
-  result: ProductionPlanResult | null,
-  selectedNode: ProductionGraphNode,
-): InspectorWarningViewModel[] {
-  return warningRows(
-    (result?.warnings ?? []).filter(
-      (warning) =>
-        (selectedNode.itemId !== undefined && warning.itemId === selectedNode.itemId) ||
-        (selectedNode.recipeId !== undefined && warning.recipeId === selectedNode.recipeId),
-    ),
-  );
-}
-
-function warningRows(
-  warnings: readonly ProductionPlanResult['warnings'][number][],
-): InspectorWarningViewModel[] {
-  return warnings.map((warning) => ({
+function warningRow(warning: PlanReportWarning): InspectorWarningViewModel {
+  return {
     code: warning.code,
     message: warning.message,
     ...(warning.itemId !== undefined ? { itemId: warning.itemId } : {}),
     ...(warning.recipeId !== undefined ? { recipeId: warning.recipeId } : {}),
-  }));
-}
-
-function itemRateRows(
-  dataset: GameDataset,
-  amounts: Readonly<Record<ItemId, number>>,
-): InspectorItemRateRow[] {
-  return Object.entries(amounts)
-    .filter(([, amountPerMinute]) => amountPerMinute > MIN_DISPLAY_RATE)
-    .map(([itemId, amountPerMinute]) => itemRateRow(dataset, itemId, amountPerMinute, null))
-    .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
-}
-
-function itemRateRow(
-  dataset: GameDataset,
-  itemId: ItemId,
-  amountPerMinute: number,
-  detail: string | null,
-): InspectorItemRateRow {
-  return {
-    itemId,
-    displayName: dataset.items[itemId]?.displayName ?? itemId,
-    iconSrc: gameIconPathForItemId(itemId),
-    amountPerMinute,
-    amountPerMinuteLabel: `${formatPlannerNumber(amountPerMinute)}/min`,
-    detail,
   };
 }
 
-function resourceCapSourceLabel(
-  enabled: boolean,
-  override: PlannerProject['resourceOverrides'][ItemId] | undefined,
-  baselineCapPerMinute: number | undefined,
-): string {
-  if (!enabled) {
-    return 'Disabled';
+function itemRateRow(rate: PlanReportItemRate): InspectorItemRateRow {
+  return {
+    itemId: rate.itemId,
+    displayName: rate.displayName,
+    iconSrc: gameIconPathForItemId(rate.itemId),
+    amountPerMinute: rate.amountPerMinute,
+    amountPerMinuteLabel: `${formatPlannerNumber(rate.amountPerMinute)}/min`,
+    detail: itemRateDetail(rate.role),
+  };
+}
+
+function itemRateDetail(role: PlanReportItemRateRole | null): string | null {
+  switch (role) {
+    case null:
+      return null;
+    case 'required-input':
+      return 'required input';
+    case 'recipe-output':
+      return 'recipe output';
+    case 'raw-resource-consumption':
+      return 'consumed from raw resources';
+    case 'external-input-supply':
+      return 'supplied externally';
+    case 'maximized-output':
+      return 'maximized output';
+    case 'requested-output':
+      return 'requested output';
+    case 'unused-surplus':
+      return 'unused surplus';
+    case 'nuclear-byproduct':
+      return 'nuclear byproduct';
   }
-  if (
-    override?.maxPerMinute !== undefined &&
-    !resourceCapsEqual(override.maxPerMinute, baselineCapPerMinute)
-  ) {
-    return 'Custom cap';
+}
+
+function generatorName(generatorId: MachineId): string {
+  switch (generatorId) {
+    case 'Build_GeneratorBiomass_Automated_C':
+      return 'Biomass Burner';
+    case 'Build_GeneratorCoal_C':
+      return 'Coal-Powered Generator';
+    case 'Build_GeneratorFuel_C':
+      return 'Fuel-Powered Generator';
+    case 'Build_GeneratorNuclear_C':
+      return 'Nuclear Power Plant';
+    default:
+      return generatorId;
   }
-  return 'Default cap';
+}
+
+function fuelPowerNote(noteKind: OutputFuelPowerNoteKind): string {
+  switch (noteKind) {
+    case 'biomass-demand-scaled':
+      return 'Gross estimate. Biomass Burners scale fuel burn to grid demand.';
+    case 'water-logistics-not-modeled':
+      return 'Gross estimate. Water logistics are not modeled here.';
+    case 'pipe-logistics-not-modeled':
+      return 'Gross estimate. Pipe throughput and generator nodes are not modeled here.';
+    case 'nuclear-byproducts-shown':
+      return 'Gross estimate. Water logistics are not modeled here; nuclear byproducts are shown for planning.';
+    case 'clean-ficsonium':
+      return 'Gross estimate. Water logistics are not modeled here; Ficsonium Fuel Rods burn clean.';
+  }
+}
+
+function resourceCapSourceLabel(source: ResourceCapSource): string {
+  switch (source) {
+    case 'disabled':
+      return 'Disabled';
+    case 'custom':
+      return 'Custom cap';
+    case 'default':
+      return 'Default cap';
+  }
 }
 
 function metric(label: string, value: string, detail: string | null = null): InspectorMetric {
@@ -934,21 +643,7 @@ function nodeKindLabel(kind: ProductionGraphNode['kind']): string {
   }
 }
 
-function compareNodeNoteSummaries(
-  left: InspectorNodeNoteSummary,
-  right: InspectorNodeNoteSummary,
-): number {
-  if (left.visible !== right.visible) {
-    return left.visible ? -1 : 1;
-  }
-  return (
-    left.kindLabel.localeCompare(right.kindLabel) ||
-    left.label.localeCompare(right.label) ||
-    left.nodeId.localeCompare(right.nodeId)
-  );
-}
-
-function endpointKindLabel(kind: ItemFlowEndpoint['kind']): string {
+function endpointKindLabel(kind: PlanReportFlow['endpointKind']): string {
   switch (kind) {
     case 'resource':
       return 'Resource';
@@ -978,57 +673,4 @@ function formatStatus(status: ProductionPlanResult['status']): string {
 
 function formatPower(powerMw: number): string {
   return `${formatPlannerNumber(powerMw)} MW`;
-}
-
-function sumAmounts(rows: readonly InspectorItemRateRow[]): number {
-  return rows.reduce((total, row) => total + row.amountPerMinute, 0);
-}
-
-function biomassGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
-  return {
-    generatorId: 'Build_GeneratorBiomass_Automated_C',
-    generatorName: 'Biomass Burner',
-    generatorPowerMw: 30,
-    fuelPerGeneratorPerMinute,
-    note: 'Gross estimate. Biomass Burners scale fuel burn to grid demand.',
-  };
-}
-
-function coalGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
-  return {
-    generatorId: 'Build_GeneratorCoal_C',
-    generatorName: 'Coal-Powered Generator',
-    generatorPowerMw: 75,
-    fuelPerGeneratorPerMinute,
-    note: 'Gross estimate. Water logistics are not modeled here.',
-  };
-}
-
-function fuelGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {
-  return {
-    generatorId: 'Build_GeneratorFuel_C',
-    generatorName: 'Fuel-Powered Generator',
-    generatorPowerMw: 250,
-    fuelPerGeneratorPerMinute,
-    note: 'Gross estimate. Pipe throughput and generator nodes are not modeled here.',
-  };
-}
-
-function nuclearGeneratorFuel(
-  fuelPerGeneratorPerMinute: number,
-  wasteItemId: ItemId | null,
-  wastePerGeneratorPerMinute: number | null,
-): GeneratorFuelDefinition {
-  return {
-    generatorId: 'Build_GeneratorNuclear_C',
-    generatorName: 'Nuclear Power Plant',
-    generatorPowerMw: 2500,
-    fuelPerGeneratorPerMinute,
-    ...(wasteItemId === null ? {} : { wasteItemId }),
-    ...(wastePerGeneratorPerMinute === null ? {} : { wastePerGeneratorPerMinute }),
-    note:
-      wasteItemId === null
-        ? 'Gross estimate. Water logistics are not modeled here; Ficsonium Fuel Rods burn clean.'
-        : 'Gross estimate. Water logistics are not modeled here; nuclear byproducts are shown for planning.',
-  };
 }

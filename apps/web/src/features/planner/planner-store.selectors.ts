@@ -9,6 +9,7 @@ import {
 } from '@beltwise/game-data';
 import {
   buildProductionGraph,
+  buildMachinePanelReport,
   type GraphNodeBuildState,
   normalizePlainTextNote,
   type PlannerProject,
@@ -17,6 +18,7 @@ import {
   type ProductionPlanResult,
   type ProductTarget,
   type RateDecimalPlaces,
+  summarizeMachineUsageByMachineId,
 } from '@beltwise/planner-core';
 import { formatPlannerInteger, formatPlannerNumber } from './planner-format.helpers';
 import { gameIconPathForItemId, gameIconPathForMachineId } from './game-icon.helpers';
@@ -189,16 +191,13 @@ export function selectMachineRows(
 export function selectMachinePanelSummary(
   result: ProductionPlanResult | null,
 ): MachinePanelSummary {
-  const machineUsage = result?.machineUsage ?? [];
-  const usageByMachineId = selectMachineUsageByMachineId(result);
-  const totalMachineCount = machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
-  const totalPowerMw = machineUsage.reduce((total, usage) => total + usage.powerMw, 0);
+  const report = buildMachinePanelReport(result);
 
   return {
-    activeRecipeGroupCount: machineUsage.length,
-    usedMachineTypeCount: usageByMachineId.size,
-    totalMachineCountLabel: `${formatPlannerNumber(totalMachineCount)}x`,
-    totalPowerLabel: `${formatPlannerNumber(totalPowerMw)} MW`,
+    activeRecipeGroupCount: report.activeRecipeGroupCount,
+    usedMachineTypeCount: report.usedMachineTypeCount,
+    totalMachineCountLabel: `${formatPlannerNumber(report.totalMachineCount)}x`,
+    totalPowerLabel: `${formatPlannerNumber(report.totalPowerMw)} MW`,
   };
 }
 
@@ -364,37 +363,13 @@ function formatMachinePower(machine: Machine): string | null {
 function selectMachineUsageByMachineId(
   result: ProductionPlanResult | null,
 ): ReadonlyMap<MachineId, MachineUsageSummary> {
-  const summaries = new Map<
-    MachineId,
-    {
-      machineCount: number;
-      powerMw: number;
-      recipeGroupCount: number;
-    }
-  >();
-
-  for (const usage of result?.machineUsage ?? []) {
-    const machineId: MachineId = usage.machineId;
-    const existing = summaries.get(machineId);
-    if (existing) {
-      existing.machineCount += usage.machineCount;
-      existing.powerMw += usage.powerMw;
-      existing.recipeGroupCount += 1;
-      continue;
-    }
-
-    summaries.set(machineId, {
-      machineCount: usage.machineCount,
-      powerMw: usage.powerMw,
-      recipeGroupCount: 1,
-    });
-  }
-
   return new Map(
-    Array.from(summaries.entries()).map(([machineId, summary]) => [
-      machineId,
+    Array.from(summarizeMachineUsageByMachineId(result).values()).map((summary) => [
+      summary.machineId,
       {
-        ...summary,
+        machineCount: summary.machineCount,
+        powerMw: summary.powerMw,
+        recipeGroupCount: summary.recipeGroupCount,
         machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
         powerLabel: `${formatPlannerNumber(summary.powerMw)} MW`,
         recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
