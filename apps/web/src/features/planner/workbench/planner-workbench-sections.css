@@ -1211,7 +1211,7 @@
   top: 0;
   display: grid;
   gap: var(--space-3);
-  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
+  margin: 0 calc(var(--space-4) * -1);
   padding: var(--space-4) var(--space-4) var(--space-3);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 86%, black);
   background: linear-gradient(
