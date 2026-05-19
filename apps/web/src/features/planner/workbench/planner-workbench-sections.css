@@ -1198,6 +1198,66 @@
   margin-top: var(--space-3);
 }
 
+.planner-shell .inspector-shell {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.planner-shell .inspector-summary {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  display: grid;
+  gap: var(--space-3);
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 86%, black);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-panel) 96%, black),
+    color-mix(in srgb, var(--color-panel) 90%, black)
+  );
+}
+
+.planner-shell .inspector-summary .inspector-metric-grid {
+  margin-top: 0;
+}
+
+.planner-shell .inspector-metric-grid--overview {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.planner-shell .inspector-metric-grid--overview > div {
+  min-height: 50px;
+  padding: 7px 8px;
+}
+
+.planner-shell .metric-grid.inspector-metric-grid--overview span {
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.planner-shell .metric-grid.inspector-metric-grid--overview strong {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.planner-shell .metric-grid.inspector-metric-grid--overview em {
+  display: none;
+}
+
+.planner-shell .inspector-content {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+}
+
 .planner-shell .selected-node-panel {
   display: grid;
   gap: var(--space-3);
@@ -1314,11 +1374,47 @@
   min-width: 0;
 }
 
-.planner-shell .inspector-section-heading span {
+.planner-shell .inspector-section-heading__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.planner-shell .inspector-section-heading span,
+.planner-shell .inspector-section-heading__actions span {
   flex: 0 0 auto;
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 750;
+}
+
+.planner-shell .inspector-section-toggle {
+  flex: 0 0 24px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.planner-shell .inspector-section-toggle:hover {
+  color: var(--color-accent-strong);
+}
+
+.planner-shell .inspector-section-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.planner-shell .inspector-section-body[hidden] {
+  display: none;
 }
 
 .planner-shell .inspector-subsection {
