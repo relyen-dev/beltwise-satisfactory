@@ -6,6 +6,7 @@ import {
   mutatePlanGraph,
   mutatePlanItemInputs,
   mutatePlanMetadata,
+  mutatePlanObjective,
   mutatePlanOverrides,
   mutatePlanTargets,
   type PlannerProject,
@@ -138,6 +139,51 @@ describe('plan intent mutations', () => {
         baselineCapPerMinute,
       }).resourceOverrides,
     ).toEqual({});
+  });
+
+  it('marks raw resource multiplier edits as Custom and resets neutral values', () => {
+    const project = createProject();
+
+    const avoidedIron = mutatePlanObjective(project, {
+      type: 'set-objective-raw-resource-multiplier',
+      itemId: 'Desc_OreIron_C',
+      value: 2.5,
+    });
+    expect(avoidedIron.objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 2.5,
+      },
+    });
+
+    const preferredCopper = mutatePlanObjective(avoidedIron, {
+      type: 'set-objective-raw-resource-multiplier',
+      itemId: 'Desc_OreCopper_C',
+      value: 0.5,
+    });
+    expect(preferredCopper.objectiveProfile.rawResourceMultipliers).toEqual({
+      Desc_OreIron_C: 2.5,
+      Desc_OreCopper_C: 0.5,
+    });
+
+    const neutralIron = mutatePlanObjective(preferredCopper, {
+      type: 'set-objective-raw-resource-multiplier',
+      itemId: 'Desc_OreIron_C',
+      value: 1,
+    });
+    expect(neutralIron.objectiveProfile.presetId).toBe('custom');
+    expect(neutralIron.objectiveProfile.rawResourceMultipliers).toEqual({
+      Desc_OreCopper_C: 0.5,
+    });
+
+    const resetCopper = mutatePlanObjective(neutralIron, {
+      type: 'reset-objective-raw-resource-multiplier',
+      itemId: 'Desc_OreCopper_C',
+    });
+    expect(resetCopper.objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {},
+    });
   });
 
   it('removes empty graph node build state after done and note updates', () => {

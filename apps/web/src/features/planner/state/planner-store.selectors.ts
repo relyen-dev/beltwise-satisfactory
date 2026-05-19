@@ -11,6 +11,8 @@ import {
   buildProductionGraph,
   buildMachinePanelReport,
   type GraphNodeBuildState,
+  NEUTRAL_RAW_RESOURCE_MULTIPLIER,
+  type ObjectiveProfile,
   normalizePlainTextNote,
   plannerRelevantMachineIds,
   type PlannerProject,
@@ -19,6 +21,8 @@ import {
   type ProductionPlanResult,
   type ProductTarget,
   type RateDecimalPlaces,
+  rawResourceMultiplierCanAffectRouteCost,
+  sanitizeRawResourceMultiplier,
   solveReadyProject,
   summarizeMachineUsageByMachineId,
 } from '@beltwise/planner-core';
@@ -38,6 +42,15 @@ export interface ResourceRow {
   capInputValue: number | null;
   baselineCapLabel: string;
   effectiveCapLabel: string;
+}
+
+export interface RawResourceMultiplierRow {
+  resource: ResourceInfo;
+  iconSrc: string;
+  multiplier: number;
+  multiplierLabel: string;
+  isNeutral: boolean;
+  stateLabel: string;
 }
 
 export interface ExternalInputRow {
@@ -147,6 +160,33 @@ export function selectResourceRows(
         capInputValue: resourceCapInputValue(storedCapPerMinute),
         baselineCapLabel: formatResourceCap(baselineCapPerMinute),
         effectiveCapLabel: enabled ? formatResourceCap(storedCapPerMinute) : '0/min',
+      };
+    });
+}
+
+export function selectRawResourceMultiplierRows(
+  dataset: GameDataset,
+  profile: ObjectiveProfile,
+): RawResourceMultiplierRow[] {
+  return Object.values(dataset.resources)
+    .filter((resource) => rawResourceMultiplierCanAffectRouteCost(resource.itemId))
+    .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
+    .map((resource) => {
+      const multiplier = sanitizeRawResourceMultiplier(
+        profile.rawResourceMultipliers[resource.itemId] ?? NEUTRAL_RAW_RESOURCE_MULTIPLIER,
+      );
+      const isNeutral = multiplier === NEUTRAL_RAW_RESOURCE_MULTIPLIER;
+      return {
+        resource,
+        iconSrc: gameIconPathForItemId(resource.itemId),
+        multiplier,
+        multiplierLabel: `${formatPlannerNumber(multiplier)}x`,
+        isNeutral,
+        stateLabel: isNeutral
+          ? 'Neutral'
+          : multiplier > NEUTRAL_RAW_RESOURCE_MULTIPLIER
+            ? 'Avoid'
+            : 'Prefer',
       };
     });
 }

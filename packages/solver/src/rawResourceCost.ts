@@ -1,23 +1,13 @@
 import type { GameDataset, ItemId } from '@beltwise/game-data';
-import type { BaselineResourceLimits, PlannerProject } from '@beltwise/planner-core';
+import {
+  defaultRawResourceOpinionMultiplier,
+  type BaselineResourceLimits,
+  type PlannerProject,
+} from '@beltwise/planner-core';
 
 const NEUTRAL_RAW_RESOURCE_SCARCITY_COST = 1;
 
-export const DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS: Readonly<Partial<Record<ItemId, number>>> = {
-  Desc_OreIron_C: 1,
-  Desc_Stone_C: 1,
-  Desc_OreCopper_C: 1,
-  Desc_Coal_C: 1,
-  Desc_LiquidOil_C: 1,
-  Desc_NitrogenGas_C: 1,
-  Desc_OreGold_C: 1,
-  Desc_RawQuartz_C: 1,
-  Desc_Sulfur_C: 1,
-  Desc_OreBauxite_C: 1,
-  Desc_OreUranium_C: 1,
-  Desc_SAM_C: 1,
-  Desc_Water_C: 0,
-};
+export { DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS } from '@beltwise/planner-core';
 
 export interface RawResourceCostInput {
   itemId: ItemId;
@@ -28,7 +18,7 @@ export interface RawResourceCostInput {
 
 export function rawResourceCost(input: RawResourceCostInput): number {
   const scarcityCost = rawResourceScarcityCost(input);
-  const defaultMultiplier = DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS[input.itemId] ?? 1;
+  const defaultMultiplier = defaultRawResourceOpinionMultiplier(input.itemId);
   const userMultiplier = input.project.objectiveProfile.rawResourceMultipliers?.[input.itemId] ?? 1;
   return (
     Math.max(0, input.project.objectiveProfile.resourceScarcityWeight) *

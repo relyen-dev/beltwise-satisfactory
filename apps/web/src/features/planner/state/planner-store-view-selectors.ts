@@ -22,6 +22,7 @@ import {
   selectMachineUsageRows,
   selectProductionGraphInput,
   selectRecipeRows,
+  selectRawResourceMultiplierRows,
   selectResourceRows,
 } from './planner-store.selectors';
 import { selectInspectorViewModel } from './planner-inspector.selectors';
@@ -43,6 +44,12 @@ export class PlannerStoreViewSelectors {
   public readonly itemOptions: Signal<ReturnType<typeof selectItemOptions>>;
   public readonly resourceRows: Signal<ReturnType<typeof selectResourceRows>>;
   public readonly defaultResourceRows: Signal<ReturnType<typeof selectResourceRows>>;
+  public readonly rawResourceMultiplierRows: Signal<
+    ReturnType<typeof selectRawResourceMultiplierRows>
+  >;
+  public readonly defaultRawResourceMultiplierRows: Signal<
+    ReturnType<typeof selectRawResourceMultiplierRows>
+  >;
   public readonly externalInputRows: Signal<ReturnType<typeof selectExternalInputRows>>;
   public readonly machineRows: Signal<ReturnType<typeof selectMachineRows>>;
   public readonly defaultMachineRows: Signal<ReturnType<typeof selectMachineRows>>;
@@ -91,6 +98,24 @@ export class PlannerStoreViewSelectors {
         return [];
       }
       return selectResourceRows(dataset, userDefaults);
+    });
+
+    this.rawResourceMultiplierRows = computed(() => {
+      const dataset = this.options.dataset();
+      const project = this.options.activeProject();
+      if (!dataset || !project) {
+        return [];
+      }
+      return selectRawResourceMultiplierRows(dataset, project.objectiveProfile);
+    });
+
+    this.defaultRawResourceMultiplierRows = computed(() => {
+      const dataset = this.options.dataset();
+      const userDefaults = this.options.userDefaults();
+      if (!dataset || !userDefaults) {
+        return [];
+      }
+      return selectRawResourceMultiplierRows(dataset, userDefaults.objectiveProfile);
     });
 
     this.externalInputRows = computed(() => {

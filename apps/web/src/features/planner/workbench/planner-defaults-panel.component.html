@@ -420,6 +420,83 @@
                   </label>
                 }
               </div>
+
+              <section
+                class="objective-resource-panel"
+                aria-label="Default raw resource route preferences"
+              >
+                <div class="section-heading">
+                  <div>
+                    <h4>Raw resource preferences</h4>
+                    <span
+                      >Higher multipliers avoid that raw resource when feasible. 1x is
+                      neutral.</span
+                    >
+                  </div>
+                </div>
+
+                <div class="objective-resource-grid">
+                  @for (
+                    row of store.defaultRawResourceMultiplierRows();
+                    track row.resource.itemId
+                  ) {
+                    <div
+                      class="objective-resource-row"
+                      [class.objective-resource-row--custom]="!row.isNeutral"
+                    >
+                      <div class="objective-resource-copy">
+                        <div class="objective-resource-title">
+                          <bw-game-icon
+                            [src]="row.iconSrc"
+                            [label]="row.resource.displayName"
+                            [size]="'sm'"
+                            [kind]="'item'"
+                            [showTitle]="true"
+                          />
+                          <span class="objective-resource-name">{{
+                            row.resource.displayName
+                          }}</span>
+                          <span
+                            class="objective-resource-state"
+                            [class.objective-resource-state--neutral]="row.isNeutral"
+                          >
+                            {{ row.stateLabel }}
+                          </span>
+                        </div>
+                        <span class="objective-resource-meta"
+                          >{{ row.multiplierLabel }} route cost</span
+                        >
+                      </div>
+
+                      <label class="objective-resource-multiplier">
+                        <span class="sr-only"
+                          >{{ row.resource.displayName }} default route multiplier</span
+                        >
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.05"
+                          [ngModel]="row.multiplier"
+                          (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
+                        />
+                        <span>x</span>
+                      </label>
+
+                      <button
+                        type="button"
+                        title="Reset default to neutral"
+                        [attr.aria-label]="
+                          'Reset ' + row.resource.displayName + ' default route multiplier'
+                        "
+                        [disabled]="row.isNeutral"
+                        (click)="resetRawResourceMultiplier(row.resource.itemId)"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  }
+                </div>
+              </section>
             </section>
           }
         </section>

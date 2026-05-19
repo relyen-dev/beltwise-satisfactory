@@ -118,6 +118,8 @@ export class PlannerStoreService implements OnDestroy {
   public readonly itemOptions: PlannerStoreViewSelectors['itemOptions'];
   public readonly resourceRows: PlannerStoreViewSelectors['resourceRows'];
   public readonly defaultResourceRows: PlannerStoreViewSelectors['defaultResourceRows'];
+  public readonly rawResourceMultiplierRows: PlannerStoreViewSelectors['rawResourceMultiplierRows'];
+  public readonly defaultRawResourceMultiplierRows: PlannerStoreViewSelectors['defaultRawResourceMultiplierRows'];
   public readonly externalInputRows: PlannerStoreViewSelectors['externalInputRows'];
   public readonly machineRows: PlannerStoreViewSelectors['machineRows'];
   public readonly defaultMachineRows: PlannerStoreViewSelectors['defaultMachineRows'];
@@ -206,6 +208,8 @@ export class PlannerStoreService implements OnDestroy {
     this.itemOptions = this.views.itemOptions;
     this.resourceRows = this.views.resourceRows;
     this.defaultResourceRows = this.views.defaultResourceRows;
+    this.rawResourceMultiplierRows = this.views.rawResourceMultiplierRows;
+    this.defaultRawResourceMultiplierRows = this.views.defaultRawResourceMultiplierRows;
     this.externalInputRows = this.views.externalInputRows;
     this.machineRows = this.views.machineRows;
     this.defaultMachineRows = this.views.defaultMachineRows;
@@ -439,6 +443,14 @@ export class PlannerStoreService implements OnDestroy {
     this.planCommands.setObjectiveWeight(key, value);
   }
 
+  public setObjectiveRawResourceMultiplier(itemId: ItemId, value: number): void {
+    this.planCommands.setObjectiveRawResourceMultiplier(itemId, value);
+  }
+
+  public resetObjectiveRawResourceMultiplier(itemId: ItemId): void {
+    this.planCommands.resetObjectiveRawResourceMultiplier(itemId);
+  }
+
   public setDefaultRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
     this.defaultsCommands.setRecipeEnabled(recipeId, enabled);
   }
@@ -481,6 +493,14 @@ export class PlannerStoreService implements OnDestroy {
 
   public setDefaultObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
     this.defaultsCommands.setObjectiveWeight(key, value);
+  }
+
+  public setDefaultObjectiveRawResourceMultiplier(itemId: ItemId, value: number): void {
+    this.defaultsCommands.setObjectiveRawResourceMultiplier(itemId, value);
+  }
+
+  public resetDefaultObjectiveRawResourceMultiplier(itemId: ItemId): void {
+    this.defaultsCommands.resetObjectiveRawResourceMultiplier(itemId);
   }
 
   public saveActivePlanAsDefaults(): void {

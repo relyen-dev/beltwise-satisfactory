@@ -272,6 +272,31 @@ export class PlannerPlanCommandSlice {
     );
   }
 
+  public setObjectiveRawResourceMultiplier(itemId: ItemId, value: number): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanObjective(project, {
+        type: 'set-objective-raw-resource-multiplier',
+        itemId,
+        value,
+      }),
+    );
+  }
+
+  public resetObjectiveRawResourceMultiplier(itemId: ItemId): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanObjective(project, {
+        type: 'reset-objective-raw-resource-multiplier',
+        itemId,
+      }),
+    );
+  }
+
   public setMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
     this.options.updateActiveProject((project) =>
       mutatePlanGraph(project, { type: 'set-display', patch: { maxBeltTier } }),

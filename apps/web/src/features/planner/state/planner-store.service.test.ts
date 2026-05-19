@@ -568,6 +568,35 @@ describe('PlannerStoreService', () => {
     });
   });
 
+  it('marks raw resource multiplier edits as Custom and resets neutral values', () => {
+    const { store } = createInitializedStore();
+
+    store.setObjectiveRawResourceMultiplier('Desc_OreIron_C', 2.25);
+    expect(requiredProject(store).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 2.25,
+      },
+    });
+
+    store.setObjectiveRawResourceMultiplier('Desc_OreCopper_C', 0.5);
+    expect(requiredProject(store).objectiveProfile.rawResourceMultipliers).toEqual({
+      Desc_OreIron_C: 2.25,
+      Desc_OreCopper_C: 0.5,
+    });
+
+    store.setObjectiveRawResourceMultiplier('Desc_OreIron_C', 1);
+    expect(requiredProject(store).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreCopper_C: 0.5,
+      },
+    });
+
+    store.resetObjectiveRawResourceMultiplier('Desc_OreCopper_C');
+    expect(requiredProject(store).objectiveProfile.rawResourceMultipliers).toEqual({});
+  });
+
   it('applies objective defaults only to newly created projects', () => {
     const originalProject = createProject();
     const { store } = createInitializedStore([originalProject], originalProject.id);
@@ -588,6 +617,41 @@ describe('PlannerStoreService', () => {
     );
   });
 
+  it('applies default raw resource multipliers only to newly created projects', () => {
+    const originalProject = createProject();
+    const { store } = createInitializedStore([originalProject], originalProject.id);
+
+    store.setDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C', 2.5);
+
+    expect(loadedStoreProject(store, originalProject.id).objectiveProfile).toEqual(
+      originalProject.objectiveProfile,
+    );
+    expect(store.userDefaults()?.objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreCopper_C: 2.5,
+      },
+    });
+    store.resetDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C');
+    expect(store.userDefaults()?.objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {},
+    });
+    store.setDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C', 2.5);
+
+    store.createProject();
+
+    expect(requiredProject(store).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreCopper_C: 2.5,
+      },
+    });
+    expect(loadedStoreProject(store, originalProject.id).objectiveProfile).toEqual(
+      originalProject.objectiveProfile,
+    );
+  });
+
   it('does not change objectives while the active plan is locked', () => {
     const { store } = createInitializedStore();
     const before = requiredProject(store).objectiveProfile;
@@ -595,6 +659,8 @@ describe('PlannerStoreService', () => {
     store.setPlanLocked(true);
     store.setObjectivePreset('low-power');
     store.setObjectiveWeight('powerWeight', 5);
+    store.setObjectiveRawResourceMultiplier('Desc_OreIron_C', 2);
+    store.resetObjectiveRawResourceMultiplier('Desc_OreIron_C');
 
     expect(requiredProject(store).objectiveProfile).toEqual(before);
   });
@@ -768,6 +834,7 @@ describe('PlannerStoreService', () => {
     store.setDefaultRecipeEnabled('Recipe_IronPlate_C', false);
     store.setDefaultMachineEnabled('Build_ConstructorMk1_C', false);
     store.setDefaultResourceCap('Desc_OreIron_C', 120);
+    store.setDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C', 2);
     store.setDefaultGraphEdgeStyle('curved');
 
     expect(requiredProject(store)).toEqual(beforeProject);
@@ -779,6 +846,12 @@ describe('PlannerStoreService', () => {
     });
     expect(store.userDefaults()?.resourceOverrides['Desc_OreIron_C']).toEqual({
       maxPerMinute: 120,
+    });
+    expect(store.userDefaults()?.objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreCopper_C: 2,
+      },
     });
     expect(store.userDefaults()?.graphDisplay.edgeStyle).toBe('curved');
   });

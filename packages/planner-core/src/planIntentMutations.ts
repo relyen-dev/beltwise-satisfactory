@@ -2,6 +2,8 @@ import { type ItemId, type MachineId, type RecipeId, type ResourceInfo } from '@
 import {
   createCustomObjectiveProfile,
   createObjectiveProfileFromPreset,
+  resetObjectiveProfileRawResourceMultiplier,
+  setObjectiveProfileRawResourceMultiplier,
   type ConveyorBeltTier,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
@@ -110,6 +112,15 @@ export type PlanObjectiveIntent =
       readonly type: 'set-objective-weight';
       readonly key: ObjectiveWeightKey;
       readonly value: number;
+    }
+  | {
+      readonly type: 'set-objective-raw-resource-multiplier';
+      readonly itemId: ItemId;
+      readonly value: number;
+    }
+  | {
+      readonly type: 'reset-objective-raw-resource-multiplier';
+      readonly itemId: ItemId;
     };
 
 export type PlanGraphIntent =
@@ -222,6 +233,10 @@ export function mutatePlanObjective(
       return setObjectivePreset(project, intent.presetId);
     case 'set-objective-weight':
       return setObjectiveWeight(project, intent.key, intent.value);
+    case 'set-objective-raw-resource-multiplier':
+      return setObjectiveRawResourceMultiplier(project, intent.itemId, intent.value);
+    case 'reset-objective-raw-resource-multiplier':
+      return resetObjectiveRawResourceMultiplier(project, intent.itemId);
   }
 }
 
@@ -502,6 +517,31 @@ export function setObjectiveWeight(
     objectiveProfile: createCustomObjectiveProfile(project.objectiveProfile, {
       [key]: value,
     }),
+  };
+}
+
+export function setObjectiveRawResourceMultiplier(
+  project: PlannerProject,
+  itemId: ItemId,
+  value: number,
+): PlannerProject {
+  return {
+    ...project,
+    objectiveProfile: setObjectiveProfileRawResourceMultiplier(
+      project.objectiveProfile,
+      itemId,
+      value,
+    ),
+  };
+}
+
+export function resetObjectiveRawResourceMultiplier(
+  project: PlannerProject,
+  itemId: ItemId,
+): PlannerProject {
+  return {
+    ...project,
+    objectiveProfile: resetObjectiveProfileRawResourceMultiplier(project.objectiveProfile, itemId),
   };
 }
 

@@ -5,12 +5,14 @@ import {
   createPlannerProject,
   resetAllDefaultResources,
   resetDefaultResource,
+  resetDefaultObjectiveRawResourceMultiplier,
   resetUserDefaultsToBuiltIns,
   saveProjectSettingsAsDefaults,
   setAllDefaultResourcesEnabled,
   setDefaultGraphEdgeStyle,
   setDefaultMachineEnabled,
   setDefaultObjectivePreset,
+  setDefaultObjectiveRawResourceMultiplier,
   setDefaultObjectiveWeight,
   setDefaultRateDecimalPlaces,
   setDefaultRecipeEnabled,
@@ -48,12 +50,8 @@ describe('user defaults intent mutations', () => {
     const baselineCapPerMinute = 600;
 
     expect(
-      setDefaultResourceCap(
-        defaults,
-        'Desc_OreIron_C',
-        baselineCapPerMinute,
-        baselineCapPerMinute,
-      ).resourceOverrides,
+      setDefaultResourceCap(defaults, 'Desc_OreIron_C', baselineCapPerMinute, baselineCapPerMinute)
+        .resourceOverrides,
     ).toEqual({});
 
     const disabled = setDefaultResourceEnabled(
@@ -79,12 +77,8 @@ describe('user defaults intent mutations', () => {
     });
 
     expect(
-      setDefaultResourceEnabled(
-        customDisabled,
-        'Desc_OreIron_C',
-        true,
-        baselineCapPerMinute,
-      ).resourceOverrides['Desc_OreIron_C'],
+      setDefaultResourceEnabled(customDisabled, 'Desc_OreIron_C', true, baselineCapPerMinute)
+        .resourceOverrides['Desc_OreIron_C'],
     ).toEqual({ maxPerMinute: 120 });
 
     expect(resetDefaultResource(customDisabled, 'Desc_OreIron_C').resourceOverrides).toEqual({});
@@ -98,8 +92,9 @@ describe('user defaults intent mutations', () => {
       false,
     );
 
-    expect(Object.values(disabled.resourceOverrides).every((override) => override.enabled === false))
-      .toBe(true);
+    expect(
+      Object.values(disabled.resourceOverrides).every((override) => override.enabled === false),
+    ).toBe(true);
     expect(
       resetAllDefaultResources(disabled, Object.keys(tinySatisfactoryDataset.resources))
         .resourceOverrides,
@@ -111,11 +106,20 @@ describe('user defaults intent mutations', () => {
 
     const lowPower = setDefaultObjectivePreset(defaults, 'low-power');
     const custom = setDefaultObjectiveWeight(lowPower, 'powerWeight', 2);
-    const display = setDefaultGraphEdgeStyle(setDefaultRateDecimalPlaces(custom, 4), 'curved');
+    const avoidedIron = setDefaultObjectiveRawResourceMultiplier(custom, 'Desc_OreIron_C', 2.5);
+    const neutralIron = resetDefaultObjectiveRawResourceMultiplier(avoidedIron, 'Desc_OreIron_C');
+    const display = setDefaultGraphEdgeStyle(setDefaultRateDecimalPlaces(neutralIron, 4), 'curved');
 
     expect(lowPower.objectiveProfile.presetId).toBe('low-power');
     expect(custom.objectiveProfile.presetId).toBe('custom');
     expect(custom.objectiveProfile.powerWeight).toBe(2);
+    expect(avoidedIron.objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      rawResourceMultipliers: {
+        Desc_OreIron_C: 2.5,
+      },
+    });
+    expect(neutralIron.objectiveProfile.rawResourceMultipliers).toEqual({});
     expect(display.graphDisplay.rateDecimalPlaces).toBe(4);
     expect(display.graphDisplay.edgeStyle).toBe('curved');
   });

@@ -10,6 +10,8 @@ import {
   createDefaultUserDefaults,
   createObjectiveProfileFromPreset,
   createUserDefaultsFromProject,
+  resetObjectiveProfileRawResourceMultiplier,
+  setObjectiveProfileRawResourceMultiplier,
   type ConveyorBeltTier,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
@@ -174,6 +176,34 @@ export function setDefaultObjectiveWeight(
     objectiveProfile: createCustomObjectiveProfile(userDefaults.objectiveProfile, {
       [key]: value,
     }),
+  };
+}
+
+export function setDefaultObjectiveRawResourceMultiplier(
+  userDefaults: PlannerUserDefaults,
+  itemId: ItemId,
+  value: number,
+): PlannerUserDefaults {
+  return {
+    ...userDefaults,
+    objectiveProfile: setObjectiveProfileRawResourceMultiplier(
+      userDefaults.objectiveProfile,
+      itemId,
+      value,
+    ),
+  };
+}
+
+export function resetDefaultObjectiveRawResourceMultiplier(
+  userDefaults: PlannerUserDefaults,
+  itemId: ItemId,
+): PlannerUserDefaults {
+  return {
+    ...userDefaults,
+    objectiveProfile: resetObjectiveProfileRawResourceMultiplier(
+      userDefaults.objectiveProfile,
+      itemId,
+    ),
   };
 }
 

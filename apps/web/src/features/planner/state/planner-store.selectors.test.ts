@@ -14,6 +14,7 @@ import {
   selectMachineRows,
   selectMachineUsageRows,
   selectRecipeRows,
+  selectRawResourceMultiplierRows,
   selectResourceRows,
 } from './planner-store.selectors';
 
@@ -62,6 +63,53 @@ describe('planner store selectors', () => {
       capInputValue: 300,
       baselineCapLabel: '300/min',
       effectiveCapLabel: '300/min',
+    });
+  });
+
+  it('builds raw resource multiplier rows with neutral and custom states', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      resources: {
+        ...tinySatisfactoryDataset.resources,
+        Desc_Water_C: {
+          itemId: 'Desc_Water_C',
+          displayName: 'Water',
+          extraction: {
+            allowedExtractors: ['Build_WaterPump_C'],
+            baselineMaxPerMinute: 12_000,
+          },
+        },
+      },
+    };
+    const project: PlannerProject = {
+      ...createProject(),
+      objectiveProfile: {
+        ...createProject().objectiveProfile,
+        rawResourceMultipliers: {
+          Desc_OreIron_C: 2,
+          Desc_Water_C: 3,
+          Desc_Missing_C: 99,
+        },
+      },
+    };
+
+    const rows = selectRawResourceMultiplierRows(dataset, project.objectiveProfile);
+
+    expect(rows.map((row) => row.resource.displayName)).toEqual(['Copper Ore', 'Iron Ore']);
+    expect(rows.some((row) => row.resource.itemId === 'Desc_Water_C')).toBe(false);
+    expect(rows.find((row) => row.resource.itemId === 'Desc_OreCopper_C')).toMatchObject({
+      iconSrc: '/game-icons/Desc_OreCopper_C.png',
+      multiplier: 1,
+      multiplierLabel: '1x',
+      isNeutral: true,
+      stateLabel: 'Neutral',
+    });
+    expect(rows.find((row) => row.resource.itemId === 'Desc_OreIron_C')).toMatchObject({
+      iconSrc: '/game-icons/Desc_OreIron_C.png',
+      multiplier: 2,
+      multiplierLabel: '2x',
+      isNeutral: false,
+      stateLabel: 'Avoid',
     });
   });
 

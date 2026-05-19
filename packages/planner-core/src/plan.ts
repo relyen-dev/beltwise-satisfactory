@@ -195,6 +195,22 @@ export interface PlannerSessionCreateOptions {
 }
 
 export const PLANNER_STORAGE_SCHEMA_VERSION = 3;
+export const NEUTRAL_RAW_RESOURCE_MULTIPLIER = 1;
+export const DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS: Readonly<Partial<Record<ItemId, number>>> = {
+  Desc_OreIron_C: 1,
+  Desc_Stone_C: 1,
+  Desc_OreCopper_C: 1,
+  Desc_Coal_C: 1,
+  Desc_LiquidOil_C: 1,
+  Desc_NitrogenGas_C: 1,
+  Desc_OreGold_C: 1,
+  Desc_RawQuartz_C: 1,
+  Desc_Sulfur_C: 1,
+  Desc_OreBauxite_C: 1,
+  Desc_OreUranium_C: 1,
+  Desc_SAM_C: 1,
+  Desc_Water_C: 0,
+};
 const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const RESOURCE_EFFICIENT_RESOURCE_SCARCITY_WEIGHT = 1;
 const RESOURCE_EFFICIENT_POWER_WEIGHT = 0.15;
@@ -372,6 +388,37 @@ export function createCustomObjectiveProfile(
   };
 }
 
+export function setObjectiveProfileRawResourceMultiplier(
+  profile: ObjectiveProfile,
+  itemId: ItemId,
+  value: number,
+): ObjectiveProfile {
+  const rawResourceMultipliers = { ...profile.rawResourceMultipliers };
+  const multiplier = sanitizeRawResourceMultiplier(value);
+  if (multiplier === NEUTRAL_RAW_RESOURCE_MULTIPLIER) {
+    delete rawResourceMultipliers[itemId];
+  } else {
+    rawResourceMultipliers[itemId] = multiplier;
+  }
+
+  return {
+    ...createCustomObjectiveProfile(profile),
+    rawResourceMultipliers,
+  };
+}
+
+export function resetObjectiveProfileRawResourceMultiplier(
+  profile: ObjectiveProfile,
+  itemId: ItemId,
+): ObjectiveProfile {
+  const rawResourceMultipliers = { ...profile.rawResourceMultipliers };
+  delete rawResourceMultipliers[itemId];
+  return {
+    ...createCustomObjectiveProfile(profile),
+    rawResourceMultipliers,
+  };
+}
+
 export function resolveObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId {
   if (profile.presetId === 'custom') {
     return 'custom';
@@ -396,6 +443,18 @@ export function objectivePresetDefinition(presetId: ObjectivePresetId): Objectiv
 
 export function sanitizeObjectiveWeight(value: number): number {
   return sanitizeTransferWeight(value);
+}
+
+export function sanitizeRawResourceMultiplier(value: number): number {
+  return sanitizeTransferWeight(value);
+}
+
+export function defaultRawResourceOpinionMultiplier(itemId: ItemId): number {
+  return DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS[itemId] ?? NEUTRAL_RAW_RESOURCE_MULTIPLIER;
+}
+
+export function rawResourceMultiplierCanAffectRouteCost(itemId: ItemId): boolean {
+  return defaultRawResourceOpinionMultiplier(itemId) > 0;
 }
 
 export function createDefaultRecipeOverrides(

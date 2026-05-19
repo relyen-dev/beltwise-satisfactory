@@ -5,6 +5,7 @@ import {
   countConfiguredTargets,
   filterItemsBySearch,
   parsePlannerNumber,
+  parseRawResourceMultiplierInput,
 } from './planner-ui.helpers';
 
 describe('planner UI helpers', () => {
@@ -13,6 +14,17 @@ describe('planner UI helpers', () => {
     expect(parsePlannerNumber('24.5')).toBe(24.5);
     expect(parsePlannerNumber('not a number')).toBe(0);
     expect(parsePlannerNumber(null)).toBe(0);
+  });
+
+  it('parses blank and invalid raw resource multipliers as neutral', () => {
+    expect(parseRawResourceMultiplierInput(2.5)).toBe(2.5);
+    expect(parseRawResourceMultiplierInput('0.5')).toBe(0.5);
+    expect(parseRawResourceMultiplierInput('')).toBe(1);
+    expect(parseRawResourceMultiplierInput('   ')).toBe(1);
+    expect(parseRawResourceMultiplierInput('not a number')).toBe(1);
+    expect(parseRawResourceMultiplierInput(-1)).toBe(1);
+    expect(parseRawResourceMultiplierInput('-1')).toBe(1);
+    expect(parseRawResourceMultiplierInput(null)).toBe(1);
   });
 
   it('counts only targets with selected items as configured outputs', () => {

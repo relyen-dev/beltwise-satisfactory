@@ -12,6 +12,7 @@ import {
   type RateDecimalPlaces,
   resetAllDefaultResources,
   resetDefaultResource,
+  resetDefaultObjectiveRawResourceMultiplier,
   resetUserDefaultsToBuiltIns,
   saveProjectSettingsAsDefaults,
   setAllDefaultResourcesEnabled,
@@ -22,6 +23,7 @@ import {
   setDefaultMaxBeltTier,
   setDefaultMaxPipeTier,
   setDefaultObjectivePreset,
+  setDefaultObjectiveRawResourceMultiplier,
   setDefaultObjectiveWeight,
   setDefaultRateDecimalPlaces,
   setDefaultRecipeEnabled,
@@ -95,9 +97,7 @@ export class PlannerDefaultsCommandSlice {
   }
 
   public resetResource(itemId: ItemId): void {
-    this.options.updateUserDefaults((userDefaults) =>
-      resetDefaultResource(userDefaults, itemId),
-    );
+    this.options.updateUserDefaults((userDefaults) => resetDefaultResource(userDefaults, itemId));
   }
 
   public resetAllResources(): void {
@@ -108,11 +108,7 @@ export class PlannerDefaultsCommandSlice {
 
   public setAllResourcesEnabled(enabled: boolean): void {
     this.options.updateUserDefaults((userDefaults, dataset) =>
-      setAllDefaultResourcesEnabled(
-        userDefaults,
-        Object.values(dataset.resources),
-        enabled,
-      ),
+      setAllDefaultResourcesEnabled(userDefaults, Object.values(dataset.resources), enabled),
     );
   }
 
@@ -125,6 +121,18 @@ export class PlannerDefaultsCommandSlice {
   public setObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
     this.options.updateUserDefaults((userDefaults) =>
       setDefaultObjectiveWeight(userDefaults, key, value),
+    );
+  }
+
+  public setObjectiveRawResourceMultiplier(itemId: ItemId, value: number): void {
+    this.options.updateUserDefaults((userDefaults) =>
+      setDefaultObjectiveRawResourceMultiplier(userDefaults, itemId, value),
+    );
+  }
+
+  public resetObjectiveRawResourceMultiplier(itemId: ItemId): void {
+    this.options.updateUserDefaults((userDefaults) =>
+      resetDefaultObjectiveRawResourceMultiplier(userDefaults, itemId),
     );
   }
 

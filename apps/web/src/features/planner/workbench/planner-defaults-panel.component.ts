@@ -24,7 +24,10 @@ import {
 import { GameIconComponent } from '../shared-ui/game-icon.component';
 import { PlannerStoreService } from '../state/planner-store.service';
 import { type MachineRow, type RecipeRow } from '../state/planner-store.selectors';
-import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
+import {
+  parsePlannerNumber,
+  parseRawResourceMultiplierInput,
+} from '../shared-ui/planner-ui.helpers';
 
 type DefaultsPanelTab = 'recipes' | 'machines' | 'resources' | 'objectives' | 'display';
 type RecipeDefaultsPanel = 'standard' | 'converterResources' | 'alternates';
@@ -156,5 +159,16 @@ export class PlannerDefaultsPanelComponent {
 
   public setObjectiveWeight(key: ObjectiveWeightKey, value: string | number | null): void {
     this.store.setDefaultObjectiveWeight(key, parsePlannerNumber(value));
+  }
+
+  public setRawResourceMultiplier(itemId: ItemId, value: string | number | null): void {
+    this.store.setDefaultObjectiveRawResourceMultiplier(
+      itemId,
+      parseRawResourceMultiplierInput(value),
+    );
+  }
+
+  public resetRawResourceMultiplier(itemId: ItemId): void {
+    this.store.resetDefaultObjectiveRawResourceMultiplier(itemId);
   }
 }

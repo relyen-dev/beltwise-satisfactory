@@ -1,9 +1,17 @@
 import type { Item } from '@beltwise/game-data';
-import type { ProductTarget } from '@beltwise/planner-core';
+import { NEUTRAL_RAW_RESOURCE_MULTIPLIER, type ProductTarget } from '@beltwise/planner-core';
 
 export function parsePlannerNumber(value: string | number | null): number {
   const parsed = typeof value === 'number' ? value : Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function parseRawResourceMultiplierInput(value: string | number | null): number {
+  if (value === null || (typeof value === 'string' && value.trim().length === 0)) {
+    return NEUTRAL_RAW_RESOURCE_MULTIPLIER;
+  }
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : NEUTRAL_RAW_RESOURCE_MULTIPLIER;
 }
 
 export function countConfiguredTargets(targets: readonly ProductTarget[]): number {

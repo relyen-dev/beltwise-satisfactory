@@ -10,6 +10,7 @@ import {
   hydratePlannerProject,
   hydratePlannerUserDefaults,
   isCustomObjectiveProfile,
+  rawResourceMultiplierCanAffectRouteCost,
   resolveObjectivePresetId,
 } from '@beltwise/planner-core';
 
@@ -37,6 +38,12 @@ describe('createPlannerProject', () => {
     });
     expect(resolveObjectivePresetId(profile)).toBe('low-power');
     expect(isCustomObjectiveProfile(profile)).toBe(false);
+  });
+
+  it('identifies which raw resource multipliers can affect route cost', () => {
+    expect(rawResourceMultiplierCanAffectRouteCost('Desc_OreIron_C')).toBe(true);
+    expect(rawResourceMultiplierCanAffectRouteCost('Desc_Water_C')).toBe(false);
+    expect(rawResourceMultiplierCanAffectRouteCost('Desc_FutureResource_C')).toBe(true);
   });
 
   it('detects manually edited objective weights as Custom', () => {
