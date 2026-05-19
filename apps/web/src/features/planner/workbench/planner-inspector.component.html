@@ -1,20 +1,23 @@
-<div class="panel-heading">
-  <div>
-    <h2>Inspector</h2>
-    <span>Context follows graph selection</span>
-  </div>
-</div>
+@let vm = store.inspectorViewModel();
 
-@if (store.solveError()) {
-  <div class="warning-block" role="alert">{{ store.solveError() }}</div>
-}
+<div class="inspector-shell">
+  <div class="inspector-summary">
+    <div class="panel-heading">
+      <div>
+        <h2>Inspector</h2>
+        <span>Context follows graph selection</span>
+      </div>
+    </div>
 
-@if (store.inspectorViewModel(); as vm) {
-  @if (vm.mode === 'selected') {
-    <bw-selected-node-inspector />
-  } @else {
-    @if (vm.overview; as overview) {
-      <div class="metric-grid inspector-metric-grid" aria-label="Plan metrics">
+    @if (store.solveError()) {
+      <div class="warning-block" role="alert">{{ store.solveError() }}</div>
+    }
+
+    @if (vm?.mode !== 'selected' && vm?.overview; as overview) {
+      <div
+        class="metric-grid inspector-metric-grid inspector-metric-grid--overview"
+        aria-label="Plan metrics"
+      >
         @for (metric of overview.metrics; track metric.label) {
           <div>
             <span>{{ metric.label }}</span>
@@ -25,242 +28,407 @@
           </div>
         }
       </div>
+    }
+  </div>
 
-      <section class="inspector-section" aria-labelledby="inspector-objective-heading">
-        <div class="inspector-section-heading">
-          <h3 id="inspector-objective-heading">Objective</h3>
-          <span>{{ overview.objective.label }}</span>
-        </div>
-        <div class="inspector-fact-list">
-          <div>
-            <span>Preset</span>
-            <strong>{{ overview.objective.label }}</strong>
-          </div>
-        </div>
-        <p class="inspector-list-note">{{ overview.objective.detail }}</p>
-      </section>
-
-      <section class="inspector-section" aria-labelledby="inspector-notes-heading">
-        <div class="inspector-section-heading">
-          <h3 id="inspector-notes-heading">Notes</h3>
-          <span>
-            {{ overview.notes.nodeNotes.length }}
-            {{ overview.notes.nodeNotes.length === 1 ? 'node' : 'nodes' }}
-          </span>
-        </div>
-        <div class="inspector-fact-list">
-          <div>
-            <span>Plan note</span>
-            <strong>{{ overview.notes.hasPlanNote ? 'Present' : 'Empty' }}</strong>
-          </div>
-          <div>
-            <span>Node notes</span>
-            <strong>
-              {{ overview.notes.visibleNodeNoteCount }} visible /
-              {{ overview.notes.staleNodeNoteCount }} hidden
-            </strong>
-          </div>
-        </div>
-        @if (overview.notes.hasPlanNote) {
-          <p class="inspector-note-preview">{{ overview.notes.planNote }}</p>
-        }
-        @if (overview.notes.nodeNotes.length > 0) {
-          <div class="inspector-list">
-            @for (note of overview.notes.nodeNotes; track note.nodeId) {
-              @if (note.visible) {
+  @if (vm; as inspectorVm) {
+    <div class="inspector-content">
+      @if (inspectorVm.mode === 'selected') {
+        <bw-selected-node-inspector />
+      } @else {
+        @if (inspectorVm.overview; as overview) {
+          @let objectiveCollapsed = isOverviewSectionCollapsed('objective');
+          <section class="inspector-section" aria-labelledby="inspector-objective-heading">
+            <div class="inspector-section-heading">
+              <h3 id="inspector-objective-heading">Objective</h3>
+              <div class="inspector-section-heading__actions">
+                <span>{{ overview.objective.label }}</span>
                 <button
                   type="button"
-                  class="inspector-row inspector-note-row inspector-note-row--action"
-                  [title]="'Select ' + note.label"
-                  (click)="store.selectGraphNode(note.nodeId)"
+                  class="inspector-section-toggle"
+                  [attr.aria-expanded]="!objectiveCollapsed"
+                  aria-controls="inspector-objective-content"
+                  [attr.aria-label]="objectiveCollapsed ? 'Expand Objective' : 'Collapse Objective'"
+                  [title]="objectiveCollapsed ? 'Expand Objective' : 'Collapse Objective'"
+                  (click)="toggleOverviewSection('objective')"
                 >
-                  <span class="inspector-row__copy">
-                    <strong>{{ note.label }}</strong>
-                    <span>{{ note.kindLabel }} / {{ note.visibilityLabel }}</span>
-                    <span class="inspector-note-row__note">{{ note.note }}</span>
-                  </span>
+                  {{ objectiveCollapsed ? '+' : '-' }}
                 </button>
-              } @else {
-                <div class="inspector-row inspector-note-row inspector-note-row--stale">
-                  <span class="inspector-row__copy">
-                    <strong>{{ note.label }}</strong>
-                    <span>{{ note.visibilityLabel }}</span>
-                    <span class="inspector-note-row__note">{{ note.note }}</span>
-                  </span>
+              </div>
+            </div>
+            <div
+              id="inspector-objective-content"
+              class="inspector-section-body"
+              [hidden]="objectiveCollapsed"
+            >
+              <div class="inspector-fact-list">
+                <div>
+                  <span>Preset</span>
+                  <strong>{{ overview.objective.label }}</strong>
                 </div>
+              </div>
+              <p class="inspector-list-note">{{ overview.objective.detail }}</p>
+            </div>
+          </section>
+
+          @let notesDefaultCollapsed =
+            !overview.notes.hasPlanNote && overview.notes.nodeNotes.length === 0;
+          @let notesCollapsed = isOverviewSectionCollapsed('notes', notesDefaultCollapsed);
+          <section class="inspector-section" aria-labelledby="inspector-notes-heading">
+            <div class="inspector-section-heading">
+              <h3 id="inspector-notes-heading">Notes</h3>
+              <div class="inspector-section-heading__actions">
+                <span>
+                  {{ overview.notes.nodeNotes.length }}
+                  {{ overview.notes.nodeNotes.length === 1 ? 'node' : 'nodes' }}
+                </span>
+                <button
+                  type="button"
+                  class="inspector-section-toggle"
+                  [attr.aria-expanded]="!notesCollapsed"
+                  aria-controls="inspector-notes-content"
+                  [attr.aria-label]="notesCollapsed ? 'Expand Notes' : 'Collapse Notes'"
+                  [title]="notesCollapsed ? 'Expand Notes' : 'Collapse Notes'"
+                  (click)="toggleOverviewSection('notes', notesDefaultCollapsed)"
+                >
+                  {{ notesCollapsed ? '+' : '-' }}
+                </button>
+              </div>
+            </div>
+            <div
+              id="inspector-notes-content"
+              class="inspector-section-body"
+              [hidden]="notesCollapsed"
+            >
+              <div class="inspector-fact-list">
+                <div>
+                  <span>Plan note</span>
+                  <strong>{{ overview.notes.hasPlanNote ? 'Present' : 'Empty' }}</strong>
+                </div>
+                <div>
+                  <span>Node notes</span>
+                  <strong>
+                    {{ overview.notes.visibleNodeNoteCount }} visible /
+                    {{ overview.notes.staleNodeNoteCount }} hidden
+                  </strong>
+                </div>
+              </div>
+              @if (overview.notes.hasPlanNote) {
+                <p class="inspector-note-preview">{{ overview.notes.planNote }}</p>
               }
-            }
-          </div>
-        } @else {
-          <p class="inspector-empty">No graph node notes yet.</p>
-        }
-      </section>
-
-      <section class="inspector-section" aria-labelledby="inspector-targets-heading">
-        <div class="inspector-section-heading">
-          <h3 id="inspector-targets-heading">Targets</h3>
-          <span>{{ overview.targets.length }}</span>
-        </div>
-        @if (overview.targets.length > 0) {
-          <div class="inspector-list">
-            @for (target of overview.targets; track target.targetId) {
-              <div class="inspector-row">
-                <bw-game-icon
-                  [src]="target.iconSrc"
-                  [label]="target.displayName"
-                  [size]="'sm'"
-                  [kind]="'item'"
-                  [showTitle]="true"
-                />
-                <span class="inspector-row__copy">
-                  <strong>{{ target.displayName }}</strong>
-                  <span>{{ target.modeLabel }}</span>
-                </span>
-                <span class="inspector-row__value">{{ target.amountLabel }}</span>
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="inspector-empty">No output targets configured.</p>
-        }
-      </section>
-
-      <section class="inspector-section" aria-labelledby="inspector-raw-heading">
-        <div class="inspector-section-heading">
-          <h3 id="inspector-raw-heading">Top Raw Inputs</h3>
-          <span>{{ overview.topRawInputs.length }}</span>
-        </div>
-        @if (overview.topRawInputs.length > 0) {
-          <div class="inspector-list">
-            @for (row of overview.topRawInputs; track row.itemId) {
-              <div class="inspector-row">
-                <bw-game-icon
-                  [src]="row.iconSrc"
-                  [label]="row.displayName"
-                  [size]="'sm'"
-                  [kind]="'item'"
-                  [showTitle]="true"
-                />
-                <span class="inspector-row__copy">
-                  <strong>{{ row.displayName }}</strong>
-                  @if (row.detail) {
-                    <span>{{ row.detail }}</span>
+              @if (overview.notes.nodeNotes.length > 0) {
+                <div class="inspector-list">
+                  @for (note of overview.notes.nodeNotes; track note.nodeId) {
+                    @if (note.visible) {
+                      <button
+                        type="button"
+                        class="inspector-row inspector-note-row inspector-note-row--action"
+                        [title]="'Select ' + note.label"
+                        (click)="store.selectGraphNode(note.nodeId)"
+                      >
+                        <span class="inspector-row__copy">
+                          <strong>{{ note.label }}</strong>
+                          <span>{{ note.kindLabel }} / {{ note.visibilityLabel }}</span>
+                          <span class="inspector-note-row__note">{{ note.note }}</span>
+                        </span>
+                      </button>
+                    } @else {
+                      <div class="inspector-row inspector-note-row inspector-note-row--stale">
+                        <span class="inspector-row__copy">
+                          <strong>{{ note.label }}</strong>
+                          <span>{{ note.visibilityLabel }}</span>
+                          <span class="inspector-note-row__note">{{ note.note }}</span>
+                        </span>
+                      </div>
+                    }
                   }
-                </span>
-                <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="inspector-empty">No raw resource draw in the current solution.</p>
-        }
-      </section>
-
-      @if (overview.externalInputs.length > 0) {
-        <section class="inspector-section" aria-labelledby="inspector-external-heading">
-          <div class="inspector-section-heading">
-            <h3 id="inspector-external-heading">External Inputs</h3>
-            <span>{{ overview.externalInputs.length }}</span>
-          </div>
-          <div class="inspector-list">
-            @for (row of overview.externalInputs; track row.itemId) {
-              <div class="inspector-row">
-                <bw-game-icon
-                  [src]="row.iconSrc"
-                  [label]="row.displayName"
-                  [size]="'sm'"
-                  [kind]="'item'"
-                  [showTitle]="true"
-                />
-                <span class="inspector-row__copy">
-                  <strong>{{ row.displayName }}</strong>
-                  <span>supplied externally</span>
-                </span>
-                <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
-      @if (overview.surplus.length > 0) {
-        <section class="inspector-section" aria-labelledby="inspector-surplus-heading">
-          <div class="inspector-section-heading">
-            <h3 id="inspector-surplus-heading">Surplus</h3>
-            <span>{{ overview.surplus.length }}</span>
-          </div>
-          <div class="inspector-list">
-            @for (row of overview.surplus; track row.itemId) {
-              <div class="inspector-row">
-                <bw-game-icon
-                  [src]="row.iconSrc"
-                  [label]="row.displayName"
-                  [size]="'sm'"
-                  [kind]="'item'"
-                  [showTitle]="true"
-                />
-                <span class="inspector-row__copy">
-                  <strong>{{ row.displayName }}</strong>
-                  <span>unused byproduct</span>
-                </span>
-                <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
-      <section class="inspector-section" aria-labelledby="inspector-machines-heading">
-        <div class="inspector-section-heading">
-          <h3 id="inspector-machines-heading">Machine Types</h3>
-          <span>{{ overview.machineSummaryTotalCount }}</span>
-        </div>
-        @if (overview.machineSummary.length > 0) {
-          <div class="machine-usage-list machine-usage-list--compact">
-            @for (row of overview.machineSummary; track row.machineId) {
-              <div class="usage-row inspector-usage-row">
-                <div class="usage-machine-copy">
-                  <span class="usage-machine-line">
-                    <bw-game-icon
-                      [src]="row.machineIconSrc"
-                      [label]="row.machineDisplayName"
-                      [size]="'md'"
-                      [kind]="'machine'"
-                      [showTitle]="true"
-                    />
-                    <span class="usage-recipe-name">{{ row.machineDisplayName }}</span>
-                  </span>
-                  <span class="inspector-usage-row__meta">
-                    {{ row.recipeGroupCountLabel }} / {{ row.powerLabel }}
-                  </span>
                 </div>
-                <strong>{{ row.machineCountLabel }}</strong>
-              </div>
-            }
-            @if (overview.hiddenMachineSummaryCount > 0) {
-              <p class="inspector-list-note">
-                {{ overview.hiddenMachineSummaryCount }} more machine types in the Machines panel
-              </p>
-            }
-          </div>
-        } @else {
-          <p class="inspector-empty">No active machines in the current solution.</p>
-        }
-      </section>
+              } @else {
+                <p class="inspector-empty">No graph node notes yet.</p>
+              }
+            </div>
+          </section>
 
-      @if (overview.warnings.length > 0) {
-        <section class="inspector-section" aria-labelledby="inspector-warnings-heading">
-          <div class="inspector-section-heading">
-            <h3 id="inspector-warnings-heading">Warnings</h3>
-            <span>{{ overview.warnings.length }}</span>
-          </div>
-          <div class="warning-list">
-            @for (warning of overview.warnings; track warning.code + warning.message) {
-              <div class="warning-block">{{ warning.message }}</div>
-            }
-          </div>
-        </section>
+          @let targetsCollapsed = isOverviewSectionCollapsed('targets');
+          <section class="inspector-section" aria-labelledby="inspector-targets-heading">
+            <div class="inspector-section-heading">
+              <h3 id="inspector-targets-heading">Targets</h3>
+              <div class="inspector-section-heading__actions">
+                <span>{{ overview.targets.length }}</span>
+                <button
+                  type="button"
+                  class="inspector-section-toggle"
+                  [attr.aria-expanded]="!targetsCollapsed"
+                  aria-controls="inspector-targets-content"
+                  [attr.aria-label]="targetsCollapsed ? 'Expand Targets' : 'Collapse Targets'"
+                  [title]="targetsCollapsed ? 'Expand Targets' : 'Collapse Targets'"
+                  (click)="toggleOverviewSection('targets')"
+                >
+                  {{ targetsCollapsed ? '+' : '-' }}
+                </button>
+              </div>
+            </div>
+            <div
+              id="inspector-targets-content"
+              class="inspector-section-body"
+              [hidden]="targetsCollapsed"
+            >
+              @if (overview.targets.length > 0) {
+                <div class="inspector-list">
+                  @for (target of overview.targets; track target.targetId) {
+                    <div class="inspector-row">
+                      <bw-game-icon
+                        [src]="target.iconSrc"
+                        [label]="target.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                      <span class="inspector-row__copy">
+                        <strong>{{ target.displayName }}</strong>
+                        <span>{{ target.modeLabel }}</span>
+                      </span>
+                      <span class="inspector-row__value">{{ target.amountLabel }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="inspector-empty">No output targets configured.</p>
+              }
+            </div>
+          </section>
+
+          @let rawInputsCollapsed = isOverviewSectionCollapsed('raw-inputs');
+          <section class="inspector-section" aria-labelledby="inspector-raw-heading">
+            <div class="inspector-section-heading">
+              <h3 id="inspector-raw-heading">Top Raw Inputs</h3>
+              <div class="inspector-section-heading__actions">
+                <span>{{ overview.topRawInputs.length }}</span>
+                <button
+                  type="button"
+                  class="inspector-section-toggle"
+                  [attr.aria-expanded]="!rawInputsCollapsed"
+                  aria-controls="inspector-raw-content"
+                  [attr.aria-label]="
+                    rawInputsCollapsed ? 'Expand Top Raw Inputs' : 'Collapse Top Raw Inputs'
+                  "
+                  [title]="rawInputsCollapsed ? 'Expand Top Raw Inputs' : 'Collapse Top Raw Inputs'"
+                  (click)="toggleOverviewSection('raw-inputs')"
+                >
+                  {{ rawInputsCollapsed ? '+' : '-' }}
+                </button>
+              </div>
+            </div>
+            <div
+              id="inspector-raw-content"
+              class="inspector-section-body"
+              [hidden]="rawInputsCollapsed"
+            >
+              @if (overview.topRawInputs.length > 0) {
+                <div class="inspector-list">
+                  @for (row of overview.topRawInputs; track row.itemId) {
+                    <div class="inspector-row">
+                      <bw-game-icon
+                        [src]="row.iconSrc"
+                        [label]="row.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                      <span class="inspector-row__copy">
+                        <strong>{{ row.displayName }}</strong>
+                        @if (row.detail) {
+                          <span>{{ row.detail }}</span>
+                        }
+                      </span>
+                      <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="inspector-empty">No raw resource draw in the current solution.</p>
+              }
+            </div>
+          </section>
+
+          @if (overview.externalInputs.length > 0) {
+            @let externalInputsCollapsed = isOverviewSectionCollapsed('external-inputs');
+            <section class="inspector-section" aria-labelledby="inspector-external-heading">
+              <div class="inspector-section-heading">
+                <h3 id="inspector-external-heading">External Inputs</h3>
+                <div class="inspector-section-heading__actions">
+                  <span>{{ overview.externalInputs.length }}</span>
+                  <button
+                    type="button"
+                    class="inspector-section-toggle"
+                    [attr.aria-expanded]="!externalInputsCollapsed"
+                    aria-controls="inspector-external-content"
+                    [attr.aria-label]="
+                      externalInputsCollapsed
+                        ? 'Expand External Inputs'
+                        : 'Collapse External Inputs'
+                    "
+                    [title]="
+                      externalInputsCollapsed
+                        ? 'Expand External Inputs'
+                        : 'Collapse External Inputs'
+                    "
+                    (click)="toggleOverviewSection('external-inputs')"
+                  >
+                    {{ externalInputsCollapsed ? '+' : '-' }}
+                  </button>
+                </div>
+              </div>
+              <div
+                id="inspector-external-content"
+                class="inspector-section-body"
+                [hidden]="externalInputsCollapsed"
+              >
+                <div class="inspector-list">
+                  @for (row of overview.externalInputs; track row.itemId) {
+                    <div class="inspector-row">
+                      <bw-game-icon
+                        [src]="row.iconSrc"
+                        [label]="row.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                      <span class="inspector-row__copy">
+                        <strong>{{ row.displayName }}</strong>
+                        <span>supplied externally</span>
+                      </span>
+                      <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </section>
+          }
+
+          @if (overview.surplus.length > 0) {
+            @let surplusCollapsed = isOverviewSectionCollapsed('surplus');
+            <section class="inspector-section" aria-labelledby="inspector-surplus-heading">
+              <div class="inspector-section-heading">
+                <h3 id="inspector-surplus-heading">Surplus</h3>
+                <div class="inspector-section-heading__actions">
+                  <span>{{ overview.surplus.length }}</span>
+                  <button
+                    type="button"
+                    class="inspector-section-toggle"
+                    [attr.aria-expanded]="!surplusCollapsed"
+                    aria-controls="inspector-surplus-content"
+                    [attr.aria-label]="surplusCollapsed ? 'Expand Surplus' : 'Collapse Surplus'"
+                    [title]="surplusCollapsed ? 'Expand Surplus' : 'Collapse Surplus'"
+                    (click)="toggleOverviewSection('surplus')"
+                  >
+                    {{ surplusCollapsed ? '+' : '-' }}
+                  </button>
+                </div>
+              </div>
+              <div
+                id="inspector-surplus-content"
+                class="inspector-section-body"
+                [hidden]="surplusCollapsed"
+              >
+                <div class="inspector-list">
+                  @for (row of overview.surplus; track row.itemId) {
+                    <div class="inspector-row">
+                      <bw-game-icon
+                        [src]="row.iconSrc"
+                        [label]="row.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                      <span class="inspector-row__copy">
+                        <strong>{{ row.displayName }}</strong>
+                        <span>unused byproduct</span>
+                      </span>
+                      <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </section>
+          }
+
+          @let machinesCollapsed = isOverviewSectionCollapsed('machines');
+          <section class="inspector-section" aria-labelledby="inspector-machines-heading">
+            <div class="inspector-section-heading">
+              <h3 id="inspector-machines-heading">Machine Types</h3>
+              <div class="inspector-section-heading__actions">
+                <span>{{ overview.machineSummaryTotalCount }}</span>
+                <button
+                  type="button"
+                  class="inspector-section-toggle"
+                  [attr.aria-expanded]="!machinesCollapsed"
+                  aria-controls="inspector-machines-content"
+                  [attr.aria-label]="
+                    machinesCollapsed ? 'Expand Machine Types' : 'Collapse Machine Types'
+                  "
+                  [title]="machinesCollapsed ? 'Expand Machine Types' : 'Collapse Machine Types'"
+                  (click)="toggleOverviewSection('machines')"
+                >
+                  {{ machinesCollapsed ? '+' : '-' }}
+                </button>
+              </div>
+            </div>
+            <div
+              id="inspector-machines-content"
+              class="inspector-section-body"
+              [hidden]="machinesCollapsed"
+            >
+              @if (overview.machineSummary.length > 0) {
+                <div class="machine-usage-list machine-usage-list--compact">
+                  @for (row of overview.machineSummary; track row.machineId) {
+                    <div class="usage-row inspector-usage-row">
+                      <div class="usage-machine-copy">
+                        <span class="usage-machine-line">
+                          <bw-game-icon
+                            [src]="row.machineIconSrc"
+                            [label]="row.machineDisplayName"
+                            [size]="'md'"
+                            [kind]="'machine'"
+                            [showTitle]="true"
+                          />
+                          <span class="usage-recipe-name">{{ row.machineDisplayName }}</span>
+                        </span>
+                        <span class="inspector-usage-row__meta">
+                          {{ row.recipeGroupCountLabel }} / {{ row.powerLabel }}
+                        </span>
+                      </div>
+                      <strong>{{ row.machineCountLabel }}</strong>
+                    </div>
+                  }
+                  @if (overview.hiddenMachineSummaryCount > 0) {
+                    <p class="inspector-list-note">
+                      {{ overview.hiddenMachineSummaryCount }} more machine types in the Machines
+                      panel
+                    </p>
+                  }
+                </div>
+              } @else {
+                <p class="inspector-empty">No active machines in the current solution.</p>
+              }
+            </div>
+          </section>
+
+          @if (overview.warnings.length > 0) {
+            <section class="inspector-section" aria-labelledby="inspector-warnings-heading">
+              <div class="inspector-section-heading">
+                <h3 id="inspector-warnings-heading">Warnings</h3>
+                <span>{{ overview.warnings.length }}</span>
+              </div>
+              <div id="inspector-warnings-content" class="inspector-section-body warning-list">
+                @for (warning of overview.warnings; track warning.code + warning.message) {
+                  <div class="warning-block">{{ warning.message }}</div>
+                }
+              </div>
+            </section>
+          }
+        }
       }
-    }
+    </div>
   }
-}
+</div>
