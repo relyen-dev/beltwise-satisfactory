@@ -10,8 +10,26 @@ import {
   type PlannerProject,
   type PlannerUserDefaults,
   type RateDecimalPlaces,
+  resetAllDefaultResources,
+  resetDefaultResource,
+  resetUserDefaultsToBuiltIns,
+  saveProjectSettingsAsDefaults,
+  setAllDefaultResourcesEnabled,
+  setDefaultAnimateFlowLines,
+  setDefaultGraphEdgeStyle,
+  setDefaultMachineEnabled,
+  setDefaultMachinesEnabled,
+  setDefaultMaxBeltTier,
+  setDefaultMaxPipeTier,
+  setDefaultObjectivePreset,
+  setDefaultObjectiveWeight,
+  setDefaultRateDecimalPlaces,
+  setDefaultRecipeEnabled,
+  setDefaultRecipesEnabled,
+  setDefaultResourceCap,
+  setDefaultResourceEnabled,
+  setDefaultShowTransportLabels,
 } from '@beltwise/planner-core';
-import * as defaultsMutations from './planner-defaults-mutations';
 
 interface PlannerDefaultsCommandSliceOptions {
   readonly dataset: Signal<GameDataset | null>;
@@ -26,7 +44,7 @@ export class PlannerDefaultsCommandSlice {
 
   public setRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultRecipeEnabled(userDefaults, recipeId, enabled),
+      setDefaultRecipeEnabled(userDefaults, recipeId, enabled),
     );
   }
 
@@ -35,13 +53,13 @@ export class PlannerDefaultsCommandSlice {
       return;
     }
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultRecipesEnabled(userDefaults, recipeIds, enabled),
+      setDefaultRecipesEnabled(userDefaults, recipeIds, enabled),
     );
   }
 
   public setMachineEnabled(machineId: MachineId, enabled: boolean): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultMachineEnabled(userDefaults, machineId, enabled),
+      setDefaultMachineEnabled(userDefaults, machineId, enabled),
     );
   }
 
@@ -50,13 +68,13 @@ export class PlannerDefaultsCommandSlice {
       return;
     }
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultMachinesEnabled(userDefaults, machineIds, enabled),
+      setDefaultMachinesEnabled(userDefaults, machineIds, enabled),
     );
   }
 
   public setResourceCap(itemId: ItemId, maxPerMinute: number): void {
     this.options.updateUserDefaults((userDefaults, dataset) =>
-      defaultsMutations.setDefaultResourceCap(
+      setDefaultResourceCap(
         userDefaults,
         itemId,
         maxPerMinute,
@@ -67,7 +85,7 @@ export class PlannerDefaultsCommandSlice {
 
   public setResourceEnabled(itemId: ItemId, enabled: boolean): void {
     this.options.updateUserDefaults((userDefaults, dataset) =>
-      defaultsMutations.setDefaultResourceEnabled(
+      setDefaultResourceEnabled(
         userDefaults,
         itemId,
         enabled,
@@ -78,19 +96,19 @@ export class PlannerDefaultsCommandSlice {
 
   public resetResource(itemId: ItemId): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.resetDefaultResource(userDefaults, itemId),
+      resetDefaultResource(userDefaults, itemId),
     );
   }
 
   public resetAllResources(): void {
     this.options.updateUserDefaults((userDefaults, dataset) =>
-      defaultsMutations.resetAllDefaultResources(userDefaults, Object.keys(dataset.resources)),
+      resetAllDefaultResources(userDefaults, Object.keys(dataset.resources)),
     );
   }
 
   public setAllResourcesEnabled(enabled: boolean): void {
     this.options.updateUserDefaults((userDefaults, dataset) =>
-      defaultsMutations.setAllDefaultResourcesEnabled(
+      setAllDefaultResourcesEnabled(
         userDefaults,
         Object.values(dataset.resources),
         enabled,
@@ -100,49 +118,49 @@ export class PlannerDefaultsCommandSlice {
 
   public setObjectivePreset(presetId: ObjectivePresetId): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultObjectivePreset(userDefaults, presetId),
+      setDefaultObjectivePreset(userDefaults, presetId),
     );
   }
 
   public setObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultObjectiveWeight(userDefaults, key, value),
+      setDefaultObjectiveWeight(userDefaults, key, value),
     );
   }
 
   public setMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultMaxBeltTier(userDefaults, maxBeltTier),
+      setDefaultMaxBeltTier(userDefaults, maxBeltTier),
     );
   }
 
   public setMaxPipeTier(maxPipeTier: PipelineTier): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultMaxPipeTier(userDefaults, maxPipeTier),
+      setDefaultMaxPipeTier(userDefaults, maxPipeTier),
     );
   }
 
   public setRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultRateDecimalPlaces(userDefaults, rateDecimalPlaces),
+      setDefaultRateDecimalPlaces(userDefaults, rateDecimalPlaces),
     );
   }
 
   public setGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultGraphEdgeStyle(userDefaults, edgeStyle),
+      setDefaultGraphEdgeStyle(userDefaults, edgeStyle),
     );
   }
 
   public setShowTransportLabels(showTransportLabels: boolean): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultShowTransportLabels(userDefaults, showTransportLabels),
+      setDefaultShowTransportLabels(userDefaults, showTransportLabels),
     );
   }
 
   public setAnimateFlowLines(animateFlowLines: boolean): void {
     this.options.updateUserDefaults((userDefaults) =>
-      defaultsMutations.setDefaultAnimateFlowLines(userDefaults, animateFlowLines),
+      setDefaultAnimateFlowLines(userDefaults, animateFlowLines),
     );
   }
 
@@ -151,12 +169,12 @@ export class PlannerDefaultsCommandSlice {
     if (!project) {
       return;
     }
-    this.options.updateUserDefaults(() => defaultsMutations.saveProjectSettingsAsDefaults(project));
+    this.options.updateUserDefaults(() => saveProjectSettingsAsDefaults(project));
   }
 
   public resetUserDefaults(): void {
     this.options.updateUserDefaults((_userDefaults, dataset) =>
-      defaultsMutations.resetUserDefaultsToBuiltIns(dataset),
+      resetUserDefaultsToBuiltIns(dataset),
     );
   }
 }

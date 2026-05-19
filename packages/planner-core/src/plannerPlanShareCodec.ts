@@ -16,7 +16,10 @@ import {
   type ProductTarget,
   resolveObjectivePresetId,
 } from './plan';
-import type { BeltwisePlanImportWarning } from './plannerPlanExportCodec';
+import {
+  datasetImportWarnings,
+  type BeltwisePlanImportWarning,
+} from './plannerDatasetTransferWarnings';
 import {
   isPlanTransferRecord,
   isSafePlanTransferRecordKey,
@@ -217,7 +220,7 @@ export function decodeBeltwisePlanShare(
       p: projectPayload,
     },
     project,
-    warnings: datasetImportWarnings(datasetMetadata, dataset),
+    warnings: datasetImportWarnings(datasetMetadata, dataset, 'shared'),
   };
 }
 
@@ -588,36 +591,6 @@ function readDatasetMetadata(value: unknown): BeltwisePlanShareDatasetMetadataV1
     gameVersionLabel,
     ...(fingerprint !== undefined ? { fingerprint } : {}),
   };
-}
-
-function datasetImportWarnings(
-  exportedDataset: BeltwisePlanShareDatasetMetadataV1,
-  currentDataset: GameDataset,
-): BeltwisePlanImportWarning[] {
-  const fingerprintDiffers =
-    exportedDataset.fingerprint !== undefined &&
-    currentDataset.source.fingerprint !== undefined &&
-    exportedDataset.fingerprint !== currentDataset.source.fingerprint;
-  const metadataDiffers =
-    exportedDataset.id !== currentDataset.id ||
-    exportedDataset.gameVersionLabel !== currentDataset.gameVersionLabel ||
-    fingerprintDiffers;
-
-  if (!metadataDiffers) {
-    return [];
-  }
-
-  return [
-    {
-      code: 'dataset-mismatch',
-      message:
-        `This plan was shared with dataset ${exportedDataset.id} ` +
-        `(${exportedDataset.gameVersionLabel}) and was imported with the current ` +
-        `dataset ${currentDataset.id} (${currentDataset.gameVersionLabel}).`,
-      exportedDatasetId: exportedDataset.id,
-      currentDatasetId: currentDataset.id,
-    },
-  ];
 }
 
 function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | null {

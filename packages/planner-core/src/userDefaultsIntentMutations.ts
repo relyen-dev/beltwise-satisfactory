@@ -10,18 +10,23 @@ import {
   createDefaultUserDefaults,
   createObjectiveProfileFromPreset,
   createUserDefaultsFromProject,
-  defaultResourceCapPerMinute,
   type ConveyorBeltTier,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
-  normalizeResourceOverride,
   type ObjectivePresetId,
-  type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
   type PlannerUserDefaults,
   type RateDecimalPlaces,
-} from '@beltwise/planner-core';
+} from './plan';
+import type { ObjectiveWeightKey } from './planIntentMutations';
+import {
+  resetResourceOverride,
+  resetResourceOverrides,
+  setAllResourceOverridesEnabled,
+  setResourceOverrideCap,
+  setResourceOverrideEnabled,
+} from './resourceOverrideMutations';
 
 export function setDefaultRecipeEnabled(
   userDefaults: PlannerUserDefaults,
@@ -81,19 +86,14 @@ export function setDefaultResourceCap(
   maxPerMinute: number,
   baselineCapPerMinute: number | undefined,
 ): PlannerUserDefaults {
-  const safeMaxPerMinute = Math.max(0, Number.isFinite(maxPerMinute) ? maxPerMinute : 0);
-  const currentOverride = userDefaults.resourceOverrides[itemId];
-  const nextOverride = normalizeResourceOverride(
-    {
-      ...(currentOverride?.enabled === false ? { enabled: false } : {}),
-      maxPerMinute: safeMaxPerMinute,
-    },
-    baselineCapPerMinute,
-  );
-
   return {
     ...userDefaults,
-    resourceOverrides: withOptionalOverride(userDefaults.resourceOverrides, itemId, nextOverride),
+    resourceOverrides: setResourceOverrideCap(
+      userDefaults.resourceOverrides,
+      itemId,
+      maxPerMinute,
+      baselineCapPerMinute,
+    ),
   };
 }
 
@@ -103,23 +103,14 @@ export function setDefaultResourceEnabled(
   enabled: boolean,
   baselineCapPerMinute: number | undefined,
 ): PlannerUserDefaults {
-  const currentOverride = userDefaults.resourceOverrides[itemId];
-  const currentCapPerMinute = currentOverride?.maxPerMinute ?? baselineCapPerMinute;
-  const nextOverride = enabled
-    ? normalizeResourceOverride(
-        {
-          ...(currentCapPerMinute !== undefined ? { maxPerMinute: currentCapPerMinute } : {}),
-        },
-        baselineCapPerMinute,
-      )
-    : {
-        enabled: false,
-        ...(currentCapPerMinute !== undefined ? { maxPerMinute: currentCapPerMinute } : {}),
-      };
-
   return {
     ...userDefaults,
-    resourceOverrides: withOptionalOverride(userDefaults.resourceOverrides, itemId, nextOverride),
+    resourceOverrides: setResourceOverrideEnabled(
+      userDefaults.resourceOverrides,
+      itemId,
+      enabled,
+      baselineCapPerMinute,
+    ),
   };
 }
 
@@ -129,7 +120,7 @@ export function resetDefaultResource(
 ): PlannerUserDefaults {
   return {
     ...userDefaults,
-    resourceOverrides: withoutOverride(userDefaults.resourceOverrides, itemId),
+    resourceOverrides: resetResourceOverride(userDefaults.resourceOverrides, itemId),
   };
 }
 
@@ -137,11 +128,10 @@ export function resetAllDefaultResources(
   userDefaults: PlannerUserDefaults,
   resourceIds: readonly ItemId[],
 ): PlannerUserDefaults {
-  let resourceOverrides = userDefaults.resourceOverrides;
-  for (const itemId of resourceIds) {
-    resourceOverrides = withoutOverride(resourceOverrides, itemId);
-  }
-  return { ...userDefaults, resourceOverrides };
+  return {
+    ...userDefaults,
+    resourceOverrides: resetResourceOverrides(userDefaults.resourceOverrides, resourceIds),
+  };
 }
 
 export function setAllDefaultResourcesEnabled(
@@ -149,25 +139,14 @@ export function setAllDefaultResourcesEnabled(
   resources: readonly ResourceInfo[],
   enabled: boolean,
 ): PlannerUserDefaults {
-  let resourceOverrides = { ...userDefaults.resourceOverrides };
-  for (const resource of resources) {
-    const baselineCapPerMinute = defaultResourceCapPerMinute(resource);
-    const currentOverride = userDefaults.resourceOverrides[resource.itemId];
-    const currentCapPerMinute = currentOverride?.maxPerMinute ?? baselineCapPerMinute;
-    const nextOverride = enabled
-      ? normalizeResourceOverride(
-          {
-            ...(currentCapPerMinute !== undefined ? { maxPerMinute: currentCapPerMinute } : {}),
-          },
-          baselineCapPerMinute,
-        )
-      : {
-          enabled: false,
-          ...(currentCapPerMinute !== undefined ? { maxPerMinute: currentCapPerMinute } : {}),
-        };
-    resourceOverrides = withOptionalOverride(resourceOverrides, resource.itemId, nextOverride);
-  }
-  return { ...userDefaults, resourceOverrides };
+  return {
+    ...userDefaults,
+    resourceOverrides: setAllResourceOverridesEnabled(
+      userDefaults.resourceOverrides,
+      resources,
+      enabled,
+    ),
+  };
 }
 
 export function setDefaultObjectivePreset(
@@ -259,27 +238,4 @@ function setDefaultGraphDisplay(
       ...patch,
     },
   };
-}
-
-function withOptionalOverride<TOverride>(
-  overrides: Record<string, TOverride>,
-  id: string,
-  override: TOverride | undefined,
-): Record<string, TOverride> {
-  if (override === undefined) {
-    return withoutOverride(overrides, id);
-  }
-  return {
-    ...overrides,
-    [id]: override,
-  };
-}
-
-function withoutOverride<TOverride>(
-  overrides: Record<string, TOverride>,
-  id: string,
-): Record<string, TOverride> {
-  const next = { ...overrides };
-  delete next[id];
-  return next;
 }

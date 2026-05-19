@@ -3,7 +3,7 @@ import {
   defaultResourceCapPerMinute,
   isUnlimitedResourceCap,
   resourceCapsEqual,
-} from './planIntentMutations';
+} from './resourceOverrideMutations';
 import {
   normalizePlainTextNote,
   objectivePresetDefinition,

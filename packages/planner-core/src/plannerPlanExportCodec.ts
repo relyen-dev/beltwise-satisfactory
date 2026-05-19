@@ -5,7 +5,14 @@ import {
   encodeStoredPlannerProject,
   type StoredPlannerProjectV1,
 } from './plannerPersistenceCodec';
+import {
+  datasetImportWarnings,
+  type BeltwisePlanImportWarning,
+  type BeltwisePlanImportWarningCode,
+} from './plannerDatasetTransferWarnings';
 import { isPlanTransferRecord, readTransferString } from './planTransferFieldCodecs';
+
+export type { BeltwisePlanImportWarning, BeltwisePlanImportWarningCode };
 
 export const BELTWISE_PLAN_EXPORT_KIND = 'beltwise.plan';
 export const BELTWISE_PLAN_EXPORT_FORMAT_VERSION = 1;
@@ -74,15 +81,6 @@ export type BeltwisePlanImportErrorCode =
 export interface BeltwisePlanImportError {
   code: BeltwisePlanImportErrorCode;
   message: string;
-}
-
-export type BeltwisePlanImportWarningCode = 'dataset-mismatch';
-
-export interface BeltwisePlanImportWarning {
-  code: BeltwisePlanImportWarningCode;
-  message: string;
-  exportedDatasetId: string;
-  currentDatasetId: string;
 }
 
 export function encodeBeltwisePlanExport(
@@ -174,7 +172,11 @@ export function decodeBeltwisePlanExport(
       project: projectPayload,
     },
     project,
-    warnings: datasetImportWarnings(datasetMetadata, dataset),
+    warnings: datasetImportWarnings(
+      exportDatasetMetadataForWarning(datasetMetadata),
+      dataset,
+      'exported',
+    ),
   };
 }
 
@@ -296,36 +298,14 @@ function readDatasetSourceMetadata(
   };
 }
 
-function datasetImportWarnings(
-  exportedDataset: BeltwisePlanExportDatasetMetadataV1,
-  currentDataset: GameDataset,
-): BeltwisePlanImportWarning[] {
-  const exportedFingerprint = exportedDataset.source.fingerprint;
-  const currentFingerprint = currentDataset.source.fingerprint;
-  const fingerprintDiffers =
-    exportedFingerprint !== undefined &&
-    currentFingerprint !== undefined &&
-    exportedFingerprint !== currentFingerprint;
-  const metadataDiffers =
-    exportedDataset.datasetId !== currentDataset.id ||
-    exportedDataset.gameVersionLabel !== currentDataset.gameVersionLabel ||
-    fingerprintDiffers;
-
-  if (!metadataDiffers) {
-    return [];
-  }
-
-  return [
-    {
-      code: 'dataset-mismatch',
-      message:
-        `This plan was exported with dataset ${exportedDataset.datasetId} ` +
-        `(${exportedDataset.gameVersionLabel}) and was imported with the current ` +
-        `dataset ${currentDataset.id} (${currentDataset.gameVersionLabel}).`,
-      exportedDatasetId: exportedDataset.datasetId,
-      currentDatasetId: currentDataset.id,
-    },
-  ];
+function exportDatasetMetadataForWarning(datasetMetadata: BeltwisePlanExportDatasetMetadataV1) {
+  return {
+    id: datasetMetadata.datasetId,
+    gameVersionLabel: datasetMetadata.gameVersionLabel,
+    ...(datasetMetadata.source.fingerprint !== undefined
+      ? { fingerprint: datasetMetadata.source.fingerprint }
+      : {}),
+  };
 }
 
 function isStoredPlannerProjectV1(value: unknown): value is StoredPlannerProjectV1 {
