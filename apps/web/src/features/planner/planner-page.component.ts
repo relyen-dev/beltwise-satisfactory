@@ -30,7 +30,10 @@ import {
 import { PlannerRecipesSectionComponent } from './workbench/planner-recipes-section.component';
 import { PlannerResourcesSectionComponent } from './workbench/planner-resources-section.component';
 import { GameIconComponent } from './shared-ui/game-icon.component';
-import { selectCompactPlanDockItems, selectPlanDockItems } from './state/planner-plan-dock.selectors';
+import {
+  selectCompactPlanDockItems,
+  selectPlanDockItems,
+} from './state/planner-plan-dock.selectors';
 import {
   projectRequiresDeleteConfirmation,
   sessionRequiresDeleteConfirmation,
@@ -94,11 +97,13 @@ export class PlannerPageComponent implements OnInit {
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
   public readonly activePlanTrigger = viewChild<ElementRef<HTMLElement>>('activePlanTrigger');
+  private readonly inspectorPanel = viewChild<ElementRef<HTMLElement>>('inspectorPanel');
   public readonly planSelectorOptions = viewChildren<ElementRef<HTMLElement>>('planSelectorOption');
   public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
   private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
   private readonly projectNameEditProjectId = signal<string | null>(null);
   private readonly sessionNameEditSessionId = signal<string | null>(null);
+  private inspectorScrollContext: string | null = null;
   public readonly projectNameDraft = signal('');
   public readonly sessionNameDraft = signal('');
   public readonly projectNameEditing = computed(() => {
@@ -161,6 +166,22 @@ export class PlannerPageComponent implements OnInit {
         }
 
         this.importPlanShareCodeFromLocation();
+      },
+      { injector: this.injector },
+    );
+
+    effect(
+      () => {
+        const panel = this.inspectorPanel()?.nativeElement;
+        const context = `${this.store.activeProjectId() ?? 'no-project'}:${
+          this.store.selectedGraphNodeId() ?? 'overview'
+        }`;
+        if (!panel || context === this.inspectorScrollContext) {
+          return;
+        }
+
+        this.inspectorScrollContext = context;
+        scrollElementToTopAfterRender(() => this.inspectorPanel()?.nativeElement);
       },
       { injector: this.injector },
     );
@@ -583,6 +604,20 @@ function focusElementAfterRender(element: () => HTMLElement | undefined, attempt
     }
     if (attempts > 0) {
       focusElementAfterRender(element, attempts - 1);
+    }
+  });
+}
+
+function scrollElementToTopAfterRender(element: () => HTMLElement | undefined, attempts = 4): void {
+  setTimeout(() => {
+    const target = element();
+    if (target) {
+      target.scrollTop = 0;
+      target.scrollLeft = 0;
+      return;
+    }
+    if (attempts > 0) {
+      scrollElementToTopAfterRender(element, attempts - 1);
     }
   });
 }
