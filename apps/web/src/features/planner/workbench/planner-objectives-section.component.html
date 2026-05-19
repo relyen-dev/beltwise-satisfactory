@@ -63,11 +63,28 @@
         <div class="section-heading">
           <div>
             <h4>Raw resource preferences</h4>
-            <span>Higher multipliers avoid that raw resource when feasible. 1x is neutral.</span>
+            <span>Built-in cost x custom multiplier = effective cost.</span>
           </div>
         </div>
+        <p class="objective-resource-note">
+          Built-in cost is normalized so the cheapest raw resource starts at 1. Lower effective cost
+          is cheaper and can be used more where routes are feasible; higher cost is avoided when
+          alternatives exist.
+        </p>
 
         <div class="objective-resource-grid">
+          <div class="objective-resource-row objective-resource-row--head" aria-hidden="true">
+            <span>Resource</span>
+            <span class="objective-resource-formula objective-resource-formula--head">
+              <span>Built-in</span>
+              <span></span>
+              <span>Custom</span>
+              <span></span>
+              <span>Effective</span>
+            </span>
+            <span></span>
+          </div>
+
           @for (row of store.rawResourceMultiplierRows(); track row.resource.itemId) {
             <div
               class="objective-resource-row"
@@ -90,21 +107,47 @@
                     {{ row.stateLabel }}
                   </span>
                 </div>
-                <span class="objective-resource-meta">{{ row.multiplierLabel }} route cost</span>
               </div>
 
-              <label class="objective-resource-multiplier">
-                <span class="sr-only">{{ row.resource.displayName }} route multiplier</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.05"
-                  [disabled]="store.planLocked()"
-                  [ngModel]="row.multiplier"
-                  (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
-                />
-                <span>x</span>
-              </label>
+              <div
+                class="objective-resource-formula"
+                role="group"
+                [attr.aria-label]="
+                  row.resource.displayName +
+                  ' route cost: built-in ' +
+                  row.builtInCostLabel +
+                  ' times custom ' +
+                  row.multiplierLabel +
+                  ' equals effective ' +
+                  row.effectiveCostLabel
+                "
+              >
+                <span class="objective-resource-factor">
+                  <strong>{{ row.builtInCostLabel }}</strong>
+                </span>
+                <span class="objective-resource-operator" aria-hidden="true">x</span>
+                <label class="objective-resource-multiplier">
+                  <span class="sr-only">{{ row.resource.displayName }} custom multiplier</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.05"
+                    [attr.aria-label]="row.resource.displayName + ' custom route multiplier'"
+                    [attr.aria-describedby]="'objective-resource-cost-' + row.resource.itemId"
+                    [disabled]="store.planLocked()"
+                    [ngModel]="row.multiplier"
+                    (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
+                  />
+                </label>
+                <span class="objective-resource-operator" aria-hidden="true">=</span>
+                <span class="objective-resource-factor objective-resource-factor--effective">
+                  <strong>{{ row.effectiveCostLabel }}</strong>
+                </span>
+                <span class="sr-only" [id]="'objective-resource-cost-' + row.resource.itemId">
+                  Built-in cost {{ row.builtInCostLabel }} times custom multiplier
+                  {{ row.multiplierLabel }} equals effective cost {{ row.effectiveCostLabel }}.
+                </span>
+              </div>
 
               <button
                 type="button"

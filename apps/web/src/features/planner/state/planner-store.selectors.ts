@@ -10,6 +10,7 @@ import {
 import {
   buildProductionGraph,
   buildMachinePanelReport,
+  defaultRawResourceOpinionMultiplier,
   type GraphNodeBuildState,
   NEUTRAL_RAW_RESOURCE_MULTIPLIER,
   type ObjectiveProfile,
@@ -47,8 +48,12 @@ export interface ResourceRow {
 export interface RawResourceMultiplierRow {
   resource: ResourceInfo;
   iconSrc: string;
+  builtInCost: number;
+  builtInCostLabel: string;
   multiplier: number;
   multiplierLabel: string;
+  effectiveCost: number;
+  effectiveCostLabel: string;
   isNeutral: boolean;
   stateLabel: string;
 }
@@ -168,19 +173,34 @@ export function selectRawResourceMultiplierRows(
   dataset: GameDataset,
   profile: ObjectiveProfile,
 ): RawResourceMultiplierRow[] {
-  return Object.values(dataset.resources)
-    .filter((resource) => rawResourceMultiplierCanAffectRouteCost(resource.itemId))
-    .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
+  const candidates = Object.values(dataset.resources)
     .map((resource) => {
+      const builtInCost = builtInRawResourceCost(resource);
+      return builtInCost > 0 && rawResourceMultiplierCanAffectRouteCost(resource.itemId)
+        ? { resource, builtInCost }
+        : undefined;
+    })
+    .filter(isDefined);
+  const lowestBuiltInCost = Math.min(...candidates.map((candidate) => candidate.builtInCost));
+
+  return candidates
+    .toSorted((left, right) => left.resource.displayName.localeCompare(right.resource.displayName))
+    .map(({ resource, builtInCost }) => {
+      const builtInRelativeCost = builtInCost / lowestBuiltInCost;
       const multiplier = sanitizeRawResourceMultiplier(
         profile.rawResourceMultipliers[resource.itemId] ?? NEUTRAL_RAW_RESOURCE_MULTIPLIER,
       );
+      const effectiveCost = builtInRelativeCost * multiplier;
       const isNeutral = multiplier === NEUTRAL_RAW_RESOURCE_MULTIPLIER;
       return {
         resource,
         iconSrc: gameIconPathForItemId(resource.itemId),
+        builtInCost: builtInRelativeCost,
+        builtInCostLabel: formatRouteCost(builtInRelativeCost),
         multiplier,
         multiplierLabel: `${formatPlannerNumber(multiplier)}x`,
+        effectiveCost,
+        effectiveCostLabel: formatRouteCost(effectiveCost),
         isNeutral,
         stateLabel: isNeutral
           ? 'Neutral'
@@ -398,6 +418,23 @@ function formatMachinePower(machine: Machine): string | null {
     )} MW`;
   }
   return machine.powerMw === undefined ? null : `${formatPowerValue(machine.powerMw)} MW`;
+}
+
+function builtInRawResourceCost(resource: ResourceInfo): number {
+  return defaultRawResourceOpinionMultiplier(resource.itemId) * rawResourceScarcityCost(resource);
+}
+
+function rawResourceScarcityCost(resource: ResourceInfo): number {
+  const baselineCapPerMinute = defaultResourceCapPerMinute(resource);
+  return baselineCapPerMinute !== undefined &&
+    Number.isFinite(baselineCapPerMinute) &&
+    baselineCapPerMinute > 0
+    ? 1 / baselineCapPerMinute
+    : 1;
+}
+
+function formatRouteCost(value: number): string {
+  return formatPlannerNumber(value);
 }
 
 function selectMachineUsageByMachineId(
