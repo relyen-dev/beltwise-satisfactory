@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -58,7 +57,6 @@ const RECENT_PLAN_MEMORY_LIMIT = 12;
   selector: 'bw-planner-page',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     PlannerDefaultsPanelComponent,
     PlannerDisplaySectionComponent,

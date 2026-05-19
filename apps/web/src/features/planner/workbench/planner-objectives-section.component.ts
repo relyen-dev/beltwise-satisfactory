@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { type ItemId } from '@beltwise/game-data';
@@ -26,7 +25,7 @@ interface ObjectiveWeightControl {
 @Component({
   selector: 'bw-planner-objectives-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, GameIconComponent],
+  imports: [FormsModule, GameIconComponent],
   templateUrl: './planner-objectives-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

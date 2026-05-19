@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type {
@@ -34,7 +33,7 @@ interface EdgeStyleOption {
 @Component({
   selector: 'bw-planner-display-section',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './planner-display-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

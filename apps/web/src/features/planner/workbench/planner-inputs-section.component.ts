@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
@@ -28,7 +27,7 @@ let nextDraftExternalInputId = 0;
 @Component({
   selector: 'bw-planner-inputs-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, TargetItemPickerComponent],
+  imports: [FormsModule, TargetItemPickerComponent],
   templateUrl: './planner-inputs-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

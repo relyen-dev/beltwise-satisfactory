@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -68,7 +67,7 @@ interface ObjectiveWeightControl {
 @Component({
   selector: 'bw-planner-defaults-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, GameIconComponent],
+  imports: [FormsModule, GameIconComponent],
   templateUrl: './planner-defaults-panel.component.html',
   styleUrl: './planner-defaults-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { type RecipeId } from '@beltwise/game-data';
@@ -11,7 +10,7 @@ type BaseRecipePanel = 'standard' | 'converterResources';
 @Component({
   selector: 'bw-planner-recipes-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, GameIconComponent],
+  imports: [FormsModule, GameIconComponent],
   templateUrl: './planner-recipes-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -26,6 +25,9 @@ export class PlannerRecipesSectionComponent {
   });
 
   public setRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {
-    this.store.setRecipesEnabled(rows.map((row): RecipeId => row.recipe.id), enabled);
+    this.store.setRecipesEnabled(
+      rows.map((row): RecipeId => row.recipe.id),
+      enabled,
+    );
   }
 }

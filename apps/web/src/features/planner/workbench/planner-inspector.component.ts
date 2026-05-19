@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
 import { PlannerStoreService } from '../state/planner-store.service';
@@ -16,7 +15,7 @@ type InspectorOverviewSectionId =
 @Component({
   selector: 'bw-planner-inspector',
   standalone: true,
-  imports: [CommonModule, GameIconComponent, SelectedNodeInspectorComponent],
+  imports: [GameIconComponent, SelectedNodeInspectorComponent],
   templateUrl: './planner-inspector.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

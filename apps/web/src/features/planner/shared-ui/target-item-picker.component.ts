@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,7 +27,7 @@ let nextTargetItemPickerId = 0;
 @Component({
   selector: 'bw-target-item-picker',
   standalone: true,
-  imports: [CommonModule, FormsModule, GameIconComponent],
+  imports: [FormsModule, GameIconComponent],
   templateUrl: './target-item-picker.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -19,10 +19,11 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "@angular/cli": "^20.3.0",
-    "@angular-devkit/build-angular": "^20.3.0",
-    "@angular/compiler-cli": "^20.3.0",
+    "@angular-devkit/build-angular": "^21.2.11",
+    "@angular/cli": "^21.2.11",
+    "@angular/compiler-cli": "^21.2.13",
     "@types/node": "^22.15.0",
+    "jsdom": "^29.1.1",
     "prettier": "^3.5.3",
     "tsx": "^4.20.3",
     "typescript": "~5.9.3",

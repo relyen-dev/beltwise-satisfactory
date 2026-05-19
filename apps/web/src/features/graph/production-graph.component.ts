@@ -7,7 +7,7 @@ import {
   output,
   viewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import type { GameDataset } from '@beltwise/game-data';
 import {
   applyGraphLayout,
@@ -47,7 +47,7 @@ type CanvasFitTarget = Pick<FCanvasComponent, 'fitToScreen'>;
 @Component({
   selector: 'bw-production-graph',
   standalone: true,
-  imports: [CommonModule, FFlowModule],
+  imports: [FFlowModule],
   providers: [{ provide: F_CONNECTION_BUILDERS, useValue: FOBLEX_CONNECTION_BUILDERS }],
   templateUrl: './production-graph.component.html',
   styleUrl: './production-graph.component.css',
