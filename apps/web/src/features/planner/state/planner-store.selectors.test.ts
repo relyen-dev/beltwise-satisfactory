@@ -99,15 +99,23 @@ describe('planner store selectors', () => {
     expect(rows.some((row) => row.resource.itemId === 'Desc_Water_C')).toBe(false);
     expect(rows.find((row) => row.resource.itemId === 'Desc_OreCopper_C')).toMatchObject({
       iconSrc: '/game-icons/Desc_OreCopper_C.png',
+      builtInCost: 2,
+      builtInCostLabel: '2',
       multiplier: 1,
       multiplierLabel: '1x',
+      effectiveCost: 2,
+      effectiveCostLabel: '2',
       isNeutral: true,
       stateLabel: 'Neutral',
     });
     expect(rows.find((row) => row.resource.itemId === 'Desc_OreIron_C')).toMatchObject({
       iconSrc: '/game-icons/Desc_OreIron_C.png',
+      builtInCost: 1,
+      builtInCostLabel: '1',
       multiplier: 2,
       multiplierLabel: '2x',
+      effectiveCost: 2,
+      effectiveCostLabel: '2',
       isNeutral: false,
       stateLabel: 'Avoid',
     });
