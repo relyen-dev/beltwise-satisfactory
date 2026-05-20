@@ -13,21 +13,16 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
+import { NgClass, NgComponentOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { type ProductionPlanStatus } from '@beltwise/planner-core';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
 import { PlannerDefaultsPanelComponent } from './workbench/planner-defaults-panel.component';
-import { PlannerDisplaySectionComponent } from './workbench/planner-display-section.component';
-import { PlannerInputsSectionComponent } from './workbench/planner-inputs-section.component';
 import { PlannerInspectorComponent } from './workbench/planner-inspector.component';
-import { PlannerMachinesSectionComponent } from './workbench/planner-machines-section.component';
-import { PlannerObjectivesSectionComponent } from './workbench/planner-objectives-section.component';
 import {
   PlannerPlanTransferService,
   type PlanTransferStatus,
 } from './transfer/planner-plan-transfer.service';
-import { PlannerRecipesSectionComponent } from './workbench/planner-recipes-section.component';
-import { PlannerResourcesSectionComponent } from './workbench/planner-resources-section.component';
 import { GameIconComponent } from './shared-ui/game-icon.component';
 import {
   selectCompactPlanDockItems,
@@ -37,13 +32,12 @@ import {
   projectRequiresDeleteConfirmation,
   sessionRequiresDeleteConfirmation,
 } from './persistence/planner-session-delete.helpers';
-import { PlannerStoreService, type ConfigurationTab } from './state/planner-store.service';
-import { PlannerTargetsSectionComponent } from './workbench/planner-targets-section.component';
-
-interface ConfigurationTabDefinition {
-  id: ConfigurationTab;
-  label: string;
-}
+import { PlannerStoreService } from './state/planner-store.service';
+import {
+  getPlannerWorkbenchPanel,
+  PLANNER_WORKBENCH_PANELS,
+} from './workbench/planner-workbench-panel-registry';
+import { type WorkbenchPanelId } from './workbench/planner-workbench.models';
 
 interface GraphSolveNotice {
   kind: 'info' | 'error';
@@ -58,16 +52,11 @@ const RECENT_PLAN_MEMORY_LIMIT = 12;
   standalone: true,
   imports: [
     FormsModule,
+    NgClass,
+    NgComponentOutlet,
     PlannerDefaultsPanelComponent,
-    PlannerDisplaySectionComponent,
     GameIconComponent,
-    PlannerInputsSectionComponent,
     PlannerInspectorComponent,
-    PlannerMachinesSectionComponent,
-    PlannerObjectivesSectionComponent,
-    PlannerRecipesSectionComponent,
-    PlannerResourcesSectionComponent,
-    PlannerTargetsSectionComponent,
     ProductionGraphComponent,
   ],
   templateUrl: './planner-page.component.html',
@@ -110,17 +99,12 @@ export class PlannerPageComponent implements OnInit {
   public readonly sessionNameEditing = computed(() => {
     return this.sessionNameEditSessionId() === this.store.activeSessionId();
   });
-  public readonly tabs: ConfigurationTabDefinition[] = [
-    { id: 'plan', label: 'Plan' },
-    { id: 'objectives', label: 'Objectives' },
-    { id: 'recipes', label: 'Recipes' },
-    { id: 'inputs', label: 'Inputs' },
-    { id: 'resources', label: 'Resources' },
-    { id: 'machines', label: 'Machines' },
-    { id: 'display', label: 'Display' },
-  ];
+  public readonly workbenchPanels = PLANNER_WORKBENCH_PANELS;
+  public readonly activeWorkbenchPanel = computed(() => {
+    return getPlannerWorkbenchPanel(this.store.activeWorkbenchPanelId());
+  });
   public readonly activeSectionLabel = computed(() => {
-    return this.tabs.find((tab) => tab.id === this.store.activeConfigTab())?.label ?? 'Plan';
+    return this.activeWorkbenchPanel().label;
   });
   public readonly graphSolveNotice = computed<GraphSolveNotice | null>(() => {
     const status = this.store.solveStatus();
@@ -185,13 +169,13 @@ export class PlannerPageComponent implements OnInit {
     );
   }
 
-  public openSection(section: ConfigurationTab): void {
-    if (this.store.activeConfigTab() === section && this.workPanelOpen()) {
+  public openSection(section: WorkbenchPanelId): void {
+    if (this.store.activeWorkbenchPanelId() === section && this.workPanelOpen()) {
       this.closeWorkPanel();
       return;
     }
 
-    this.store.activeConfigTab.set(section);
+    this.store.setActiveWorkbenchPanel(section);
     this.workPanelOpen.set(true);
   }
 

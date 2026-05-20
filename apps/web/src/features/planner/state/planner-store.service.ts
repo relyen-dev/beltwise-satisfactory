@@ -30,6 +30,8 @@ import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
+import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
+import { type WorkbenchPanelId } from '../workbench/planner-workbench.models';
 
 export { plannerRelevantMachineIds } from '@beltwise/planner-core';
 export {
@@ -46,10 +48,10 @@ export {
 export type { SolveStatus } from '../solving/planner-solver.service';
 export { GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS } from './planner-store-graph-build';
 export type {
-  ConfigurationTab,
   WorkbenchFocusMode,
   WorkbenchFocusRequest,
-} from './planner-store.models';
+  WorkbenchPanelId,
+} from '../workbench/planner-workbench.models';
 
 export type PlannerPlanExportResult =
   | {
@@ -90,6 +92,7 @@ export class PlannerStoreService implements OnDestroy {
   private readonly solver = inject(PlannerSolverService);
 
   private readonly workspace: PlannerWorkspaceSlice;
+  private readonly workbench: PlannerWorkbenchSlice;
   private readonly graphBuild: PlannerGraphBuildSlice;
   private readonly defaultsCommands: PlannerDefaultsCommandSlice;
   private readonly planCommands: PlannerPlanCommandSlice;
@@ -111,8 +114,8 @@ export class PlannerStoreService implements OnDestroy {
   public readonly projects: PlannerWorkspaceSlice['projects'];
   public readonly activeProjectId: PlannerWorkspaceSlice['activeProjectId'];
   public readonly userDefaults: PlannerWorkspaceSlice['userDefaults'];
-  public readonly activeConfigTab: PlannerWorkspaceSlice['activeConfigTab'];
-  public readonly workbenchFocusRequest: PlannerWorkspaceSlice['workbenchFocusRequest'];
+  public readonly activeWorkbenchPanelId: PlannerWorkbenchSlice['activePanelId'];
+  public readonly workbenchFocusRequest: PlannerWorkbenchSlice['focusRequest'];
   public readonly activeProject: PlannerWorkspaceSlice['activeProject'];
   public readonly selectedGraphNodeId: PlannerGraphBuildSlice['selectedGraphNodeId'];
   public readonly itemOptions: PlannerStoreViewSelectors['itemOptions'];
@@ -150,6 +153,7 @@ export class PlannerStoreService implements OnDestroy {
     this.workspace = new PlannerWorkspaceSlice({
       dataset: this.dataset,
     });
+    this.workbench = new PlannerWorkbenchSlice();
     this.graphBuild = new PlannerGraphBuildSlice({
       activeProject: this.workspace.activeProject,
       updateActiveProject: (mapper) => this.workspace.updateActiveProject(mapper),
@@ -159,6 +163,9 @@ export class PlannerStoreService implements OnDestroy {
       flushPendingGraphState: () => this.graphBuild.flushPendingGraphNodePositions(),
       clearPendingGraphState: () => this.graphBuild.clearPendingGraphNodePositions(),
       clearGraphSelection: () => this.graphBuild.clearSelectedGraphNode(),
+    });
+    this.workspace.connectActivationHooks({
+      projectActivated: (project) => this.workbench.activateProject(project),
     });
     this.views = new PlannerStoreViewSelectors({
       dataset: this.dataset,
@@ -201,8 +208,8 @@ export class PlannerStoreService implements OnDestroy {
     this.projects = this.workspace.projects;
     this.activeProjectId = this.workspace.activeProjectId;
     this.userDefaults = this.workspace.userDefaults;
-    this.activeConfigTab = this.workspace.activeConfigTab;
-    this.workbenchFocusRequest = this.workspace.workbenchFocusRequest;
+    this.activeWorkbenchPanelId = this.workbench.activePanelId;
+    this.workbenchFocusRequest = this.workbench.focusRequest;
     this.activeProject = this.workspace.activeProject;
     this.selectedGraphNodeId = this.graphBuild.selectedGraphNodeId;
     this.itemOptions = this.views.itemOptions;
@@ -253,6 +260,10 @@ export class PlannerStoreService implements OnDestroy {
 
   public selectSession(sessionId: string): void {
     this.workspace.selectSession(sessionId);
+  }
+
+  public setActiveWorkbenchPanel(panelId: WorkbenchPanelId): void {
+    this.workbench.setActivePanel(panelId);
   }
 
   public createSession(): void {

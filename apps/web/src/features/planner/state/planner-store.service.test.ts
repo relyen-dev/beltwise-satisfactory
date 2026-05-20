@@ -284,7 +284,7 @@ describe('PlannerStoreService', () => {
     });
 
     expect(store.activeProjectId()).toBe(draftProject.id);
-    expect(store.activeConfigTab()).toBe('plan');
+    expect(store.activeWorkbenchPanelId()).toBe('plan');
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: draftProject.id,
       mode: 'open-plan',
@@ -297,12 +297,12 @@ describe('PlannerStoreService', () => {
     const { store } = createInitializedStore([graphProject, draftProject], graphProject.id);
     const initialFocusSequence = store.workbenchFocusRequest()?.sequence ?? 0;
 
-    store.activeConfigTab.set('recipes');
+    store.setActiveWorkbenchPanel('recipes');
     store.selectGraphNode('recipe:Recipe_IronPlate_C');
     store.selectProject(draftProject.id);
 
     expect(store.activeProjectId()).toBe(draftProject.id);
-    expect(store.activeConfigTab()).toBe('plan');
+    expect(store.activeWorkbenchPanelId()).toBe('plan');
     expect(store.selectedGraphNodeId()).toBeNull();
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: draftProject.id,
@@ -310,12 +310,12 @@ describe('PlannerStoreService', () => {
       sequence: initialFocusSequence + 1,
     });
 
-    store.activeConfigTab.set('resources');
+    store.setActiveWorkbenchPanel('resources');
     store.selectGraphNode('recipe:Recipe_IronRod_C');
     store.selectProject(graphProject.id);
 
     expect(store.activeProjectId()).toBe(graphProject.id);
-    expect(store.activeConfigTab()).toBe('resources');
+    expect(store.activeWorkbenchPanelId()).toBe('resources');
     expect(store.selectedGraphNodeId()).toBeNull();
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: graphProject.id,

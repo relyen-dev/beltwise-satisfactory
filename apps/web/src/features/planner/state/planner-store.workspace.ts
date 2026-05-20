@@ -27,12 +27,6 @@ import {
   type PlannerUserDefaults,
 } from '@beltwise/planner-core';
 import { type LoadedPlannerState } from '../persistence/planner-persistence.service';
-import {
-  type ConfigurationTab,
-  type WorkbenchFocusMode,
-  type WorkbenchFocusRequest,
-} from './planner-store.models';
-
 interface PlannerWorkspaceSliceOptions {
   readonly dataset: Signal<GameDataset | null>;
 }
@@ -49,17 +43,23 @@ const noopGraphHooks: PlannerWorkspaceGraphHooks = {
   clearGraphSelection: () => undefined,
 };
 
+interface PlannerWorkspaceActivationHooks {
+  readonly projectActivated: (project: PlannerProject) => void;
+}
+
+const noopActivationHooks: PlannerWorkspaceActivationHooks = {
+  projectActivated: () => undefined,
+};
+
 export class PlannerWorkspaceSlice {
   private graphHooks = noopGraphHooks;
-  private focusRequestSequence = 0;
+  private activationHooks = noopActivationHooks;
 
   public readonly sessions = signal<PlannerSession[]>([]);
   public readonly activeSessionId = signal<string | undefined>(undefined);
   public readonly projects = signal<PlannerProject[]>([]);
   public readonly activeProjectId = signal<string | undefined>(undefined);
   public readonly userDefaults = signal<PlannerUserDefaults | null>(null);
-  public readonly activeConfigTab = signal<ConfigurationTab>('plan');
-  public readonly workbenchFocusRequest = signal<WorkbenchFocusRequest | null>(null);
 
   public readonly activeSession = computed(() => {
     return selectActivePlannerSession(this.workspaceState()) ?? null;
@@ -77,6 +77,10 @@ export class PlannerWorkspaceSlice {
 
   public connectGraphHooks(hooks: PlannerWorkspaceGraphHooks): void {
     this.graphHooks = hooks;
+  }
+
+  public connectActivationHooks(hooks: PlannerWorkspaceActivationHooks): void {
+    this.activationHooks = hooks;
   }
 
   public selectProject(projectId: string): void {
@@ -242,17 +246,10 @@ export class PlannerWorkspaceSlice {
     });
   }
 
-  private activateProject(project: PlannerProject, focusMode: WorkbenchFocusMode): void {
+  private activateProject(project: PlannerProject): void {
     this.activeProjectId.set(project.id);
     this.graphHooks.clearGraphSelection();
-    if (focusMode === 'open-plan') {
-      this.activeConfigTab.set('plan');
-    }
-    this.workbenchFocusRequest.set({
-      projectId: project.id,
-      mode: focusMode,
-      sequence: ++this.focusRequestSequence,
-    });
+    this.activationHooks.projectActivated(project);
   }
 
   private applyLifecycleResult(result: PlannerWorkspaceLifecycleResult): void {
@@ -261,7 +258,7 @@ export class PlannerWorkspaceSlice {
     this.activeSessionId.set(result.activeSessionId);
     this.activeProjectId.set(result.activeProjectId);
     if (result.activation) {
-      this.activateProject(result.activation.project, projectFocusMode(result.activation.project));
+      this.activateProject(result.activation.project);
     }
   }
 
@@ -302,10 +299,4 @@ export class PlannerWorkspaceSlice {
     this.userDefaults.set(createdDefaults);
     return createdDefaults;
   }
-}
-
-function projectFocusMode(project: PlannerProject): WorkbenchFocusMode {
-  return project.targets.some((target) => target.itemId.trim().length > 0)
-    ? 'focus-graph'
-    : 'open-plan';
 }

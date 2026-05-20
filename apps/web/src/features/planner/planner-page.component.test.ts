@@ -18,12 +18,12 @@ import {
   type PlannerPlanDownloadAdapter,
   type PlannerShareLocationAdapter,
 } from './transfer/planner-transfer-browser-adapters';
-import {
-  PlannerStoreService,
-  type ConfigurationTab,
-  type WorkbenchFocusRequest,
-} from './state/planner-store.service';
+import { PlannerStoreService } from './state/planner-store.service';
 import { encodePlannerShareCode } from './transfer/planner-share-codec';
+import {
+  type WorkbenchFocusRequest,
+  type WorkbenchPanelId,
+} from './workbench/planner-workbench.models';
 
 describe('PlannerPageComponent', () => {
   beforeEach(() => {
@@ -41,12 +41,12 @@ describe('PlannerPageComponent', () => {
 
     component.openSection('recipes');
 
-    expect(store.activeConfigTab()).toBe('recipes');
+    expect(store.activeWorkbenchPanelId()).toBe('recipes');
     expect(component.workPanelOpen()).toBe(true);
 
     component.openSection('recipes');
 
-    expect(store.activeConfigTab()).toBe('recipes');
+    expect(store.activeWorkbenchPanelId()).toBe('recipes');
     expect(component.workPanelOpen()).toBe(false);
   });
 
@@ -651,7 +651,7 @@ function createComponentHarness(): {
     activeSessionProjects: signal<PlannerProject[]>([
       createPageProject('project-a', 'Draft factory', []),
     ]),
-    activeConfigTab: signal<ConfigurationTab>('plan'),
+    activeWorkbenchPanelId: signal<WorkbenchPanelId>('plan'),
     clearSelectedGraphNode: () => {
       clearSelectedGraphNode();
       store.selectedGraphNodeId.set(null);
@@ -671,6 +671,9 @@ function createComponentHarness(): {
     selectProject,
     selectSession,
     selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
+    setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => {
+      store.activeWorkbenchPanelId.set(panelId);
+    },
     solveError: signal<string | null>(null),
     solveResult: signal<PlannerPageSolveResult | null>({ status: 'optimal' }),
     solveStatus: signal<'idle' | 'solving' | 'solved' | 'error'>('solved'),
@@ -728,7 +731,7 @@ function keyboardEvent(target: TestHTMLElement): KeyboardEvent & {
 }
 
 interface PlannerPageStoreHarness {
-  activeConfigTab: WritableSignal<ConfigurationTab>;
+  activeWorkbenchPanelId: WritableSignal<WorkbenchPanelId>;
   activeProject: WritableSignal<PlannerProject | null>;
   activeProjectId: WritableSignal<string | undefined>;
   activeSession: WritableSignal<PlannerSession | null>;
@@ -750,6 +753,7 @@ interface PlannerPageStoreHarness {
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
   selectedGraphNodeId: WritableSignal<string | null>;
+  setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => void;
   solveError: WritableSignal<string | null>;
   solveResult: WritableSignal<PlannerPageSolveResult | null>;
   solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
