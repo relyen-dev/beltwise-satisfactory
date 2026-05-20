@@ -38,6 +38,7 @@ import {
   PLANNER_WORKBENCH_PANELS,
 } from './workbench/planner-workbench-panel-registry';
 import { type WorkbenchPanelId } from './workbench/planner-workbench.models';
+import { PlannerShellOverlayCoordinator } from './planner-shell-overlay-coordinator';
 
 interface GraphSolveNotice {
   kind: 'info' | 'error';
@@ -67,6 +68,7 @@ export class PlannerPageComponent implements OnInit {
   public readonly store = inject(PlannerStoreService);
   private readonly injector = inject(Injector);
   private readonly planTransfer = inject(PlannerPlanTransferService);
+  private readonly shell = new PlannerShellOverlayCoordinator();
   private lastProcessedShareCode: string | null = null;
 
   public readonly workPanelOpen = linkedSignal({
@@ -75,12 +77,12 @@ export class PlannerPageComponent implements OnInit {
       return request ? request.mode === 'open-plan' : (previous?.value ?? false);
     },
   });
-  public readonly defaultsPanelOpen = signal(false);
-  public readonly planSelectorOpen = signal(false);
-  public readonly actionMenuOpen = signal(false);
-  public readonly shareImportOpen = signal(false);
-  public readonly shareCodeText = signal('');
-  public readonly planTransferStatus = signal<PlanTransferStatus | null>(null);
+  public readonly defaultsPanelOpen = this.shell.defaultsPanelOpen;
+  public readonly planSelectorOpen = this.shell.planSelectorOpen;
+  public readonly actionMenuOpen = this.shell.actionMenuOpen;
+  public readonly shareImportOpen = this.shell.shareImportOpen;
+  public readonly shareCodeText = this.shell.shareCodeText;
+  public readonly planTransferStatus = this.shell.planTransferStatus;
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
   public readonly sessionNameInput = viewChild<ElementRef<HTMLInputElement>>('sessionNameInput');
   public readonly activePlanTrigger = viewChild<ElementRef<HTMLElement>>('activePlanTrigger');
@@ -88,16 +90,14 @@ export class PlannerPageComponent implements OnInit {
   public readonly planSelectorOptions = viewChildren<ElementRef<HTMLElement>>('planSelectorOption');
   public readonly actionMenuSummary = viewChild<ElementRef<HTMLElement>>('actionMenuSummary');
   private readonly recentlyTouchedProjectIds = signal<readonly string[]>([]);
-  private readonly projectNameEditProjectId = signal<string | null>(null);
-  private readonly sessionNameEditSessionId = signal<string | null>(null);
   private inspectorScrollContext: string | null = null;
-  public readonly projectNameDraft = signal('');
-  public readonly sessionNameDraft = signal('');
+  public readonly projectNameDraft = this.shell.projectNameDraft;
+  public readonly sessionNameDraft = this.shell.sessionNameDraft;
   public readonly projectNameEditing = computed(() => {
-    return this.projectNameEditProjectId() === this.store.activeProjectId();
+    return this.shell.isProjectNameEditing(this.store.activeProjectId());
   });
   public readonly sessionNameEditing = computed(() => {
-    return this.sessionNameEditSessionId() === this.store.activeSessionId();
+    return this.shell.isSessionNameEditing(this.store.activeSessionId());
   });
   public readonly workbenchPanels = PLANNER_WORKBENCH_PANELS;
   public readonly activeWorkbenchPanel = computed(() => {
@@ -222,24 +222,19 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public startSessionNameEdit(sessionId: string, name: string): void {
-    this.closePlanSelector();
-    this.closeActionMenu();
-    this.sessionNameEditSessionId.set(sessionId);
-    this.sessionNameDraft.set(name);
+    this.shell.startSessionNameEdit(sessionId, name);
     this.focusSessionNameInput();
   }
 
   public saveSessionNameEdit(): void {
-    const name = this.sessionNameDraft().trim();
-    const editedSessionId = this.sessionNameEditSessionId();
-    if (name.length > 0 && editedSessionId === this.store.activeSessionId()) {
+    const name = this.shell.saveSessionNameEdit(this.store.activeSessionId());
+    if (name) {
       this.store.renameSession(name);
     }
-    this.sessionNameEditSessionId.set(null);
   }
 
   public cancelSessionNameEdit(): void {
-    this.sessionNameEditSessionId.set(null);
+    this.shell.cancelSessionNameEdit();
   }
 
   public deleteActiveSession(): void {
@@ -280,55 +275,50 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public startProjectNameEdit(projectId: string, name: string): void {
-    this.closePlanSelector();
-    this.closeActionMenu();
-    this.projectNameEditProjectId.set(projectId);
-    this.projectNameDraft.set(name);
+    this.shell.startProjectNameEdit(projectId, name);
     this.focusProjectNameInput();
   }
 
   public saveProjectNameEdit(): void {
-    const name = this.projectNameDraft().trim();
-    const editedProjectId = this.projectNameEditProjectId();
-    if (name.length > 0 && editedProjectId === this.store.activeProjectId()) {
+    const name = this.shell.saveProjectNameEdit(this.store.activeProjectId());
+    if (name) {
       this.store.renameProject(name);
     }
-    this.projectNameEditProjectId.set(null);
   }
 
   public cancelProjectNameEdit(): void {
-    this.projectNameEditProjectId.set(null);
+    this.shell.cancelProjectNameEdit();
   }
 
   public toggleDefaultsPanel(): void {
-    this.closeActionMenu();
-    this.defaultsPanelOpen.update((open) => !open);
+    this.shell.toggleDefaultsPanel();
+  }
+
+  public closeDefaultsPanel(): void {
+    this.shell.closeDefaultsPanel();
   }
 
   public toggleShareImport(): void {
-    this.closeActionMenu();
-    this.shareImportOpen.update((open) => !open);
+    this.shell.toggleShareImport();
+  }
+
+  public closeShareImport(): void {
+    this.shell.closeShareImport();
   }
 
   public togglePlanSelector(): void {
-    if (this.planSelectorOpen()) {
-      this.closePlanSelector();
-      return;
+    if (this.shell.togglePlanSelector() === 'opened') {
+      this.focusActivePlanSelectorOption();
     }
-
-    this.openPlanSelector();
   }
 
   public openPlanSelector(): void {
-    this.clearInlineEdits();
-    this.closeActionMenu();
-    this.planSelectorOpen.set(true);
+    this.shell.openPlanSelector();
     this.focusActivePlanSelectorOption();
   }
 
   public closePlanSelector(restoreFocus = false): void {
-    const wasOpen = this.planSelectorOpen();
-    this.planSelectorOpen.set(false);
+    const wasOpen = this.shell.closePlanSelector();
     if (restoreFocus && wasOpen) {
       this.focusPlanSelectorTrigger();
     }
@@ -344,20 +334,12 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
 
-    this.actionMenuOpen.set(event.currentTarget.open);
-    if (event.currentTarget.open) {
-      this.clearInlineEdits();
-      this.closePlanSelector();
-    }
+    this.shell.syncActionMenuOpen(event.currentTarget.open);
   }
 
   public closeActionMenu(restoreFocus = false): void {
-    if (!this.actionMenuOpen()) {
-      return;
-    }
-
-    this.actionMenuOpen.set(false);
-    if (restoreFocus) {
+    const wasOpen = this.shell.closeActionMenu();
+    if (restoreFocus && wasOpen) {
       focusElementAfterRender(() => this.actionMenuSummary()?.nativeElement);
     }
   }
@@ -385,7 +367,7 @@ export class PlannerPageComponent implements OnInit {
     const imported = await this.importPlanShareCode(code, 'Shared plan');
     if (imported) {
       this.shareCodeText.set('');
-      this.shareImportOpen.set(false);
+      this.shell.closeShareImport();
     }
   }
 
@@ -433,47 +415,37 @@ export class PlannerPageComponent implements OnInit {
 
   @HostListener('document:keydown.escape', ['$event'])
   public handleEscapeKey(event: KeyboardEvent): void {
-    if (this.projectNameEditing() || this.sessionNameEditing()) {
-      event.preventDefault();
-      this.clearInlineEdits();
+    const result = this.shell.handleEscape({
+      activeProjectId: this.store.activeProjectId(),
+      activeSessionId: this.store.activeSessionId(),
+      hasSelectedGraphNode: Boolean(this.store.selectedGraphNodeId()),
+      isEditableTarget: isEditableKeyboardTarget(event.target),
+    });
+    if (result.action === 'none') {
       return;
     }
-    if (this.planSelectorOpen()) {
-      event.preventDefault();
-      this.closePlanSelector(true);
-      return;
-    }
-    if (this.actionMenuOpen()) {
-      event.preventDefault();
-      this.closeActionMenu(true);
-      return;
-    }
-    if (this.defaultsPanelOpen() && !isEditableKeyboardTarget(event.target)) {
-      event.preventDefault();
-      this.defaultsPanelOpen.set(false);
-      return;
-    }
-    if (!this.store.selectedGraphNodeId() || isEditableKeyboardTarget(event.target)) {
-      return;
-    }
+
     event.preventDefault();
-    this.store.clearSelectedGraphNode();
-    blurFocusedGraphNode();
-  }
-
-  private showPlanTransferStatus(status: PlanTransferStatus): void {
-    this.planTransferStatus.set(status);
-  }
-
-  private clearInlineEdits(): void {
-    this.projectNameEditProjectId.set(null);
-    this.sessionNameEditSessionId.set(null);
+    if (result.focusTarget === 'active-plan-trigger') {
+      this.focusPlanSelectorTrigger();
+      return;
+    }
+    if (result.focusTarget === 'action-menu-summary') {
+      focusElementAfterRender(() => this.actionMenuSummary()?.nativeElement);
+      return;
+    }
+    if (result.action === 'graph-selection') {
+      this.store.clearSelectedGraphNode();
+      blurFocusedGraphNode();
+    }
   }
 
   private clearTransientNavigationState(): void {
-    this.clearInlineEdits();
-    this.closePlanSelector();
-    this.closeActionMenu();
+    this.shell.clearTransientNavigationState();
+  }
+
+  private showPlanTransferStatus(status: PlanTransferStatus): void {
+    this.shell.showPlanTransferStatus(status);
   }
 
   private touchActiveProject(): void {

@@ -338,7 +338,7 @@
             />
           </label>
           <button type="submit">Import</button>
-          <button type="button" (click)="shareImportOpen.set(false)">Close</button>
+          <button type="button" (click)="closeShareImport()">Close</button>
         </form>
       }
 
@@ -358,7 +358,7 @@
   </header>
 
   @if (defaultsPanelOpen()) {
-    <bw-planner-defaults-panel (closed)="defaultsPanelOpen.set(false)" />
+    <bw-planner-defaults-panel (closed)="closeDefaultsPanel()" />
   }
 
   @if (store.datasetError()) {
