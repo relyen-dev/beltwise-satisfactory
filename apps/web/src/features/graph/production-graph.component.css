@@ -8,11 +8,19 @@
   width: 100%;
   height: 100%;
   min-height: 420px;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, black);
+  border-radius: var(--radius-md);
   background:
-    radial-gradient(circle at 1px 1px, rgba(237, 241, 243, 0.14) 1px, transparent 0) 0 0 / 28px 28px,
-    linear-gradient(135deg, rgba(242, 165, 26, 0.05), transparent 38%),
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 56px 56px,
+    radial-gradient(circle at 1px 1px, rgba(237, 241, 243, 0.11) 1px, transparent 0) 0 0 / 28px 28px,
+    radial-gradient(circle at 22% 18%, rgba(242, 165, 26, 0.07), transparent 32%),
+    radial-gradient(circle at 76% 12%, rgba(81, 200, 198, 0.06), transparent 28%),
     var(--color-bg-canvas);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    inset 0 0 80px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
 }
 
 .production-node {
@@ -22,13 +30,25 @@
   position: relative;
   width: 220px;
   min-height: 104px;
-  padding: 10px 12px;
+  padding: 11px 12px 12px;
   border: 1px solid var(--node-border, var(--color-border));
-  border-left: 4px solid var(--node-accent, var(--color-accent));
+  border-top: 3px solid var(--node-accent, var(--color-accent));
   border-radius: var(--radius-md);
-  background: var(--color-panel-raised);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--node-accent, var(--color-accent)) 10%, rgba(255, 255, 255, 0.04)),
+      transparent 42%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-panel-raised) 96%, white),
+      color-mix(in srgb, var(--color-panel-raised) 88%, black)
+    );
   color: var(--color-text);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 14px 28px rgba(0, 0, 0, 0.32);
   font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.25;
@@ -40,10 +60,16 @@
     filter 120ms ease;
 }
 
+.production-node:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 34px rgba(0, 0, 0, 0.38);
+}
+
 .production-node--focused {
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--node-accent, var(--color-accent)) 34%, transparent),
-    0 14px 30px rgba(0, 0, 0, 0.32);
+    0 18px 34px rgba(0, 0, 0, 0.38);
 }
 
 .production-node--selected {
@@ -51,7 +77,7 @@
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--node-accent, var(--color-accent)) 34%, transparent),
     0 0 28px color-mix(in srgb, var(--node-accent, var(--color-accent)) 24%, transparent),
-    0 16px 34px rgba(0, 0, 0, 0.38);
+    0 20px 44px rgba(0, 0, 0, 0.42);
 }
 
 .production-node--dimmed {
@@ -111,8 +137,8 @@
 }
 
 .node-kicker {
-  color: var(--color-text-muted);
-  font-size: 11px;
+  color: color-mix(in srgb, var(--node-accent, var(--color-accent)) 72%, var(--color-text-muted));
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -129,7 +155,7 @@
 .node-title {
   margin-top: 5px;
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 750;
   overflow-wrap: anywhere;
 }
@@ -184,7 +210,7 @@
   padding: 2px 5px 2px 4px;
   border: 1px solid color-mix(in srgb, var(--node-accent) 46%, var(--color-border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-bg-canvas) 70%, transparent);
+  background: color-mix(in srgb, var(--color-bg-canvas) 78%, transparent);
   color: var(--color-text-muted);
   cursor: text;
   line-height: 1.1;
@@ -254,7 +280,7 @@
   border: 1px solid
     color-mix(in srgb, var(--node-accent, var(--color-accent)) 42%, var(--color-border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-bg-canvas) 72%, transparent);
+  background: color-mix(in srgb, var(--color-bg-canvas) 78%, transparent);
   color: var(--color-text-muted);
   font-size: 10px;
   font-weight: 800;
@@ -284,8 +310,9 @@
     color-mix(in srgb, var(--node-accent, var(--color-accent)) 34%, var(--color-border));
   border-left: 3px solid var(--node-accent, var(--color-accent));
   border-radius: var(--radius-md);
-  background: rgba(22, 27, 30, 0.96);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%), rgba(17, 23, 27, 0.97);
+  box-shadow: var(--shadow-md);
   color: var(--color-text);
   font-size: 12px;
   line-height: 1.28;
@@ -365,9 +392,9 @@
   gap: 1px;
   max-width: 190px;
   padding: 3px 5px;
-  border: 1px solid rgba(210, 220, 224, 0.18);
+  border: 1px solid rgba(210, 220, 224, 0.2);
   border-radius: var(--radius-sm);
-  background: rgba(14, 18, 20, 0.62);
+  background: rgba(11, 15, 18, 0.76);
   color: var(--color-text);
   font-size: 12px;
   font-weight: 700;
@@ -377,7 +404,8 @@
   pointer-events: none;
   text-align: center;
   white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.28);
   transition:
     border-color 120ms ease,
     opacity 120ms ease,
@@ -441,10 +469,14 @@
   min-height: 420px;
   min-width: 0;
   padding: var(--space-4);
-  border: 1px dashed var(--color-border);
-  background: var(--color-bg-canvas);
+  border: 1px dashed color-mix(in srgb, var(--color-border) 78%, black);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(242, 165, 26, 0.08), transparent 28%),
+    color-mix(in srgb, var(--color-bg-canvas) 94%, black);
   color: var(--color-text-muted);
   text-align: center;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.22);
 }
 
 .empty-graph > * {
