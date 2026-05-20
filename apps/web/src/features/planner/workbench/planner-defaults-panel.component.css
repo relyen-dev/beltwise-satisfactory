@@ -15,8 +15,10 @@
   min-width: 0;
   border: 1px solid color-mix(in srgb, var(--color-accent) 36%, var(--color-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-panel) 94%, black);
-  box-shadow: 0 24px 62px rgba(0, 0, 0, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 24%),
+    color-mix(in srgb, var(--color-panel) 94%, black);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -32,8 +34,10 @@
 .defaults-header {
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--color-border);
-  background: linear-gradient(180deg, var(--color-panel-raised), var(--color-panel));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 78%, black);
+  background:
+    linear-gradient(90deg, rgba(242, 165, 26, 0.11), transparent 42%),
+    linear-gradient(180deg, var(--color-panel-raised), var(--color-panel));
 }
 
 .defaults-header > div {
@@ -63,22 +67,22 @@
   flex-wrap: wrap;
   padding: 10px 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, black);
-  background: color-mix(in srgb, var(--color-panel-raised) 58%, black);
+  background: color-mix(in srgb, var(--color-panel-raised) 52%, black);
 }
 
 .defaults-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 8px 10px;
-  border-bottom: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-panel) 88%, black);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, black);
+  background: color-mix(in srgb, var(--color-panel) 84%, black);
 }
 
 .defaults-tab {
   min-width: 0;
   min-height: 32px;
-  border-color: color-mix(in srgb, var(--color-border) 82%, black);
-  background: color-mix(in srgb, var(--color-panel-raised) 62%, black);
+  border-color: color-mix(in srgb, var(--color-border) 76%, black);
+  background: color-mix(in srgb, var(--color-panel-raised) 54%, black);
   color: var(--color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,7 +92,9 @@
 .defaults-tab:hover,
 .defaults-tab--active {
   border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
-  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-panel-raised));
+  background:
+    linear-gradient(180deg, rgba(255, 196, 77, 0.12), transparent),
+    color-mix(in srgb, var(--color-accent) 14%, var(--color-panel-raised));
   color: var(--color-text);
 }
 

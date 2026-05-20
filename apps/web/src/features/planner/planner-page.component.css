@@ -6,7 +6,8 @@
   height: 100dvh;
   min-height: 100vh;
   overflow: hidden;
-  background: var(--color-bg);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(242, 165, 26, 0.08), transparent 24%), var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-ui);
 }
@@ -22,23 +23,29 @@
 
 .app-bar {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 232px) minmax(0, 1fr);
   align-items: center;
   gap: 10px var(--space-4);
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--color-border);
-  background: linear-gradient(180deg, #1b2023, var(--color-panel));
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, black);
+  background:
+    linear-gradient(90deg, rgba(242, 165, 26, 0.1), transparent 32%),
+    linear-gradient(180deg, #1b2329, color-mix(in srgb, var(--color-panel) 92%, black));
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
 }
 
 .brand-block {
   min-width: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--color-accent);
 }
 
 .wordmark {
   color: var(--color-accent-strong);
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 850;
   line-height: 1;
+  text-shadow: 0 0 20px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .tagline {
@@ -50,7 +57,7 @@
 
 .workspace-context {
   display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(250px, 340px) minmax(280px, 1fr);
+  grid-template-columns: minmax(190px, 240px) minmax(270px, 360px) minmax(300px, 1fr);
   align-items: end;
   gap: var(--space-2);
   min-width: 0;
@@ -64,7 +71,7 @@
 }
 
 .context-label {
-  color: var(--color-text-muted);
+  color: var(--color-text-subtle);
   font-size: 10px;
   font-weight: 750;
   line-height: 1;
@@ -145,11 +152,16 @@
   max-width: 100%;
   min-height: var(--planner-nav-control-height);
   padding: 0 6px;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 32%, var(--color-border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-panel-raised) 72%, black);
+  background:
+    linear-gradient(180deg, rgba(255, 196, 77, 0.08), transparent 62%),
+    color-mix(in srgb, var(--color-panel-raised) 72%, black);
   color: var(--color-text);
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
 .active-plan-trigger:hover,
@@ -218,10 +230,12 @@
   width: min(430px, calc(100vw - 28px));
   max-height: min(480px, calc(100vh - 150px));
   padding: var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-panel-raised) 96%, black);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 28%),
+    color-mix(in srgb, var(--color-panel-raised) 95%, black);
+  box-shadow: var(--shadow-md);
   overflow-y: auto;
 }
 
@@ -240,7 +254,7 @@
 .plan-selector-option:hover,
 .plan-selector-option.is-active {
   border-color: color-mix(in srgb, var(--color-accent) 56%, var(--color-border));
-  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-panel));
+  background: color-mix(in srgb, var(--color-accent) 13%, var(--color-panel-raised));
 }
 
 .plan-option-copy {
@@ -307,9 +321,10 @@
   max-width: 176px;
   min-height: var(--planner-nav-control-height);
   padding: 0 8px;
-  border-color: color-mix(in srgb, var(--color-border) 78%, black);
-  background: color-mix(in srgb, var(--color-panel-raised) 62%, black);
+  border-color: color-mix(in srgb, var(--color-border) 72%, black);
+  background: color-mix(in srgb, var(--color-panel-raised) 54%, black);
   color: var(--color-text-muted);
+  box-shadow: none;
 }
 
 .plan-chip.is-active {
@@ -317,9 +332,13 @@
   min-width: 104px;
   max-width: 230px;
   border-color: color-mix(in srgb, var(--color-accent) 68%, var(--color-border));
-  background: color-mix(in srgb, var(--color-accent) 15%, var(--color-panel-raised));
+  background:
+    linear-gradient(180deg, rgba(255, 196, 77, 0.16), rgba(242, 165, 26, 0.08)),
+    color-mix(in srgb, var(--color-panel-raised) 70%, black);
   color: var(--color-text);
-  box-shadow: inset 0 -2px 0 var(--color-accent);
+  box-shadow:
+    inset 0 -2px 0 var(--color-accent),
+    0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .plan-chip__name {
@@ -336,7 +355,9 @@
   height: 22px;
   border: 1px solid color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-panel));
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 196, 77, 0.16), transparent 62%),
+    color-mix(in srgb, var(--color-accent) 12%, var(--color-panel));
   color: var(--color-accent-strong);
   font-size: 10px;
   font-weight: 850;
@@ -364,7 +385,7 @@
   justify-self: start;
   max-width: 100%;
   padding: 7px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 26%, var(--color-border));
   border-radius: var(--radius-sm);
   color: var(--color-text);
   font-size: 12px;
@@ -382,7 +403,9 @@
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-panel-raised) 82%, black);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 38%),
+    color-mix(in srgb, var(--color-panel-raised) 82%, black);
 }
 
 .share-import-panel label {
@@ -433,7 +456,7 @@
   gap: 3px;
   min-height: var(--planner-nav-control-height);
   padding: 0 8px 0 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, black);
   border-radius: var(--radius-sm);
   background: var(--color-panel-raised);
   color: var(--color-text);
@@ -460,10 +483,12 @@
   gap: 6px;
   width: 190px;
   padding: var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 26%, var(--color-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-panel-raised) 94%, black);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 26%),
+    color-mix(in srgb, var(--color-panel-raised) 94%, black);
+  box-shadow: var(--shadow-md);
 }
 
 .command-menu__panel button {
@@ -485,10 +510,11 @@
 .workspace-body {
   position: relative;
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr) minmax(280px, 330px);
+  grid-template-columns: 86px minmax(0, 1fr) minmax(292px, 344px);
   min-height: 0;
   overflow: hidden;
-  background: var(--color-bg-canvas);
+  background:
+    linear-gradient(90deg, rgba(242, 165, 26, 0.04), transparent 32%), var(--color-bg-canvas);
 }
 
 .section-rail {
@@ -497,9 +523,10 @@
   display: grid;
   grid-auto-rows: max-content;
   gap: 6px;
-  padding: 10px 8px;
-  border-right: 1px solid var(--color-border);
-  background: #15191c;
+  padding: 12px 8px;
+  border-right: 1px solid color-mix(in srgb, var(--color-border) 82%, black);
+  background: linear-gradient(180deg, #11171b, #0c1114), var(--color-bg);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
 }
 
 .rail-button {
@@ -507,20 +534,26 @@
   justify-items: center;
   gap: 5px;
   width: 100%;
-  min-height: 62px;
+  min-height: 64px;
   padding: 7px 4px;
   border-color: transparent;
   background: transparent;
   color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.1;
+  box-shadow: none;
 }
 
 .rail-button:hover,
 .rail-button.is-active {
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
+  background:
+    linear-gradient(180deg, rgba(255, 196, 77, 0.08), rgba(242, 165, 26, 0.04)),
+    color-mix(in srgb, var(--color-accent) 11%, var(--color-panel));
   color: var(--color-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.18);
 }
 
 .rail-button--graph {
@@ -533,10 +566,11 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 1px solid currentColor;
+  border: 1px solid color-mix(in srgb, currentColor 60%, transparent);
   border-radius: var(--radius-sm);
   color: inherit;
   font-weight: 800;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .graph-stage {
@@ -546,8 +580,10 @@
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  padding: var(--space-4);
-  background: var(--color-bg-canvas);
+  padding: 12px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(81, 200, 198, 0.045), transparent 34%),
+    var(--color-bg-canvas);
 }
 
 .graph-toolbar {
@@ -555,7 +591,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: 10px;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, black);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 52%),
+    color-mix(in srgb, var(--color-panel) 82%, black);
+  box-shadow: var(--shadow-sm);
 }
 
 .graph-toolbar__actions {
@@ -570,6 +613,11 @@
 .panel-kicker {
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.graph-toolbar strong {
+  color: var(--color-text);
+  font-size: 14px;
 }
 
 .graph-solve-notice {
@@ -592,11 +640,13 @@
   max-width: calc(100vw - 420px);
   min-width: 0;
   min-height: 0;
-  margin: var(--space-4) 0 var(--space-4) var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, var(--color-border));
+  margin: 12px 0 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-panel) 94%, black);
-  box-shadow: 18px 0 42px rgba(0, 0, 0, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 22%),
+    color-mix(in srgb, var(--color-panel) 94%, black);
+  box-shadow: 22px 0 54px rgba(0, 0, 0, 0.42);
   overflow: hidden;
 }
 
@@ -611,8 +661,14 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: 14px 16px;
-  border-bottom: 1px solid var(--color-border);
-  background: linear-gradient(180deg, var(--color-panel-raised), var(--color-panel));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 78%, black);
+  background:
+    linear-gradient(90deg, rgba(242, 165, 26, 0.11), transparent 38%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-panel-raised) 96%, white),
+      var(--color-panel)
+    );
 }
 
 .panel-kicker {
@@ -635,8 +691,14 @@ h2 {
   min-width: 0;
   min-height: 0;
   padding: 0 var(--space-4) var(--space-4);
-  border-left: 1px solid var(--color-border);
-  background: var(--color-panel);
+  border-left: 1px solid color-mix(in srgb, var(--color-border) 78%, black);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-panel) 94%, black),
+      var(--color-panel-soft)
+    ),
+    var(--color-panel);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -647,8 +709,9 @@ h2 {
   padding: var(--space-3);
   border: 1px solid color-mix(in srgb, var(--color-warning) 65%, var(--color-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-warning) 12%, var(--color-panel));
+  background: color-mix(in srgb, var(--color-warning) 12%, var(--color-panel-raised));
   color: var(--color-text);
+  box-shadow: var(--shadow-sm);
 }
 
 .loading-panel {
@@ -657,9 +720,9 @@ h2 {
 
 .app-footer {
   padding: 8px 16px;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  background: #0f1214;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, black);
+  color: var(--color-text-subtle);
+  background: #090c0f;
   font-size: 12px;
 }
 

@@ -4,10 +4,11 @@
 
 .f-connection .f-connection-path {
   stroke: color-mix(in srgb, var(--color-belt) 82%, white);
-  stroke-width: 1.75;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-opacity: 0.86;
+  stroke-opacity: 0.9;
+  filter: drop-shadow(0 0 3px rgba(247, 201, 72, 0.13));
   transition:
     stroke 120ms ease,
     stroke-opacity 120ms ease,
@@ -16,6 +17,7 @@
 
 .f-connection.graph-edge--pipe .f-connection-path {
   stroke: color-mix(in srgb, var(--color-pipe) 90%, white);
+  filter: drop-shadow(0 0 3px rgba(255, 130, 52, 0.13));
 }
 
 .f-connection.graph-edge--focused .f-connection-path {
@@ -42,6 +44,7 @@
 .f-connection.graph-edge--done .f-connection-path {
   stroke: color-mix(in srgb, var(--color-text-muted) 64%, var(--color-bg-canvas));
   stroke-opacity: 0.32;
+  filter: none;
 }
 
 .f-connection .f-marker path {
@@ -79,8 +82,9 @@
 .f-node-output {
   width: 10px;
   height: 10px;
-  border: 2px solid var(--color-accent-strong);
-  background: var(--color-bg);
+  border: 2px solid color-mix(in srgb, var(--color-accent-strong) 84%, white);
+  background: color-mix(in srgb, var(--color-bg) 86%, black);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
 @keyframes beltwise-flow-dash {
