@@ -368,18 +368,18 @@
   } @else if (store.activeProject(); as project) {
     <main class="workspace-body" [class.workspace-body--panel-open]="workPanelOpen()">
       <nav class="section-rail" aria-label="Planner workspace sections">
-        @for (tab of tabs; track tab.id) {
+        @for (panel of workbenchPanels; track panel.id) {
           <button
             type="button"
             class="rail-button"
-            [class.is-active]="store.activeConfigTab() === tab.id && workPanelOpen()"
+            [class.is-active]="store.activeWorkbenchPanelId() === panel.id && workPanelOpen()"
             [attr.aria-current]="
-              store.activeConfigTab() === tab.id && workPanelOpen() ? 'page' : null
+              store.activeWorkbenchPanelId() === panel.id && workPanelOpen() ? 'page' : null
             "
-            (click)="openSection(tab.id)"
+            (click)="openSection(panel.id)"
           >
-            <span class="rail-mark">{{ tab.label.slice(0, 1) }}</span>
-            <span>{{ tab.label }}</span>
+            <span class="rail-mark">{{ panel.label.slice(0, 1) }}</span>
+            <span>{{ panel.label }}</span>
           </button>
         }
 
@@ -485,7 +485,7 @@
       @if (workPanelOpen()) {
         <section
           class="work-panel"
-          [class.work-panel--recipes]="store.activeConfigTab() === 'recipes'"
+          [ngClass]="activeWorkbenchPanel().panelClass"
           [attr.aria-label]="activeSectionLabel() + ' work panel'"
         >
           <div class="work-panel-header">
@@ -503,29 +503,7 @@
             </button>
           </div>
 
-          @switch (store.activeConfigTab()) {
-            @case ('plan') {
-              <bw-planner-targets-section />
-            }
-            @case ('objectives') {
-              <bw-planner-objectives-section />
-            }
-            @case ('recipes') {
-              <bw-planner-recipes-section />
-            }
-            @case ('inputs') {
-              <bw-planner-inputs-section />
-            }
-            @case ('resources') {
-              <bw-planner-resources-section />
-            }
-            @case ('machines') {
-              <bw-planner-machines-section />
-            }
-            @case ('display') {
-              <bw-planner-display-section />
-            }
-          }
+          <ng-container *ngComponentOutlet="activeWorkbenchPanel().component"></ng-container>
         </section>
       }
 

@@ -1,4 +1,4 @@
-export type ConfigurationTab =
+export type WorkbenchPanelId =
   | 'plan'
   | 'objectives'
   | 'recipes'
