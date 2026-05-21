@@ -16,7 +16,14 @@ import {
   type GraphDisplaySettings,
   type ProductionGraph,
 } from '@beltwise/planner-core';
-import { FCanvasComponent, F_CONNECTION_BUILDERS, FFlowModule } from '@foblex/flow';
+import {
+  EFZoomDirection,
+  FCanvasComponent,
+  FFlowComponent,
+  FZoomDirective,
+  F_CONNECTION_BUILDERS,
+  FFlowModule,
+} from '@foblex/flow';
 import {
   FOBLEX_CONNECTION_BUILDERS,
   type BeltwiseFoblexFlowEdge,
@@ -57,9 +64,12 @@ import {
 const GRAPH_ZOOM_MINIMUM = 0.2;
 const GRAPH_ZOOM_MAXIMUM = 2.5;
 const GRAPH_ZOOM_STEP = 0.08;
+const GRAPH_BUTTON_ZOOM_STEP = 0.05;
 const GRAPH_AUTO_FIT_PADDING = { x: 72, y: 56 };
 
 type CanvasFitTarget = Pick<FCanvasComponent, 'fitToScreen'>;
+type GraphHostTarget = Pick<FFlowComponent, 'hostElement'>;
+type GraphZoomTarget = Pick<FZoomDirective, 'setZoom'>;
 
 @Component({
   selector: 'bw-production-graph',
@@ -91,7 +101,10 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly graphZoomMinimum = GRAPH_ZOOM_MINIMUM;
   public readonly graphZoomMaximum = GRAPH_ZOOM_MAXIMUM;
   public readonly graphZoomStep = GRAPH_ZOOM_STEP;
+  public readonly graphButtonZoomStep = GRAPH_BUTTON_ZOOM_STEP;
+  private readonly flow = viewChild<FFlowComponent>(FFlowComponent);
   private readonly canvas = viewChild<FCanvasComponent>('graphCanvas');
+  private readonly zoom = viewChild<FZoomDirective>(FZoomDirective);
   private readonly interactionController = new GraphInteractionController({
     getSelectedNodeId: () => this.selectedNodeId(),
     isInteractionLocked: () => this.interactionLocked(),
@@ -143,6 +156,29 @@ export class ProductionGraphComponent implements OnDestroy {
 
     this.autoFittedGraph = graph;
     canvas.fitToScreen(GRAPH_AUTO_FIT_PADDING, false);
+  }
+
+  public zoomGraphIn(event: Event): void {
+    this.stopNodeControlEvent(event);
+    this.zoomGraphAroundVisibleCenter(this.zoom(), this.flow(), EFZoomDirection.ZOOM_IN);
+  }
+
+  public zoomGraphOut(event: Event): void {
+    this.stopNodeControlEvent(event);
+    this.zoomGraphAroundVisibleCenter(this.zoom(), this.flow(), EFZoomDirection.ZOOM_OUT);
+  }
+
+  public zoomGraphAroundVisibleCenter(
+    zoom: GraphZoomTarget | undefined,
+    flow: GraphHostTarget | undefined,
+    direction: EFZoomDirection,
+  ): void {
+    if (!zoom || !flow) {
+      return;
+    }
+
+    const centerPoint = visibleGraphCenterPoint(flow.hostElement);
+    zoom.setZoom(centerPoint, GRAPH_BUTTON_ZOOM_STEP, direction, false);
   }
 
   public inputId(nodeId: string): string {
@@ -311,4 +347,12 @@ function isGraphControlTarget(target: EventTarget | null): target is GraphContro
   }
   const candidate = target as { value?: unknown };
   return typeof candidate.value === 'string';
+}
+
+function visibleGraphCenterPoint(hostElement: HTMLElement): { x: number; y: number } {
+  const rect = hostElement.getBoundingClientRect();
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
 }

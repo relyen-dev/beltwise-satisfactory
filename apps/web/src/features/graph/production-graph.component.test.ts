@@ -11,6 +11,7 @@ import * as angularCore from '@angular/core';
 import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { createDefaultGraphDisplaySettings, type ProductionGraph } from '@beltwise/planner-core';
+import { EFZoomDirection } from '@foblex/flow';
 import { readFile } from 'node:fs/promises';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ProductionGraphComponent } from './production-graph.component';
@@ -48,6 +49,26 @@ describe('ProductionGraphComponent', () => {
     const { component } = createComponentHarness();
 
     expect(component.graphZoomStep).toBe(0.08);
+    expect(component.graphButtonZoomStep).toBe(0.05);
+
+    component.ngOnDestroy();
+  });
+
+  it('zooms around the visible graph center with the explicit button step', () => {
+    const { component } = createComponentHarness();
+    const zoom = { setZoom: vi.fn() };
+    const flow = {
+      hostElement: testHostElement({ left: 20, top: 30, width: 640, height: 360 }),
+    };
+
+    component.zoomGraphAroundVisibleCenter(zoom, flow, EFZoomDirection.ZOOM_IN);
+
+    expect(zoom.setZoom).toHaveBeenCalledWith(
+      { x: 340, y: 210 },
+      0.05,
+      EFZoomDirection.ZOOM_IN,
+      false,
+    );
 
     component.ngOnDestroy();
   });
@@ -293,6 +314,27 @@ describe('ProductionGraphComponent template', () => {
     expect(assumedNode?.textContent).toContain('Uranium Waste');
     expect(assumedNode?.textContent).toContain('25/min assumed source');
   });
+
+  it('renders compact zoom buttons that do not bubble graph control clicks', async () => {
+    const { fixture } = await createRenderedGraphHarness();
+    const zoomControls = requiredZoomControlButtons(fixture);
+    const zoomAroundCenter = vi
+      .spyOn(fixture.componentInstance, 'zoomGraphAroundVisibleCenter')
+      .mockImplementation(() => undefined);
+    const documentClick = vi.fn();
+
+    document.addEventListener('click', documentClick);
+    zoomControls.zoomIn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    zoomControls.zoomOut.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+    document.removeEventListener('click', documentClick);
+
+    expect(zoomControls.zoomIn.getAttribute('aria-label')).toBe('Zoom in graph');
+    expect(zoomControls.zoomOut.getAttribute('aria-label')).toBe('Zoom out graph');
+    expect(documentClick).not.toHaveBeenCalled();
+    expect(zoomAroundCenter).toHaveBeenCalledTimes(2);
+  });
 });
 
 function createComponentHarness(): ProductionGraphHarness {
@@ -457,6 +499,38 @@ function requiredTargetRateInput(
     throw new Error('Expected the graph target rate input to render');
   }
   return input;
+}
+
+function requiredZoomControlButtons(
+  fixture: ComponentFixture<ProductionGraphComponent>,
+): { zoomIn: HTMLButtonElement; zoomOut: HTMLButtonElement } {
+  const zoomIn = fixture.nativeElement.querySelector(
+    '.graph-zoom-button[aria-label="Zoom in graph"]',
+  ) as HTMLButtonElement | null;
+  const zoomOut = fixture.nativeElement.querySelector(
+    '.graph-zoom-button[aria-label="Zoom out graph"]',
+  ) as HTMLButtonElement | null;
+  if (!zoomIn || !zoomOut) {
+    throw new Error('Expected graph zoom controls to render');
+  }
+  return { zoomIn, zoomOut };
+}
+
+function testHostElement(rect: Pick<DOMRect, 'height' | 'left' | 'top' | 'width'>): HTMLElement {
+  return {
+    getBoundingClientRect: () =>
+      ({
+        bottom: rect.top + rect.height,
+        height: rect.height,
+        left: rect.left,
+        right: rect.left + rect.width,
+        top: rect.top,
+        width: rect.width,
+        x: rect.left,
+        y: rect.top,
+        toJSON: () => ({}),
+      }) as DOMRect,
+  } as HTMLElement;
 }
 
 async function installDomGlobals(): Promise<void> {
