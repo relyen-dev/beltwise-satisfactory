@@ -56,7 +56,7 @@ import {
 
 const GRAPH_ZOOM_MINIMUM = 0.2;
 const GRAPH_ZOOM_MAXIMUM = 2.5;
-const GRAPH_ZOOM_STEP = 0.12;
+const GRAPH_ZOOM_STEP = 0.08;
 const GRAPH_AUTO_FIT_PADDING = { x: 72, y: 56 };
 
 type CanvasFitTarget = Pick<FCanvasComponent, 'fitToScreen'>;

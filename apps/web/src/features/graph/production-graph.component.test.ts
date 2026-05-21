@@ -44,6 +44,14 @@ afterEach(() => {
 });
 
 describe('ProductionGraphComponent', () => {
+  it('uses a gentle configured zoom step for Foblex canvas controls', () => {
+    const { component } = createComponentHarness();
+
+    expect(component.graphZoomStep).toBe(0.08);
+
+    component.ngOnDestroy();
+  });
+
   it('emits a node selection toggle when pointer down and up stay within click tolerance', () => {
     const { component, nodeSelectionToggled } = createComponentHarness();
 
