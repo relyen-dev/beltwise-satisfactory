@@ -194,6 +194,36 @@
         </div>
       }
     </f-canvas>
+    <div
+      class="graph-zoom-controls"
+      aria-label="Graph zoom controls"
+      (pointerdown)="stopNodeControlEvent($event)"
+      (pointerup)="stopNodeControlEvent($event)"
+      (mousedown)="stopNodeControlEvent($event)"
+      (mouseup)="stopNodeControlEvent($event)"
+      (touchstart)="stopNodeControlEvent($event)"
+      (touchend)="stopNodeControlEvent($event)"
+      (dblclick)="stopNodeControlEvent($event)"
+    >
+      <button
+        class="graph-zoom-button"
+        type="button"
+        aria-label="Zoom out graph"
+        title="Zoom out"
+        (click)="zoomGraphOut($event)"
+      >
+        -
+      </button>
+      <button
+        class="graph-zoom-button"
+        type="button"
+        aria-label="Zoom in graph"
+        title="Zoom in"
+        (click)="zoomGraphIn($event)"
+      >
+        +
+      </button>
+    </div>
   </f-flow>
 } @else {
   <div class="empty-graph">
