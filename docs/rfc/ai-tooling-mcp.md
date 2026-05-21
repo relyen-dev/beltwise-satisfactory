@@ -221,9 +221,9 @@ This is useful even without generated prose for basic lookups. An assistant clie
 
 ## Share Links And Plan Tokens
 
-Beltwise should eventually support shareable plan links. Assistant/tooling integrations can use the same format to generate links for suggested plans.
+Beltwise supports compact `bw.p` plan payloads for copy/paste codes and `#plan=` links. Assistant/tooling integrations should use the same plan-share format for suggested plans instead of inventing a second token shape.
 
-Possible approach:
+Current approach:
 
 - Store user projects locally as versioned JSON.
 - Define a smaller `SharePlan` format containing only portable user intent/configuration:
@@ -233,10 +233,12 @@ Possible approach:
   - resource caps
   - item inputs
   - objective profile
+  - graph display settings
+  - non-empty plan and node notes
 - Serialize to compact JSON.
 - Compress with a browser-safe algorithm.
-- Encode in URL-safe base64 or another URL-safe token.
-- Put the token in the URL hash or query string.
+- Encode in a URL-safe token.
+- Put the token in the URL hash as `#plan=`.
 
 Example:
 
@@ -244,7 +246,7 @@ Example:
 https://satisfactory.beltwise.app/#plan=<compressed-token>
 ```
 
-The share token should not contain authoritative solver output. The site should decode the token and solve locally using the current compatible dataset.
+The share token must not contain authoritative solver output. The site decodes the token and solves locally using the current compatible dataset.
 
 Open questions:
 

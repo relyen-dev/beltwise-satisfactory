@@ -26,6 +26,7 @@ The current app is a working local-first Angular planner:
 - The browser loads compact generated data from `apps/web/public/data/satisfactory-current.json`, with `data/generated/satisfactory-current.json` available as a built-asset fallback.
 - The production solver is HiGHS-backed through the `highs` JavaScript/WASM runtime, with the wrapper patched to read raw solution values instead of truncated pretty output.
 - Workspace state is saved in `localStorage` under a versioned schema and stores sessions, projects, user defaults, and user intent/configuration, not authoritative solver output.
+- Planner UI state is split across focused Angular capabilities for workspace, active-plan configuration, global defaults, graph interaction, transfer, solving, and workbench focus; `PlannerStoreService` only composes runtime wiring.
 - Foblex Flow renders the graph through an app-layer adapter. Default graph positions are currently generated with Dagre inside the renderer-neutral graph model path.
 - The current graph supports resource, external input, recipe, output, and byproduct nodes, plus selected-path focus, manual node movement, node done state, node notes, transport labels, and configurable edge style.
 - Plans support plain-text plan notes and graph node notes that are stored locally, exported/imported, shared in compact plan payloads when non-empty, and surfaced in the inspector overview.
@@ -76,7 +77,7 @@ The first version should handle a useful early-to-mid-game slice:
 - Angular-based interactive graph with resource, external input, recipe, output, and byproduct nodes.
 - Local browser persistence for sessions, multiple user projects/plans, user defaults, manual node positions, graph display settings, plan notes, and build-tracking node notes.
 
-Do not include save-file parsing, seed-based randomized resource detection, train/logistics planning, blueprint generation, multiplayer sharing, or account/server features in the MVP. Nuclear and late-game recipes may be present in generated data and solver regression tests, but specialized nuclear UX remains future work.
+Do not include save-file parsing, seed-based randomized resource detection, train/logistics planning, blueprint generation, server-backed multiplayer/collaborative sharing, or account/server features in the MVP. Nuclear and late-game recipes may be present in generated data and solver regression tests, but specialized nuclear UX remains future work.
 
 ## Non-Functional Requirements
 
@@ -793,16 +794,15 @@ Layout rules:
 
 ## UI MVP
 
-The first screen should be the actual planner, not a marketing page.
+The first screen should be an actual planning workspace, not a marketing page. Today that is the graph planner; the near-term dashboard direction should still be a usable workspace entry point for sessions, plans, defaults, and future save-wide views.
 
 Current primary layout:
 
-- Top app bar: brand, project switcher/name, project actions, solve status, graph/layout locks, layout reset, inspector toggle.
-- Left rail: Plan, Objectives, Recipes, Inputs, Resources, Machines, Display, and Graph focus controls.
-- Collapsible workbench panel: production targets and configuration sections.
+- Top app bar: brand, session/project navigation, project actions, transfer actions, and defaults access.
+- Graph toolbar/shell controls: solve status, graph/layout locks, layout reset, graph focus controls, and inspector toggle.
+- Workbench rail/panels: Plan, Objectives, Recipes, Inputs, Resources, Machines, Display, and Defaults surfaces.
 - Center: interactive graph.
-- Right inspector: selected node details, machine counts, item flows, power.
-- Inspector panel: selected node state, node notes, note summary, plan status, power, machine usage, and warnings.
+- Inspector panel: selected-node details, node notes/build state, note summary, plan status, objective summary, power, machine usage, item flows, sink-point potential, and warnings.
 
 Production targets table:
 
@@ -876,6 +876,7 @@ Current implementation:
 Later:
 
 - Add an optional local asset extraction/import step if the public icon folder needs to be regenerated from game files.
+- Decide whether to commit smaller generated `64x64` or `128x128` variants instead of relying on the current extracted source size.
 - Decide whether a generated manifest is useful beyond the current deterministic path convention.
 - Do not block core planning work on icon extraction.
 
@@ -884,6 +885,8 @@ For public distribution, review Coffee Stain's current asset/community guideline
 ## Save Files And Randomized Nodes Later
 
 Beltwise should eventually support resource limits from static map data, user custom caps, randomized-node seeds, or uploaded save files. This is not part of the MVP.
+
+An external extractor effort is expected to provide a full Satisfactory map PNG and a default resource-node catalog with node locations and purity. Treat those as future generated inputs until they are copied into this repo behind schemas and tests.
 
 Keep future resource-limit sources behind a `ResourceProvider` abstraction:
 
@@ -897,7 +900,7 @@ interface ResourceProvider {
 
 Future providers:
 
-- `staticBaselineProvider`
+- `staticBaselineProvider`, potentially backed by an extracted static node catalog.
 - `customCapsProvider`
 - `saveFileProvider`
 - `randomSeedProvider`
@@ -945,8 +948,9 @@ App/service tests:
 
 - Local persistence rejects malformed storage safely and hydrates valid project configuration.
 - Planner solve keys change only for solve-relevant inputs.
-- Planner mutation helpers preserve target, resource, display, and build-state rules.
+- Planner capability stores preserve workspace, active-plan, default, graph, transfer, and build-state rules.
 - Workbench selectors sort/filter visible rows without leaking domain work into templates.
+- Transfer tests cover plan JSON, compact share codes/links, browser adapters, dataset warnings, and rejected imports.
 
 Future browser smoke tests:
 
@@ -994,16 +998,18 @@ Completed baseline:
 10. Added user defaults for newly created plans.
 11. Added plan JSON import/export and compact share links/codes.
 12. Added restrained item and machine icon placements across planner controls, graph nodes, and inspector views.
-13. Added objective presets and custom objective weight controls.
+13. Added objective presets, custom objective weights, and raw-resource route multipliers.
 14. Added plan-level notes and node-note summaries.
-15. Added docs explaining local workflow, architecture, data model, and data regeneration.
+15. Split planner state into focused workspace, plan-config, defaults, graph, transfer, solving, and workbench capabilities.
+16. Added docs explaining local workflow, architecture, data model, and data regeneration.
 
 Near-term follow-up:
 
-1. Add raw resource multiplier controls to the Objective custom editor.
-2. Run focused refactoring passes where feature slices have grown large, especially planner store/UI orchestration and transfer/default/objective helpers.
-3. Add browser smoke tests for graph rendering, planner editing, persistence reload, share/import flows, and infeasible/error states.
-4. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
-5. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
+1. Design a workspace dashboard/navigation entry point for sessions, plans, defaults, transfer, and future save-wide views.
+2. Add browser smoke tests for graph rendering, planner editing, persistence reload, share/import flows, and infeasible/error states.
+3. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
+4. Improve graph connection display controls and selected-flow readability behind renderer-neutral display settings.
+5. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
 6. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
-7. Keep save-file import, randomized node seeds, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
+7. Draft the linked-plan contract model before adding logistics-backed links or session-wide production balance.
+8. Keep save-file import, randomized node seeds, session-scale logistics/map planning, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.

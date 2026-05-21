@@ -28,7 +28,7 @@ The long-term differentiator is session-scale planning:
 - Zoom out from individual plans into a session overview that shows item flow between factories.
 - Warn when a train, truck, drone, belt, pipe, or shared production pool cannot support the connected demand.
 
-The first supporting layer is now in place: stronger panels, icons, defaults, plan transfer, sessions, objective presets, inspector summaries, and notes. The next roadmap decisions should decide how much refactoring is needed before moving into session-scale planning.
+The first supporting layer is now in place: stronger panels, icons, defaults, plan transfer, sessions, objective presets, inspector summaries, notes, and focused planner state capabilities. The next roadmap decisions should choose the next product surface deliberately, with the workspace dashboard and linked-plan contract as the main stepping stones toward session-scale planning.
 
 ## Related Documents
 
@@ -61,20 +61,21 @@ The initial workspace-priority set is implemented:
 4. User-configurable global defaults for new plans.
 5. Plan JSON import/export and compact share links/codes.
 6. First-pass game sessions that group plans.
-7. Objective presets and custom objective weights.
+7. Objective presets, custom objective weights, and raw-resource route multipliers.
 8. Plan notes and node-note polish.
+9. Planner state capability refactor that slimmed `PlannerStoreService` into runtime composition.
 
 ## Next Candidate Set
 
 These are plausible next steps before the larger save/logistics systems. Some are cleanup passes that can reduce risk before adding more stateful features.
 
-1. Refactor planner store/UI orchestration where feature slices have grown large.
-2. Add raw resource multiplier controls to the Objective custom editor.
-3. Add browser smoke tests for graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
-4. Improve graph connection display controls.
-5. Add drill-in graph views for special production loops.
-6. Design the linked-plan contract model before implementing logistics.
-7. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
+1. Design a workspace dashboard/navigation entry point that can lead to factory plans, session views, defaults, transfer actions, and future save-wide planning.
+2. Add browser smoke tests for graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
+3. Improve graph connection display controls.
+4. Add drill-in graph views for special production loops.
+5. Design the linked-plan contract model before implementing logistics.
+6. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
+7. Keep doing small technical refactors only where a capability or workbench slice has become hard to test or review; avoid recreating a broad planner facade.
 
 ## Future Systems
 
@@ -178,6 +179,7 @@ Future asset questions:
 
 - Decide whether to commit smaller `64x64` or `128x128` variants instead of the current extracted source size.
 - Decide whether a generated manifest is useful beyond deterministic public paths.
+- Decide whether the upcoming map PNG should live with generated public assets, and what size/tiling strategy is appropriate before any map UI exists.
 
 Good first placements:
 
@@ -424,9 +426,9 @@ UX notes:
 
 - Explain presets through concise labels and tooltips, not solver math.
 - Keep advanced weights in the custom editor.
+- Keep raw-resource route multipliers available for players who want to favor or avoid specific raw resources without changing availability caps.
 - Show the active objective profile in the Objectives workbench and inspector summary.
 - Add focused solver tests whenever objective behavior changes.
-- Future follow-up: add raw resource multiplier controls to the custom editor.
 
 ## Inspector
 
@@ -598,17 +600,16 @@ Recommended path:
 
 ## Suggested Sequence
 
-1. Run a planner-store and UI orchestration refactor pass if the completed feature sweep left seams that will slow future work.
-2. Add raw resource multiplier controls to the custom objective editor.
-3. Add browser smoke tests around graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
-4. Add graph connection display controls and drill-in views.
-5. Write a focused RFC for linked-plan contracts: exports, imports, item pools, and how those should interact with manual external inputs.
-6. Extend the session data model only with fields needed by the linked-plan or save-import feature selected next.
-7. Add session import/export after session-scoped data exists beyond plan grouping.
-8. Prototype linked plans with manual links before logistics-backed links.
-9. Add a schematic session logistics overview once linked plans exist.
-10. Research save-derived logistics only after save import has a reliable parser boundary.
-11. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
+1. Design and implement a workspace dashboard/navigation entry point so users can choose plans, defaults, session-level surfaces, and future save views without landing directly in the last graph.
+2. Add browser smoke tests around graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
+3. Add graph connection display controls and drill-in views.
+4. Write a focused RFC for linked-plan contracts: exports, imports, item pools, and how those should interact with manual external inputs.
+5. Extend the session data model only with fields needed by the linked-plan or save-import feature selected next.
+6. Add session import/export after session-scoped data exists beyond plan grouping.
+7. Prototype linked plans with manual links before logistics-backed links.
+8. Add a schematic session logistics overview once linked plans exist.
+9. Research save-derived logistics only after save import has a reliable parser boundary.
+10. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
 
 ## Open Questions
 
@@ -616,6 +617,7 @@ Recommended path:
 - When should session defaults be added, and should they override or only seed global defaults?
 - When session export exists, should it export all plans by default or let users choose a subset?
 - Which icon sizes should be committed: `64x64`, `128x128`, or both?
+- How should the extracted map PNG and default node catalog be schema-validated and versioned before session/map planning uses them?
 - How should public distribution handle extracted game icons and asset licensing/community guidelines?
 - Should plan links be one-to-one explicit connections, named item pools, or both?
 - How much save-derived data should be allowed to update an existing plan automatically?

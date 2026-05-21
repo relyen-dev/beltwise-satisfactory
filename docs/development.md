@@ -74,7 +74,8 @@ docs                             architecture, ADRs, RFCs, and product notes
 - Keep renderer-specific Foblex types in `apps/web/src/features/graph`.
 - Keep `planner-core` graph and project models renderer-neutral.
 - Persist user configuration, not solver output.
-- Add focused tests when changing parser, solver, resource-limit, or graph-model behavior.
+- Add focused tests when changing parser, solver, resource-limit, graph-model, transfer, persistence, or planner capability behavior.
+- Test Angular planner behavior through the owning capability (`PlannerWorkspaceSlice`, `PlannerPlanConfigStore`, `PlannerDefaultsStore`, `PlannerGraphStore`, transfer, solving, or workbench) instead of rebuilding broad root-store coverage.
 - Run `npm.cmd test`, `npm.cmd run typecheck`, and `npm.cmd run build` before handing off meaningful changes.
 - If a sandboxed run of `npm.cmd test` fails while loading `vitest.config.mjs` with `Access is denied`, rerun the same command with the appropriate permissions before changing test configuration.
 

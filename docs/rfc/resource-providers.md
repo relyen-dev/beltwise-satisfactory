@@ -32,9 +32,10 @@ It does not appear to include the placed world resource-node catalog:
 - No default per-node resource type/purity list was found.
 - Search hits for `BP_ResourceNode`/`ResourceNode` in `en-US.json` are machine/extractor metadata such as `mParticleMap`, not placed map nodes.
 
-Therefore the base resource-node catalog probably needs to come from one of:
+Therefore the base resource-node catalog needs to come from another source. The preferred path is now an extractor-produced static node catalog from game/map assets:
 
-- Game map assets outside `en-US.json`.
+- Game map assets outside `en-US.json`, exported into a schema-validated JSON catalog with stable node IDs, locations, resource type, and purity.
+- A generated map PNG from the same extraction flow, useful for future planned-location or session-map UI but not required for resource totals.
 - A parsed vanilla/default save file, if it includes placed resource-node actors with transforms.
 - A manually curated catalog verified against SCIM-the-site or in-game observations.
 
@@ -81,7 +82,7 @@ interface ResourceProvider {
 
 Future providers:
 
-- `staticBaselineProvider`
+- `staticBaselineProvider`, backed by static extracted caps or an extracted node catalog.
 - `customCapsProvider`
 - `saveFileProvider`
 - `randomSeedProvider`
@@ -276,11 +277,13 @@ Interpretation:
 
 ## Preferred Future Path
 
-1. Research whether Satisfactory 1.2 randomized resource nodes are deterministically derivable from a seed and static world data.
-2. If yes, implement an independent `randomSeedProvider` that takes only seed/settings and returns node counts/purities/resource caps.
-3. If seed derivation is not practical, implement an optional `saveFileProvider` that reads a user-uploaded `.sav` locally in the browser and extracts resolved resource node data.
-4. Keep uploaded saves local-only by default. Do not send save files to a server unless a future feature explicitly requires it and the UI says so.
-5. Use tests with tiny synthetic save/resource fixtures before using real user saves.
+1. Import the extractor-produced default resource-node catalog behind a schema and tests, then derive static baseline caps from that catalog.
+2. Keep the generated map PNG as a future UI asset until a planned-location or session-map feature needs it.
+3. Research whether Satisfactory 1.2 randomized resource nodes are deterministically derivable from a seed and static world data.
+4. If yes, implement an independent `randomSeedProvider` that takes only seed/settings and returns node counts/purities/resource caps.
+5. If seed derivation is not practical, implement an optional `saveFileProvider` that reads a user-uploaded `.sav` locally in the browser and extracts resolved resource node data.
+6. Keep uploaded saves local-only by default. Do not send save files to a server unless a future feature explicitly requires it and the UI says so.
+7. Use tests with tiny synthetic save/resource fixtures before using real user saves.
 
 ## Research Plan
 
