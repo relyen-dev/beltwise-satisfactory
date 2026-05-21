@@ -6,12 +6,14 @@
     role="region"
     aria-label="Production graph"
     aria-keyshortcuts="PageUp PageDown plus - ="
+    (wheel)="handleGraphWheel($event)"
     (keydown)="handleGraphKeydown($event)"
     (fFullRendered)="handleFlowRendered()"
   >
     <f-canvas
       #graphCanvas
       fZoom
+      [fWheelTrigger]="disableBuiltInWheelZoom"
       [fZoomMinimum]="graphZoomMinimum"
       [fZoomMaximum]="graphZoomMaximum"
       [fZoomStep]="graphZoomStep"

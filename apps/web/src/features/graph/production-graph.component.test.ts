@@ -73,6 +73,37 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('zooms wheel input around the cursor with the configured base step', () => {
+    const { component } = createComponentHarness();
+    const zoom = installGraphZoom(component, { scale: 1 });
+    const event = wheelEvent({ clientX: 140, clientY: 90, deltaY: -100 });
+
+    component.handleGraphWheel(event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(zoom.setZoom).toHaveBeenCalledWith(
+      { x: 140, y: 90 },
+      0.08,
+      EFZoomDirection.ZOOM_IN,
+      false,
+    );
+
+    component.ngOnDestroy();
+  });
+
+  it('consumes ignored gesture wheel noise on the graph surface', () => {
+    const { component } = createComponentHarness();
+    const zoom = installGraphZoom(component, { scale: 1 });
+    const event = wheelEvent({ ctrlKey: true, deltaY: -0.25 });
+
+    component.handleGraphWheel(event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(zoom.setZoom).not.toHaveBeenCalled();
+
+    component.ngOnDestroy();
+  });
+
   it('maps graph keyboard shortcuts to explicit zoom actions', () => {
     const { component } = createComponentHarness();
     const zoomAroundCenter = vi
@@ -439,6 +470,43 @@ function mouseEvent(): MouseEvent {
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
   } as unknown as MouseEvent;
+}
+
+function wheelEvent(options: {
+  clientX?: number;
+  clientY?: number;
+  ctrlKey?: boolean;
+  deltaMode?: number;
+  deltaX?: number;
+  deltaY?: number;
+  metaKey?: boolean;
+}): WheelEvent & {
+  preventDefault: ReturnType<typeof vi.fn>;
+} {
+  return {
+    clientX: options.clientX ?? 120,
+    clientY: options.clientY ?? 80,
+    ctrlKey: options.ctrlKey ?? false,
+    deltaMode: options.deltaMode ?? 0,
+    deltaX: options.deltaX ?? 0,
+    deltaY: options.deltaY ?? 0,
+    metaKey: options.metaKey ?? false,
+    preventDefault: vi.fn(),
+  } as unknown as WheelEvent & {
+    preventDefault: ReturnType<typeof vi.fn>;
+  };
+}
+
+function installGraphZoom(
+  component: ProductionGraphComponent,
+  options: { scale: number },
+): { getZoomValue: () => number; setZoom: ReturnType<typeof vi.fn> } {
+  const zoom = {
+    getZoomValue: () => options.scale,
+    setZoom: vi.fn(),
+  };
+  Object.defineProperty(component, 'zoom', { value: () => zoom });
+  return zoom;
 }
 
 function keyboardEvent(options: {
