@@ -2,8 +2,10 @@ import '@angular/compiler';
 import { Injector, runInInjectionContext, signal, type WritableSignal } from '@angular/core';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
+  OBJECTIVE_PRESET_DEFINITIONS,
   createObjectiveProfileFromPreset,
   createPlannerProject,
+  type ObjectiveWeightKey,
   type PlannerProject,
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
@@ -135,13 +137,76 @@ describe('PlannerPlanConfigStore', () => {
       showTransportLabels: false,
     });
   });
+
+  it('applies every objective preset and preserves priority order for custom edits', () => {
+    const { activeProject, planConfig } = createPlanConfigHarness();
+
+    for (const preset of OBJECTIVE_PRESET_DEFINITIONS.filter((preset) => preset.id !== 'custom')) {
+      planConfig.objectiveCommands.setPreset(preset.id);
+      expect(requiredProject(activeProject).objectiveProfile).toEqual(
+        createObjectiveProfileFromPreset(preset.id),
+      );
+    }
+
+    const previousProfile = requiredProject(activeProject).objectiveProfile;
+    planConfig.objectiveCommands.setPreset('custom');
+    expect(requiredProject(activeProject).objectiveProfile).toEqual({
+      ...previousProfile,
+      presetId: 'custom',
+    });
+
+    planConfig.objectiveCommands.setPreset('low-power');
+    const lowPowerStageOrder = requiredProject(activeProject).objectiveProfile.stageOrder;
+    planConfig.objectiveCommands.setWeight('powerWeight', 0.25);
+
+    expect(requiredProject(activeProject).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      stageOrder: lowPowerStageOrder,
+      powerWeight: 0.25,
+    });
+  });
+
+  it('clamps custom objective weights and accumulates or removes raw resource multipliers', () => {
+    const { activeProject, planConfig } = createPlanConfigHarness();
+    const unsafeWeights: ReadonlyArray<readonly [ObjectiveWeightKey, number]> = [
+      ['resourceScarcityWeight', Number.NaN],
+      ['powerWeight', Number.NEGATIVE_INFINITY],
+      ['machineCountWeight', -1],
+      ['surplusWeight', 2.5],
+    ];
+
+    for (const [key, value] of unsafeWeights) {
+      planConfig.objectiveCommands.setWeight(key, value);
+    }
+
+    expect(requiredProject(activeProject).objectiveProfile).toMatchObject({
+      presetId: 'custom',
+      resourceScarcityWeight: 0,
+      powerWeight: 0,
+      machineCountWeight: 0,
+      surplusWeight: 2.5,
+    });
+
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreIron_C', 2);
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreCopper_C', 3);
+    expect(requiredProject(activeProject).objectiveProfile.rawResourceMultipliers).toEqual({
+      Desc_OreIron_C: 2,
+      Desc_OreCopper_C: 3,
+    });
+
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreIron_C', 1);
+    planConfig.objectiveCommands.resetRawResourceMultiplier('Desc_OreCopper_C');
+    expect(requiredProject(activeProject).objectiveProfile.rawResourceMultipliers).toEqual({});
+  });
 });
 
-function createPlanConfigHarness(options: {
-  project?: PlannerProject;
-  dataset?: GameDataset | null;
-  solveResult?: ProductionPlanResult | null;
-} = {}): {
+function createPlanConfigHarness(
+  options: {
+    project?: PlannerProject;
+    dataset?: GameDataset | null;
+    solveResult?: ProductionPlanResult | null;
+  } = {},
+): {
   activeProject: WritableSignal<PlannerProject | null>;
   planConfig: PlannerPlanConfigStore;
 } {

@@ -119,6 +119,24 @@ describe('PlannerGraphStore', () => {
     });
   });
 
+  it('flushes drag-end position commits idempotently', () => {
+    vi.useFakeTimers();
+    const { activeProject, graph } = createGraphHarness();
+
+    graph.layoutCommands.setNodePosition(NODE_ID, { x: 10, y: 20 });
+    graph.layoutCommands.flushNodePositions();
+    graph.layoutCommands.flushNodePositions();
+
+    expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({
+      [NODE_ID]: { x: 10, y: 20 },
+    });
+
+    vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
+    expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({
+      [NODE_ID]: { x: 10, y: 20 },
+    });
+  });
+
   it('flushes and clears pending layout state for workspace lifecycle hooks', () => {
     vi.useFakeTimers();
     const { activeProject, graph } = createGraphHarness();
