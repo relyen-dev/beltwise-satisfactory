@@ -48,7 +48,7 @@ describe('ProductionGraphComponent', () => {
   it('uses a gentle configured zoom step for Foblex canvas controls', () => {
     const { component } = createComponentHarness();
 
-    expect(component.graphZoomStep).toBe(0.08);
+    expect(component.graphZoomStep).toBe(0.06);
     expect(component.graphButtonZoomStep).toBe(0.05);
 
     component.ngOnDestroy();
