@@ -32,6 +32,8 @@ import {
   objectiveWeightValue,
   OBJECTIVE_WEIGHT_CONTROLS,
   PLANNER_OBJECTIVE_PRESETS,
+  RAW_RESOURCE_COST_FORMULA_LABEL,
+  RAW_RESOURCE_COST_HELP_TEXT,
   recipeRowsForDefaultPanel,
 } from './planner-configuration-surface';
 
@@ -78,6 +80,8 @@ export class PlannerDefaultsPanelComponent {
   public readonly edgeStyleOptions = GRAPH_DISPLAY_EDGE_STYLE_OPTIONS;
   public readonly objectivePresets = PLANNER_OBJECTIVE_PRESETS;
   public readonly objectiveWeightControls = OBJECTIVE_WEIGHT_CONTROLS;
+  public readonly rawResourceCostFormulaLabel = RAW_RESOURCE_COST_FORMULA_LABEL;
+  public readonly rawResourceCostHelpText = RAW_RESOURCE_COST_HELP_TEXT;
 
   public recipePanelRowCount(
     panelId: DefaultRecipePanelId,

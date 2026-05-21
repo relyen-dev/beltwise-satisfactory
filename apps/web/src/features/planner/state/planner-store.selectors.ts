@@ -49,8 +49,11 @@ export interface ResourceRow {
 export interface RawResourceMultiplierRow {
   resource: ResourceInfo;
   iconSrc: string;
+  baselineAvailabilityLabel: string;
   builtInCost: number;
   builtInCostLabel: string;
+  builtInCostHelpText: string;
+  costFormulaAriaLabel: string;
   multiplier: number;
   multiplierLabel: string;
   effectiveCost: number;
@@ -185,7 +188,15 @@ export function selectRawResourceMultiplierRows(
         : undefined;
     })
     .filter(isDefined);
+  if (candidates.length === 0) {
+    return [];
+  }
   const lowestBuiltInCost = Math.min(...candidates.map((candidate) => candidate.builtInCost));
+  const referenceCandidate = candidates.toSorted(
+    (left, right) =>
+      left.builtInCost - right.builtInCost ||
+      left.resource.displayName.localeCompare(right.resource.displayName),
+  )[0]!;
 
   return candidates
     .toSorted((left, right) => left.resource.displayName.localeCompare(right.resource.displayName))
@@ -196,15 +207,27 @@ export function selectRawResourceMultiplierRows(
       );
       const effectiveCost = builtInRelativeCost * multiplier;
       const isNeutral = multiplier === NEUTRAL_RAW_RESOURCE_MULTIPLIER;
+      const builtInCostLabel = formatRouteCost(builtInRelativeCost);
+      const multiplierLabel = `${formatPlannerNumber(multiplier)}x`;
+      const effectiveCostLabel = formatRouteCost(effectiveCost);
       return {
         resource,
         iconSrc: gameIconPathForItemId(resource.itemId),
+        baselineAvailabilityLabel: formatRawResourceAvailability(resource),
         builtInCost: builtInRelativeCost,
-        builtInCostLabel: formatRouteCost(builtInRelativeCost),
+        builtInCostLabel,
+        builtInCostHelpText: rawResourceBuiltInCostHelpText({
+          resource,
+          referenceResource: referenceCandidate.resource,
+          builtInCostLabel,
+          multiplierLabel,
+          effectiveCostLabel,
+        }),
+        costFormulaAriaLabel: `${resource.displayName} route cost: built-in ${builtInCostLabel} times custom ${multiplierLabel} equals effective ${effectiveCostLabel}`,
         multiplier,
-        multiplierLabel: `${formatPlannerNumber(multiplier)}x`,
+        multiplierLabel,
         effectiveCost,
-        effectiveCostLabel: formatRouteCost(effectiveCost),
+        effectiveCostLabel,
         isNeutral,
         stateLabel: isNeutral
           ? 'Neutral'
@@ -435,6 +458,34 @@ function rawResourceScarcityCost(resource: ResourceInfo): number {
     baselineCapPerMinute > 0
     ? 1 / baselineCapPerMinute
     : 1;
+}
+
+interface RawResourceCostHelpInput {
+  resource: ResourceInfo;
+  referenceResource: ResourceInfo;
+  builtInCostLabel: string;
+  multiplierLabel: string;
+  effectiveCostLabel: string;
+}
+
+function rawResourceBuiltInCostHelpText(input: RawResourceCostHelpInput): string {
+  const resourceAvailability = formatRawResourceAvailability(input.resource);
+  const referenceAvailability = formatRawResourceAvailability(input.referenceResource);
+  const referenceBasis =
+    input.resource.itemId === input.referenceResource.itemId
+      ? `${input.resource.displayName} is the reference resource for this list, so it starts at built-in cost ${input.builtInCostLabel}.`
+      : `${input.referenceResource.displayName} is the reference at ${referenceAvailability}, so ${input.resource.displayName} starts at ${input.builtInCostLabel}x before your custom multiplier.`;
+
+  return `${input.resource.displayName} has ${resourceAvailability} static map availability. ${referenceBasis} Custom multiplier ${input.multiplierLabel} gives effective cost ${input.effectiveCostLabel}; lower effective costs are preferred when alternatives exist.`;
+}
+
+function formatRawResourceAvailability(resource: ResourceInfo): string {
+  const baselineCapPerMinute = defaultResourceCapPerMinute(resource);
+  return baselineCapPerMinute !== undefined &&
+    Number.isFinite(baselineCapPerMinute) &&
+    baselineCapPerMinute > 0
+    ? `${formatPlannerNumber(baselineCapPerMinute)}/min`
+    : 'unknown availability';
 }
 
 function formatRouteCost(value: number): string {

@@ -128,8 +128,12 @@ describe('planner store selectors', () => {
     expect(rows.some((row) => row.resource.itemId === 'Desc_Water_C')).toBe(false);
     expect(rows.find((row) => row.resource.itemId === 'Desc_OreCopper_C')).toMatchObject({
       iconSrc: '/game-icons/Desc_OreCopper_C.png',
+      baselineAvailabilityLabel: '300/min',
       builtInCost: 2,
       builtInCostLabel: '2',
+      builtInCostHelpText:
+        'Copper Ore has 300/min static map availability. Iron Ore is the reference at 600/min, so Copper Ore starts at 2x before your custom multiplier. Custom multiplier 1x gives effective cost 2; lower effective costs are preferred when alternatives exist.',
+      costFormulaAriaLabel: 'Copper Ore route cost: built-in 2 times custom 1x equals effective 2',
       multiplier: 1,
       multiplierLabel: '1x',
       effectiveCost: 2,
@@ -139,14 +143,54 @@ describe('planner store selectors', () => {
     });
     expect(rows.find((row) => row.resource.itemId === 'Desc_OreIron_C')).toMatchObject({
       iconSrc: '/game-icons/Desc_OreIron_C.png',
+      baselineAvailabilityLabel: '600/min',
       builtInCost: 1,
       builtInCostLabel: '1',
+      builtInCostHelpText:
+        'Iron Ore has 600/min static map availability. Iron Ore is the reference resource for this list, so it starts at built-in cost 1. Custom multiplier 2x gives effective cost 2; lower effective costs are preferred when alternatives exist.',
+      costFormulaAriaLabel: 'Iron Ore route cost: built-in 1 times custom 2x equals effective 2',
       multiplier: 2,
       multiplierLabel: '2x',
       effectiveCost: 2,
       effectiveCostLabel: '2',
       isNeutral: false,
       stateLabel: 'Avoid',
+    });
+  });
+
+  it('explains raw resource built-in costs from static map availability', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      resources: {
+        Desc_OreIron_C: {
+          ...tinySatisfactoryDataset.resources['Desc_OreIron_C'],
+          extraction: {
+            allowedExtractors: ['Build_MinerMk1_C'],
+            baselineMaxPerMinute: 92_100,
+          },
+        },
+        Desc_OreUranium_C: {
+          itemId: 'Desc_OreUranium_C',
+          displayName: 'Uranium',
+          extraction: {
+            allowedExtractors: ['Build_MinerMk1_C'],
+            baselineMaxPerMinute: 2_100,
+          },
+        },
+      },
+    };
+
+    const rows = selectRawResourceMultiplierRows(dataset, createProject().objectiveProfile);
+    const uranium = rows.find((row) => row.resource.itemId === 'Desc_OreUranium_C');
+
+    expect(rows.map((row) => row.resource.displayName)).toEqual(['Iron Ore', 'Uranium']);
+    expect(uranium).toMatchObject({
+      baselineAvailabilityLabel: '2,100/min',
+      builtInCost: 43.857142857142854,
+      builtInCostLabel: '43.86',
+      builtInCostHelpText:
+        'Uranium has 2,100/min static map availability. Iron Ore is the reference at 92,100/min, so Uranium starts at 43.86x before your custom multiplier. Custom multiplier 1x gives effective cost 43.86; lower effective costs are preferred when alternatives exist.',
+      effectiveCostLabel: '43.86',
     });
   });
 
