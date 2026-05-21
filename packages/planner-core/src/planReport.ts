@@ -3,6 +3,7 @@ import { assumedInputDefinitionForItemId } from './assumedInputs';
 import {
   defaultResourceCapPerMinute,
   isUnlimitedResourceCap,
+  normalizeResourceOverride,
   resourceCapsEqual,
 } from './resourceOverrideMutations';
 import {
@@ -474,7 +475,9 @@ function resourceNodeDetails(
     selectedNode.amountPerMinute ?? (itemId ? result?.rawInputs[itemId] : undefined) ?? 0;
   const resource = itemId ? dataset.resources[itemId] : undefined;
   const baselineCapPerMinute = resource ? defaultResourceCapPerMinute(resource) : undefined;
-  const override = itemId ? project.resourceOverrides[itemId] : undefined;
+  const override = itemId
+    ? normalizeResourceOverride(project.resourceOverrides[itemId] ?? {}, baselineCapPerMinute)
+    : undefined;
   const enabled = override?.enabled !== false;
   const configuredCapPerMinute = override?.maxPerMinute ?? baselineCapPerMinute;
   const effectiveCapPerMinute = enabled ? configuredCapPerMinute : 0;

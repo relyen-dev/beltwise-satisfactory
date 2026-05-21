@@ -119,6 +119,36 @@ describe('PlannerPlanConfigStore', () => {
     expect(requiredProject(activeProject).resourceOverrides).toEqual({});
   });
 
+  it('clears zero cap edits on unlimited resources while preserving finite zero caps', () => {
+    const dataset = withUnlimitedWaterDataset();
+    const { activeProject, planConfig } = createPlanConfigHarness({
+      dataset,
+      project: createProject(dataset),
+    });
+
+    planConfig.resourceCommands.setCap('Desc_Water_C', 1);
+    expect(requiredProject(activeProject).resourceOverrides['Desc_Water_C']).toEqual({
+      maxPerMinute: 1,
+    });
+
+    planConfig.resourceCommands.setCap('Desc_Water_C', 0);
+    const waterRow = planConfig
+      .resourceRows()
+      .find((row) => row.resource.itemId === 'Desc_Water_C');
+
+    expect(requiredProject(activeProject).resourceOverrides['Desc_Water_C']).toBeUndefined();
+    expect(waterRow).toMatchObject({
+      enabled: true,
+      capInputValue: null,
+      effectiveCapLabel: 'Unlimited',
+    });
+
+    planConfig.resourceCommands.setCap('Desc_OreIron_C', 0);
+    expect(requiredProject(activeProject).resourceOverrides['Desc_OreIron_C']).toEqual({
+      maxPerMinute: 0,
+    });
+  });
+
   it('edits objective profile and renderer-neutral graph display settings', () => {
     const { activeProject, planConfig } = createPlanConfigHarness();
 
@@ -237,11 +267,11 @@ function createPlanConfigHarness(
   return { activeProject, planConfig };
 }
 
-function createProject(): PlannerProject {
+function createProject(dataset: GameDataset = tinySatisfactoryDataset): PlannerProject {
   return createPlannerProject({
     id: 'project-a',
     name: 'Factory',
-    dataset: tinySatisfactoryDataset,
+    dataset,
     now: NOW,
     targets: [
       {
@@ -253,6 +283,32 @@ function createProject(): PlannerProject {
       },
     ],
   });
+}
+
+function withUnlimitedWaterDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    resources: {
+      ...tinySatisfactoryDataset.resources,
+      Desc_Water_C: {
+        itemId: 'Desc_Water_C',
+        displayName: 'Water',
+        extraction: {
+          allowedExtractors: ['Build_WaterPump_C'],
+          baselineMaxPerMinute: Number.MAX_SAFE_INTEGER,
+        },
+      },
+    },
+  };
 }
 
 function requiredProject(project: WritableSignal<PlannerProject | null>): PlannerProject {

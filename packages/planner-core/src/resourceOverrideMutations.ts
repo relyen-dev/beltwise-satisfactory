@@ -24,14 +24,38 @@ export function normalizeResourceOverride(
   baselineCapPerMinute: number | undefined,
 ): ResourceOverride | undefined {
   const enabled = override.enabled ?? true;
-  const maxPerMinute = override.maxPerMinute;
+  const maxPerMinute = normalizeOverrideCap(override.maxPerMinute, baselineCapPerMinute);
   if (
     enabled &&
     (maxPerMinute === undefined || resourceCapsEqual(maxPerMinute, baselineCapPerMinute))
   ) {
     return undefined;
   }
-  return override;
+  if (maxPerMinute === override.maxPerMinute) {
+    return override;
+  }
+  return {
+    ...(override.enabled !== undefined ? { enabled: override.enabled } : {}),
+    ...(maxPerMinute !== undefined ? { maxPerMinute } : {}),
+  };
+}
+
+export function normalizeResourceOverrides(
+  overrides: Record<ItemId, ResourceOverride>,
+  resources: Readonly<Record<ItemId, ResourceInfo>>,
+): Record<ItemId, ResourceOverride> {
+  const normalizedOverrides: Record<ItemId, ResourceOverride> = {};
+  for (const [itemId, override] of Object.entries(overrides)) {
+    const resource = resources[itemId];
+    const normalizedOverride =
+      resource === undefined
+        ? override
+        : normalizeResourceOverride(override, defaultResourceCapPerMinute(resource));
+    if (normalizedOverride !== undefined) {
+      normalizedOverrides[itemId] = normalizedOverride;
+    }
+  }
+  return normalizedOverrides;
 }
 
 export function setResourceOverrideCap(
@@ -121,6 +145,15 @@ function withOverride<TOverride>(
     ...overrides,
     [id]: override,
   };
+}
+
+function normalizeOverrideCap(
+  maxPerMinute: number | undefined,
+  baselineCapPerMinute: number | undefined,
+): number | undefined {
+  return maxPerMinute === 0 && isUnlimitedResourceCap(baselineCapPerMinute)
+    ? undefined
+    : maxPerMinute;
 }
 
 function withOptionalOverride<TOverride>(
