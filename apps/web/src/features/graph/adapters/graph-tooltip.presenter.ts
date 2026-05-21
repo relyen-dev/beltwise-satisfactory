@@ -1,5 +1,5 @@
 import type { GraphDisplaySettings, GraphRendererNode } from '@beltwise/planner-core';
-import { formatMachineCount, formatRate } from './graph-display-formatting';
+import { formatMachineCount, formatRate } from '../graph-display-formatting';
 import type { BeltwiseFoblexEdgeLabelLines } from './graph-transport-display';
 
 export interface BeltwiseFoblexNodeTooltip {

@@ -27,7 +27,6 @@ export {
   FOBLEX_STRAIGHT_EDGE_CONNECTION_TYPE,
 } from './foblex-connection-builders';
 export type { BeltwiseFoblexConnectionType } from './foblex-connection-builders';
-export { formatDisplayDecimalValue } from './graph-display-formatting';
 export type { BeltwiseFoblexNodeTooltip } from './graph-tooltip.presenter';
 export type {
   BeltwiseFoblexEdgeLabelLines,

@@ -5,7 +5,7 @@ import type {
   GraphRendererEdge,
   PipelineTier,
 } from '@beltwise/planner-core';
-import { formatRate } from './graph-display-formatting';
+import { formatRate } from '../graph-display-formatting';
 
 export interface BeltwiseFoblexEdgeLabelLines {
   itemName: string;

@@ -23,7 +23,6 @@ import {
   type BeltwiseFoblexFlowNode,
   foblexInputId,
   foblexOutputId,
-  formatDisplayDecimalValue,
   toFoblexFlowModel,
 } from './adapters/foblex-flow.adapter';
 import { toDefaultGraphRendererModel } from './production-graph.layout';
@@ -32,10 +31,27 @@ import {
   buildDirectFocusScope,
   emptyGraphFocusScope,
   formatTargetAmountInputValue,
-  normalizeTargetAmount,
-  parseTargetAmount,
+  isEditableOutputTargetNode,
+  isFixedOutputTargetNode,
+  prepareTargetAmountEdit,
+  shouldShowTargetAmountInputForNode,
   type GraphFocusScope,
 } from './graph-interaction.presenter';
+import {
+  formatMachineCountDisplayValue,
+  formatTargetAmountDisplayValue,
+  graphNodeNote,
+  graphTooltipFlowKey,
+  graphTooltipStatKey,
+  isGraphEdgeDimmed,
+  isGraphEdgeDone,
+  isGraphEdgeFocused,
+  isGraphNodeDimmed,
+  isGraphNodeDone,
+  isGraphNodeFocused,
+  isGraphNodeSelected,
+  type GraphTooltipFlowSection,
+} from './graph-presentation.presenter';
 
 const GRAPH_ZOOM_MINIMUM = 0.2;
 const GRAPH_ZOOM_MAXIMUM = 2.5;
@@ -137,47 +153,43 @@ export class ProductionGraphComponent implements OnDestroy {
   }
 
   public isNodeSelected(nodeId: string): boolean {
-    return this.selectedNodeId() === nodeId;
+    return isGraphNodeSelected(nodeId, this.selectedNodeId());
   }
 
   public isNodeFocused(nodeId: string): boolean {
-    return this.focusScope().nodeIds.has(nodeId);
+    return isGraphNodeFocused(nodeId, this.focusScope());
   }
 
   public isNodeDimmed(nodeId: string): boolean {
-    return this.selectedNodeId() !== null && !this.focusScope().nodeIds.has(nodeId);
+    return isGraphNodeDimmed(nodeId, this.selectedNodeId(), this.focusScope());
   }
 
   public isNodeDone(nodeId: string): boolean {
-    return this.completedNodeIds().has(nodeId);
+    return isGraphNodeDone(nodeId, this.completedNodeIds());
   }
 
   public isEdgeFocused(edgeId: string): boolean {
-    return this.focusScope().edgeIds.has(edgeId);
+    return isGraphEdgeFocused(edgeId, this.focusScope());
   }
 
   public isEdgeDimmed(edgeId: string): boolean {
-    return this.selectedNodeId() !== null && !this.focusScope().edgeIds.has(edgeId);
+    return isGraphEdgeDimmed(edgeId, this.selectedNodeId(), this.focusScope());
   }
 
   public isEdgeDone(edge: BeltwiseFoblexFlowEdge): boolean {
-    return this.completedNodeIds().has(edge.targetNodeId);
+    return isGraphEdgeDone(edge, this.completedNodeIds());
   }
 
   public nodeNote(nodeId: string): string {
-    return this.nodeNotes()[nodeId] ?? '';
+    return graphNodeNote(nodeId, this.nodeNotes());
   }
 
   public isFixedOutputTarget(node: BeltwiseFoblexFlowNode): boolean {
-    return node.kind === 'output' && node.data.targetMode === 'fixed';
+    return isFixedOutputTargetNode(node);
   }
 
   public isEditableOutputTarget(node: BeltwiseFoblexFlowNode): boolean {
-    return (
-      this.isFixedOutputTarget(node) &&
-      node.data.targetId !== undefined &&
-      !this.targetEditingLocked()
-    );
+    return isEditableOutputTargetNode(node, this.targetEditingLocked());
   }
 
   public targetAmountInputValue(node: BeltwiseFoblexFlowNode): string {
@@ -185,30 +197,36 @@ export class ProductionGraphComponent implements OnDestroy {
   }
 
   public targetAmountDisplayValue(node: BeltwiseFoblexFlowNode): string {
-    return formatDisplayDecimalValue(
+    return formatTargetAmountDisplayValue(
       node.data.amountPerMinute,
       this.displaySettings().rateDecimalPlaces,
     );
   }
 
   public shouldShowTargetAmountInput(node: BeltwiseFoblexFlowNode): boolean {
-    return this.isEditableOutputTarget(node) && this.isNodeSelected(node.id);
+    return shouldShowTargetAmountInputForNode(
+      node,
+      this.selectedNodeId(),
+      this.targetEditingLocked(),
+    );
   }
 
   public handleTargetAmountChange(node: BeltwiseFoblexFlowNode, event: Event): void {
     event.stopPropagation();
     const control = eventControlTarget(event);
-    const targetId = node.data.targetId;
-    if (!control || !targetId || !this.isEditableOutputTarget(node)) {
+    if (!control) {
       return;
     }
 
-    const amountPerMinute = parseTargetAmount(control.value);
-    control.value = formatTargetAmountInputValue(amountPerMinute);
-    if (amountPerMinute === normalizeTargetAmount(node.data.amountPerMinute)) {
+    const edit = prepareTargetAmountEdit(node, control.value, this.targetEditingLocked());
+    if (!edit) {
       return;
     }
-    this.targetAmountChanged.emit({ targetId, amountPerMinute });
+
+    control.value = edit.inputValue;
+    if (edit.change) {
+      this.targetAmountChanged.emit(edit.change);
+    }
   }
 
   public commitTargetAmount(node: BeltwiseFoblexFlowNode, event: Event): void {
@@ -230,19 +248,19 @@ export class ProductionGraphComponent implements OnDestroy {
   }
 
   public formatMachineCount(machineCount: number | undefined): string {
-    return formatDisplayDecimalValue(machineCount, this.displaySettings().rateDecimalPlaces);
+    return formatMachineCountDisplayValue(machineCount, this.displaySettings().rateDecimalPlaces);
   }
 
   public tooltipStatKey(stat: string, index: number): string {
-    return `stat:${index}:${stat}`;
+    return graphTooltipStatKey(stat, index);
   }
 
   public tooltipFlowKey(
     flow: { itemName: string; amountPerMinute: string; machineCount?: string },
-    section: string,
+    section: GraphTooltipFlowSection,
     index: number,
   ): string {
-    return `${section}:${index}:${flow.itemName}:${flow.amountPerMinute}:${flow.machineCount ?? ''}`;
+    return graphTooltipFlowKey(flow, section, index);
   }
 
   public handleNodePointerDown(nodeId: string, event: PointerEvent): void {

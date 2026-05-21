@@ -1,3 +1,5 @@
+import type { ProductionGraphNode } from '@beltwise/planner-core';
+
 export interface GraphFocusScope {
   nodeIds: ReadonlySet<string>;
   edgeIds: ReadonlySet<string>;
@@ -16,6 +18,22 @@ export interface GraphFocusEdge {
 export interface GraphFocusModel {
   nodes: readonly GraphFocusNode[];
   edges: readonly GraphFocusEdge[];
+}
+
+export interface GraphTargetAmountNode {
+  id: string;
+  kind: ProductionGraphNode['kind'];
+  data: Pick<ProductionGraphNode, 'amountPerMinute' | 'targetId' | 'targetMode'>;
+}
+
+export interface GraphTargetAmountChange {
+  targetId: string;
+  amountPerMinute: number;
+}
+
+export interface GraphTargetAmountEdit {
+  inputValue: string;
+  change: GraphTargetAmountChange | null;
 }
 
 export function buildDirectFocusScope(
@@ -43,6 +61,51 @@ export function buildDirectFocusScope(
 
 export function emptyGraphFocusScope(): GraphFocusScope {
   return { nodeIds: new Set<string>(), edgeIds: new Set<string>() };
+}
+
+export function isFixedOutputTargetNode(node: GraphTargetAmountNode): boolean {
+  return node.kind === 'output' && node.data.targetMode === 'fixed';
+}
+
+export function isEditableOutputTargetNode(
+  node: GraphTargetAmountNode,
+  targetEditingLocked: boolean,
+): boolean {
+  return isFixedOutputTargetNode(node) && node.data.targetId !== undefined && !targetEditingLocked;
+}
+
+export function shouldShowTargetAmountInputForNode(
+  node: GraphTargetAmountNode,
+  selectedNodeId: string | null,
+  targetEditingLocked: boolean,
+): boolean {
+  return isEditableOutputTargetNode(node, targetEditingLocked) && selectedNodeId === node.id;
+}
+
+export function prepareTargetAmountEdit(
+  node: GraphTargetAmountNode,
+  value: string,
+  targetEditingLocked: boolean,
+): GraphTargetAmountEdit | null {
+  if (!isEditableOutputTargetNode(node, targetEditingLocked)) {
+    return null;
+  }
+
+  const targetId = node.data.targetId;
+  if (!targetId) {
+    return null;
+  }
+
+  const amountPerMinute = parseTargetAmount(value);
+  const inputValue = formatTargetAmountInputValue(amountPerMinute);
+  if (amountPerMinute === normalizeTargetAmount(node.data.amountPerMinute)) {
+    return { inputValue, change: null };
+  }
+
+  return {
+    inputValue,
+    change: { targetId, amountPerMinute },
+  };
 }
 
 export function parseTargetAmount(value: string): number {
