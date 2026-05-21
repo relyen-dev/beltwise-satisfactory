@@ -2,6 +2,7 @@
   "name": "@beltwise/extract-satisfactory-data",
   "version": "0.1.0",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "bin": {
     "extract-satisfactory-data": "./src/index.ts"

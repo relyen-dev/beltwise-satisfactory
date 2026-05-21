@@ -6,6 +6,10 @@ The app is built around a graph-first Angular planner, a compact generated Satis
 
 The registered base domain is `beltwise.app`. The Satisfactory planner is intended to deploy at `satisfactory.beltwise.app` when it is ready.
 
+## License
+
+Beltwise is source-available under the [Beltwise Reference Source License](./LICENSE). You may read, build, and run the repository locally for reference and evaluation, but reuse, redistribution, derivatives, hosted services, and commercial use are not permitted without written permission. Because the license is reference-only, this repository is not OSI-approved open source.
+
 ## Current App
 
 - Multi-project local planner with create, rename, duplicate, delete, and switch controls.
