@@ -7,6 +7,67 @@ Beltwise is split into framework-independent domain packages plus one Angular sh
 - `packages/solver` owns the pure LP model builder, objective-stage construction, and solver adapters. Angular does not assemble LP coefficients.
 - `apps/web` owns UI state orchestration, local persistence, transfer services, planner controls, and the Foblex Flow adapter/component layer.
 
+## Application Map
+
+The high-level data path keeps raw game docs, domain modeling, solver behavior, and graph rendering in separate layers:
+
+```mermaid
+flowchart LR
+  RawDocs["Satisfactory en-US.json"] --> Extractor["scripts/extract-satisfactory-data"]
+  Extractor --> Dataset["Compact GameDataset JSON"]
+  Dataset --> DatasetService["apps/web DatasetService"]
+  DatasetService --> PlannerCapabilities["Planner state capabilities"]
+  PlannerCapabilities --> Solver["packages/solver"]
+  Solver --> SolverResult["Solver result"]
+  SolverResult --> GraphModel["packages/planner-core graph model"]
+  GraphModel --> GraphFeature["apps/web graph feature"]
+  GraphFeature --> Foblex["Foblex Flow adapter/component"]
+```
+
+The planner page is a composition shell. It may construct the runtime store, but feature UI should bind to the capability that owns the behavior:
+
+```mermaid
+flowchart TB
+  Page["planner-page.component"] --> Runtime["PlannerStoreService runtime composition"]
+  Runtime --> DatasetService["DatasetService"]
+  Runtime --> Workspace["PlannerWorkspaceSlice"]
+  Runtime --> SolverService["PlannerSolverService"]
+  Runtime --> GraphStore["PlannerGraphStore"]
+  Runtime --> Workbench["PlannerWorkbenchSlice"]
+
+  Page --> Workspace
+  Page --> PlanConfig["PlannerPlanConfigStore"]
+  Page --> Defaults["PlannerDefaultsStore"]
+  Page --> GraphStore
+  Page --> Transfer["PlannerPlanTransferService"]
+  Page --> SolverService
+  Page --> Workbench
+
+  WorkbenchPanels["Workbench panels"] --> PlanConfig
+  DefaultsPanel["Defaults panel"] --> Defaults
+  Inspector["Inspector"] --> GraphStore
+  Transfer --> TransferCapability["PlannerPlanTransferCapability"]
+```
+
+The main dependency rule is that stable project intent and domain models point inward, while browser, Angular, and renderer specifics stay at the app edge:
+
+```mermaid
+flowchart LR
+  Core["packages/planner-core<br/>saved intent, sessions, defaults,<br/>transfer codecs, graph domain models"]
+  SolverPkg["packages/solver<br/>LP model, objective stages,<br/>HiGHS adapter"]
+  GameData["packages/game-data<br/>schemas, parser, normalizer"]
+  WebPlanner["apps/web planner<br/>capabilities, persistence,<br/>workbench UI, browser transfer"]
+  GraphAdapter["apps/web graph adapters<br/>Foblex-specific mapping"]
+  Browser["Browser APIs<br/>localStorage, clipboard,<br/>downloads, location hash"]
+
+  GameData --> WebPlanner
+  Core --> WebPlanner
+  Core --> SolverPkg
+  SolverPkg --> WebPlanner
+  WebPlanner --> GraphAdapter
+  WebPlanner --> Browser
+```
+
 ## Web Feature Structure
 
 Angular features stay vertically organized under `apps/web/src/features`. A feature folder should keep its entry component easy to find at the feature root, then use local subfolders when a feature grows enough that a flat folder stops being a useful map.
