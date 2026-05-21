@@ -103,6 +103,7 @@ apps/web/src/features/planner
 - [docs/architecture.md](./docs/architecture.md) summarizes package ownership and data flow.
 - [docs/data-model.md](./docs/data-model.md) describes generated data and persisted project data.
 - [docs/development.md](./docs/development.md) covers local commands and day-to-day workflow.
+- [docs/deployment.md](./docs/deployment.md) covers the GitHub deployment workflow.
 - [docs/data-pipeline.md](./docs/data-pipeline.md) explains raw docs extraction.
 - [docs/adr](./docs/adr) contains accepted architecture decisions.
 - [docs/rfc](./docs/rfc) contains future ideas and research parking lots.

@@ -719,11 +719,28 @@ h2 {
 }
 
 .app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding: 8px 16px;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, black);
   color: var(--color-text-subtle);
   background: #090c0f;
   font-size: 12px;
+}
+
+.app-footer a {
+  color: var(--color-accent-strong);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-footer a:hover,
+.app-footer a:focus-visible {
+  color: var(--color-accent);
+  text-decoration: underline;
 }
 
 @media (max-width: 1460px) {
@@ -931,5 +948,14 @@ h2 {
   .share-import-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .app-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-footer a {
+    white-space: normal;
   }
 }
