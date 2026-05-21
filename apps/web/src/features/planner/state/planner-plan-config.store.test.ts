@@ -45,9 +45,16 @@ describe('PlannerPlanConfigStore', () => {
   });
 
   it('blocks solve-relevant edits while locked but still allows notes and display settings', () => {
+    const project = createProject();
     const { activeProject, planConfig } = createPlanConfigHarness({
       project: {
-        ...createProject(),
+        ...project,
+        objectiveProfile: {
+          ...project.objectiveProfile,
+          rawResourceMultipliers: {
+            Desc_OreIron_C: 2,
+          },
+        },
         buildState: {
           planLocked: true,
           nodeLayoutLocked: false,
@@ -68,6 +75,9 @@ describe('PlannerPlanConfigStore', () => {
     planConfig.resourceCommands.setCap('Desc_OreIron_C', 120);
     planConfig.machineCommands.setEnabled('Build_ConstructorMk1_C', false);
     planConfig.objectiveCommands.setPreset('low-power');
+    planConfig.objectiveCommands.setWeight('powerWeight', 999);
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreCopper_C', 3);
+    planConfig.objectiveCommands.resetRawResourceMultiplier('Desc_OreIron_C');
 
     expect(requiredProject(activeProject)).toMatchObject({
       targets: lockedProject.targets,
