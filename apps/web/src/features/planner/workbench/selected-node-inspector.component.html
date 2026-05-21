@@ -1,4 +1,4 @@
-@if (store.graphView.inspectorViewModel()?.selection; as selectedNode) {
+@if (graph.readModel.inspectorViewModel()?.selection; as selectedNode) {
   <section class="selected-node-panel" aria-label="Selected graph node">
     <div class="selected-node-heading">
       <div class="selected-node-title">
@@ -22,7 +22,7 @@
         type="button"
         title="Clear selected node"
         aria-label="Clear selected node"
-        (click)="store.clearSelectedGraphNode()"
+        (click)="graph.selectionCommands.clear()"
       >
         Clear
       </button>
@@ -32,7 +32,7 @@
       <input
         type="checkbox"
         [ngModel]="selectedNode.state.done === true"
-        (ngModelChange)="store.setSelectedGraphNodeDone($event)"
+        (ngModelChange)="graph.nodeStateCommands.setSelectedDone($event)"
       />
       <span>Done</span>
     </label>
@@ -51,7 +51,7 @@
           (mouseup)="$event.stopPropagation()"
           (touchstart)="$event.stopPropagation()"
           (touchend)="$event.stopPropagation()"
-          (click)="store.clearSelectedGraphNodeNote()"
+          (click)="graph.nodeStateCommands.clearSelectedNote()"
         >
           Clear
         </button>
@@ -61,7 +61,7 @@
         rows="4"
         placeholder="Add build notes for this graph node."
         [ngModel]="selectedNode.state.note ?? ''"
-        (ngModelChange)="store.setSelectedGraphNodeNote($event)"
+        (ngModelChange)="graph.nodeStateCommands.setSelectedNote($event)"
         (pointerdown)="$event.stopPropagation()"
         (pointerup)="$event.stopPropagation()"
         (mousedown)="$event.stopPropagation()"

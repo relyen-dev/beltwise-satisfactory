@@ -6,13 +6,13 @@
     </div>
   </div>
 
-  @if (store.activeProject(); as project) {
+  @if (planConfig.graphDisplaySettings(); as display) {
     <div class="display-settings-grid" aria-label="Graph display settings">
       <label class="display-setting-card">
         <span class="display-setting-card__label">Max belt</span>
         <select
-          [ngModel]="project.graphDisplay.maxBeltTier"
-          (ngModelChange)="store.setMaxBeltTier($event)"
+          [ngModel]="display.maxBeltTier"
+          (ngModelChange)="planConfig.displayCommands.setMaxBeltTier($event)"
         >
           @for (tier of beltTierOptions; track tier.value) {
             <option [ngValue]="tier.value">
@@ -25,8 +25,8 @@
       <label class="display-setting-card">
         <span class="display-setting-card__label">Max pipe</span>
         <select
-          [ngModel]="project.graphDisplay.maxPipeTier"
-          (ngModelChange)="store.setMaxPipeTier($event)"
+          [ngModel]="display.maxPipeTier"
+          (ngModelChange)="planConfig.displayCommands.setMaxPipeTier($event)"
         >
           @for (tier of pipeTierOptions; track tier.value) {
             <option [ngValue]="tier.value">
@@ -39,8 +39,8 @@
       <label class="display-setting-card">
         <span class="display-setting-card__label">Rate precision</span>
         <select
-          [ngModel]="project.graphDisplay.rateDecimalPlaces"
-          (ngModelChange)="store.setRateDecimalPlaces($event)"
+          [ngModel]="display.rateDecimalPlaces"
+          (ngModelChange)="planConfig.displayCommands.setRateDecimalPlaces($event)"
         >
           @for (option of rateDecimalOptions; track option.value) {
             <option [ngValue]="option.value">{{ option.label }}</option>
@@ -51,8 +51,8 @@
       <label class="display-setting-card">
         <span class="display-setting-card__label">Edge style</span>
         <select
-          [ngModel]="project.graphDisplay.edgeStyle"
-          (ngModelChange)="store.setGraphEdgeStyle($event)"
+          [ngModel]="display.edgeStyle"
+          (ngModelChange)="planConfig.displayCommands.setGraphEdgeStyle($event)"
         >
           @for (option of edgeStyleOptions; track option.value) {
             <option [ngValue]="option.value">{{ option.label }}</option>
@@ -67,8 +67,8 @@
         </span>
         <input
           type="checkbox"
-          [ngModel]="project.graphDisplay.showTransportLabels"
-          (ngModelChange)="store.setShowTransportLabels($event)"
+          [ngModel]="display.showTransportLabels"
+          (ngModelChange)="planConfig.displayCommands.setShowTransportLabels($event)"
         />
       </label>
 
@@ -79,8 +79,8 @@
         </span>
         <input
           type="checkbox"
-          [ngModel]="project.graphDisplay.animateFlowLines"
-          (ngModelChange)="store.setAnimateFlowLines($event)"
+          [ngModel]="display.animateFlowLines"
+          (ngModelChange)="planConfig.displayCommands.setAnimateFlowLines($event)"
         />
       </label>
     </div>

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerGraphStore } from '../state/planner-graph.store';
 
 @Component({
   selector: 'bw-selected-node-inspector',
@@ -11,5 +11,5 @@ import { PlannerStoreService } from '../state/planner-store.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectedNodeInspectorComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly graph = inject(PlannerGraphStore);
 }

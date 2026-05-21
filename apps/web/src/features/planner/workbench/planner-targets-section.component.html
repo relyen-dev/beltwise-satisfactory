@@ -9,8 +9,8 @@
       class="primary-action"
       title="Add product target"
       aria-label="Add product target"
-      [disabled]="store.graphView.planLocked()"
-      (click)="store.addTarget()"
+      [disabled]="planConfig.editingLocked()"
+      (click)="planConfig.targetCommands.add()"
     >
       Add product
     </button>
@@ -25,8 +25,8 @@
         class="primary-action"
         title="Add product target"
         aria-label="Add product target"
-        [disabled]="store.graphView.planLocked()"
-        (click)="store.addTarget()"
+        [disabled]="planConfig.editingLocked()"
+        (click)="planConfig.targetCommands.add()"
       >
         Add product
       </button>
@@ -48,9 +48,9 @@
         >
           <div class="target-item-picker">
             <bw-target-item-picker
-              [items]="store.workbenchViews.itemOptions()"
+              [items]="planConfig.itemOptions()"
               [selectedItemId]="target.itemId"
-              [disabled]="store.graphView.planLocked()"
+              [disabled]="planConfig.editingLocked()"
               (itemSelected)="updateTargetItem(target.id, $event)"
             />
           </div>
@@ -59,8 +59,8 @@
             <span class="sr-only">Target mode</span>
             <select
               [ngModel]="target.mode"
-              [disabled]="store.graphView.planLocked()"
-              (ngModelChange)="store.updateTargetMode(target.id, $event)"
+              [disabled]="planConfig.editingLocked()"
+              (ngModelChange)="planConfig.targetCommands.updateMode(target.id, $event)"
             >
               <option value="fixed">Fixed</option>
               <option value="maximize">Maximize</option>
@@ -73,7 +73,7 @@
               type="number"
               min="0"
               step="1"
-              [disabled]="target.mode === 'maximize' || store.graphView.planLocked()"
+              [disabled]="target.mode === 'maximize' || planConfig.editingLocked()"
               [ngModel]="target.amountPerMinute ?? 0"
               (ngModelChange)="updateTargetAmount(target.id, $event)"
             />
@@ -84,8 +84,8 @@
               type="button"
               title="Duplicate target"
               aria-label="Duplicate target"
-              [disabled]="store.graphView.planLocked()"
-              (click)="store.duplicateTarget(target)"
+              [disabled]="planConfig.editingLocked()"
+              (click)="planConfig.targetCommands.duplicate(target)"
             >
               Duplicate
             </button>
@@ -93,8 +93,8 @@
               type="button"
               title="Remove target"
               aria-label="Remove target"
-              [disabled]="store.graphView.planLocked()"
-              (click)="store.removeTarget(target.id)"
+              [disabled]="planConfig.editingLocked()"
+              (click)="planConfig.targetCommands.remove(target.id)"
             >
               Remove
             </button>
@@ -112,7 +112,7 @@
         title="Clear plan notes"
         aria-label="Clear plan notes"
         [disabled]="planNotes().trim().length === 0"
-        (click)="store.clearPlanNotes()"
+        (click)="planConfig.noteCommands.clear()"
       >
         Clear
       </button>
@@ -122,7 +122,7 @@
       rows="5"
       placeholder="Add plain-text planning notes for this factory."
       [ngModel]="planNotes()"
-      (ngModelChange)="store.setPlanNotes($event)"
+      (ngModelChange)="planConfig.noteCommands.set($event)"
     ></textarea>
   </div>
 </section>

@@ -13,15 +13,13 @@ import {
   type PlannerShareLocationAdapter,
 } from './planner-transfer-browser-adapters';
 import {
-  PlannerStoreService,
-  type PlannerPlanExportResult,
-  type PlannerPlanImportResult,
-  type PlannerPlanShareExportResult,
-} from '../state/planner-store.service';
+  PLANNER_PLAN_TRANSFER_PORT,
+  type PlannerPlanTransferPort,
+} from './planner-plan-transfer-capability';
 
 describe('PlannerPlanTransferService', () => {
   it('downloads exported plan JSON and reports success', () => {
-    const store = createStoreHarness({
+    const planTransfer = createPlanTransferHarness({
       exportActivePlan: () => ({
         ok: true,
         filename: 'iron-factory.beltwise-plan.json',
@@ -29,7 +27,7 @@ describe('PlannerPlanTransferService', () => {
       }),
     });
     const downloadAdapter = createDownloadAdapterHarness();
-    const { service } = createServiceHarness(store, { downloadAdapter });
+    const { service } = createServiceHarness(planTransfer, { downloadAdapter });
 
     expect(service.exportActivePlan()).toEqual({
       kind: 'success',
@@ -42,7 +40,7 @@ describe('PlannerPlanTransferService', () => {
   });
 
   it('copies a generated self-contained plan link', async () => {
-    const store = createStoreHarness({
+    const planTransfer = createPlanTransferHarness({
       exportActivePlanSharePayload: () => ({
         ok: true,
         payload: createSharePayload('Copied plan'),
@@ -52,7 +50,10 @@ describe('PlannerPlanTransferService', () => {
     const shareLocationAdapter = createShareLocationAdapterHarness({
       createShareUrl: vi.fn((code) => `https://beltwise.test/planner#panel=plan&plan=${code}`),
     });
-    const { service } = createServiceHarness(store, { clipboardAdapter, shareLocationAdapter });
+    const { service } = createServiceHarness(planTransfer, {
+      clipboardAdapter,
+      shareLocationAdapter,
+    });
 
     await expect(service.copyActivePlanShareLink()).resolves.toEqual({
       kind: 'success',
@@ -66,8 +67,8 @@ describe('PlannerPlanTransferService', () => {
   });
 
   it('returns a file read error when selected plan JSON cannot be read', async () => {
-    const store = createStoreHarness();
-    const { service } = createServiceHarness(store);
+    const planTransfer = createPlanTransferHarness();
+    const { service } = createServiceHarness(planTransfer);
     const file = {
       text: () => Promise.reject(new Error('blocked')),
     } as File;
@@ -79,12 +80,12 @@ describe('PlannerPlanTransferService', () => {
         message: 'The selected plan file could not be read.',
       },
     });
-    expect(store.importPlanJson).not.toHaveBeenCalled();
+    expect(planTransfer.importPlanJson).not.toHaveBeenCalled();
   });
 
   it('rejects oversized plan JSON files before reading their contents', async () => {
-    const store = createStoreHarness();
-    const { service } = createServiceHarness(store);
+    const planTransfer = createPlanTransferHarness();
+    const { service } = createServiceHarness(planTransfer);
     const file = {
       size: 5_242_881,
       text: vi.fn(),
@@ -98,13 +99,13 @@ describe('PlannerPlanTransferService', () => {
       },
     });
     expect(file.text).not.toHaveBeenCalled();
-    expect(store.importPlanJson).not.toHaveBeenCalled();
+    expect(planTransfer.importPlanJson).not.toHaveBeenCalled();
   });
 
   it('imports a share code and clears the plan hash after success', async () => {
     const payload = createSharePayload('Shared plan');
     const code = await encodePlannerShareCode(payload);
-    const store = createStoreHarness({
+    const planTransfer = createPlanTransferHarness({
       importPlanSharePayload: vi.fn(() => ({
         ok: true,
         project: { name: 'Shared plan' } as PlannerProject,
@@ -112,7 +113,7 @@ describe('PlannerPlanTransferService', () => {
       })),
     });
     const shareLocationAdapter = createShareLocationAdapterHarness();
-    const { service } = createServiceHarness(store, { shareLocationAdapter });
+    const { service } = createServiceHarness(planTransfer, { shareLocationAdapter });
 
     await expect(service.importPlanShareCode(code, 'Shared plan link')).resolves.toEqual({
       imported: true,
@@ -121,7 +122,7 @@ describe('PlannerPlanTransferService', () => {
         message: 'Imported Shared plan.',
       },
     });
-    expect(store.importPlanSharePayload).toHaveBeenCalledWith(payload);
+    expect(planTransfer.importPlanSharePayload).toHaveBeenCalledWith(payload);
     expect(shareLocationAdapter.clearShareCode).toHaveBeenCalledOnce();
   });
 
@@ -129,13 +130,13 @@ describe('PlannerPlanTransferService', () => {
     const payload = createSharePayload('Rejected plan');
     const code = await encodePlannerShareCode(payload);
     const beforeImport = vi.fn();
-    const store = createStoreHarness({
+    const planTransfer = createPlanTransferHarness({
       importPlanSharePayload: vi.fn(() => ({
         ok: false,
         message: 'Unsupported shared plan.',
       })),
     });
-    const { service } = createServiceHarness(store);
+    const { service } = createServiceHarness(planTransfer);
 
     await expect(
       service.importPlanShareCode(code, 'Shared plan link', beforeImport),
@@ -147,20 +148,20 @@ describe('PlannerPlanTransferService', () => {
       },
     });
     expect(beforeImport).toHaveBeenCalledOnce();
-    expect(store.importPlanSharePayload).toHaveBeenCalledWith(payload);
+    expect(planTransfer.importPlanSharePayload).toHaveBeenCalledWith(payload);
   });
 
   it('does not clear the plan hash when decoded share import is rejected', async () => {
     const payload = createSharePayload('Rejected plan');
     const code = await encodePlannerShareCode(payload);
     const shareLocationAdapter = createShareLocationAdapterHarness();
-    const store = createStoreHarness({
+    const planTransfer = createPlanTransferHarness({
       importPlanSharePayload: vi.fn(() => ({
         ok: false,
         message: 'Unsupported shared plan.',
       })),
     });
-    const { service } = createServiceHarness(store, { shareLocationAdapter });
+    const { service } = createServiceHarness(planTransfer, { shareLocationAdapter });
 
     await expect(service.importPlanShareCode(code, 'Shared plan link')).resolves.toEqual({
       imported: false,
@@ -173,14 +174,14 @@ describe('PlannerPlanTransferService', () => {
   });
 
   it('preserves import warnings in the returned status', () => {
-    const store = createStoreHarness({
+    const planTransfer = createPlanTransferHarness({
       importPlanJson: vi.fn(() => ({
         ok: true,
         project: { name: 'Imported plan' } as PlannerProject,
         warnings: [{ message: 'Some recipes were unavailable.' }],
       })),
     });
-    const { service } = createServiceHarness(store);
+    const { service } = createServiceHarness(planTransfer);
 
     expect(service.importPlanJson('{"kind":"beltwise.plan"}')).toEqual({
       imported: true,
@@ -193,7 +194,7 @@ describe('PlannerPlanTransferService', () => {
 });
 
 function createServiceHarness(
-  store: PlannerTransferStoreHarness,
+  planTransfer: PlannerTransferHarness,
   overrides: Partial<PlannerTransferAdapterHarness> = {},
 ): {
   service: PlannerPlanTransferService;
@@ -207,7 +208,7 @@ function createServiceHarness(
   const injector = Injector.create({
     providers: [
       PlannerPlanTransferService,
-      { provide: PlannerStoreService, useValue: store },
+      { provide: PLANNER_PLAN_TRANSFER_PORT, useValue: planTransfer },
       { provide: PLANNER_PLAN_DOWNLOAD_ADAPTER, useValue: adapters.downloadAdapter },
       { provide: PLANNER_CLIPBOARD_ADAPTER, useValue: adapters.clipboardAdapter },
       { provide: PLANNER_SHARE_LOCATION_ADAPTER, useValue: adapters.shareLocationAdapter },
@@ -248,9 +249,9 @@ function createShareLocationAdapterHarness(
   };
 }
 
-function createStoreHarness(
-  overrides: Partial<PlannerTransferStoreHarness> = {},
-): PlannerTransferStoreHarness {
+function createPlanTransferHarness(
+  overrides: Partial<PlannerTransferHarness> = {},
+): PlannerTransferHarness {
   return {
     exportActivePlan: vi.fn(() => ({ ok: false, message: 'No plan.' })),
     exportActivePlanSharePayload: vi.fn(() => ({ ok: false, message: 'No plan.' })),
@@ -269,12 +270,7 @@ function createSharePayload(name: string): Record<string, unknown> {
   };
 }
 
-interface PlannerTransferStoreHarness {
-  exportActivePlan: () => PlannerPlanExportResult;
-  exportActivePlanSharePayload: () => PlannerPlanShareExportResult;
-  importPlanJson: (json: string) => PlannerPlanImportResult;
-  importPlanSharePayload: (payload: unknown) => PlannerPlanImportResult;
-}
+type PlannerTransferHarness = PlannerPlanTransferPort;
 
 interface PlannerTransferAdapterHarness {
   downloadAdapter: PlannerPlanDownloadAdapterHarness;

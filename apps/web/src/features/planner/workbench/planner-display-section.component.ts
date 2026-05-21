@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import {
   GRAPH_DISPLAY_BELT_TIER_OPTIONS,
   GRAPH_DISPLAY_EDGE_STYLE_OPTIONS,
@@ -16,7 +16,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerDisplaySectionComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
   public readonly beltTierOptions = GRAPH_DISPLAY_BELT_TIER_OPTIONS;
   public readonly pipeTierOptions = GRAPH_DISPLAY_PIPE_TIER_OPTIONS;
   public readonly rateDecimalOptions = GRAPH_DISPLAY_RATE_DECIMAL_OPTIONS;

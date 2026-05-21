@@ -3,7 +3,7 @@ import { Injector, runInInjectionContext, signal } from '@angular/core';
 import { type RecipeId } from '@beltwise/game-data';
 import { describe, expect, it, vi } from 'vitest';
 import { PlannerRecipesSectionComponent } from './planner-recipes-section.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import { type RecipeRow } from '../state/planner-store.selectors';
 
 describe('PlannerRecipesSectionComponent', () => {
@@ -14,13 +14,13 @@ describe('PlannerRecipesSectionComponent', () => {
     const injector = Injector.create({
       providers: [
         {
-          provide: PlannerStoreService,
+          provide: PlannerPlanConfigStore,
           useValue: {
-            setRecipesEnabled,
-            workbenchViews: {
-              converterResourceRecipeRows: signal(converterRows),
-              standardBaseRecipeRows: signal(standardRows),
+            recipeCommands: {
+              setManyEnabled: setRecipesEnabled,
             },
+            converterResourceRecipeRows: signal(converterRows),
+            standardBaseRecipeRows: signal(standardRows),
           },
         },
       ],

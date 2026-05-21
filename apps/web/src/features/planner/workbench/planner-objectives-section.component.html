@@ -2,14 +2,13 @@
   <div class="section-heading">
     <div>
       <h3>Objectives</h3>
-      @if (store.activeProject(); as project) {
-        <span>{{ activePresetLabel(project.objectiveProfile) }}</span>
+      @if (planConfig.objectiveProfile(); as profile) {
+        <span>{{ activePresetLabel(profile) }}</span>
       }
     </div>
   </div>
 
-  @if (store.activeProject(); as project) {
-    @let profile = project.objectiveProfile;
+  @if (planConfig.objectiveProfile(); as profile) {
     @let activePreset = activePresetId(profile);
 
     <div class="objective-summary">
@@ -25,9 +24,9 @@
           class="objective-preset-card"
           [class.objective-preset-card--active]="activePreset === preset.id"
           [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
-          [disabled]="store.graphView.planLocked()"
+          [disabled]="planConfig.editingLocked()"
           [title]="preset.description"
-          (click)="store.setObjectivePreset(preset.id)"
+          (click)="planConfig.objectiveCommands.setPreset(preset.id)"
         >
           <strong>{{ preset.label }}</strong>
           <span>{{ preset.description }}</span>
@@ -51,7 +50,7 @@
               type="number"
               min="0"
               [step]="control.step"
-              [disabled]="store.graphView.planLocked()"
+              [disabled]="planConfig.editingLocked()"
               [ngModel]="weightValue(profile, control.key)"
               (ngModelChange)="setObjectiveWeight(control.key, $event)"
             />
@@ -86,7 +85,7 @@
           </div>
 
           @for (
-            row of store.workbenchViews.rawResourceMultiplierRows();
+            row of planConfig.rawResourceMultiplierRows();
             track row.resource.itemId
           ) {
             <div
@@ -137,7 +136,7 @@
                     step="0.05"
                     [attr.aria-label]="row.resource.displayName + ' custom route multiplier'"
                     [attr.aria-describedby]="'objective-resource-cost-' + row.resource.itemId"
-                    [disabled]="store.graphView.planLocked()"
+                    [disabled]="planConfig.editingLocked()"
                     [ngModel]="row.multiplier"
                     (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
                   />
@@ -156,7 +155,7 @@
                 type="button"
                 title="Reset to neutral"
                 [attr.aria-label]="'Reset ' + row.resource.displayName + ' route multiplier'"
-                [disabled]="store.graphView.planLocked() || row.isNeutral"
+                [disabled]="planConfig.editingLocked() || row.isNeutral"
                 (click)="resetRawResourceMultiplier(row.resource.itemId)"
               >
                 Reset

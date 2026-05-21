@@ -3,13 +3,13 @@ import { Injector, runInInjectionContext, signal } from '@angular/core';
 import type { Item, ItemId } from '@beltwise/game-data';
 import { describe, expect, it } from 'vitest';
 import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import type { ExternalInputRow } from '../state/planner-store.selectors';
 
 describe('PlannerInputsSectionComponent', () => {
   it('clamps draft amounts before merging into an existing external input', () => {
-    const { component, store, setItemInputCalls } = createComponentHarness();
-    store.workbenchViews.externalInputRows.set([{ item: rotorItem, amountPerMinute: 8 }]);
+    const { component, planConfig, setItemInputCalls } = createComponentHarness();
+    planConfig.externalInputRows.set([{ item: rotorItem, amountPerMinute: 8 }]);
 
     component.addDraftInput();
     component.updateInputAmount(draftInputRow(component), -5);
@@ -20,10 +20,10 @@ describe('PlannerInputsSectionComponent', () => {
   });
 
   it('keeps a draft row when the plan locks before the item is selected', () => {
-    const { component, store, setItemInputCalls } = createComponentHarness();
+    const { component, planConfig, setItemInputCalls } = createComponentHarness();
 
     component.addDraftInput();
-    store.graphView.planLocked.set(true);
+    planConfig.editingLocked.set(true);
     component.updateInputItem(draftInputRow(component), rotorItem.id);
 
     expect(setItemInputCalls).toEqual([]);
@@ -34,30 +34,29 @@ describe('PlannerInputsSectionComponent', () => {
 function createComponentHarness(): {
   component: PlannerInputsSectionComponent;
   setItemInputCalls: SetItemInputCall[];
-  store: PlannerInputsStoreHarness;
+  planConfig: PlannerInputsPlanConfigHarness;
 } {
   const setItemInputCalls: SetItemInputCall[] = [];
-  const store: PlannerInputsStoreHarness = {
-    activeProject: signal({ id: 'project-a' }),
-    graphView: {
-      planLocked: signal(false),
+  const planConfig: PlannerInputsPlanConfigHarness = {
+    activePlanId: signal<string | null>('project-a'),
+    hasActivePlan: signal(true),
+    editingLocked: signal(false),
+    externalInputRows: signal<ExternalInputRow[]>([]),
+    itemOptions: signal<Item[]>([rotorItem]),
+    inputCommands: {
+      remove: () => undefined,
+      set: (itemId, amountPerMinute) => {
+        setItemInputCalls.push({ itemId, amountPerMinute });
+      },
+      move: () => undefined,
     },
-    workbenchViews: {
-      externalInputRows: signal<ExternalInputRow[]>([]),
-      itemOptions: signal<Item[]>([rotorItem]),
-    },
-    removeExternalInput: () => undefined,
-    setItemInput: (itemId, amountPerMinute) => {
-      setItemInputCalls.push({ itemId, amountPerMinute });
-    },
-    updateExternalInputItem: () => undefined,
   };
   const injector = Injector.create({
-    providers: [{ provide: PlannerStoreService, useValue: store }],
+    providers: [{ provide: PlannerPlanConfigStore, useValue: planConfig }],
   });
   const component = runInInjectionContext(injector, () => new PlannerInputsSectionComponent());
 
-  return { component, setItemInputCalls, store };
+  return { component, planConfig, setItemInputCalls };
 }
 
 function draftInputRow(component: PlannerInputsSectionComponent) {
@@ -68,18 +67,17 @@ function draftInputRow(component: PlannerInputsSectionComponent) {
   return row;
 }
 
-interface PlannerInputsStoreHarness {
-  activeProject: ReturnType<typeof signal<{ id: string }>>;
-  graphView: {
-    planLocked: ReturnType<typeof signal<boolean>>;
+interface PlannerInputsPlanConfigHarness {
+  activePlanId: ReturnType<typeof signal<string | null>>;
+  hasActivePlan: ReturnType<typeof signal<boolean>>;
+  editingLocked: ReturnType<typeof signal<boolean>>;
+  externalInputRows: ReturnType<typeof signal<ExternalInputRow[]>>;
+  itemOptions: ReturnType<typeof signal<Item[]>>;
+  inputCommands: {
+    remove: (itemId: ItemId) => void;
+    set: (itemId: ItemId, amountPerMinute: number) => void;
+    move: (previousItemId: ItemId, nextItemId: ItemId) => void;
   };
-  workbenchViews: {
-    externalInputRows: ReturnType<typeof signal<ExternalInputRow[]>>;
-    itemOptions: ReturnType<typeof signal<Item[]>>;
-  };
-  removeExternalInput: (itemId: ItemId) => void;
-  setItemInput: (itemId: ItemId, amountPerMinute: number) => void;
-  updateExternalInputItem: (previousItemId: ItemId, nextItemId: ItemId) => void;
 }
 
 interface SetItemInputCall {

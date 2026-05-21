@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { type PlannerProject } from '@beltwise/planner-core';
 import {
   type WorkbenchFocusMode,
@@ -6,6 +6,7 @@ import {
   type WorkbenchPanelId,
 } from './planner-workbench.models';
 
+@Injectable({ providedIn: 'root' })
 export class PlannerWorkbenchSlice {
   private focusRequestSequence = 0;
 

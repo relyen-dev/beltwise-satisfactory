@@ -5,9 +5,9 @@
       <div class="tagline">Unofficial local-first factory planner for Satisfactory</div>
     </div>
 
-    @if (store.activeProject(); as project) {
+    @if (workspace.activeProject(); as project) {
       <div class="workspace-context" aria-label="Session and plan controls">
-        @if (store.activeSession(); as session) {
+        @if (workspace.activeSession(); as session) {
           <div class="session-card">
             <span class="context-label">Save session</span>
             @if (sessionNameEditing()) {
@@ -35,7 +35,7 @@
                   [ngModel]="session.id"
                   (ngModelChange)="selectSession($event)"
                 >
-                  @for (candidate of store.sessions(); track candidate.id) {
+                  @for (candidate of workspace.sessions(); track candidate.id) {
                     <option [value]="candidate.id">{{ candidate.name }}</option>
                   }
                 </select>
@@ -227,7 +227,7 @@
                   aria-label="Plan actions"
                   (click)="closeActionMenu()"
                 >
-                  @if (store.activeSession(); as session) {
+                  @if (workspace.activeSession(); as session) {
                     <button
                       type="button"
                       title="Rename save session"
@@ -361,20 +361,20 @@
     <bw-planner-defaults-panel (closed)="closeDefaultsPanel()" />
   }
 
-  @if (store.datasetError()) {
-    <section class="load-error" role="alert">{{ store.datasetError() }}</section>
-  } @else if (!store.dataset()) {
+  @if (datasetService.loadError()) {
+    <section class="load-error" role="alert">{{ datasetService.loadError() }}</section>
+  } @else if (!datasetService.dataset()) {
     <section class="loading-panel">Loading generated planner data...</section>
-  } @else if (store.activeProject(); as project) {
+  } @else if (workspace.activeProject(); as project) {
     <main class="workspace-body" [class.workspace-body--panel-open]="workPanelOpen()">
       <nav class="section-rail" aria-label="Planner workspace sections">
         @for (panel of workbenchPanels; track panel.id) {
           <button
             type="button"
             class="rail-button"
-            [class.is-active]="store.activeWorkbenchPanelId() === panel.id && workPanelOpen()"
+            [class.is-active]="workbench.activePanelId() === panel.id && workPanelOpen()"
             [attr.aria-current]="
-              store.activeWorkbenchPanelId() === panel.id && workPanelOpen() ? 'page' : null
+              workbench.activePanelId() === panel.id && workPanelOpen() ? 'page' : null
             "
             (click)="openSection(panel.id)"
           >
@@ -414,12 +414,12 @@
             }
           </div>
           <div class="graph-toolbar__actions">
-            @if (store.graphView.selectedGraphNode()) {
+            @if (graph.readModel.selectedNode()) {
               <button
                 type="button"
                 title="Clear selected graph node (Esc)"
                 aria-label="Clear selected graph node"
-                (click)="store.clearSelectedGraphNode()"
+                (click)="graph.selectionCommands.clear()"
               >
                 Clear selection
               </button>
@@ -427,36 +427,36 @@
             <button
               type="button"
               class="lock-toggle"
-              [class.lock-toggle--locked]="project.buildState.planLocked"
+              [class.lock-toggle--locked]="graph.readModel.planLocked()"
               [title]="
-                project.buildState.planLocked
+                graph.readModel.planLocked()
                   ? 'Unlock plan and allow solver configuration edits'
                   : 'Lock plan to prevent solver configuration edits'
               "
-              [attr.aria-pressed]="project.buildState.planLocked"
-              (click)="store.setPlanLocked(!project.buildState.planLocked)"
+              [attr.aria-pressed]="graph.readModel.planLocked()"
+              (click)="graph.lockCommands.setPlanLocked(!graph.readModel.planLocked())"
             >
-              {{ project.buildState.planLocked ? 'Unlock plan' : 'Lock plan' }}
+              {{ graph.readModel.planLocked() ? 'Unlock plan' : 'Lock plan' }}
             </button>
             <button
               type="button"
               class="lock-toggle"
-              [class.lock-toggle--locked]="project.buildState.nodeLayoutLocked"
+              [class.lock-toggle--locked]="graph.readModel.nodeLayoutLocked()"
               [title]="
-                project.buildState.nodeLayoutLocked
+                graph.readModel.nodeLayoutLocked()
                   ? 'Unlock graph node movement'
                   : 'Lock graph node movement'
               "
-              [attr.aria-pressed]="project.buildState.nodeLayoutLocked"
-              (click)="store.setNodeLayoutLocked(!project.buildState.nodeLayoutLocked)"
+              [attr.aria-pressed]="graph.readModel.nodeLayoutLocked()"
+              (click)="graph.lockCommands.setNodeLayoutLocked(!graph.readModel.nodeLayoutLocked())"
             >
-              {{ project.buildState.nodeLayoutLocked ? 'Unlock nodes' : 'Lock nodes' }}
+              {{ graph.readModel.nodeLayoutLocked() ? 'Unlock nodes' : 'Lock nodes' }}
             </button>
             <button
               type="button"
               title="Reset manual node positions"
-              [disabled]="project.buildState.nodeLayoutLocked"
-              (click)="store.resetGraphLayout()"
+              [disabled]="graph.readModel.nodeLayoutLocked()"
+              (click)="graph.layoutCommands.resetLayout()"
             >
               Reset layout
             </button>
@@ -464,21 +464,23 @@
         </div>
 
         <bw-production-graph
-          [graph]="store.graphView.graph()"
-          [dataset]="store.dataset()"
-          [layout]="project.graphLayout"
-          [displaySettings]="project.graphDisplay"
-          [selectedNodeId]="store.graphView.selectedGraphNodeId()"
-          [completedNodeIds]="store.graphView.completedGraphNodeIds()"
-          [nodeNotes]="store.graphView.graphNodeNotes()"
-          [interactionLocked]="store.graphView.nodeLayoutLocked()"
-          [targetEditingLocked]="store.graphView.planLocked()"
-          (nodeSelectionSet)="store.setGraphNodeSelection($event)"
-          (nodeSelectionToggled)="store.toggleGraphNodeSelection($event)"
-          (nodeDoneToggled)="store.toggleGraphNodeDone($event)"
-          (nodeMoved)="store.setGraphNodePosition($event.nodeId, $event.position)"
-          (nodeMoveEnded)="store.flushGraphNodePositions()"
-          (targetAmountChanged)="store.updateTargetAmount($event.targetId, $event.amountPerMinute)"
+          [graph]="graph.readModel.graph()"
+          [dataset]="datasetService.dataset()"
+          [layout]="graph.readModel.layout()"
+          [displaySettings]="graph.readModel.displaySettings()"
+          [selectedNodeId]="graph.readModel.selectedNodeId()"
+          [completedNodeIds]="graph.readModel.completedNodeIds()"
+          [nodeNotes]="graph.readModel.nodeNotes()"
+          [interactionLocked]="graph.readModel.nodeLayoutLocked()"
+          [targetEditingLocked]="graph.readModel.planLocked()"
+          (nodeSelectionSet)="graph.selectionCommands.set($event)"
+          (nodeSelectionToggled)="graph.selectionCommands.toggle($event)"
+          (nodeDoneToggled)="graph.nodeStateCommands.toggleDone($event)"
+          (nodeMoved)="graph.layoutCommands.setNodePosition($event.nodeId, $event.position)"
+          (nodeMoveEnded)="graph.layoutCommands.flushNodePositions()"
+          (targetAmountChanged)="
+            planConfig.targetCommands.updateAmount($event.targetId, $event.amountPerMinute)
+          "
         />
       </section>
 

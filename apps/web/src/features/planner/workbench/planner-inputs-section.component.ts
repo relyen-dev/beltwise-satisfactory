@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 import { TargetItemPickerComponent } from '../shared-ui/target-item-picker.component';
 
@@ -32,12 +32,12 @@ let nextDraftExternalInputId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerInputsSectionComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
   private readonly draftInputRows = signal<readonly DraftExternalInputRow[]>([]);
 
   public readonly inputRows = computed<ExternalInputViewRow[]>(() => {
-    const projectId = this.store.activeProject()?.id;
-    const savedRows = this.store.workbenchViews.externalInputRows().map((row) => ({
+    const projectId = this.planConfig.activePlanId();
+    const savedRows = this.planConfig.externalInputRows().map((row) => ({
       id: row.item.id,
       itemId: row.item.id,
       amountPerMinute: row.amountPerMinute,
@@ -51,15 +51,15 @@ export class PlannerInputsSectionComponent {
   });
 
   public readonly canAddInput = computed(() => {
-    if (this.store.graphView.planLocked() || !this.store.activeProject()) {
+    if (this.planConfig.editingLocked() || !this.planConfig.hasActivePlan()) {
       return false;
     }
 
-    return this.store.workbenchViews.itemOptions().length > 0;
+    return this.planConfig.itemOptions().length > 0;
   });
 
   public addDraftInput(): void {
-    const projectId = this.store.activeProject()?.id;
+    const projectId = this.planConfig.activePlanId();
     if (!projectId || !this.canAddInput()) {
       return;
     }
@@ -77,19 +77,19 @@ export class PlannerInputsSectionComponent {
   }
 
   public updateInputItem(row: ExternalInputViewRow, itemId: ItemId): void {
-    if (this.store.graphView.planLocked() || itemId.length === 0) {
+    if (this.planConfig.editingLocked() || itemId.length === 0) {
       return;
     }
 
     if (row.kind === 'saved') {
-      this.store.updateExternalInputItem(row.itemId, itemId);
+      this.planConfig.inputCommands.move(row.itemId, itemId);
       return;
     }
 
     const existingAmountPerMinute =
-      this.store.workbenchViews.externalInputRows().find((inputRow) => inputRow.item.id === itemId)
+      this.planConfig.externalInputRows().find((inputRow) => inputRow.item.id === itemId)
         ?.amountPerMinute ?? 0;
-    this.store.setItemInput(
+    this.planConfig.inputCommands.set(
       itemId,
       existingAmountPerMinute + safeExternalInputAmount(row.amountPerMinute),
     );
@@ -97,13 +97,13 @@ export class PlannerInputsSectionComponent {
   }
 
   public updateInputAmount(row: ExternalInputViewRow, value: string | number | null): void {
-    if (this.store.graphView.planLocked()) {
+    if (this.planConfig.editingLocked()) {
       return;
     }
 
     const amountPerMinute = safeExternalInputAmount(parsePlannerNumber(value));
     if (row.kind === 'saved') {
-      this.store.setItemInput(row.itemId, amountPerMinute);
+      this.planConfig.inputCommands.set(row.itemId, amountPerMinute);
       return;
     }
 
@@ -120,12 +120,12 @@ export class PlannerInputsSectionComponent {
   }
 
   public removeInput(row: ExternalInputViewRow): void {
-    if (this.store.graphView.planLocked()) {
+    if (this.planConfig.editingLocked()) {
       return;
     }
 
     if (row.kind === 'saved') {
-      this.store.removeExternalInput(row.itemId);
+      this.planConfig.inputCommands.remove(row.itemId);
       return;
     }
 

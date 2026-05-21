@@ -7,22 +7,22 @@
     <div class="section-actions resource-actions">
       <button
         type="button"
-        [disabled]="store.graphView.planLocked()"
-        (click)="store.resetAllResources()"
+        [disabled]="planConfig.editingLocked()"
+        (click)="planConfig.resourceCommands.resetAll()"
       >
         Reset all to map limits
       </button>
       <button
         type="button"
-        [disabled]="store.graphView.planLocked()"
-        (click)="store.setAllResourcesEnabled(false)"
+        [disabled]="planConfig.editingLocked()"
+        (click)="planConfig.resourceCommands.setAllEnabled(false)"
       >
         Disable all
       </button>
       <button
         type="button"
-        [disabled]="store.graphView.planLocked()"
-        (click)="store.setAllResourcesEnabled(true)"
+        [disabled]="planConfig.editingLocked()"
+        (click)="planConfig.resourceCommands.setAllEnabled(true)"
       >
         Enable all
       </button>
@@ -30,7 +30,7 @@
   </div>
 
   <div class="resource-grid" aria-label="Raw resource caps">
-    @for (row of store.workbenchViews.resourceRows(); track row.resource.itemId) {
+    @for (row of planConfig.resourceRows(); track row.resource.itemId) {
       <div
         class="resource-row"
         [class.resource-row--disabled]="!row.enabled"
@@ -41,8 +41,8 @@
             type="checkbox"
             [attr.aria-label]="'Enable ' + row.resource.displayName"
             [ngModel]="row.enabled"
-            [disabled]="store.graphView.planLocked()"
-            (ngModelChange)="store.setResourceEnabled(row.resource.itemId, $event)"
+            [disabled]="planConfig.editingLocked()"
+            (ngModelChange)="planConfig.resourceCommands.setEnabled(row.resource.itemId, $event)"
           />
         </label>
 
@@ -76,7 +76,7 @@
             step="1"
             placeholder="Unlimited"
             [ngModel]="row.capInputValue"
-            [disabled]="store.graphView.planLocked()"
+            [disabled]="planConfig.editingLocked()"
             (ngModelChange)="setResourceCap(row.resource.itemId, $event)"
           />
           <span>/ min</span>
@@ -86,8 +86,8 @@
           type="button"
           title="Reset to map limit"
           [attr.aria-label]="'Reset ' + row.resource.displayName + ' to map limit'"
-          [disabled]="store.graphView.planLocked()"
-          (click)="store.resetResource(row.resource.itemId)"
+          [disabled]="planConfig.editingLocked()"
+          (click)="planConfig.resourceCommands.reset(row.resource.itemId)"
         >
           Reset
         </button>

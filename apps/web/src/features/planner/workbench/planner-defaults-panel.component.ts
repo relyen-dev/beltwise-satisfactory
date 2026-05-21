@@ -14,7 +14,7 @@ import {
   type ObjectiveWeightKey,
 } from '@beltwise/planner-core';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerDefaultsStore } from '../state/planner-defaults.store';
 import { type MachineRow, type RecipeRow } from '../state/planner-store.selectors';
 import {
   parsePlannerNumber,
@@ -51,7 +51,7 @@ interface DefaultsPanelTabDefinition {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerDefaultsPanelComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly defaults = inject(PlannerDefaultsStore);
   public readonly closed = output<void>();
   public readonly activeTab = signal<DefaultsPanelTab>('recipes');
   public readonly activeRecipePanel = signal<DefaultRecipePanelId>('standard');
@@ -66,9 +66,9 @@ export class PlannerDefaultsPanelComponent {
 
   public readonly activeRecipeRows = computed(() => {
     return recipeRowsForDefaultPanel(this.activeRecipePanel(), {
-      standard: this.store.workbenchViews.defaultStandardBaseRecipeRows(),
-      converterResources: this.store.workbenchViews.defaultConverterResourceRecipeRows(),
-      alternates: this.store.workbenchViews.defaultAlternateRecipeRows(),
+      standard: this.defaults.standardBaseRecipeRows(),
+      converterResources: this.defaults.converterResourceRecipeRows(),
+      alternates: this.defaults.alternateRecipeRows(),
     });
   });
 
@@ -93,21 +93,21 @@ export class PlannerDefaultsPanelComponent {
   }
 
   public setRecipeRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {
-    this.store.setDefaultRecipesEnabled(
+    this.defaults.recipeCommands.setManyEnabled(
       rows.map((row): RecipeId => row.recipe.id),
       enabled,
     );
   }
 
   public setMachineRowsEnabled(rows: readonly MachineRow[], enabled: boolean): void {
-    this.store.setDefaultMachinesEnabled(
+    this.defaults.machineCommands.setManyEnabled(
       rows.map((row): MachineId => row.machine.id),
       enabled,
     );
   }
 
   public setResourceCap(itemId: ItemId, value: string | number | null): void {
-    this.store.setDefaultResourceCap(itemId, parsePlannerNumber(value));
+    this.defaults.resourceCommands.setCap(itemId, parsePlannerNumber(value));
   }
 
   public activeObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId {
@@ -123,17 +123,17 @@ export class PlannerDefaultsPanelComponent {
   }
 
   public setObjectiveWeight(key: ObjectiveWeightKey, value: string | number | null): void {
-    this.store.setDefaultObjectiveWeight(key, parsePlannerNumber(value));
+    this.defaults.objectiveCommands.setWeight(key, parsePlannerNumber(value));
   }
 
   public setRawResourceMultiplier(itemId: ItemId, value: string | number | null): void {
-    this.store.setDefaultObjectiveRawResourceMultiplier(
+    this.defaults.objectiveCommands.setRawResourceMultiplier(
       itemId,
       parseRawResourceMultiplierInput(value),
     );
   }
 
   public resetRawResourceMultiplier(itemId: ItemId): void {
-    this.store.resetDefaultObjectiveRawResourceMultiplier(itemId);
+    this.defaults.objectiveCommands.resetRawResourceMultiplier(itemId);
   }
 }
