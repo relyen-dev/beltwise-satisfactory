@@ -1,4 +1,4 @@
-import { type Signal, type WritableSignal } from '@angular/core';
+import { type WritableSignal } from '@angular/core';
 import { type PlannerStoreViewSelectors } from './planner-store-view-selectors';
 
 export interface PlannerStoreWorkbenchViews {
@@ -14,27 +14,13 @@ export interface PlannerStoreWorkbenchViews {
   readonly defaultGraphDisplaySettings: PlannerStoreViewSelectors['defaultGraphDisplaySettings'];
 }
 
-export interface PlannerStoreGraphView {
-  readonly selectedGraphNodeId: Signal<string | null>;
-  readonly graph: PlannerStoreViewSelectors['graph'];
-  readonly planLocked: PlannerStoreViewSelectors['planLocked'];
-  readonly nodeLayoutLocked: PlannerStoreViewSelectors['nodeLayoutLocked'];
-  readonly completedGraphNodeIds: PlannerStoreViewSelectors['completedGraphNodeIds'];
-  readonly graphNodeNotes: PlannerStoreViewSelectors['graphNodeNotes'];
-  readonly selectedGraphNode: PlannerStoreViewSelectors['selectedGraphNode'];
-  readonly selectedGraphNodeState: PlannerStoreViewSelectors['selectedGraphNodeState'];
-  readonly inspectorViewModel: PlannerStoreViewSelectors['inspectorViewModel'];
-}
-
 export interface PlannerStoreViewSurface {
   readonly workbench: PlannerStoreWorkbenchViews;
-  readonly graph: PlannerStoreGraphView;
 }
 
 interface PlannerStoreViewSurfaceOptions {
   readonly selectors: PlannerStoreViewSelectors;
   readonly defaultRecipeSearch: WritableSignal<string>;
-  readonly selectedGraphNodeId: Signal<string | null>;
 }
 
 export function createPlannerStoreViewSurface(
@@ -42,7 +28,6 @@ export function createPlannerStoreViewSurface(
 ): PlannerStoreViewSurface {
   return {
     workbench: createPlannerStoreWorkbenchViews(options),
-    graph: createPlannerStoreGraphView(options),
   };
 }
 
@@ -61,22 +46,5 @@ function createPlannerStoreWorkbenchViews(
     defaultConverterResourceRecipeRows: selectors.defaultConverterResourceRecipeRows,
     defaultAlternateRecipeRows: selectors.defaultAlternateRecipeRows,
     defaultGraphDisplaySettings: selectors.defaultGraphDisplaySettings,
-  };
-}
-
-function createPlannerStoreGraphView(
-  options: PlannerStoreViewSurfaceOptions,
-): PlannerStoreGraphView {
-  const selectors = options.selectors;
-  return {
-    selectedGraphNodeId: options.selectedGraphNodeId,
-    graph: selectors.graph,
-    planLocked: selectors.planLocked,
-    nodeLayoutLocked: selectors.nodeLayoutLocked,
-    completedGraphNodeIds: selectors.completedGraphNodeIds,
-    graphNodeNotes: selectors.graphNodeNotes,
-    selectedGraphNode: selectors.selectedGraphNode,
-    selectedGraphNodeState: selectors.selectedGraphNodeState,
-    inspectorViewModel: selectors.inspectorViewModel,
   };
 }

@@ -1,31 +1,20 @@
 import { computed, type Signal } from '@angular/core';
 import { type GameDataset } from '@beltwise/game-data';
 import {
-  type GraphNodeBuildState,
   type PlannerProject,
   type PlannerUserDefaults,
-  type ProductionGraph,
-  type ProductionGraphNode,
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import {
-  buildProductionGraphFromInput,
-  equalProductionGraphInputs,
-  selectCompletedGraphNodeIds,
   selectExternalInputRows,
-  selectGraphNode,
-  selectGraphNodeNotes,
-  selectGraphNodeState,
   selectItemOptions,
   selectMachinePanelSummary,
   selectMachineRows,
   selectMachineUsageRows,
-  selectProductionGraphInput,
   selectRecipeRows,
   selectRawResourceMultiplierRows,
   selectResourceRows,
 } from './planner-store.selectors';
-import { selectInspectorViewModel } from './planner-inspector.selectors';
 
 interface PlannerStoreViewSelectorOptions {
   readonly dataset: Signal<GameDataset | null>;
@@ -33,13 +22,11 @@ interface PlannerStoreViewSelectorOptions {
   readonly userDefaults: Signal<PlannerUserDefaults | null>;
   readonly recipeSearch: Signal<string>;
   readonly defaultRecipeSearch: Signal<string>;
-  readonly selectedGraphNodeId: Signal<string | null>;
   readonly solveResult: Signal<ProductionPlanResult | null>;
 }
 
 export class PlannerStoreViewSelectors {
   private readonly options: PlannerStoreViewSelectorOptions;
-  private readonly productionGraphInput: Signal<ReturnType<typeof selectProductionGraphInput>>;
 
   public readonly itemOptions: Signal<ReturnType<typeof selectItemOptions>>;
   public readonly resourceRows: Signal<ReturnType<typeof selectResourceRows>>;
@@ -65,16 +52,7 @@ export class PlannerStoreViewSelectors {
   public readonly defaultConverterResourceRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly alternateRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   public readonly defaultAlternateRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
-  public readonly graph: Signal<ProductionGraph | null>;
-  public readonly planLocked: Signal<boolean>;
-  public readonly nodeLayoutLocked: Signal<boolean>;
-  public readonly completedGraphNodeIds: Signal<ReadonlySet<string>>;
-  public readonly graphNodeNotes: Signal<Readonly<Record<string, string>>>;
-  public readonly graphDisplaySettings: Signal<PlannerProject['graphDisplay'] | null>;
   public readonly defaultGraphDisplaySettings: Signal<PlannerUserDefaults['graphDisplay'] | null>;
-  public readonly selectedGraphNode: Signal<ProductionGraphNode | null>;
-  public readonly selectedGraphNodeState: Signal<GraphNodeBuildState>;
-  public readonly inspectorViewModel: Signal<ReturnType<typeof selectInspectorViewModel>>;
 
   public constructor(options: PlannerStoreViewSelectorOptions) {
     this.options = options;
@@ -204,58 +182,8 @@ export class PlannerStoreViewSelectors {
       this.defaultRecipeRows().filter((row) => row.recipe.isAlternate),
     );
 
-    this.productionGraphInput = computed(
-      () =>
-        selectProductionGraphInput(
-          this.options.dataset(),
-          this.options.activeProject(),
-          this.options.solveResult(),
-        ),
-      { equal: equalProductionGraphInputs },
-    );
-
-    this.graph = computed<ProductionGraph | null>(() => {
-      const input = this.productionGraphInput();
-      return input ? buildProductionGraphFromInput(input) : null;
-    });
-
-    this.planLocked = computed(() => this.options.activeProject()?.buildState.planLocked ?? false);
-
-    this.nodeLayoutLocked = computed(
-      () => this.options.activeProject()?.buildState.nodeLayoutLocked ?? false,
-    );
-
-    this.completedGraphNodeIds = computed<ReadonlySet<string>>(() => {
-      return selectCompletedGraphNodeIds(this.options.activeProject());
-    });
-
-    this.graphNodeNotes = computed<Readonly<Record<string, string>>>(() => {
-      return selectGraphNodeNotes(this.options.activeProject());
-    });
-
-    this.graphDisplaySettings = computed(() => this.options.activeProject()?.graphDisplay ?? null);
-
     this.defaultGraphDisplaySettings = computed(
       () => this.options.userDefaults()?.graphDisplay ?? null,
     );
-
-    this.selectedGraphNode = computed<ProductionGraphNode | null>(() => {
-      return selectGraphNode(this.graph(), this.options.selectedGraphNodeId());
-    });
-
-    this.selectedGraphNodeState = computed<GraphNodeBuildState>(() => {
-      return selectGraphNodeState(this.options.activeProject(), this.options.selectedGraphNodeId());
-    });
-
-    this.inspectorViewModel = computed(() => {
-      return selectInspectorViewModel(
-        this.options.dataset(),
-        this.options.activeProject(),
-        this.options.solveResult(),
-        this.graph(),
-        this.selectedGraphNode(),
-        this.selectedGraphNodeState(),
-      );
-    });
   }
 }

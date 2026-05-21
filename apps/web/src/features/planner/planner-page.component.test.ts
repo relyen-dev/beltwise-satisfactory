@@ -19,6 +19,8 @@ import {
   type PlannerShareLocationAdapter,
 } from './transfer/planner-transfer-browser-adapters';
 import { PlannerStoreService } from './state/planner-store.service';
+import { PlannerGraphStore } from './state/planner-graph.store';
+import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
 import { encodePlannerShareCode } from './transfer/planner-share-codec';
 import {
   type WorkbenchFocusRequest,
@@ -51,18 +53,18 @@ describe('PlannerPageComponent', () => {
   });
 
   it('clears graph selection from Escape when focus is not editable', () => {
-    const { component, store, clearSelectedGraphNode } = createComponentHarness();
+    const { component, graph, clearSelectedGraphNode } = createComponentHarness();
     const event = keyboardEvent(new TestHTMLElement('div'));
 
     component.handleEscapeKey(event);
 
     expect(clearSelectedGraphNode).toHaveBeenCalledOnce();
-    expect(store.graphView.selectedGraphNodeId()).toBeNull();
+    expect(graph.readModel.selectedNodeId()).toBeNull();
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
   it('does not clear graph selection from Escape when focus is editable', () => {
-    const { component, store, clearSelectedGraphNode } = createComponentHarness();
+    const { component, graph, clearSelectedGraphNode } = createComponentHarness();
     const editableTargets = [
       new TestHTMLElement('input'),
       new TestHTMLElement('textarea'),
@@ -76,13 +78,13 @@ describe('PlannerPageComponent', () => {
       component.handleEscapeKey(event);
 
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-      expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
       expect(event.preventDefault).not.toHaveBeenCalled();
     }
   });
 
   it('closes the defaults panel from Escape before clearing graph selection', () => {
-    const { component, store, clearSelectedGraphNode } = createComponentHarness();
+    const { component, graph, clearSelectedGraphNode } = createComponentHarness();
     component.defaultsPanelOpen.set(true);
     const event = keyboardEvent(new TestHTMLElement('div'));
 
@@ -90,12 +92,12 @@ describe('PlannerPageComponent', () => {
 
     expect(component.defaultsPanelOpen()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
   it('keeps the defaults panel open from Escape when focus is editable', () => {
-    const { component, store, clearSelectedGraphNode } = createComponentHarness();
+    const { component, graph, clearSelectedGraphNode } = createComponentHarness();
     component.defaultsPanelOpen.set(true);
     const event = keyboardEvent(new TestHTMLElement('input'));
 
@@ -103,7 +105,7 @@ describe('PlannerPageComponent', () => {
 
     expect(component.defaultsPanelOpen()).toBe(true);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
 
@@ -310,31 +312,31 @@ describe('PlannerPageComponent', () => {
   });
 
   it('keeps active plan reselection as a navigation no-op', () => {
-    const { component, selectProject, store } = createComponentHarness();
+    const { component, graph, selectProject } = createComponentHarness();
     component.openPlanSelector();
     component.actionMenuOpen.set(true);
 
     component.selectProject('project-a');
 
     expect(selectProject).not.toHaveBeenCalled();
-    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(component.planSelectorOpen()).toBe(false);
     expect(component.actionMenuOpen()).toBe(false);
   });
 
   it('closes the selector without reactivating when choosing the active plan option', () => {
-    const { component, selectProject, store } = createComponentHarness();
+    const { component, graph, selectProject } = createComponentHarness();
     component.openPlanSelector();
 
     component.selectProjectFromSelector('project-a');
 
     expect(selectProject).not.toHaveBeenCalled();
-    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(component.planSelectorOpen()).toBe(false);
   });
 
   it('closes the active plan selector from Escape before graph selection handling', () => {
-    const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    const { clearSelectedGraphNode, component, graph } = createComponentHarness();
     const focus = vi.fn();
     stubElementViewChild(component, 'activePlanTrigger', focus);
     vi.useFakeTimers();
@@ -347,7 +349,7 @@ describe('PlannerPageComponent', () => {
 
       expect(component.planSelectorOpen()).toBe(false);
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-      expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
       expect(event.preventDefault).toHaveBeenCalledOnce();
       expect(focus).toHaveBeenCalledOnce();
     } finally {
@@ -356,7 +358,7 @@ describe('PlannerPageComponent', () => {
   });
 
   it('closes the actions menu from Escape before graph selection handling', () => {
-    const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    const { clearSelectedGraphNode, component, graph } = createComponentHarness();
     const focus = vi.fn();
     stubElementViewChild(component, 'actionMenuSummary', focus);
     component.actionMenuOpen.set(true);
@@ -369,7 +371,7 @@ describe('PlannerPageComponent', () => {
 
       expect(component.actionMenuOpen()).toBe(false);
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-      expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
       expect(event.preventDefault).toHaveBeenCalledOnce();
       expect(focus).toHaveBeenCalledOnce();
     } finally {
@@ -429,7 +431,7 @@ describe('PlannerPageComponent', () => {
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
-    const { clearSelectedGraphNode, component, store } = createComponentHarness();
+    const { clearSelectedGraphNode, component, graph } = createComponentHarness();
     component.startProjectNameEdit('project-a', 'Draft factory');
     const event = keyboardEvent(new TestHTMLElement('input'));
 
@@ -437,7 +439,7 @@ describe('PlannerPageComponent', () => {
 
     expect(component.projectNameEditing()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
@@ -586,6 +588,7 @@ function createComponentHarness(): {
   duplicateProject: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: ReturnType<typeof vi.fn>;
+  graph: PlannerPageGraphHarness;
   importPlanJson: ReturnType<typeof vi.fn>;
   importPlanSharePayload: ReturnType<typeof vi.fn>;
   renameProject: ReturnType<typeof vi.fn>;
@@ -631,6 +634,25 @@ function createComponentHarness(): {
   };
   const renameProject = vi.fn();
   const renameSession = vi.fn();
+  const graph: PlannerPageGraphHarness = {
+    readModel: {
+      selectedNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
+    },
+    selectionCommands: {
+      clear: () => {
+        clearSelectedGraphNode();
+        graph.readModel.selectedNodeId.set(null);
+      },
+    },
+    layoutCommands: {
+      flushNodePositions: flushGraphNodePositions,
+    },
+  };
+  const planConfig: PlannerPagePlanConfigHarness = {
+    targetCommands: {
+      updateAmount: vi.fn(),
+    },
+  };
   let store: PlannerPageStoreHarness;
   const selectProject = vi.fn((projectId: string) => {
     store.activeProjectId.set(projectId);
@@ -653,10 +675,6 @@ function createComponentHarness(): {
       createPageProject('project-a', 'Draft factory', []),
     ]),
     activeWorkbenchPanelId: signal<WorkbenchPanelId>('plan'),
-    clearSelectedGraphNode: () => {
-      clearSelectedGraphNode();
-      store.graphView.selectedGraphNodeId.set(null);
-    },
     createProject,
     createSession,
     dataset: signal({ id: 'dataset' }),
@@ -671,9 +689,6 @@ function createComponentHarness(): {
     renameSession,
     selectProject,
     selectSession,
-    graphView: {
-      selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
-    },
     setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => {
       store.activeWorkbenchPanelId.set(panelId);
     },
@@ -686,6 +701,8 @@ function createComponentHarness(): {
     providers: [
       PlannerPlanTransferService,
       { provide: PlannerStoreService, useValue: store },
+      { provide: PlannerGraphStore, useValue: graph },
+      { provide: PlannerPlanConfigStore, useValue: planConfig },
       { provide: PLANNER_CLIPBOARD_ADAPTER, useValue: clipboardAdapter },
       { provide: PLANNER_PLAN_DOWNLOAD_ADAPTER, useValue: downloadAdapter },
       { provide: PLANNER_SHARE_LOCATION_ADAPTER, useValue: shareLocationAdapter },
@@ -704,6 +721,7 @@ function createComponentHarness(): {
     duplicateProject,
     exportActivePlanSharePayload,
     flushGraphNodePositions,
+    graph,
     importPlanJson,
     importPlanSharePayload,
     renameProject,
@@ -740,7 +758,6 @@ interface PlannerPageStoreHarness {
   activeSession: WritableSignal<PlannerSession | null>;
   activeSessionId: WritableSignal<string | undefined>;
   activeSessionProjects: WritableSignal<PlannerProject[]>;
-  clearSelectedGraphNode: () => void;
   createProject: ReturnType<typeof vi.fn>;
   createSession: ReturnType<typeof vi.fn>;
   dataset: WritableSignal<{ id: string } | null>;
@@ -748,21 +765,35 @@ interface PlannerPageStoreHarness {
   deleteSession: ReturnType<typeof vi.fn>;
   duplicateProject: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
-  flushGraphNodePositions: () => void;
   importPlanJson: ReturnType<typeof vi.fn>;
   importPlanSharePayload: ReturnType<typeof vi.fn>;
   renameProject: ReturnType<typeof vi.fn>;
   renameSession: ReturnType<typeof vi.fn>;
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
-  graphView: {
-    selectedGraphNodeId: WritableSignal<string | null>;
-  };
   setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => void;
   solveError: WritableSignal<string | null>;
   solveResult: WritableSignal<PlannerPageSolveResult | null>;
   solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
   workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
+}
+
+interface PlannerPageGraphHarness {
+  readonly readModel: {
+    readonly selectedNodeId: WritableSignal<string | null>;
+  };
+  readonly selectionCommands: {
+    readonly clear: () => void;
+  };
+  readonly layoutCommands: {
+    readonly flushNodePositions: () => void;
+  };
+}
+
+interface PlannerPagePlanConfigHarness {
+  readonly targetCommands: {
+    readonly updateAmount: ReturnType<typeof vi.fn>;
+  };
 }
 
 interface PlannerPageSolveResult {

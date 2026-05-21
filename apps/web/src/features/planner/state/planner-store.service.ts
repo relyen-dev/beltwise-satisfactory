@@ -3,7 +3,6 @@ import { type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data'
 import {
   type ConveyorBeltTier,
   type GraphEdgeStyle,
-  type GraphLayoutState,
   type ObjectivePresetId,
   type ObjectiveWeightKey,
   type PipelineTier,
@@ -12,19 +11,17 @@ import {
 import { DatasetService } from '../dataset.service';
 import { PlannerPersistenceCoordinatorService } from '../persistence/planner-persistence-coordinator.service';
 import { PlannerStoreConnections } from './planner-store-connections';
-import { PlannerGraphBuildSlice } from './planner-store-graph-build';
+import { PlannerGraphStore } from './planner-graph.store';
 import { PlannerDefaultsCommandSlice } from './planner-store-defaults';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import {
   createPlannerStoreViewSurface,
-  type PlannerStoreGraphView,
   type PlannerStoreWorkbenchViews,
 } from './planner-store-view-surface';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
 import { type WorkbenchPanelId } from '../workbench/planner-workbench.models';
-import { PlannerPlanConfigStore } from './planner-plan-config.store';
 import {
   PlannerPlanTransferCapability,
   type PlannerPlanExportResult,
@@ -45,11 +42,7 @@ export {
   PlannerSolverService,
 } from '../solving/planner-solver.service';
 export type { SolveStatus } from '../solving/planner-solver.service';
-export { GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS } from './planner-store-graph-build';
-export type {
-  PlannerStoreGraphView,
-  PlannerStoreWorkbenchViews,
-} from './planner-store-view-surface';
+export type { PlannerStoreWorkbenchViews } from './planner-store-view-surface';
 export type {
   WorkbenchFocusMode,
   WorkbenchFocusRequest,
@@ -69,10 +62,9 @@ export class PlannerStoreService implements OnDestroy {
   private readonly solver = inject(PlannerSolverService);
 
   private readonly workspace = inject(PlannerWorkspaceSlice);
+  private readonly graphStore = inject(PlannerGraphStore);
   private readonly workbench: PlannerWorkbenchSlice;
-  private readonly graphBuild: PlannerGraphBuildSlice;
   private readonly defaultsCommands: PlannerDefaultsCommandSlice;
-  private readonly planConfig = inject(PlannerPlanConfigStore);
   private readonly planTransfer: PlannerPlanTransferCapability;
   private readonly viewSelectors: PlannerStoreViewSelectors;
   private readonly connections: PlannerStoreConnections;
@@ -85,7 +77,6 @@ export class PlannerStoreService implements OnDestroy {
   public readonly solveError = this.solver.solveError;
   public readonly solveResult = this.solver.solveResult;
   public readonly workbenchViews: PlannerStoreWorkbenchViews;
-  public readonly graphView: PlannerStoreGraphView;
 
   public readonly sessions: PlannerWorkspaceSlice['sessions'];
   public readonly activeSessionId: PlannerWorkspaceSlice['activeSessionId'];
@@ -100,22 +91,17 @@ export class PlannerStoreService implements OnDestroy {
 
   public constructor() {
     this.workbench = new PlannerWorkbenchSlice();
-    this.graphBuild = new PlannerGraphBuildSlice({
-      activeProject: this.workspace.activeProject,
-      updateActiveProject: (mapper) => this.workspace.updateActiveProject(mapper),
-      updateProjectById: (projectId, mapper) => this.workspace.updateProjectById(projectId, mapper),
-    });
     this.planTransfer = new PlannerPlanTransferCapability({
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
       activeSessionProjects: this.workspace.activeSessionProjects,
-      flushGraphNodePositions: () => this.graphBuild.flushGraphNodePositions(),
+      flushGraphNodePositions: () => this.graphStore.layoutCommands.flushNodePositions(),
       importProject: (project) => this.workspace.importProject(project),
     });
     this.workspace.connectGraphHooks({
-      flushPendingGraphState: () => this.graphBuild.flushPendingGraphNodePositions(),
-      clearPendingGraphState: () => this.graphBuild.clearPendingGraphNodePositions(),
-      clearGraphSelection: () => this.graphBuild.clearSelectedGraphNode(),
+      flushPendingGraphState: () => this.graphStore.lifecycle.flushPendingState(),
+      clearPendingGraphState: () => this.graphStore.lifecycle.clearPendingState(),
+      clearGraphSelection: () => this.graphStore.selectionCommands.clear(),
     });
     this.workspace.connectActivationHooks({
       projectActivated: (project) => this.workbench.activateProject(project),
@@ -126,16 +112,13 @@ export class PlannerStoreService implements OnDestroy {
       userDefaults: this.workspace.userDefaults,
       recipeSearch: this.recipeSearch,
       defaultRecipeSearch: this.defaultRecipeSearch,
-      selectedGraphNodeId: this.graphBuild.selectedGraphNodeId,
       solveResult: this.solveResult,
     });
     const viewSurface = createPlannerStoreViewSurface({
       selectors: this.viewSelectors,
       defaultRecipeSearch: this.defaultRecipeSearch,
-      selectedGraphNodeId: this.graphBuild.selectedGraphNodeId,
     });
     this.workbenchViews = viewSurface.workbench;
-    this.graphView = viewSurface.graph;
     this.defaultsCommands = new PlannerDefaultsCommandSlice({
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
@@ -169,11 +152,7 @@ export class PlannerStoreService implements OnDestroy {
   }
 
   public ngOnDestroy(): void {
-    this.graphBuild.flushGraphNodePositions();
-  }
-
-  public flushGraphNodePositions(): void {
-    this.graphBuild.flushGraphNodePositions();
+    this.graphStore.layoutCommands.flushNodePositions();
   }
 
   public selectProject(projectId: string): void {
@@ -230,10 +209,6 @@ export class PlannerStoreService implements OnDestroy {
 
   public renameProject(name: string): void {
     this.workspace.renameProject(name);
-  }
-
-  public updateTargetAmount(targetId: string, amountPerMinute: number): void {
-    this.planConfig.targetCommands.updateAmount(targetId, amountPerMinute);
   }
 
   public setDefaultRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
@@ -296,38 +271,6 @@ export class PlannerStoreService implements OnDestroy {
     this.defaultsCommands.resetUserDefaults();
   }
 
-  public setGraphNodePosition(nodeId: string, position: { x: number; y: number }): void {
-    this.graphBuild.setGraphNodePosition(nodeId, position);
-  }
-
-  public resetGraphLayout(): void {
-    this.graphBuild.resetGraphLayout();
-  }
-
-  public selectGraphNode(nodeId: string): void {
-    this.graphBuild.selectGraphNode(nodeId);
-  }
-
-  public setGraphNodeSelection(nodeId: string | null): void {
-    this.graphBuild.setGraphNodeSelection(nodeId);
-  }
-
-  public toggleGraphNodeSelection(nodeId: string): void {
-    this.graphBuild.toggleGraphNodeSelection(nodeId);
-  }
-
-  public clearSelectedGraphNode(): void {
-    this.graphBuild.clearSelectedGraphNode();
-  }
-
-  public setPlanLocked(locked: boolean): void {
-    this.graphBuild.setPlanLocked(locked);
-  }
-
-  public setNodeLayoutLocked(locked: boolean): void {
-    this.graphBuild.setNodeLayoutLocked(locked);
-  }
-
   public setDefaultMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
     this.defaultsCommands.setMaxBeltTier(maxBeltTier);
   }
@@ -350,25 +293,5 @@ export class PlannerStoreService implements OnDestroy {
 
   public setDefaultAnimateFlowLines(animateFlowLines: boolean): void {
     this.defaultsCommands.setAnimateFlowLines(animateFlowLines);
-  }
-
-  public setSelectedGraphNodeDone(done: boolean): void {
-    this.graphBuild.setSelectedGraphNodeDone(done);
-  }
-
-  public toggleGraphNodeDone(nodeId: string): void {
-    this.graphBuild.toggleGraphNodeDone(nodeId);
-  }
-
-  public setSelectedGraphNodeNote(note: string): void {
-    this.graphBuild.setSelectedGraphNodeNote(note);
-  }
-
-  public clearSelectedGraphNodeNote(): void {
-    this.graphBuild.setSelectedGraphNodeNote('');
-  }
-
-  public activeLayout(): GraphLayoutState {
-    return this.graphBuild.activeLayout();
   }
 }

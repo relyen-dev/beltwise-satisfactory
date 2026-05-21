@@ -23,10 +23,13 @@ import type { PlannerPersistenceCoordinatorBinding } from '../persistence/planne
 import { PlannerPersistenceCoordinatorService } from '../persistence/planner-persistence-coordinator.service';
 import { selectPlannerSolveInput, type PlannerSolveInput } from '../solving/planner-solve-input';
 import { PlannerSolverService, type SolveStatus } from '../solving/planner-solver.service';
+import { PlannerStoreService } from './planner-store.service';
 import {
   GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS,
-  PlannerStoreService,
-} from './planner-store.service';
+  PLANNER_GRAPH_STORE_PORT,
+  PlannerGraphStore,
+  type PlannerGraphStorePort,
+} from './planner-graph.store';
 import {
   PLANNER_PLAN_CONFIG_STORE_PORT,
   PlannerPlanConfigStore,
@@ -236,18 +239,18 @@ describe('PlannerStoreService', () => {
     expect(solveInput?.project.id).toBe(activeProject?.id);
   });
 
-  it('exposes selector read models through focused view surfaces', () => {
-    const { planConfig, store } = createInitializedStore();
+  it('connects focused capability read models to shared workspace state', () => {
+    const { graph, planConfig } = createInitializedStore();
     const recipeRowCount = planConfig.recipeRows().length;
 
     planConfig.recipeSearch.set('plate');
-    store.selectGraphNode('recipe:Recipe_IronPlate_C');
-    store.setPlanLocked(true);
+    graph.selectionCommands.select('recipe:Recipe_IronPlate_C');
+    graph.lockCommands.setPlanLocked(true);
 
     expect(planConfig.recipeSearch()).toBe('plate');
     expect(planConfig.recipeRows().length).toBeLessThanOrEqual(recipeRowCount);
-    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
-    expect(store.graphView.planLocked()).toBe(true);
+    expect(graph.readModel.selectedNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(graph.readModel.planLocked()).toBe(true);
   });
 
   it('initializes a starter project with current user defaults', () => {
@@ -314,16 +317,16 @@ describe('PlannerStoreService', () => {
   it('requests the matching focus mode when selecting projects and clears graph selection', () => {
     const graphProject = createProject();
     const draftProject = createEmptyProject('project-draft', 'Draft factory');
-    const { store } = createInitializedStore([graphProject, draftProject], graphProject.id);
+    const { graph, store } = createInitializedStore([graphProject, draftProject], graphProject.id);
     const initialFocusSequence = store.workbenchFocusRequest()?.sequence ?? 0;
 
     store.setActiveWorkbenchPanel('recipes');
-    store.selectGraphNode('recipe:Recipe_IronPlate_C');
+    graph.selectionCommands.select('recipe:Recipe_IronPlate_C');
     store.selectProject(draftProject.id);
 
     expect(store.activeProjectId()).toBe(draftProject.id);
     expect(store.activeWorkbenchPanelId()).toBe('plan');
-    expect(store.graphView.selectedGraphNodeId()).toBeNull();
+    expect(graph.readModel.selectedNodeId()).toBeNull();
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: draftProject.id,
       mode: 'open-plan',
@@ -331,12 +334,12 @@ describe('PlannerStoreService', () => {
     });
 
     store.setActiveWorkbenchPanel('resources');
-    store.selectGraphNode('recipe:Recipe_IronRod_C');
+    graph.selectionCommands.select('recipe:Recipe_IronRod_C');
     store.selectProject(graphProject.id);
 
     expect(store.activeProjectId()).toBe(graphProject.id);
     expect(store.activeWorkbenchPanelId()).toBe('resources');
-    expect(store.graphView.selectedGraphNodeId()).toBeNull();
+    expect(graph.readModel.selectedNodeId()).toBeNull();
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: graphProject.id,
       mode: 'focus-graph',
@@ -673,10 +676,10 @@ describe('PlannerStoreService', () => {
   });
 
   it('does not change objectives while the active plan is locked', () => {
-    const { planConfig, store } = createInitializedStore();
+    const { graph, planConfig, store } = createInitializedStore();
     const before = requiredProject(store).objectiveProfile;
 
-    store.setPlanLocked(true);
+    graph.lockCommands.setPlanLocked(true);
     planConfig.objectiveCommands.setPreset('low-power');
     planConfig.objectiveCommands.setWeight('powerWeight', 5);
     planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreIron_C', 2);
@@ -948,15 +951,15 @@ describe('PlannerStoreService', () => {
   });
 
   it('ignores solve-relevant plan commands while the plan is locked', () => {
-    const { planConfig, store, connectedSolveInput } = createInitializedStore();
+    const { graph, planConfig, store, connectedSolveInput } = createInitializedStore();
     const target = firstTarget(requiredProject(store));
 
-    store.setPlanLocked(true);
+    graph.lockCommands.setPlanLocked(true);
     const lockedProject = requiredProject(store);
     const lockedSolveInput = requiredSolveInput(connectedSolveInput);
 
     planConfig.targetCommands.add();
-    store.updateTargetAmount(target.id, 999);
+    planConfig.targetCommands.updateAmount(target.id, 999);
     planConfig.recipeCommands.setEnabled('Recipe_IronPlate_C', false);
     planConfig.inputCommands.set('Desc_IngotIron_C', 25);
     planConfig.targetCommands.remove(target.id);
@@ -968,34 +971,34 @@ describe('PlannerStoreService', () => {
   });
 
   it('keeps graph build-state commands scoped to build state and respects layout locks', () => {
-    const { store } = createInitializedStore();
+    const { graph, store } = createInitializedStore();
     const nodeId = 'recipe:Recipe_IronPlate_C';
 
-    store.selectGraphNode(nodeId);
-    store.setSelectedGraphNodeDone(true);
-    store.setSelectedGraphNodeNote('Floor 2');
+    graph.selectionCommands.select(nodeId);
+    graph.nodeStateCommands.setSelectedDone(true);
+    graph.nodeStateCommands.setSelectedNote('Floor 2');
 
-    expect(store.graphView.completedGraphNodeIds().has(nodeId)).toBe(true);
-    expect(store.graphView.graphNodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
-    expect(store.graphView.selectedGraphNodeState()).toEqual({ done: true, note: 'Floor 2' });
+    expect(graph.readModel.completedNodeIds().has(nodeId)).toBe(true);
+    expect(graph.readModel.nodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
+    expect(graph.readModel.selectedNodeState()).toEqual({ done: true, note: 'Floor 2' });
 
-    store.toggleGraphNodeDone(nodeId);
-    expect(store.graphView.completedGraphNodeIds().has(nodeId)).toBe(false);
-    expect(store.graphView.graphNodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
+    graph.nodeStateCommands.toggleDone(nodeId);
+    expect(graph.readModel.completedNodeIds().has(nodeId)).toBe(false);
+    expect(graph.readModel.nodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
 
-    store.setSelectedGraphNodeNote('   ');
+    graph.nodeStateCommands.setSelectedNote('   ');
     expect(requiredProject(store).buildState.nodeStates[nodeId]).toBeUndefined();
 
-    store.setGraphNodePosition(nodeId, { x: 10, y: 20 });
-    store.flushGraphNodePositions();
+    graph.layoutCommands.setNodePosition(nodeId, { x: 10, y: 20 });
+    graph.layoutCommands.flushNodePositions();
     expect(requiredProject(store).graphLayout.nodePositions).toEqual({
       [nodeId]: { x: 10, y: 20 },
     });
 
-    store.setNodeLayoutLocked(true);
-    store.setGraphNodePosition(nodeId, { x: 30, y: 40 });
-    store.flushGraphNodePositions();
-    store.resetGraphLayout();
+    graph.lockCommands.setNodeLayoutLocked(true);
+    graph.layoutCommands.setNodePosition(nodeId, { x: 30, y: 40 });
+    graph.layoutCommands.flushNodePositions();
+    graph.layoutCommands.resetLayout();
 
     expect(requiredProject(store).graphLayout.nodePositions).toEqual({
       [nodeId]: { x: 10, y: 20 },
@@ -1003,10 +1006,10 @@ describe('PlannerStoreService', () => {
   });
 
   it('sets and clears plan notes even when the plan is locked', () => {
-    const { planConfig, store, connectedSolveInput } = createInitializedStore();
+    const { graph, planConfig, store, connectedSolveInput } = createInitializedStore();
     const originalSolveInput = requiredSolveInput(connectedSolveInput);
 
-    store.setPlanLocked(true);
+    graph.lockCommands.setPlanLocked(true);
     planConfig.noteCommands.set('Bring power shards\nLabel floor');
 
     expect(requiredProject(store).notes).toBe('Bring power shards\nLabel floor');
@@ -1017,7 +1020,7 @@ describe('PlannerStoreService', () => {
   });
 
   it('keeps the connected solve input stable for solve-irrelevant store commands', () => {
-    const { planConfig, store, connectedSolveInput } = createInitializedStore();
+    const { graph, planConfig, store, connectedSolveInput } = createInitializedStore();
     const target = firstTarget(requiredProject(store));
     const originalSolveInput = requiredSolveInput(connectedSolveInput);
 
@@ -1027,26 +1030,26 @@ describe('PlannerStoreService', () => {
     planConfig.displayCommands.setGraphEdgeStyle('curved');
     expect(requiredSolveInput(connectedSolveInput)).toBe(originalSolveInput);
 
-    store.setPlanLocked(true);
-    store.selectGraphNode('recipe:Recipe_IronPlate_C');
-    store.setSelectedGraphNodeDone(true);
+    graph.lockCommands.setPlanLocked(true);
+    graph.selectionCommands.select('recipe:Recipe_IronPlate_C');
+    graph.nodeStateCommands.setSelectedDone(true);
     expect(requiredSolveInput(connectedSolveInput)).toBe(originalSolveInput);
 
-    store.setPlanLocked(false);
+    graph.lockCommands.setPlanLocked(false);
     const beforeTargetChange = requiredSolveInput(connectedSolveInput);
-    store.updateTargetAmount(target.id, 25);
+    planConfig.targetCommands.updateAmount(target.id, 25);
 
     expect(requiredSolveInput(connectedSolveInput)).not.toBe(beforeTargetChange);
   });
 
   it('coalesces graph node position commits without changing solve-relevant state', () => {
     vi.useFakeTimers();
-    const { store, connectedSolveInput } = createInitializedStore();
+    const { graph, store, connectedSolveInput } = createInitializedStore();
     const originalSolveKey = connectedSolveInput?.()?.key;
     expect(originalSolveKey).toBeDefined();
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 10, y: 20 });
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 30, y: 40 });
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 10, y: 20 });
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 30, y: 40 });
 
     expect(store.activeProject()?.graphLayout.nodePositions).toEqual({});
 
@@ -1063,10 +1066,10 @@ describe('PlannerStoreService', () => {
 
   it('flushes pending graph node positions on drag-end commits', () => {
     vi.useFakeTimers();
-    const { store } = createInitializedStore();
+    const { graph, store } = createInitializedStore();
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 10, y: 20 });
-    store.flushGraphNodePositions();
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 10, y: 20 });
+    graph.layoutCommands.flushNodePositions();
 
     expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
       'recipe:Recipe_IronPlate_C': { x: 10, y: 20 },
@@ -1082,9 +1085,9 @@ describe('PlannerStoreService', () => {
     vi.useFakeTimers();
     const projectA = createProject();
     const projectB: PlannerProject = { ...createProject(), id: 'project-b', name: 'Factory B' };
-    const { store } = createInitializedStore([projectA, projectB], projectA.id);
+    const { graph, store } = createInitializedStore([projectA, projectB], projectA.id);
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 11, y: 22 });
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 11, y: 22 });
     store.selectProject(projectB.id);
 
     expect(store.activeProjectId()).toBe(projectB.id);
@@ -1097,10 +1100,10 @@ describe('PlannerStoreService', () => {
 
   it('clears pending graph node positions when resetting layout', () => {
     vi.useFakeTimers();
-    const { store } = createInitializedStore();
+    const { graph, store } = createInitializedStore();
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 15, y: 25 });
-    store.resetGraphLayout();
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 15, y: 25 });
+    graph.layoutCommands.resetLayout();
     vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
 
     expect(store.activeProject()?.graphLayout.nodePositions).toEqual({});
@@ -1108,9 +1111,9 @@ describe('PlannerStoreService', () => {
 
   it('flushes pending graph node positions before other project mutations', () => {
     vi.useFakeTimers();
-    const { store } = createInitializedStore();
+    const { graph, store } = createInitializedStore();
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 17, y: 27 });
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 17, y: 27 });
     store.renameProject('Renamed factory');
 
     expect(store.activeProject()).toMatchObject({
@@ -1125,9 +1128,9 @@ describe('PlannerStoreService', () => {
 
   it('flushes pending graph node positions on destroy', () => {
     vi.useFakeTimers();
-    const { store } = createInitializedStore();
+    const { graph, store } = createInitializedStore();
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 19, y: 29 });
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 19, y: 29 });
     store.ngOnDestroy();
 
     expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
@@ -1161,9 +1164,9 @@ describe('PlannerStoreService', () => {
 
   it('flushes pending graph node positions before exporting the active plan', () => {
     vi.useFakeTimers();
-    const { store } = createInitializedStore();
+    const { graph, store } = createInitializedStore();
 
-    store.setGraphNodePosition('recipe:Recipe_IronPlate_C', { x: 41, y: 82 });
+    graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 41, y: 82 });
     const result = store.exportActivePlan();
 
     expect(result.ok).toBe(true);
@@ -1534,6 +1537,7 @@ function createInitializedStore(
   activeSessionId = sessions[0]?.id,
 ): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  graph: PlannerGraphStore;
   planConfig: PlannerPlanConfigStore;
   store: PlannerStoreService;
 } {
@@ -1566,6 +1570,7 @@ function createSession(
 
 function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorBinding) => void): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  graph: PlannerGraphStore;
   planConfig: PlannerPlanConfigStore;
   store: PlannerStoreService;
 } {
@@ -1595,6 +1600,23 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
       { provide: PlannerSolverService, useValue: solver },
       PlannerWorkspaceSlice,
       {
+        provide: PLANNER_GRAPH_STORE_PORT,
+        useFactory: (): PlannerGraphStorePort => {
+          const injectedDatasetService = inject(DatasetService);
+          const workspace = inject(PlannerWorkspaceSlice);
+          const injectedSolver = inject(PlannerSolverService);
+          return {
+            dataset: injectedDatasetService.dataset,
+            activeProject: workspace.activeProject,
+            solveResult: injectedSolver.solveResult,
+            updateActiveProject: (mapper) => workspace.updateActiveProject(mapper),
+            updateProjectById: (projectId, mapper) =>
+              workspace.updateProjectById(projectId, mapper),
+          };
+        },
+      },
+      PlannerGraphStore,
+      {
         provide: PLANNER_PLAN_CONFIG_STORE_PORT,
         useFactory: (): PlannerPlanConfigStorePort => {
           const injectedDatasetService = inject(DatasetService);
@@ -1612,7 +1634,8 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
     ],
   });
   const store = runInInjectionContext(injector, () => new PlannerStoreService());
+  const graph = injector.get(PlannerGraphStore);
   const planConfig = injector.get(PlannerPlanConfigStore);
 
-  return { connectedSolveInput, planConfig, store };
+  return { connectedSolveInput, graph, planConfig, store };
 }

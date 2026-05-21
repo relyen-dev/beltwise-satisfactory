@@ -33,6 +33,8 @@ import {
   sessionRequiresDeleteConfirmation,
 } from './persistence/planner-session-delete.helpers';
 import { PlannerStoreService } from './state/planner-store.service';
+import { PlannerGraphStore } from './state/planner-graph.store';
+import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
 import {
   getPlannerWorkbenchPanel,
   PLANNER_WORKBENCH_PANELS,
@@ -66,6 +68,8 @@ const RECENT_PLAN_MEMORY_LIMIT = 12;
 })
 export class PlannerPageComponent implements OnInit {
   public readonly store = inject(PlannerStoreService);
+  public readonly graph = inject(PlannerGraphStore);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
   private readonly injector = inject(Injector);
   private readonly planTransfer = inject(PlannerPlanTransferService);
   private readonly shell = new PlannerShellOverlayCoordinator();
@@ -156,7 +160,7 @@ export class PlannerPageComponent implements OnInit {
       () => {
         const panel = this.inspectorPanel()?.nativeElement;
         const context = `${this.store.activeProjectId() ?? 'no-project'}:${
-          this.store.graphView.selectedGraphNodeId() ?? 'overview'
+          this.graph.readModel.selectedNodeId() ?? 'overview'
         }`;
         if (!panel || context === this.inspectorScrollContext) {
           return;
@@ -395,7 +399,7 @@ export class PlannerPageComponent implements OnInit {
   @HostListener('window:beforeunload')
   @HostListener('window:pagehide')
   public flushGraphNodePositionsBeforeUnload(): void {
-    this.store.flushGraphNodePositions();
+    this.graph.layoutCommands.flushNodePositions();
   }
 
   @HostListener('window:hashchange')
@@ -418,7 +422,7 @@ export class PlannerPageComponent implements OnInit {
     const result = this.shell.handleEscape({
       activeProjectId: this.store.activeProjectId(),
       activeSessionId: this.store.activeSessionId(),
-      hasSelectedGraphNode: Boolean(this.store.graphView.selectedGraphNodeId()),
+      hasSelectedGraphNode: Boolean(this.graph.readModel.selectedNodeId()),
       isEditableTarget: isEditableKeyboardTarget(event.target),
     });
     if (result.action === 'none') {
@@ -435,7 +439,7 @@ export class PlannerPageComponent implements OnInit {
       return;
     }
     if (result.action === 'graph-selection') {
-      this.store.clearSelectedGraphNode();
+      this.graph.selectionCommands.clear();
       blurFocusedGraphNode();
     }
   }

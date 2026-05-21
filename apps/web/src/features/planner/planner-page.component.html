@@ -414,12 +414,12 @@
             }
           </div>
           <div class="graph-toolbar__actions">
-            @if (store.graphView.selectedGraphNode()) {
+            @if (graph.readModel.selectedNode()) {
               <button
                 type="button"
                 title="Clear selected graph node (Esc)"
                 aria-label="Clear selected graph node"
-                (click)="store.clearSelectedGraphNode()"
+                (click)="graph.selectionCommands.clear()"
               >
                 Clear selection
               </button>
@@ -427,36 +427,36 @@
             <button
               type="button"
               class="lock-toggle"
-              [class.lock-toggle--locked]="project.buildState.planLocked"
+              [class.lock-toggle--locked]="graph.readModel.planLocked()"
               [title]="
-                project.buildState.planLocked
+                graph.readModel.planLocked()
                   ? 'Unlock plan and allow solver configuration edits'
                   : 'Lock plan to prevent solver configuration edits'
               "
-              [attr.aria-pressed]="project.buildState.planLocked"
-              (click)="store.setPlanLocked(!project.buildState.planLocked)"
+              [attr.aria-pressed]="graph.readModel.planLocked()"
+              (click)="graph.lockCommands.setPlanLocked(!graph.readModel.planLocked())"
             >
-              {{ project.buildState.planLocked ? 'Unlock plan' : 'Lock plan' }}
+              {{ graph.readModel.planLocked() ? 'Unlock plan' : 'Lock plan' }}
             </button>
             <button
               type="button"
               class="lock-toggle"
-              [class.lock-toggle--locked]="project.buildState.nodeLayoutLocked"
+              [class.lock-toggle--locked]="graph.readModel.nodeLayoutLocked()"
               [title]="
-                project.buildState.nodeLayoutLocked
+                graph.readModel.nodeLayoutLocked()
                   ? 'Unlock graph node movement'
                   : 'Lock graph node movement'
               "
-              [attr.aria-pressed]="project.buildState.nodeLayoutLocked"
-              (click)="store.setNodeLayoutLocked(!project.buildState.nodeLayoutLocked)"
+              [attr.aria-pressed]="graph.readModel.nodeLayoutLocked()"
+              (click)="graph.lockCommands.setNodeLayoutLocked(!graph.readModel.nodeLayoutLocked())"
             >
-              {{ project.buildState.nodeLayoutLocked ? 'Unlock nodes' : 'Lock nodes' }}
+              {{ graph.readModel.nodeLayoutLocked() ? 'Unlock nodes' : 'Lock nodes' }}
             </button>
             <button
               type="button"
               title="Reset manual node positions"
-              [disabled]="project.buildState.nodeLayoutLocked"
-              (click)="store.resetGraphLayout()"
+              [disabled]="graph.readModel.nodeLayoutLocked()"
+              (click)="graph.layoutCommands.resetLayout()"
             >
               Reset layout
             </button>
@@ -464,21 +464,23 @@
         </div>
 
         <bw-production-graph
-          [graph]="store.graphView.graph()"
+          [graph]="graph.readModel.graph()"
           [dataset]="store.dataset()"
-          [layout]="project.graphLayout"
-          [displaySettings]="project.graphDisplay"
-          [selectedNodeId]="store.graphView.selectedGraphNodeId()"
-          [completedNodeIds]="store.graphView.completedGraphNodeIds()"
-          [nodeNotes]="store.graphView.graphNodeNotes()"
-          [interactionLocked]="store.graphView.nodeLayoutLocked()"
-          [targetEditingLocked]="store.graphView.planLocked()"
-          (nodeSelectionSet)="store.setGraphNodeSelection($event)"
-          (nodeSelectionToggled)="store.toggleGraphNodeSelection($event)"
-          (nodeDoneToggled)="store.toggleGraphNodeDone($event)"
-          (nodeMoved)="store.setGraphNodePosition($event.nodeId, $event.position)"
-          (nodeMoveEnded)="store.flushGraphNodePositions()"
-          (targetAmountChanged)="store.updateTargetAmount($event.targetId, $event.amountPerMinute)"
+          [layout]="graph.readModel.layout()"
+          [displaySettings]="graph.readModel.displaySettings()"
+          [selectedNodeId]="graph.readModel.selectedNodeId()"
+          [completedNodeIds]="graph.readModel.completedNodeIds()"
+          [nodeNotes]="graph.readModel.nodeNotes()"
+          [interactionLocked]="graph.readModel.nodeLayoutLocked()"
+          [targetEditingLocked]="graph.readModel.planLocked()"
+          (nodeSelectionSet)="graph.selectionCommands.set($event)"
+          (nodeSelectionToggled)="graph.selectionCommands.toggle($event)"
+          (nodeDoneToggled)="graph.nodeStateCommands.toggleDone($event)"
+          (nodeMoved)="graph.layoutCommands.setNodePosition($event.nodeId, $event.position)"
+          (nodeMoveEnded)="graph.layoutCommands.flushNodePositions()"
+          (targetAmountChanged)="
+            planConfig.targetCommands.updateAmount($event.targetId, $event.amountPerMinute)
+          "
         />
       </section>
 

@@ -1,4 +1,4 @@
-@let vm = store.graphView.inspectorViewModel();
+@let vm = graph.readModel.inspectorViewModel();
 
 <div class="inspector-shell">
   <div class="inspector-summary">
@@ -9,8 +9,8 @@
       </div>
     </div>
 
-    @if (store.solveError()) {
-      <div class="warning-block" role="alert">{{ store.solveError() }}</div>
+    @if (solver.solveError()) {
+      <div class="warning-block" role="alert">{{ solver.solveError() }}</div>
     }
 
     @if (vm?.mode !== 'selected' && vm?.overview; as overview) {
@@ -124,7 +124,7 @@
                         type="button"
                         class="inspector-row inspector-note-row inspector-note-row--action"
                         [title]="'Select ' + note.label"
-                        (click)="store.selectGraphNode(note.nodeId)"
+                        (click)="graph.selectionCommands.select(note.nodeId)"
                       >
                         <span class="inspector-row__copy">
                           <strong>{{ note.label }}</strong>
