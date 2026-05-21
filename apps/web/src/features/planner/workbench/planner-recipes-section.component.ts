@@ -24,8 +24,8 @@ export class PlannerRecipesSectionComponent {
 
   public readonly activeBaseRecipeRows = computed(() => {
     return recipeRowsForBasePanel(this.activeBaseRecipePanel(), {
-      standard: this.store.standardBaseRecipeRows(),
-      converterResources: this.store.converterResourceRecipeRows(),
+      standard: this.store.workbenchViews.standardBaseRecipeRows(),
+      converterResources: this.store.workbenchViews.converterResourceRecipeRows(),
     });
   });
 

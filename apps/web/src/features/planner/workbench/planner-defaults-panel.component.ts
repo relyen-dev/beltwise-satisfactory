@@ -66,9 +66,9 @@ export class PlannerDefaultsPanelComponent {
 
   public readonly activeRecipeRows = computed(() => {
     return recipeRowsForDefaultPanel(this.activeRecipePanel(), {
-      standard: this.store.defaultStandardBaseRecipeRows(),
-      converterResources: this.store.defaultConverterResourceRecipeRows(),
-      alternates: this.store.defaultAlternateRecipeRows(),
+      standard: this.store.workbenchViews.defaultStandardBaseRecipeRows(),
+      converterResources: this.store.workbenchViews.defaultConverterResourceRecipeRows(),
+      alternates: this.store.workbenchViews.defaultAlternateRecipeRows(),
     });
   });
 

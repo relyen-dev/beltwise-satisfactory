@@ -230,6 +230,20 @@ describe('PlannerStoreService', () => {
     expect(solveInput?.project.id).toBe(activeProject?.id);
   });
 
+  it('exposes selector read models through focused view surfaces', () => {
+    const { store } = createInitializedStore();
+    const recipeRowCount = store.workbenchViews.recipeRows().length;
+
+    store.workbenchViews.recipeSearch.set('plate');
+    store.selectGraphNode('recipe:Recipe_IronPlate_C');
+    store.setPlanLocked(true);
+
+    expect(store.workbenchViews.recipeSearch()).toBe('plate');
+    expect(store.workbenchViews.recipeRows().length).toBeLessThanOrEqual(recipeRowCount);
+    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(store.graphView.planLocked()).toBe(true);
+  });
+
   it('initializes a starter project with current user defaults', () => {
     const userDefaults = createCustomUserDefaults();
     const { store } = createStoreHarness((binding) => {
@@ -303,7 +317,7 @@ describe('PlannerStoreService', () => {
 
     expect(store.activeProjectId()).toBe(draftProject.id);
     expect(store.activeWorkbenchPanelId()).toBe('plan');
-    expect(store.selectedGraphNodeId()).toBeNull();
+    expect(store.graphView.selectedGraphNodeId()).toBeNull();
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: draftProject.id,
       mode: 'open-plan',
@@ -316,7 +330,7 @@ describe('PlannerStoreService', () => {
 
     expect(store.activeProjectId()).toBe(graphProject.id);
     expect(store.activeWorkbenchPanelId()).toBe('resources');
-    expect(store.selectedGraphNodeId()).toBeNull();
+    expect(store.graphView.selectedGraphNodeId()).toBeNull();
     expect(store.workbenchFocusRequest()).toMatchObject({
       projectId: graphProject.id,
       mode: 'focus-graph',
@@ -955,13 +969,13 @@ describe('PlannerStoreService', () => {
     store.setSelectedGraphNodeDone(true);
     store.setSelectedGraphNodeNote('Floor 2');
 
-    expect(store.completedGraphNodeIds().has(nodeId)).toBe(true);
-    expect(store.graphNodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
-    expect(store.selectedGraphNodeState()).toEqual({ done: true, note: 'Floor 2' });
+    expect(store.graphView.completedGraphNodeIds().has(nodeId)).toBe(true);
+    expect(store.graphView.graphNodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
+    expect(store.graphView.selectedGraphNodeState()).toEqual({ done: true, note: 'Floor 2' });
 
     store.toggleGraphNodeDone(nodeId);
-    expect(store.completedGraphNodeIds().has(nodeId)).toBe(false);
-    expect(store.graphNodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
+    expect(store.graphView.completedGraphNodeIds().has(nodeId)).toBe(false);
+    expect(store.graphView.graphNodeNotes()).toEqual({ [nodeId]: 'Floor 2' });
 
     store.setSelectedGraphNodeNote('   ');
     expect(requiredProject(store).buildState.nodeStates[nodeId]).toBeUndefined();

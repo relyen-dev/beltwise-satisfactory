@@ -156,7 +156,7 @@ export class PlannerPageComponent implements OnInit {
       () => {
         const panel = this.inspectorPanel()?.nativeElement;
         const context = `${this.store.activeProjectId() ?? 'no-project'}:${
-          this.store.selectedGraphNodeId() ?? 'overview'
+          this.store.graphView.selectedGraphNodeId() ?? 'overview'
         }`;
         if (!panel || context === this.inspectorScrollContext) {
           return;
@@ -418,7 +418,7 @@ export class PlannerPageComponent implements OnInit {
     const result = this.shell.handleEscape({
       activeProjectId: this.store.activeProjectId(),
       activeSessionId: this.store.activeSessionId(),
-      hasSelectedGraphNode: Boolean(this.store.selectedGraphNodeId()),
+      hasSelectedGraphNode: Boolean(this.store.graphView.selectedGraphNodeId()),
       isEditableTarget: isEditableKeyboardTarget(event.target),
     });
     if (result.action === 'none') {

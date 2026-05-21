@@ -52,17 +52,18 @@
               <span class="sr-only">Search default recipes</span>
               <input
                 placeholder="Search recipes"
-                [ngModel]="store.defaultRecipeSearch()"
-                (ngModelChange)="store.defaultRecipeSearch.set($event)"
+                [ngModel]="store.workbenchViews.defaultRecipeSearch()"
+                (ngModelChange)="store.workbenchViews.defaultRecipeSearch.set($event)"
               />
             </label>
           </div>
 
           <div class="recipe-columns defaults-recipe-columns">
             <section class="recipe-group" aria-labelledby="default-recipes-title">
-              @let standardBaseRows = store.defaultStandardBaseRecipeRows();
-              @let converterResourceRows = store.defaultConverterResourceRecipeRows();
-              @let alternateRows = store.defaultAlternateRecipeRows();
+              @let standardBaseRows = store.workbenchViews.defaultStandardBaseRecipeRows();
+              @let converterResourceRows =
+                store.workbenchViews.defaultConverterResourceRecipeRows();
+              @let alternateRows = store.workbenchViews.defaultAlternateRecipeRows();
               @let recipeRows = activeRecipeRows();
               <div class="recipe-group-header">
                 <div>
@@ -202,7 +203,7 @@
 
       @case ('machines') {
         <section class="defaults-section">
-          @let rows = store.defaultMachineRows();
+          @let rows = store.workbenchViews.defaultMachineRows();
           <div class="section-heading">
             <div>
               <h3>Machine defaults</h3>
@@ -287,7 +288,7 @@
           </div>
 
           <div class="resource-grid" aria-label="Default raw resource caps">
-            @for (row of store.defaultResourceRows(); track row.resource.itemId) {
+            @for (row of store.workbenchViews.defaultResourceRows(); track row.resource.itemId) {
               <div
                 class="resource-row"
                 [class.resource-row--disabled]="!row.enabled"
@@ -441,7 +442,7 @@
                   </div>
 
                   @for (
-                    row of store.defaultRawResourceMultiplierRows();
+                    row of store.workbenchViews.defaultRawResourceMultiplierRows();
                     track row.resource.itemId
                   ) {
                     <div
@@ -549,7 +550,7 @@
             </div>
           </div>
 
-          @if (store.defaultGraphDisplaySettings(); as display) {
+          @if (store.workbenchViews.defaultGraphDisplaySettings(); as display) {
             <div class="display-settings-grid" aria-label="Default graph display settings">
               <label class="display-setting-card">
                 <span class="display-setting-card__label">Max belt</span>

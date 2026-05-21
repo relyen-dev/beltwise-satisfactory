@@ -5,7 +5,7 @@
       <span>Machines shown here can affect recipe solving for this project.</span>
     </div>
   </div>
-  @let summary = store.machinePanelSummary();
+  @let summary = store.workbenchViews.machinePanelSummary();
   @if (summary.activeRecipeGroupCount > 0) {
     <div class="machine-plan-summary" aria-label="Current plan machine usage">
       <div>
@@ -26,7 +26,7 @@
       </div>
     </div>
   }
-  @let rows = store.machineRows();
+  @let rows = store.workbenchViews.machineRows();
   @if (rows.length === 0) {
     <div class="empty-state">No recipe-solving machines are available in this dataset.</div>
   } @else {
@@ -39,13 +39,13 @@
           class="config-toggle-row machine-row"
           [class.config-toggle-row--enabled]="row.enabled"
           [class.config-toggle-row--disabled]="!row.enabled"
-          [class.config-toggle-row--locked]="store.planLocked()"
+          [class.config-toggle-row--locked]="store.graphView.planLocked()"
         >
           <input
             class="config-toggle-row__control"
             type="checkbox"
             [ngModel]="row.enabled"
-            [disabled]="store.planLocked()"
+            [disabled]="store.graphView.planLocked()"
             [attr.aria-label]="row.toggleLabel"
             (ngModelChange)="store.setMachineEnabled(row.machine.id, $event)"
           />

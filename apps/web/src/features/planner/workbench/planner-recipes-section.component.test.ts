@@ -16,17 +16,16 @@ describe('PlannerRecipesSectionComponent', () => {
         {
           provide: PlannerStoreService,
           useValue: {
-            converterResourceRecipeRows: signal(converterRows),
             setRecipesEnabled,
-            standardBaseRecipeRows: signal(standardRows),
+            workbenchViews: {
+              converterResourceRecipeRows: signal(converterRows),
+              standardBaseRecipeRows: signal(standardRows),
+            },
           },
         },
       ],
     });
-    const component = runInInjectionContext(
-      injector,
-      () => new PlannerRecipesSectionComponent(),
-    );
+    const component = runInInjectionContext(injector, () => new PlannerRecipesSectionComponent());
 
     expect(component.activeBaseRecipeRows()).toEqual(standardRows);
 
