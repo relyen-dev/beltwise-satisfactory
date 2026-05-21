@@ -55,6 +55,19 @@ describe('PlannerGraphStore', () => {
     expect(graph.readModel.selectedNodeId()).toBeNull();
   });
 
+  it('clears selection when the selected node leaves the current graph', () => {
+    const { graph, solveResult } = createGraphHarness({
+      solveResult: solvedPlateResult(),
+    });
+
+    graph.selectionCommands.select(NODE_ID);
+    expect(graph.readModel.selectedNodeId()).toBe(NODE_ID);
+
+    solveResult.set(infeasibleResult());
+
+    expect(graph.readModel.selectedNodeId()).toBeNull();
+  });
+
   it('owns selected-node done and note state', () => {
     const { activeProject, graph } = createGraphHarness();
 
@@ -163,16 +176,18 @@ function createGraphHarness(
 ): {
   activeProject: Signal<PlannerProject | null>;
   graph: PlannerGraphStore;
+  solveResult: WritableSignal<ProductionPlanResult | null>;
 } {
   const projects = signal<PlannerProject[]>([options.project ?? createProject()]);
   const activeProjectId = signal<string | undefined>(projects()[0]?.id);
   const activeProject = computed(
     () => projects().find((project) => project.id === activeProjectId()) ?? null,
   );
+  const solveResult = signal<ProductionPlanResult | null>(options.solveResult ?? null);
   const port: PlannerGraphStorePort = {
     dataset: signal<GameDataset | null>(options.dataset ?? tinySatisfactoryDataset),
     activeProject,
-    solveResult: signal<ProductionPlanResult | null>(options.solveResult ?? null),
+    solveResult,
     updateActiveProject: (mapper) => {
       const projectId = activeProjectId();
       if (!projectId) {
@@ -187,7 +202,7 @@ function createGraphHarness(
   });
   const graph = runInInjectionContext(injector, () => new PlannerGraphStore());
 
-  return { activeProject, graph };
+  return { activeProject, graph, solveResult };
 }
 
 function updateProjectById(
@@ -224,4 +239,44 @@ function requiredProject(project: Signal<PlannerProject | null>): PlannerProject
     throw new Error('Expected an active project');
   }
   return value;
+}
+
+function solvedPlateResult(): ProductionPlanResult {
+  return {
+    status: 'optimal',
+    recipeRates: { Recipe_IronPlate_C: 10 },
+    rawInputs: {},
+    externalInputs: {},
+    itemFlows: [],
+    outputs: { Desc_IronPlate_C: 10 },
+    surplus: {},
+    machineUsage: [
+      {
+        recipeId: 'Recipe_IronPlate_C',
+        machineId: 'Build_ConstructorMk1_C',
+        machineDisplayName: 'Constructor',
+        recipeDisplayName: 'Iron Plate',
+        recipeRatePerMinute: 10,
+        machineCount: 1,
+        powerMw: 4,
+      },
+    ],
+    powerMw: 4,
+    warnings: [],
+  };
+}
+
+function infeasibleResult(): ProductionPlanResult {
+  return {
+    status: 'infeasible',
+    recipeRates: {},
+    rawInputs: {},
+    externalInputs: {},
+    itemFlows: [],
+    outputs: {},
+    surplus: {},
+    machineUsage: [],
+    powerMw: 0,
+    warnings: [{ code: 'solver-infeasible', message: 'raw-resources: HiGHS returned Infeasible.' }],
+  };
 }

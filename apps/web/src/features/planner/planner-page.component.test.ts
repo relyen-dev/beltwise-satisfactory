@@ -400,24 +400,56 @@ describe('PlannerPageComponent', () => {
     const { component, solver } = createComponentHarness();
 
     expect(component.graphSolveNotice()).toBeNull();
+    expect(component.graphBlockingNotice()).toBeNull();
 
     solver.solveStatus.set('solving');
     expect(component.graphSolveNotice()).toEqual({ kind: 'info', message: 'Solving plan' });
+    expect(component.graphBlockingNotice()).toBeNull();
 
     solver.solveStatus.set('error');
     solver.solveError.set('LP failed');
-    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'LP failed' });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'Plan calculation failed',
+    });
+    expect(component.graphBlockingNotice()).toEqual({
+      title: 'Plan calculation failed',
+      detail: 'The planner could not finish calculating this plan.',
+    });
 
     solver.solveStatus.set('solved');
     solver.solveError.set(null);
     solver.solveResult.set({ status: 'infeasible' });
-    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Infeasible plan' });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'Plan cannot be built',
+    });
+    expect(component.graphBlockingNotice()).toEqual({
+      title: 'Plan cannot be built',
+      detail:
+        'The requested outputs cannot be made with the current recipes, available raw resources, and Inputs. Add supplied items or relax disabled recipes and resources.',
+    });
 
+    solver.solveStatus.set('solving');
+    expect(component.graphSolveNotice()).toEqual({ kind: 'info', message: 'Solving plan' });
+    expect(component.graphBlockingNotice()).toBeNull();
+
+    solver.solveStatus.set('solved');
     solver.solveResult.set({ status: 'unbounded' });
-    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Unbounded plan' });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'Plan needs a limit',
+    });
 
     solver.solveResult.set({ status: 'error' });
-    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'Plan calculation failed',
+    });
+    expect(component.graphBlockingNotice()).toEqual({
+      title: 'Plan calculation failed',
+      detail: 'The planner could not finish calculating this plan.',
+    });
 
     solver.solveResult.set({
       status: 'error',
@@ -425,11 +457,18 @@ describe('PlannerPageComponent', () => {
     });
     expect(component.graphSolveNotice()).toEqual({
       kind: 'error',
-      message: 'HiGHS returned an error',
+      message: 'Plan calculation failed',
+    });
+    expect(component.graphBlockingNotice()).toEqual({
+      title: 'Plan calculation failed',
+      detail: 'The planner could not finish calculating this plan.',
     });
 
     solver.solveResult.set({ status: 'error', warnings: [{ message: '   ' }] });
-    expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
+    expect(component.graphSolveNotice()).toEqual({
+      kind: 'error',
+      message: 'Plan calculation failed',
+    });
   });
 
   it('cancels inline renames from Escape before graph selection handling', () => {
