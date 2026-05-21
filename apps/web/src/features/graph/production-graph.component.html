@@ -1,5 +1,14 @@
 @if (flowModel(); as flow) {
-  <f-flow class="beltwise-flow" fDraggable (fFullRendered)="handleFlowRendered()">
+  <f-flow
+    class="beltwise-flow"
+    fDraggable
+    tabindex="0"
+    role="region"
+    aria-label="Production graph"
+    aria-keyshortcuts="PageUp PageDown plus - ="
+    (keydown)="handleGraphKeydown($event)"
+    (fFullRendered)="handleFlowRendered()"
+  >
     <f-canvas
       #graphCanvas
       fZoom
@@ -198,11 +207,8 @@
       class="graph-zoom-controls"
       aria-label="Graph zoom controls"
       (pointerdown)="stopNodeControlEvent($event)"
-      (pointerup)="stopNodeControlEvent($event)"
       (mousedown)="stopNodeControlEvent($event)"
-      (mouseup)="stopNodeControlEvent($event)"
       (touchstart)="stopNodeControlEvent($event)"
-      (touchend)="stopNodeControlEvent($event)"
       (dblclick)="stopNodeControlEvent($event)"
     >
       <button

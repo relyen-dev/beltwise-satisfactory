@@ -168,6 +168,21 @@ export class ProductionGraphComponent implements OnDestroy {
     this.zoomGraphAroundVisibleCenter(this.zoom(), this.flow(), EFZoomDirection.ZOOM_OUT);
   }
 
+  public handleGraphKeydown(event: KeyboardEvent): void {
+    if (isEditableKeyboardTarget(event.target)) {
+      return;
+    }
+
+    const direction = graphKeyboardZoomDirection(event);
+    if (direction === null) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.zoomGraphAroundVisibleCenter(this.zoom(), this.flow(), direction);
+  }
+
   public zoomGraphAroundVisibleCenter(
     zoom: GraphZoomTarget | undefined,
     flow: GraphHostTarget | undefined,
@@ -355,4 +370,48 @@ function visibleGraphCenterPoint(hostElement: HTMLElement): { x: number; y: numb
     x: rect.left + rect.width / 2,
     y: rect.top + rect.height / 2,
   };
+}
+
+function graphKeyboardZoomDirection(event: KeyboardEvent): EFZoomDirection | null {
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return null;
+  }
+
+  if (event.code === 'PageUp' || event.code === 'NumpadAdd') {
+    return EFZoomDirection.ZOOM_IN;
+  }
+  if (event.code === 'PageDown' || event.code === 'NumpadSubtract') {
+    return EFZoomDirection.ZOOM_OUT;
+  }
+  if (event.key === '+' || event.key === '=') {
+    return EFZoomDirection.ZOOM_IN;
+  }
+  if (event.key === '-' || event.key === '_') {
+    return EFZoomDirection.ZOOM_OUT;
+  }
+  return null;
+}
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!isKeyboardTargetElement(target)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    tagName === 'input' ||
+    tagName === 'select' ||
+    tagName === 'textarea' ||
+    target.isContentEditable === true
+  );
+}
+
+function isKeyboardTargetElement(
+  target: EventTarget | null,
+): target is EventTarget & { isContentEditable?: boolean; tagName: string } {
+  if (target === null) {
+    return false;
+  }
+  const candidate = target as { isContentEditable?: unknown; tagName?: unknown };
+  return typeof candidate.tagName === 'string';
 }

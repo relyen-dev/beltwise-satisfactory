@@ -73,6 +73,45 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('maps graph keyboard shortcuts to explicit zoom actions', () => {
+    const { component } = createComponentHarness();
+    const zoomAroundCenter = vi
+      .spyOn(component, 'zoomGraphAroundVisibleCenter')
+      .mockImplementation(() => undefined);
+    const pageUp = keyboardEvent({ code: 'PageUp', key: 'PageUp' });
+    const numpadMinus = keyboardEvent({ code: 'NumpadSubtract', key: '-' });
+    const textInput = keyboardEvent({
+      code: 'NumpadAdd',
+      key: '+',
+      target: keyboardTarget('input'),
+    });
+
+    component.handleGraphKeydown(pageUp);
+    component.handleGraphKeydown(numpadMinus);
+    component.handleGraphKeydown(textInput);
+
+    expect(pageUp.preventDefault).toHaveBeenCalledOnce();
+    expect(pageUp.stopPropagation).toHaveBeenCalledOnce();
+    expect(numpadMinus.preventDefault).toHaveBeenCalledOnce();
+    expect(numpadMinus.stopPropagation).toHaveBeenCalledOnce();
+    expect(textInput.preventDefault).not.toHaveBeenCalled();
+    expect(textInput.stopPropagation).not.toHaveBeenCalled();
+    expect(zoomAroundCenter).toHaveBeenNthCalledWith(
+      1,
+      undefined,
+      undefined,
+      EFZoomDirection.ZOOM_IN,
+    );
+    expect(zoomAroundCenter).toHaveBeenNthCalledWith(
+      2,
+      undefined,
+      undefined,
+      EFZoomDirection.ZOOM_OUT,
+    );
+
+    component.ngOnDestroy();
+  });
+
   it('emits a node selection toggle when pointer down and up stay within click tolerance', () => {
     const { component, nodeSelectionToggled } = createComponentHarness();
 
@@ -317,11 +356,15 @@ describe('ProductionGraphComponent template', () => {
 
   it('renders compact zoom buttons that do not bubble graph control clicks', async () => {
     const { fixture } = await createRenderedGraphHarness();
+    const graphSurface = requiredGraphSurface(fixture);
     const zoomControls = requiredZoomControlButtons(fixture);
     const zoomAroundCenter = vi
       .spyOn(fixture.componentInstance, 'zoomGraphAroundVisibleCenter')
       .mockImplementation(() => undefined);
     const documentClick = vi.fn();
+    const documentMouseUp = vi.fn();
+    const documentPointerUp = vi.fn();
+    const documentTouchEnd = vi.fn();
 
     document.addEventListener('click', documentClick);
     zoomControls.zoomIn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -330,9 +373,31 @@ describe('ProductionGraphComponent template', () => {
     );
     document.removeEventListener('click', documentClick);
 
+    document.addEventListener('pointerup', documentPointerUp);
+    zoomControls.zoomIn.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, cancelable: true }),
+    );
+    document.removeEventListener('pointerup', documentPointerUp);
+
+    document.addEventListener('mouseup', documentMouseUp);
+    zoomControls.zoomIn.dispatchEvent(
+      new MouseEvent('mouseup', { bubbles: true, cancelable: true }),
+    );
+    document.removeEventListener('mouseup', documentMouseUp);
+
+    document.addEventListener('touchend', documentTouchEnd);
+    zoomControls.zoomIn.dispatchEvent(new TouchEvent('touchend', { bubbles: true }));
+    document.removeEventListener('touchend', documentTouchEnd);
+
     expect(zoomControls.zoomIn.getAttribute('aria-label')).toBe('Zoom in graph');
     expect(zoomControls.zoomOut.getAttribute('aria-label')).toBe('Zoom out graph');
+    expect(graphSurface.getAttribute('role')).toBe('region');
+    expect(graphSurface.getAttribute('aria-label')).toBe('Production graph');
+    expect(graphSurface.getAttribute('aria-keyshortcuts')).toBe('PageUp PageDown plus - =');
     expect(documentClick).not.toHaveBeenCalled();
+    expect(documentMouseUp).toHaveBeenCalledOnce();
+    expect(documentPointerUp).toHaveBeenCalledOnce();
+    expect(documentTouchEnd).toHaveBeenCalledOnce();
     expect(zoomAroundCenter).toHaveBeenCalledTimes(2);
   });
 });
@@ -374,6 +439,36 @@ function mouseEvent(): MouseEvent {
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
   } as unknown as MouseEvent;
+}
+
+function keyboardEvent(options: {
+  code: string;
+  key: string;
+  target?: EventTarget | null;
+}): KeyboardEvent & {
+  preventDefault: ReturnType<typeof vi.fn>;
+  stopPropagation: ReturnType<typeof vi.fn>;
+} {
+  return {
+    altKey: false,
+    code: options.code,
+    ctrlKey: false,
+    key: options.key,
+    metaKey: false,
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
+    target: options.target ?? null,
+  } as unknown as KeyboardEvent & {
+    preventDefault: ReturnType<typeof vi.fn>;
+    stopPropagation: ReturnType<typeof vi.fn>;
+  };
+}
+
+function keyboardTarget(tagName: string): EventTarget {
+  return {
+    isContentEditable: false,
+    tagName,
+  } as unknown as EventTarget;
 }
 
 function controlEvent(value: string): Event & {
@@ -499,6 +594,14 @@ function requiredTargetRateInput(
     throw new Error('Expected the graph target rate input to render');
   }
   return input;
+}
+
+function requiredGraphSurface(fixture: ComponentFixture<ProductionGraphComponent>): HTMLElement {
+  const graphSurface = fixture.nativeElement.querySelector('.beltwise-flow') as HTMLElement | null;
+  if (!graphSurface) {
+    throw new Error('Expected the graph surface to render');
+  }
+  return graphSurface;
 }
 
 function requiredZoomControlButtons(
