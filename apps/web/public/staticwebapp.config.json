@@ -1,0 +1,18 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/data/*",
+      "/game-icons/*",
+      "/*.{css,js,png,gif,ico,jpg,jpeg,svg,webp,woff,woff2,json,wasm,txt}"
+    ]
+  },
+  "mimeTypes": {
+    ".wasm": "application/wasm"
+  },
+  "globalHeaders": {
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Content-Type-Options": "nosniff"
+  }
+}
