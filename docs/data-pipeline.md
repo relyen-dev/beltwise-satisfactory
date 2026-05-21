@@ -48,6 +48,8 @@ The generated JSON should be:
 The app should treat the generated dataset as read-only application data.
 The generated source metadata includes the docs file name, optional modified timestamp, and source fingerprint.
 
+Future extracted assets, such as a static map PNG or default resource-node catalog, should be generated as separate versioned outputs with schemas and tests. Do not load raw game map assets in the browser.
+
 ## Include
 
 - planner-relevant items
@@ -61,6 +63,7 @@ The generated source metadata includes the docs file name, optional modified tim
 - machine display names
 - power metadata where available
 - extractor/resource metadata where useful
+- static resource-node catalog outputs only after the extractor provides stable IDs, locations, resource type, and purity behind schemas
 
 ## Exclude Or Defer
 
@@ -71,6 +74,7 @@ The generated source metadata includes the docs file name, optional modified tim
 - raw UI-only fields
 - save-file parsing
 - randomized-node seed logic
+- raw map packages or unvalidated generated map/node assets
 
 ## Parser Notes
 

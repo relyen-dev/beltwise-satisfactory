@@ -1,12 +1,12 @@
 # RFC: Planner Store Capability Refactor
 
-Status: Draft refactor guide
+Status: Implemented architecture note
 
 ## Summary
 
-`PlannerStoreService` started as a broad root facade for workspace state, plan editing, graph interaction, defaults, transfer, view selectors, persistence, and solver wiring. The current slices are useful prior art, but later refactors should extract deep capability Modules with real Interfaces rather than moving one-line forwards into new shallow stores.
+`PlannerStoreService` started as a broad root facade for workspace state, plan editing, graph interaction, defaults, transfer, view selectors, persistence, and solver wiring. The refactor split those surfaces into focused capability modules and left the root service as planner runtime/composition glue.
 
-Use this RFC as the surface map for the next refactories. The goal is more Depth and Locality: a component should depend on the capability that owns its use case, and deleting a root-store forward should prove the extraction created Leverage instead of another pass-through Seam.
+Use this RFC as the preservation map for future planner state work. The goal remains Depth and Locality: a component should depend on the capability that owns its use case, and adding a new root-store forward should be treated as a design smell unless it is genuinely runtime composition.
 
 ## Current Root Shape
 
@@ -21,47 +21,47 @@ Use this RFC as the surface map for the next refactories. The goal is more Depth
 
 The root should stay out of feature command surfaces. UI consumers should depend on `PlannerWorkspaceSlice`, `PlannerGraphStore`, `PlannerPlanConfigStore`, `PlannerDefaultsStore`, `PlannerPlanTransferService`, `DatasetService`, `PlannerSolverService`, and `PlannerWorkbenchSlice` according to the use case they own.
 
-## Refactories
+## Completed Refactories And Guardrails
 
 ### Store Surface Map
 
-Definition: Keep an explicit map from each root-store consumer to the future capability Interface it should depend on.
+Definition: Keep an explicit map from each planner consumer to the owning capability interface it should depend on.
 
-Reason: Without the map, extractions can become shallow renames. The map makes migration consumer-first and gives each change a deletion test: when a consumer moves, the matching root forward should become unused.
+Reason: Without the map, future changes can drift back into shallow facade methods. The map keeps ownership consumer-first and gives each change a review test: if the runtime root grows feature commands again, the owning capability boundary is probably being bypassed.
 
-Fix: Update this RFC before adding a new planner-store facade. Use the surface map below to choose one consumer slice, migrate it to the intended capability, then delete root forwards as they fall out of use.
+Fix: Keep this RFC and [ADR 0008](../adr/0008-split-planner-state-into-capability-stores.md) current before adding a new planner-state facade. Use the surface map below to choose the owning capability, then test through that capability rather than through the runtime root.
 
 ### Plan Config Capability
 
 Definition: A capability Module for editing one active plan's persisted intent and display configuration: targets, external inputs, resource caps, recipe and machine availability, objective profile, plan notes, and renderer-neutral graph display settings.
 
-Reason: Workbench sections currently reach through the root store for command methods and broad view groups. That couples dense UI panels to unrelated workspace, transfer, and graph lifecycle APIs.
+Reason: Workbench sections formerly reached through the root store for command methods and broad view groups. That coupled dense UI panels to unrelated workspace, transfer, and graph lifecycle APIs.
 
-Fix: Create a focused Interface that exposes plan-config views and commands used by the workbench. Keep plan-lock enforcement inside the capability or behind a small graph-state port. Add tests at this Interface for lock behavior, target/input updates, bulk toggles, objective edits, and display settings.
+Fix: Keep plan-config views and commands on `PlannerPlanConfigStore`. Keep plan-lock enforcement inside the capability or behind a small graph-state port. Add tests at this interface for lock behavior, target/input updates, bulk toggles, objective edits, raw-resource multipliers, and display settings.
 
 ### Graph Capability
 
 Definition: A capability Module for renderer-neutral graph state and interaction: production graph read model, selected node, inspector view model, node done/note state, plan/layout locks, layout reset, debounced node position commits, and flush-before-navigation behavior.
 
-Reason: Graph concerns currently span `graphView`, `PlannerGraphBuildSlice`, shell host listeners, inspector components, and parent-to-`ProductionGraphComponent` bindings. Keeping this as one capability protects the graph Adapter Seam while making graph interactions independently testable.
+Reason: Graph concerns span graph build state, shell host listeners, inspector components, and parent-to-`ProductionGraphComponent` bindings. Keeping this as one capability protects the graph Adapter Seam while making graph interactions independently testable.
 
-Fix: Expose a graph Interface consumed by the planner page, inspector, selected-node inspector, and graph host bindings. Keep Foblex-specific types in `apps/web/src/features/graph` and `adapters/`. Test selection, notes, done state, lock behavior, layout reset, and position flushing through the capability Interface.
+Fix: Keep graph read models and commands on `PlannerGraphStore`, consumed by the planner page, inspector, selected-node inspector, and graph host bindings. Keep Foblex-specific types in `apps/web/src/features/graph` and `adapters/`. Test selection, notes, done state, lock behavior, layout reset, and position flushing through the capability interface.
 
 ### Defaults Capability
 
 Definition: A capability Module for user default settings: default recipe/machine/resource/objective/display rows, search state, commands, `saveActivePlanAsDefaults`, and reset-to-built-ins.
 
-Reason: Defaults mirror plan config concepts but mutate `PlannerUserDefaults`, not the active project. Mixing both surfaces through the root store makes it easy to accidentally use plan commands in the defaults panel or vice versa.
+Reason: Defaults mirror plan config concepts but mutate `PlannerUserDefaults`, not the active project. Mixing both surfaces through the root store made it easy to accidentally use plan commands in the defaults panel or vice versa.
 
-Fix: Give the defaults panel a defaults-only Interface. Share pure selector and mutation helpers with plan config where useful, but keep the Angular capability boundary separate. Tests should assert default mutations, save-from-active-plan, reset behavior, and dataset-baseline resource caps.
+Fix: Keep the defaults panel on the defaults-only `PlannerDefaultsStore` interface. Share pure selector and mutation helpers with plan config where useful, but keep the Angular capability boundary separate. Tests should assert default mutations, save-from-active-plan, reset behavior, objective route multipliers, and dataset-baseline resource caps.
 
 ### Transfer Capability
 
 Definition: A capability Module for plan JSON export/import and compact share payload export/import, including browser Adapters for download, clipboard, and hash location.
 
-Reason: `PlannerPlanTransferService` currently depends on `PlannerStoreService`, which hides the real ports it needs: dataset, active project, active session projects, graph flush, and project import. Transfer already has a deeper core class; the Angular service should depend on that capability port, not the root facade.
+Reason: `PlannerPlanTransferService` formerly depended on `PlannerStoreService`, which hid the real ports it needed: dataset, active project, active session projects, graph flush, and project import. Transfer already had a deeper core class; the Angular service should depend on that capability port, not the root facade.
 
-Fix: Promote the transfer port as the Interface. Migrate transfer tests away from root-store mocks toward port/capability tests. Keep browser APIs behind the existing download, clipboard, and location Adapters.
+Fix: Keep `PlannerPlanTransferCapability` as the transfer port. Keep transfer tests on port/capability behavior rather than root-store mocks. Keep browser APIs behind the existing download, clipboard, and location adapters.
 
 ### Workspace Root Slimming
 
@@ -69,14 +69,14 @@ Definition: Slim `PlannerStoreService` into the planner composition Module: data
 
 Reason: The root should coordinate high-level planner lifecycle, not be the Interface for every panel. Keeping per-capability forwards on the root erases Locality and makes future work harder to review.
 
-Fix: Migrate consumers first. Keep root access only for runtime construction/composition. Delete forwards once no production consumer uses them; do not leave aliases for convenience.
+Fix: Keep root access only for runtime construction/composition. Do not leave aliases for convenience when future capability work moves a consumer.
 
 ## Surface Map
 
-| Current consumer | Root surface used today | Future dependency |
+| Consumer | Current dependency | Review guidance |
 | --- | --- | --- |
 | `apps/web/src/features/planner/planner-page.component.ts` and `.html` | Runtime construction only through `PlannerStoreService`; dataset load/error through `DatasetService`; solver status through `PlannerSolverService`; active session/project navigation through `PlannerWorkspaceSlice`; workbench panel/focus state through `PlannerWorkbenchSlice`; graph toolbar and renderer bindings through `PlannerGraphStore`; share/import orchestration through transfer; graph target amount edits through plan config. | Keep this split. The page may privately inject the root runtime to ensure composition hooks exist, but page HTML should bind to the owning capability rather than `store.*`. |
-| `apps/web/src/features/planner/transfer/planner-plan-transfer.service.ts` | `exportActivePlan`, `importPlanJson`, `exportActivePlanSharePayload`, `importPlanSharePayload`. | Transfer Capability port with dataset, active project, active session projects, graph flush, and import-project operations. |
+| `apps/web/src/features/planner/transfer/planner-plan-transfer.service.ts` | Transfer capability port with dataset, active project, active session projects, graph flush, and import-project operations. | Keep browser orchestration separate from transfer preparation and decoding. |
 | `apps/web/src/features/planner/workbench/planner-targets-section.component.ts` and `.html` | Active project targets/notes, item options, plan lock, add/duplicate/remove/update targets, set/clear notes. | Plan Config Capability. |
 | `apps/web/src/features/planner/workbench/planner-inputs-section.component.ts` and `.html` | Active project id, item options, external input rows, plan lock, set/move/remove item inputs. | Plan Config Capability. |
 | `apps/web/src/features/planner/workbench/planner-resources-section.component.ts` and `.html` | Resource rows, plan lock, set/reset resource caps and enabled state, bulk resource commands. | Plan Config Capability. |
@@ -108,16 +108,17 @@ Fix: Migrate consumers first. Keep root access only for runtime construction/com
 - Keep renderer-specific types out of planner-core, solver code, persistence, exported plan formats, and planner-store capabilities.
 - Keep Angular components thin: parsing and local draft UI state can stay nearby, but solver, parser, graph conversion, persistence, and capability mutation logic should not move into templates/components.
 
-## Suggested Sequence
+## Completed Sequence And Follow-Up
 
-1. Start with Transfer Capability because it already has a port-shaped core and only one production Angular service consumer.
-2. Extract Graph Capability next to protect the renderer Adapter Seam before changing more workbench panels.
-3. Move one workbench panel at a time to Plan Config Capability, deleting each matching root forward when unused.
-4. Extract Defaults Capability after Plan Config naming settles, so mirrored default commands use consistent vocabulary without sharing the wrong Interface.
-5. Slim Workspace Root last, once only runtime construction/composition remains. Completed for the planner page in Refactory 6; future root changes should preserve the no-convenience-forward rule.
+1. Transfer moved behind `PlannerPlanTransferCapability` and browser adapters.
+2. Graph interaction moved behind `PlannerGraphStore`.
+3. Workbench plan-editing panels moved to `PlannerPlanConfigStore`.
+4. Global defaults moved to `PlannerDefaultsStore`.
+5. Session/project lifecycle stayed in `PlannerWorkspaceSlice`.
+6. `PlannerStoreService` was slimmed to runtime composition, persistence/solver wiring, lifecycle hooks, and destroy-time graph flushing.
+7. Future root changes should preserve the no-convenience-forward rule.
 
 ## Open Questions
 
-- Should plan-lock state belong entirely to Graph Capability, or should Plan Config Capability expose an `editingLocked` signal derived from graph build state through a port?
-- Should solve status remain on Workspace Root, or become a small solving capability once graph and inspector consumers are migrated?
-- Should the remaining runtime test coverage move workspace command cases into a dedicated `planner-store.workspace` spec so `planner-store.service` tests describe only runtime composition?
+- Should solve status stay on `PlannerSolverService`, or become a smaller solve-status capability if more non-page consumers need it?
+- When a workspace dashboard is added, should it consume `PlannerWorkspaceSlice` directly or introduce a route-level dashboard capability for session overview state?

@@ -11,10 +11,11 @@ The app should stay unofficial and clearly separate from Coffee Stain/FICSIT bra
 - Keep the Angular app readable and approachable.
 - Keep domain logic out of Angular components.
 - Generate compact planner data from Satisfactory `en-US.json`; do not load the raw game docs in the browser.
-- Store user plans locally.
-- Support multiple output targets per plan.
+- Store user plans, sessions, and global new-plan defaults locally.
+- Preserve support for multiple output targets per plan.
 - Keep graph rendering behind an adapter so Foblex Flow can be swapped later.
-- Treat save-file import, randomized node seeds, share links, and assistant/tooling integrations as future work unless explicitly requested.
+- Keep planner behavior behind focused capabilities; `PlannerStoreService` is runtime composition glue, not a feature facade.
+- Treat save-file import, randomized node seeds, session-scale logistics/map planning, and assistant/tooling integrations as future work unless explicitly requested.
 
 ## Tech Stack
 
@@ -36,7 +37,7 @@ The app should stay unofficial and clearly separate from Coffee Stain/FICSIT bra
 - Do not persist solver output as authoritative state; persist user intent/config and re-solve on load.
 - Keep renderer-specific types out of `planner-core`, solver code, persistence, and exported plan formats.
 - Keep generated data behind schemas.
-- Add tests for parser and solver behavior when changing those areas.
+- Add tests for parser, solver, planner capability, and persistence behavior when changing those areas.
 - Avoid broad rewrites when a focused change will do.
 
 ## Structure Conventions
@@ -44,12 +45,14 @@ The app should stay unofficial and clearly separate from Coffee Stain/FICSIT bra
 - Keep Angular features vertical under `apps/web/src/features`.
 - Keep route entry components at the feature root when practical, then add feature-local subfolders as the feature grows.
 - In `apps/web/src/features/planner`, put new code in the existing local slice that owns it:
-  - `state/` for store, selectors, command slices, and intent mutations.
+  - `state/` for the runtime store, workspace slice, capability stores, selectors, command slices, and intent mutations.
   - `workbench/` for planner section, panel, and inspector UI.
   - `solving/` for Angular-side solve input, scheduling, and solver service integration.
   - `transfer/` for JSON import/export and share-link browser orchestration.
   - `persistence/` for local workspace persistence and persistence coordination.
   - `shared-ui/` for planner-local UI primitives and formatting/filtering helpers.
+- Do not add convenience command forwards back to `PlannerStoreService`; inject the owning capability instead.
+- Use `PlannerWorkspaceSlice` for session/plan lifecycle, `PlannerPlanConfigStore` for active-plan configuration, `PlannerGraphStore` for renderer-neutral graph interaction state, and `PlannerDefaultsStore` for global defaults.
 - Keep tests colocated with the module they verify.
 - Keep Foblex-specific graph renderer code in `apps/web/src/features/graph` and especially its `adapters/` folder.
 - Do not add barrel files by default; add one only when it creates a real seam or hides meaningful implementation detail.
@@ -94,7 +97,7 @@ The dev app runs at `http://127.0.0.1:4200`.
 Data extraction:
 
 ```powershell
-npm.cmd run extract:data -- --input "C:\Program Files (x86)\Steam\steamapps\common\Satisfactory\CommunityResources\Docs\en-US.json" --output data\generated\satisfactory-current.json
+npm.cmd run data:extract -- --input "C:\Program Files (x86)\Steam\steamapps\common\Satisfactory\CommunityResources\Docs\en-US.json" --output apps\web\public\data\satisfactory-current.json
 ```
 
 ## Docs Map
