@@ -83,38 +83,25 @@
                 class="recipe-subtabs recipe-subtabs--three"
                 aria-label="Default recipe category"
               >
-                <button
-                  type="button"
-                  class="recipe-subtab"
-                  [class.recipe-subtab--active]="activeRecipePanel() === 'standard'"
-                  [attr.aria-pressed]="activeRecipePanel() === 'standard' ? 'true' : 'false'"
-                  (click)="activeRecipePanel.set('standard')"
-                >
-                  <span>Standard</span>
-                  <span>{{ standardBaseRows.length }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="recipe-subtab"
-                  [class.recipe-subtab--active]="activeRecipePanel() === 'converterResources'"
-                  [attr.aria-pressed]="
-                    activeRecipePanel() === 'converterResources' ? 'true' : 'false'
-                  "
-                  (click)="activeRecipePanel.set('converterResources')"
-                >
-                  <span>Converter resources</span>
-                  <span>{{ converterResourceRows.length }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="recipe-subtab"
-                  [class.recipe-subtab--active]="activeRecipePanel() === 'alternates'"
-                  [attr.aria-pressed]="activeRecipePanel() === 'alternates' ? 'true' : 'false'"
-                  (click)="activeRecipePanel.set('alternates')"
-                >
-                  <span>Alternates</span>
-                  <span>{{ alternateRows.length }}</span>
-                </button>
+                @for (panel of recipePanelDefinitions; track panel.id) {
+                  <button
+                    type="button"
+                    class="recipe-subtab"
+                    [class.recipe-subtab--active]="activeRecipePanel() === panel.id"
+                    [attr.aria-pressed]="activeRecipePanel() === panel.id ? 'true' : 'false'"
+                    (click)="activeRecipePanel.set(panel.id)"
+                  >
+                    <span>{{ panel.label }}</span>
+                    <span>{{
+                      recipePanelRowCount(
+                        panel.id,
+                        standardBaseRows,
+                        converterResourceRows,
+                        alternateRows
+                      )
+                    }}</span>
+                  </button>
+                }
               </div>
 
               <div class="recipe-list" aria-label="Default recipes">
