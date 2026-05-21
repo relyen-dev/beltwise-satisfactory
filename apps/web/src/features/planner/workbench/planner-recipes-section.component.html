@@ -46,26 +46,20 @@
       </div>
 
       <div class="recipe-subtabs" aria-label="Base recipe category">
-        <button
-          type="button"
-          class="recipe-subtab"
-          [class.recipe-subtab--active]="activeBaseRecipePanel() === 'standard'"
-          [attr.aria-pressed]="activeBaseRecipePanel() === 'standard' ? 'true' : 'false'"
-          (click)="activeBaseRecipePanel.set('standard')"
-        >
-          <span>Standard</span>
-          <span>{{ standardBaseRows.length }}</span>
-        </button>
-        <button
-          type="button"
-          class="recipe-subtab"
-          [class.recipe-subtab--active]="activeBaseRecipePanel() === 'converterResources'"
-          [attr.aria-pressed]="activeBaseRecipePanel() === 'converterResources' ? 'true' : 'false'"
-          (click)="activeBaseRecipePanel.set('converterResources')"
-        >
-          <span>Converter resources</span>
-          <span>{{ converterResourceRows.length }}</span>
-        </button>
+        @for (panel of baseRecipePanelDefinitions; track panel.id) {
+          <button
+            type="button"
+            class="recipe-subtab"
+            [class.recipe-subtab--active]="activeBaseRecipePanel() === panel.id"
+            [attr.aria-pressed]="activeBaseRecipePanel() === panel.id ? 'true' : 'false'"
+            (click)="activeBaseRecipePanel.set(panel.id)"
+          >
+            <span>{{ panel.label }}</span>
+            <span>{{
+              baseRecipePanelRowCount(panel.id, standardBaseRows, converterResourceRows)
+            }}</span>
+          </button>
+        }
       </div>
 
       <div class="recipe-list" aria-label="Base recipes">

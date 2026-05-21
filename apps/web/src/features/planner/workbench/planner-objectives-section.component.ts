@@ -2,9 +2,6 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { type ItemId } from '@beltwise/game-data';
 import {
-  OBJECTIVE_PRESET_DEFINITIONS,
-  objectivePresetDefinition,
-  resolveObjectivePresetId,
   type ObjectivePresetId,
   type ObjectiveProfile,
   type ObjectiveWeightKey,
@@ -15,12 +12,14 @@ import {
   parsePlannerNumber,
   parseRawResourceMultiplierInput,
 } from '../shared-ui/planner-ui.helpers';
-
-interface ObjectiveWeightControl {
-  key: ObjectiveWeightKey;
-  label: string;
-  step: number;
-}
+import {
+  activeObjectivePresetDescription,
+  activeObjectivePresetId,
+  activeObjectivePresetLabel,
+  objectiveWeightValue,
+  OBJECTIVE_WEIGHT_CONTROLS,
+  PLANNER_OBJECTIVE_PRESETS,
+} from './planner-configuration-surface';
 
 @Component({
   selector: 'bw-planner-objectives-section',
@@ -31,28 +30,23 @@ interface ObjectiveWeightControl {
 })
 export class PlannerObjectivesSectionComponent {
   public readonly store = inject(PlannerStoreService);
-  public readonly presets = OBJECTIVE_PRESET_DEFINITIONS;
-  public readonly weightControls: readonly ObjectiveWeightControl[] = [
-    { key: 'resourceScarcityWeight', label: 'Raw resources', step: 0.05 },
-    { key: 'powerWeight', label: 'Power', step: 0.05 },
-    { key: 'machineCountWeight', label: 'Machines', step: 0.05 },
-    { key: 'surplusWeight', label: 'Surplus', step: 0.05 },
-  ];
+  public readonly presets = PLANNER_OBJECTIVE_PRESETS;
+  public readonly weightControls = OBJECTIVE_WEIGHT_CONTROLS;
 
   public activePresetId(profile: ObjectiveProfile): ObjectivePresetId {
-    return resolveObjectivePresetId(profile);
+    return activeObjectivePresetId(profile);
   }
 
   public activePresetLabel(profile: ObjectiveProfile): string {
-    return objectivePresetDefinition(this.activePresetId(profile)).label;
+    return activeObjectivePresetLabel(profile);
   }
 
   public activePresetDescription(profile: ObjectiveProfile): string {
-    return objectivePresetDefinition(this.activePresetId(profile)).description;
+    return activeObjectivePresetDescription(profile);
   }
 
   public weightValue(profile: ObjectiveProfile, key: ObjectiveWeightKey): number {
-    return profile[key];
+    return objectiveWeightValue(profile, key);
   }
 
   public setObjectiveWeight(key: ObjectiveWeightKey, value: string | number | null): void {

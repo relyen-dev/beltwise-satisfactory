@@ -9,16 +9,9 @@ import {
 import { FormsModule } from '@angular/forms';
 import { type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
 import {
-  OBJECTIVE_PRESET_DEFINITIONS,
-  type ConveyorBeltTier,
-  type GraphEdgeStyle,
-  objectivePresetDefinition,
-  resolveObjectivePresetId,
   type ObjectivePresetId,
   type ObjectiveProfile,
   type ObjectiveWeightKey,
-  type PipelineTier,
-  type RateDecimalPlaces,
 } from '@beltwise/planner-core';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
 import { PlannerStoreService } from '../state/planner-store.service';
@@ -27,41 +20,26 @@ import {
   parsePlannerNumber,
   parseRawResourceMultiplierInput,
 } from '../shared-ui/planner-ui.helpers';
+import {
+  activeObjectivePresetId,
+  activeObjectivePresetLabel,
+  DEFAULT_RECIPE_PANEL_DEFINITIONS,
+  type DefaultRecipePanelId,
+  GRAPH_DISPLAY_BELT_TIER_OPTIONS,
+  GRAPH_DISPLAY_EDGE_STYLE_OPTIONS,
+  GRAPH_DISPLAY_PIPE_TIER_OPTIONS,
+  GRAPH_DISPLAY_RATE_DECIMAL_OPTIONS,
+  objectiveWeightValue,
+  OBJECTIVE_WEIGHT_CONTROLS,
+  PLANNER_OBJECTIVE_PRESETS,
+  recipeRowsForDefaultPanel,
+} from './planner-configuration-surface';
 
 type DefaultsPanelTab = 'recipes' | 'machines' | 'resources' | 'objectives' | 'display';
-type RecipeDefaultsPanel = 'standard' | 'converterResources' | 'alternates';
 
 interface DefaultsPanelTabDefinition {
   id: DefaultsPanelTab;
   label: string;
-}
-
-interface BeltTierOption {
-  value: ConveyorBeltTier;
-  label: string;
-  capacityLabel: string;
-}
-
-interface PipeTierOption {
-  value: PipelineTier;
-  label: string;
-  capacityLabel: string;
-}
-
-interface RateDecimalOption {
-  value: RateDecimalPlaces;
-  label: string;
-}
-
-interface EdgeStyleOption {
-  value: GraphEdgeStyle;
-  label: string;
-}
-
-interface ObjectiveWeightControl {
-  key: ObjectiveWeightKey;
-  label: string;
-  step: number;
 }
 
 @Component({
@@ -76,7 +54,7 @@ export class PlannerDefaultsPanelComponent {
   public readonly store = inject(PlannerStoreService);
   public readonly closed = output<void>();
   public readonly activeTab = signal<DefaultsPanelTab>('recipes');
-  public readonly activeRecipePanel = signal<RecipeDefaultsPanel>('standard');
+  public readonly activeRecipePanel = signal<DefaultRecipePanelId>('standard');
   public readonly tabs: readonly DefaultsPanelTabDefinition[] = [
     { id: 'recipes', label: 'Recipes' },
     { id: 'machines', label: 'Machines' },
@@ -84,47 +62,35 @@ export class PlannerDefaultsPanelComponent {
     { id: 'objectives', label: 'Objectives' },
     { id: 'display', label: 'Display' },
   ];
+  public readonly recipePanelDefinitions = DEFAULT_RECIPE_PANEL_DEFINITIONS;
 
   public readonly activeRecipeRows = computed(() => {
-    switch (this.activeRecipePanel()) {
-      case 'converterResources':
-        return this.store.defaultConverterResourceRecipeRows();
-      case 'alternates':
-        return this.store.defaultAlternateRecipeRows();
-      case 'standard':
-        return this.store.defaultStandardBaseRecipeRows();
-    }
+    return recipeRowsForDefaultPanel(this.activeRecipePanel(), {
+      standard: this.store.defaultStandardBaseRecipeRows(),
+      converterResources: this.store.defaultConverterResourceRecipeRows(),
+      alternates: this.store.defaultAlternateRecipeRows(),
+    });
   });
 
-  public readonly beltTierOptions: readonly BeltTierOption[] = [
-    { value: 1, label: 'Mk.1', capacityLabel: '60/min' },
-    { value: 2, label: 'Mk.2', capacityLabel: '120/min' },
-    { value: 3, label: 'Mk.3', capacityLabel: '270/min' },
-    { value: 4, label: 'Mk.4', capacityLabel: '480/min' },
-    { value: 5, label: 'Mk.5', capacityLabel: '780/min' },
-    { value: 6, label: 'Mk.6', capacityLabel: '1200/min' },
-  ];
-  public readonly pipeTierOptions: readonly PipeTierOption[] = [
-    { value: 1, label: 'Mk.1', capacityLabel: '300/min' },
-    { value: 2, label: 'Mk.2', capacityLabel: '600/min' },
-  ];
-  public readonly rateDecimalOptions: readonly RateDecimalOption[] = [
-    { value: 1, label: '1 decimal' },
-    { value: 2, label: '2 decimals' },
-    { value: 3, label: '3 decimals' },
-    { value: 4, label: '4 decimals' },
-  ];
-  public readonly edgeStyleOptions: readonly EdgeStyleOption[] = [
-    { value: 'straight', label: 'Straight lines' },
-    { value: 'curved', label: 'Curved lines' },
-  ];
-  public readonly objectivePresets = OBJECTIVE_PRESET_DEFINITIONS;
-  public readonly objectiveWeightControls: readonly ObjectiveWeightControl[] = [
-    { key: 'resourceScarcityWeight', label: 'Raw resources', step: 0.05 },
-    { key: 'powerWeight', label: 'Power', step: 0.05 },
-    { key: 'machineCountWeight', label: 'Machines', step: 0.05 },
-    { key: 'surplusWeight', label: 'Surplus', step: 0.05 },
-  ];
+  public readonly beltTierOptions = GRAPH_DISPLAY_BELT_TIER_OPTIONS;
+  public readonly pipeTierOptions = GRAPH_DISPLAY_PIPE_TIER_OPTIONS;
+  public readonly rateDecimalOptions = GRAPH_DISPLAY_RATE_DECIMAL_OPTIONS;
+  public readonly edgeStyleOptions = GRAPH_DISPLAY_EDGE_STYLE_OPTIONS;
+  public readonly objectivePresets = PLANNER_OBJECTIVE_PRESETS;
+  public readonly objectiveWeightControls = OBJECTIVE_WEIGHT_CONTROLS;
+
+  public recipePanelRowCount(
+    panelId: DefaultRecipePanelId,
+    standardRows: readonly RecipeRow[],
+    converterResourceRows: readonly RecipeRow[],
+    alternateRows: readonly RecipeRow[],
+  ): number {
+    return recipeRowsForDefaultPanel(panelId, {
+      standard: standardRows,
+      converterResources: converterResourceRows,
+      alternates: alternateRows,
+    }).length;
+  }
 
   public setRecipeRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {
     this.store.setDefaultRecipesEnabled(
@@ -145,15 +111,15 @@ export class PlannerDefaultsPanelComponent {
   }
 
   public activeObjectivePresetId(profile: ObjectiveProfile): ObjectivePresetId {
-    return resolveObjectivePresetId(profile);
+    return activeObjectivePresetId(profile);
   }
 
   public activeObjectivePresetLabel(profile: ObjectiveProfile): string {
-    return objectivePresetDefinition(this.activeObjectivePresetId(profile)).label;
+    return activeObjectivePresetLabel(profile);
   }
 
   public weightValue(profile: ObjectiveProfile, key: ObjectiveWeightKey): number {
-    return profile[key];
+    return objectiveWeightValue(profile, key);
   }
 
   public setObjectiveWeight(key: ObjectiveWeightKey, value: string | number | null): void {
