@@ -1,5 +1,6 @@
 import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import { uniqueStrings } from './internal/uniqueStrings';
+import { normalizeResourceOverrides } from './resourceOverrideMutations';
 import type { Point } from './model';
 import {
   copyGraphDisplaySettingsForTransfer,
@@ -566,7 +567,10 @@ export function hydratePlannerProject(value: unknown, dataset: GameDataset): Pla
       ...readRecipeOverridesForTransfer(value['recipeOverrides']),
     },
     machineOverrides: readMachineOverridesForTransfer(value['machineOverrides']),
-    resourceOverrides: readResourceOverridesForTransfer(value['resourceOverrides']),
+    resourceOverrides: normalizeResourceOverrides(
+      readResourceOverridesForTransfer(value['resourceOverrides']),
+      dataset.resources,
+    ),
     itemInputs: readItemInputsForTransfer(value['itemInputs']),
     objectiveProfile: hydrateObjectiveProfile(value['objectiveProfile']),
     graphLayout: readGraphLayoutForTransfer(value['graphLayout']),
@@ -590,7 +594,10 @@ export function hydratePlannerUserDefaults(
   return mergeUserDefaults(defaults, {
     recipeOverrides: readRecipeOverridesForTransfer(value['recipeOverrides']),
     machineOverrides: readMachineOverridesForTransfer(value['machineOverrides']),
-    resourceOverrides: readResourceOverridesForTransfer(value['resourceOverrides']),
+    resourceOverrides: normalizeResourceOverrides(
+      readResourceOverridesForTransfer(value['resourceOverrides']),
+      dataset.resources,
+    ),
     objectiveProfile: hydrateObjectiveProfile(value['objectiveProfile']),
     graphDisplay: readGraphDisplaySettingsForTransfer(
       value['graphDisplay'],

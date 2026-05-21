@@ -141,6 +141,37 @@ describe('plan intent mutations', () => {
     ).toEqual({});
   });
 
+  it('treats zero cap edits on unlimited resources as resetting the custom cap', () => {
+    const project = createProject();
+    const unlimitedCapPerMinute = Number.MAX_SAFE_INTEGER;
+
+    const customWater = mutatePlanOverrides(project, {
+      type: 'set-resource-cap',
+      itemId: 'Desc_Water_C',
+      maxPerMinute: 1,
+      baselineCapPerMinute: unlimitedCapPerMinute,
+    });
+    expect(customWater.resourceOverrides['Desc_Water_C']).toEqual({ maxPerMinute: 1 });
+
+    expect(
+      mutatePlanOverrides(customWater, {
+        type: 'set-resource-cap',
+        itemId: 'Desc_Water_C',
+        maxPerMinute: 0,
+        baselineCapPerMinute: unlimitedCapPerMinute,
+      }).resourceOverrides['Desc_Water_C'],
+    ).toBeUndefined();
+
+    expect(
+      mutatePlanOverrides(project, {
+        type: 'set-resource-cap',
+        itemId: 'Desc_OreIron_C',
+        maxPerMinute: 0,
+        baselineCapPerMinute: 600,
+      }).resourceOverrides['Desc_OreIron_C'],
+    ).toEqual({ maxPerMinute: 0 });
+  });
+
   it('marks raw resource multiplier edits as Custom and resets neutral values', () => {
     const project = createProject();
 

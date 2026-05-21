@@ -1,5 +1,6 @@
 import type { GameDataset, ItemId, MachineId } from '@beltwise/game-data';
 import type { PlannerProject } from './plan';
+import { normalizeResourceOverride } from './resourceOverrideMutations';
 
 export interface BaselineResourceLimits {
   id: string;
@@ -40,11 +41,12 @@ export function buildResourceCapsPerMinute(
   for (const resource of Object.values(dataset.resources)) {
     const baseline = baselineLimits?.limits[resource.itemId]?.maxPerMinute;
     const generatedBaseline = resource.extraction?.baselineMaxPerMinute;
-    const override = project.resourceOverrides[resource.itemId];
-    const cap =
-      override?.enabled === false
-        ? 0
-        : (override?.maxPerMinute ?? baseline ?? generatedBaseline);
+    const baselineCapPerMinute = baseline ?? generatedBaseline;
+    const override = normalizeResourceOverride(
+      project.resourceOverrides[resource.itemId] ?? {},
+      baselineCapPerMinute,
+    );
+    const cap = override?.enabled === false ? 0 : (override?.maxPerMinute ?? baselineCapPerMinute);
     if (cap !== undefined) {
       caps[resource.itemId] = cap;
     }

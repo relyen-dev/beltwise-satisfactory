@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tinySatisfactoryDataset } from '@beltwise/game-data';
+import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createDefaultUserDefaults,
   createObjectiveProfileFromPreset,
@@ -401,6 +401,38 @@ describe('decodePlannerPersistenceState', () => {
     });
   });
 
+  it('normalizes persisted zero caps for unlimited resources but keeps finite zero caps', () => {
+    const dataset = withUnlimitedWaterDataset();
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        projects: [
+          rawPlannerProject({
+            resourceOverrides: {
+              Desc_Water_C: { maxPerMinute: 0 },
+              Desc_OreIron_C: { maxPerMinute: 0 },
+            },
+          }),
+        ],
+        userDefaults: {
+          resourceOverrides: {
+            Desc_Water_C: { enabled: false, maxPerMinute: 0 },
+            Desc_OreCopper_C: { maxPerMinute: 0 },
+          },
+        },
+      },
+      dataset,
+    );
+
+    expect(state?.projects[0]?.resourceOverrides).toEqual({
+      Desc_OreIron_C: { maxPerMinute: 0 },
+    });
+    expect(state?.userDefaults.resourceOverrides).toEqual({
+      Desc_Water_C: { enabled: false },
+      Desc_OreCopper_C: { maxPerMinute: 0 },
+    });
+  });
+
   it('filters stale session project ids and chooses a valid active project', () => {
     const state = decodePlannerPersistenceState(
       {
@@ -675,6 +707,32 @@ function rawPlannerProject(overrides: Record<string, unknown> = {}): Record<stri
     machineOverrides: {},
     graphLayout: { nodePositions: {} },
     ...overrides,
+  };
+}
+
+function withUnlimitedWaterDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    resources: {
+      ...tinySatisfactoryDataset.resources,
+      Desc_Water_C: {
+        itemId: 'Desc_Water_C',
+        displayName: 'Water',
+        extraction: {
+          allowedExtractors: ['Build_WaterPump_C'],
+          baselineMaxPerMinute: Number.MAX_SAFE_INTEGER,
+        },
+      },
+    },
   };
 }
 

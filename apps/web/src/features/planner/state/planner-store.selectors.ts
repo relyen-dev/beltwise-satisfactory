@@ -32,6 +32,7 @@ import { gameIconPathForItemId, gameIconPathForMachineId } from '../shared-ui/ga
 import {
   defaultResourceCapPerMinute,
   formatResourceCap,
+  normalizeResourceOverride,
   resourceCapInputValue,
 } from '../shared-ui/planner-domain.helpers';
 
@@ -154,7 +155,10 @@ export function selectResourceRows(
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
     .map((resource) => {
       const baselineCapPerMinute = defaultResourceCapPerMinute(resource);
-      const override = source.resourceOverrides[resource.itemId];
+      const override = normalizeResourceOverride(
+        source.resourceOverrides[resource.itemId] ?? {},
+        baselineCapPerMinute,
+      );
       const storedCapPerMinute = override?.maxPerMinute ?? baselineCapPerMinute;
       const enabled = override?.enabled !== false;
       return {

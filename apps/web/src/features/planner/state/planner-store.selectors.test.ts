@@ -66,6 +66,35 @@ describe('planner store selectors', () => {
     });
   });
 
+  it('displays zero overrides on unlimited resources as unlimited defaults', () => {
+    const dataset = withUnlimitedWaterDataset();
+    const project: PlannerProject = {
+      ...createProject(),
+      resourceOverrides: {
+        Desc_Water_C: { maxPerMinute: 0 },
+        Desc_OreIron_C: { maxPerMinute: 0 },
+      },
+    };
+
+    const rows = selectResourceRows(dataset, project);
+    const water = rows.find((row) => row.resource.itemId === 'Desc_Water_C');
+    const ironOre = rows.find((row) => row.resource.itemId === 'Desc_OreIron_C');
+
+    expect(water).toMatchObject({
+      enabled: true,
+      isCustom: false,
+      capInputValue: null,
+      baselineCapLabel: 'Unlimited',
+      effectiveCapLabel: 'Unlimited',
+    });
+    expect(ironOre).toMatchObject({
+      enabled: true,
+      isCustom: true,
+      capInputValue: 0,
+      effectiveCapLabel: '0/min',
+    });
+  });
+
   it('builds raw resource multiplier rows with neutral and custom states', () => {
     const dataset: GameDataset = {
       ...tinySatisfactoryDataset,
@@ -433,4 +462,30 @@ function createProject(): PlannerProject {
     now: NOW,
     targets: [],
   });
+}
+
+function withUnlimitedWaterDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    resources: {
+      ...tinySatisfactoryDataset.resources,
+      Desc_Water_C: {
+        itemId: 'Desc_Water_C',
+        displayName: 'Water',
+        extraction: {
+          allowedExtractors: ['Build_WaterPump_C'],
+          baselineMaxPerMinute: Number.MAX_SAFE_INTEGER,
+        },
+      },
+    },
+  };
 }
