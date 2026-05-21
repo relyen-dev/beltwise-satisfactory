@@ -198,6 +198,80 @@ describe('plan report module', () => {
     });
   });
 
+  it('reports assumed input streams without counting them as raw resources', () => {
+    const dataset = datasetWithPowerItems();
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-waste',
+        itemId: 'Desc_NuclearWaste_C',
+        mode: 'fixed',
+        amountPerMinute: 25,
+        sortOrder: 0,
+      },
+    ];
+    const project = createPlannerProject({
+      id: 'project-assumed-waste',
+      name: 'Assumed waste',
+      dataset,
+      targets,
+      now: NOW,
+    });
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      assumedInputs: {
+        Desc_NuclearWaste_C: 25,
+      },
+      itemFlows: [
+        {
+          itemId: 'Desc_NuclearWaste_C',
+          amountPerMinute: 25,
+          source: { kind: 'assumedInput', id: 'Desc_NuclearWaste_C' },
+          target: { kind: 'output', id: 'target-waste' },
+        },
+      ],
+      outputs: {
+        Desc_NuclearWaste_C: 25,
+      },
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+    const graph = buildProductionGraph(dataset, targets, result);
+    const overview = buildPlanOverviewReport(dataset, project, result, graph);
+    const selected = buildSelectedNodeReport(
+      dataset,
+      project,
+      result,
+      graph.nodes.find((node) => node.id === 'assumed-input:Desc_NuclearWaste_C')!,
+    );
+
+    expect(overview.rawInputTypeCount).toBe(0);
+    expect(overview.rawInputs).toEqual([]);
+    expect(overview.assumedInputs).toEqual([
+      {
+        itemId: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        amountPerMinute: 25,
+        role: 'assumed-input-supply',
+      },
+    ]);
+    expect(selected.details).toMatchObject({
+      kind: 'assumedInput',
+      item: {
+        itemId: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        amountPerMinute: 25,
+        role: 'assumed-input-supply',
+      },
+      sourceNote:
+        'Modeled as supplied nuclear waste. Add this item in Inputs to replace the assumed source.',
+    });
+  });
+
   it('uses per-target incoming flow for duplicate maximize output items', () => {
     const context = createReportContext();
     const targets: ProductTarget[] = [

@@ -32,6 +32,7 @@ function serializationModel(): ProductionLpModel {
       recipeVariableById: {},
       rawInputVariableByItemId: {},
       externalInputVariableByItemId: {},
+      assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
     },

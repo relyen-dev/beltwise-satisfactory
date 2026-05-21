@@ -23,6 +23,7 @@ function solutionModel(): ProductionLpModel {
       recipeVariableById: {},
       rawInputVariableByItemId: {},
       externalInputVariableByItemId: {},
+      assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
     },

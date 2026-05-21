@@ -4,7 +4,7 @@ import type { ProductTarget, RateDecimalPlaces } from './plan';
 export type ProductionPlanStatus = 'optimal' | 'infeasible' | 'unbounded' | 'error';
 
 export interface ItemFlowEndpoint {
-  kind: 'resource' | 'externalInput' | 'recipe' | 'output' | 'byproduct';
+  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct';
   id: string;
 }
 
@@ -37,6 +37,7 @@ export interface ProductionPlanResult {
   recipeRates: Record<RecipeId, number>;
   rawInputs: Record<ItemId, number>;
   externalInputs?: Record<ItemId, number>;
+  assumedInputs?: Record<ItemId, number>;
   itemFlows: ItemFlow[];
   outputs: Record<ItemId, number>;
   surplus: Record<ItemId, number>;
@@ -51,6 +52,7 @@ export function createEmptyProductionPlanResult(): ProductionPlanResult {
     recipeRates: {},
     rawInputs: {},
     externalInputs: {},
+    assumedInputs: {},
     itemFlows: [],
     outputs: {},
     surplus: {},
@@ -67,7 +69,7 @@ export interface ProductionGraph {
 
 export interface ProductionGraphNode {
   id: string;
-  kind: 'resource' | 'externalInput' | 'recipe' | 'output' | 'byproduct';
+  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct';
   label: string;
   subtitle: string;
   itemId?: ItemId;
@@ -116,7 +118,7 @@ export function buildProductionGraph(
       label: item?.displayName ?? itemId,
       subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min input`,
       itemId,
-      amountPerMinute
+      amountPerMinute,
     });
   }
 
@@ -131,7 +133,22 @@ export function buildProductionGraph(
       label: item?.displayName ?? itemId,
       subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min supplied`,
       itemId,
-      amountPerMinute
+      amountPerMinute,
+    });
+  }
+
+  for (const [itemId, amountPerMinute] of Object.entries(result.assumedInputs ?? {})) {
+    if (amountPerMinute <= MIN_GRAPH_RATE) {
+      continue;
+    }
+    const item = dataset.items[itemId];
+    nodes.set(assumedInputNodeId(itemId), {
+      id: assumedInputNodeId(itemId),
+      kind: 'assumedInput',
+      label: item?.displayName ?? itemId,
+      subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min assumed source`,
+      itemId,
+      amountPerMinute,
     });
   }
 
@@ -147,14 +164,16 @@ export function buildProductionGraph(
       recipeId: usage.recipeId,
       amountPerMinute: usage.recipeRatePerMinute,
       machineDisplayName: usage.machineDisplayName,
-      machineCount: usage.machineCount
+      machineCount: usage.machineCount,
     });
   }
 
   for (const target of targets.toSorted((left, right) => left.sortOrder - right.sortOrder)) {
     const item = dataset.items[target.itemId];
     const amountPerMinute =
-      target.mode === 'fixed' ? (target.amountPerMinute ?? 0) : result.outputs[target.itemId] ?? 0;
+      target.mode === 'fixed'
+        ? (target.amountPerMinute ?? 0)
+        : (result.outputs[target.itemId] ?? 0);
     nodes.set(outputNodeId(target.id), {
       id: outputNodeId(target.id),
       kind: 'output',
@@ -166,7 +185,7 @@ export function buildProductionGraph(
       itemId: target.itemId,
       targetId: target.id,
       targetMode: target.mode,
-      amountPerMinute
+      amountPerMinute,
     });
   }
 
@@ -181,7 +200,7 @@ export function buildProductionGraph(
       label: item?.displayName ?? itemId,
       subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min surplus`,
       itemId,
-      amountPerMinute
+      amountPerMinute,
     });
   }
 
@@ -201,13 +220,13 @@ export function buildProductionGraph(
       targetNodeId,
       itemId: flow.itemId,
       label: `${item?.displayName ?? flow.itemId} ${formatRate(flow.amountPerMinute, rateDecimalPlaces)}/min`,
-      amountPerMinute: flow.amountPerMinute
+      amountPerMinute: flow.amountPerMinute,
     });
   }
 
   return {
     nodes: Array.from(nodes.values()),
-    edges
+    edges,
   };
 }
 
@@ -217,6 +236,10 @@ export function resourceNodeId(itemId: ItemId): string {
 
 export function externalInputNodeId(itemId: ItemId): string {
   return `external-input:${itemId}`;
+}
+
+export function assumedInputNodeId(itemId: ItemId): string {
+  return `assumed-input:${itemId}`;
 }
 
 export function recipeNodeId(recipeId: RecipeId): string {
@@ -237,6 +260,8 @@ function endpointNodeId(endpoint: ItemFlowEndpoint): string {
       return resourceNodeId(endpoint.id);
     case 'externalInput':
       return externalInputNodeId(endpoint.id);
+    case 'assumedInput':
+      return assumedInputNodeId(endpoint.id);
     case 'recipe':
       return recipeNodeId(endpoint.id);
     case 'output':

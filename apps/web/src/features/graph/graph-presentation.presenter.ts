@@ -1,4 +1,4 @@
-import type { RateDecimalPlaces } from '@beltwise/planner-core';
+import type { ProductionGraphNode, RateDecimalPlaces } from '@beltwise/planner-core';
 import { formatDisplayDecimalValue } from './graph-display-formatting';
 import type { GraphFocusScope } from './graph-interaction.presenter';
 
@@ -69,6 +69,23 @@ export function formatMachineCountDisplayValue(
   decimalPlaces: RateDecimalPlaces,
 ): string {
   return formatDisplayDecimalValue(machineCount, decimalPlaces);
+}
+
+export function formatGraphNodeKindDisplayValue(kind: ProductionGraphNode['kind']): string {
+  switch (kind) {
+    case 'resource':
+      return 'resource';
+    case 'externalInput':
+      return 'external input';
+    case 'assumedInput':
+      return 'assumed input';
+    case 'recipe':
+      return 'recipe';
+    case 'output':
+      return 'output';
+    case 'byproduct':
+      return 'byproduct';
+  }
 }
 
 export function graphTooltipStatKey(stat: string, index: number): string {

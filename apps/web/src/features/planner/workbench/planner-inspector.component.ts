@@ -10,6 +10,7 @@ type InspectorOverviewSectionId =
   | 'targets'
   | 'raw-inputs'
   | 'external-inputs'
+  | 'assumed-inputs'
   | 'surplus'
   | 'machines';
 

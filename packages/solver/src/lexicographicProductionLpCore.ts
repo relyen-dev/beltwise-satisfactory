@@ -170,16 +170,28 @@ function buildRawInputProfileLockConstraints(
   }
 
   // Stabilize the raw-resource solve so later tie-breakers cannot introduce tiny extra inputs.
-  return Object.values(model.metadata.rawInputVariableByItemId).map(
-    (variableName, variableIndex) => ({
-      name: `lex:${lock.stage.name}:${lock.stageIndex}:raw-input:${variableIndex}`,
-      coefficients: { [variableName]: 1 },
-      sense: 'lte',
-      rhs: cleanNumber(
-        (lock.variables[variableName] ?? 0) + RAW_INPUT_PROFILE_TOLERANCE_PER_MINUTE,
-      ),
-    }),
-  );
+  return [
+    ...Object.values(model.metadata.rawInputVariableByItemId).map(
+      (variableName, variableIndex) => ({
+        name: `lex:${lock.stage.name}:${lock.stageIndex}:raw-input:${variableIndex}`,
+        coefficients: { [variableName]: 1 },
+        sense: 'lte' as const,
+        rhs: cleanNumber(
+          (lock.variables[variableName] ?? 0) + RAW_INPUT_PROFILE_TOLERANCE_PER_MINUTE,
+        ),
+      }),
+    ),
+    ...Object.values(model.metadata.assumedInputVariableByItemId).map(
+      (variableName, variableIndex) => ({
+        name: `lex:${lock.stage.name}:${lock.stageIndex}:assumed-input:${variableIndex}`,
+        coefficients: { [variableName]: 1 },
+        sense: 'lte' as const,
+        rhs: cleanNumber(
+          (lock.variables[variableName] ?? 0) + RAW_INPUT_PROFILE_TOLERANCE_PER_MINUTE,
+        ),
+      }),
+    ),
+  ];
 }
 
 function relaxMostRecentNumericLock(locks: LexicographicLock[]): boolean {

@@ -1,6 +1,10 @@
 import type { GameDataset, ItemId, Recipe, RecipeId } from '@beltwise/game-data';
 import type { ObjectiveStageId, PlannerProject, ProductTarget } from '@beltwise/planner-core';
-import { buildResourceCapsPerMinute, type BaselineResourceLimits } from '@beltwise/planner-core';
+import {
+  assumedInputDefinitions,
+  buildResourceCapsPerMinute,
+  type BaselineResourceLimits,
+} from '@beltwise/planner-core';
 import { machineCountPerRecipeRate, machinePowerMw, selectRecipeMachine } from './machineLogic';
 import { rawResourceCost } from './rawResourceCost';
 
@@ -47,6 +51,7 @@ export interface ProductionLpModel {
     recipeVariableById: Record<RecipeId, string>;
     rawInputVariableByItemId: Record<ItemId, string>;
     externalInputVariableByItemId: Record<ItemId, string>;
+    assumedInputVariableByItemId: Record<ItemId, string>;
     surplusVariableByItemId: Record<ItemId, string>;
     maximizeVariableByTargetId: Record<string, string>;
   };
@@ -61,6 +66,7 @@ export interface ProductionPlanInput {
 const SURPLUS_BASE_COST = 0.1;
 const MIN_SURPLUS_COST = 0.000001;
 const RECIPE_ACTIVITY_TIEBREAKER_COST = 0.000001;
+const ASSUMED_INPUT_COST = 1;
 const EFFECTIVELY_UNLIMITED_RESOURCE_CAP = 1_000_000_000;
 const DEFAULT_OBJECTIVE_STAGE_ORDER: readonly ObjectiveStageId[] = [
   'raw-resources',
@@ -97,6 +103,7 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     recipeVariableById: createStringRecord(),
     rawInputVariableByItemId: createStringRecord(),
     externalInputVariableByItemId: createStringRecord(),
+    assumedInputVariableByItemId: createStringRecord(),
     surplusVariableByItemId: createStringRecord(),
     maximizeVariableByTargetId: createStringRecord(),
   };
@@ -141,6 +148,21 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     });
     initializeObjectiveCoefficients(variableName, objectiveCoefficientSets);
     itemIds.add(itemId);
+  }
+
+  for (const definition of assumedInputDefinitions()) {
+    if (!itemIds.has(definition.itemId) || !input.dataset.items[definition.itemId]) {
+      continue;
+    }
+    const variableName = assumedInputVariable(definition.itemId);
+    metadata.assumedInputVariableByItemId[definition.itemId] = variableName;
+    variables.push({
+      name: variableName,
+      lowerBound: 0,
+    });
+    initializeObjectiveCoefficients(variableName, objectiveCoefficientSets);
+    rawResourceCoefficients[variableName] = ASSUMED_INPUT_COST;
+    itemIds.add(definition.itemId);
   }
 
   for (const itemId of itemIds) {
@@ -190,6 +212,11 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     const externalVar = metadata.externalInputVariableByItemId[itemId];
     if (externalVar) {
       coefficients[externalVar] = 1;
+    }
+
+    const assumedVar = metadata.assumedInputVariableByItemId[itemId];
+    if (assumedVar) {
+      coefficients[assumedVar] = 1;
     }
 
     const surplusVar = metadata.surplusVariableByItemId[itemId];
@@ -256,6 +283,10 @@ export function rawInputVariable(itemId: ItemId): string {
 
 export function externalInputVariable(itemId: ItemId): string {
   return `externalInput:${itemId}`;
+}
+
+export function assumedInputVariable(itemId: ItemId): string {
+  return `assumedInput:${itemId}`;
 }
 
 export function surplusVariable(itemId: ItemId): string {

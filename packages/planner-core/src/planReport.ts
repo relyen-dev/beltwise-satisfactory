@@ -1,4 +1,5 @@
 import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
+import { assumedInputDefinitionForItemId } from './assumedInputs';
 import {
   defaultResourceCapPerMinute,
   isUnlimitedResourceCap,
@@ -33,6 +34,7 @@ export type PlanReportItemRateRole =
   | 'recipe-output'
   | 'raw-resource-consumption'
   | 'external-input-supply'
+  | 'assumed-input-supply'
   | 'maximized-output'
   | 'requested-output'
   | 'unused-surplus'
@@ -114,6 +116,7 @@ export interface PlanOverviewReport {
   readonly targets: readonly PlanReportTargetSummary[];
   readonly rawInputs: readonly PlanReportItemRate[];
   readonly externalInputs: readonly PlanReportItemRate[];
+  readonly assumedInputs: readonly PlanReportItemRate[];
   readonly surplus: readonly PlanReportItemRate[];
   readonly machineSummary: readonly PlanReportMachineSummary[];
   readonly warnings: readonly PlanReportWarning[];
@@ -123,6 +126,7 @@ export type SelectedNodeReportDetails =
   | RecipeNodeReportDetails
   | ResourceNodeReportDetails
   | ExternalInputNodeReportDetails
+  | AssumedInputNodeReportDetails
   | OutputNodeReportDetails
   | ByproductNodeReportDetails;
 
@@ -149,6 +153,12 @@ export interface ResourceNodeReportDetails {
 export interface ExternalInputNodeReportDetails {
   readonly kind: 'externalInput';
   readonly item: PlanReportItemRate;
+}
+
+export interface AssumedInputNodeReportDetails {
+  readonly kind: 'assumedInput';
+  readonly item: PlanReportItemRate;
+  readonly sourceNote: string;
 }
 
 export interface OutputNodeReportDetails {
@@ -249,6 +259,7 @@ export function buildPlanOverviewReport(
       .map((target) => targetSummary(dataset, result, target)),
     rawInputs,
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
+    assumedInputs: itemRateRows(dataset, result?.assumedInputs ?? {}, 'assumed-input-supply'),
     surplus: itemRateRows(dataset, result?.surplus ?? {}),
     machineSummary: summarizeMachinesByType(machineUsage),
     warnings: warningRows(result?.warnings ?? []),
@@ -395,6 +406,8 @@ function selectedNodeDetails(
       return resourceNodeDetails(dataset, project, result, selectedNode);
     case 'externalInput':
       return externalInputNodeDetails(dataset, project, result, selectedNode);
+    case 'assumedInput':
+      return assumedInputNodeDetails(dataset, result, selectedNode);
     case 'output':
       return outputNodeDetails(dataset, project, result, selectedNode, incomingFlows);
     case 'byproduct':
@@ -495,6 +508,22 @@ function externalInputNodeDetails(
   return {
     kind: 'externalInput',
     item: itemRateRow(dataset, itemId, suppliedAmountPerMinute, 'external-input-supply'),
+  };
+}
+
+function assumedInputNodeDetails(
+  dataset: GameDataset,
+  result: ProductionPlanResult | null,
+  selectedNode: ProductionGraphNode,
+): AssumedInputNodeReportDetails {
+  const itemId = selectedNode.itemId ?? '';
+  const suppliedAmountPerMinute =
+    selectedNode.amountPerMinute ?? (itemId ? result?.assumedInputs?.[itemId] : undefined) ?? 0;
+
+  return {
+    kind: 'assumedInput',
+    item: itemRateRow(dataset, itemId, suppliedAmountPerMinute, 'assumed-input-supply'),
+    sourceNote: assumedInputDefinitionForItemId(itemId)?.sourceNote ?? 'Modeled as supplied input.',
   };
 }
 
@@ -706,6 +735,8 @@ function endpointMatchesNode(
       return endpoint.kind === 'resource' && endpoint.id === selectedNode.itemId;
     case 'externalInput':
       return endpoint.kind === 'externalInput' && endpoint.id === selectedNode.itemId;
+    case 'assumedInput':
+      return endpoint.kind === 'assumedInput' && endpoint.id === selectedNode.itemId;
     case 'recipe':
       return endpoint.kind === 'recipe' && endpoint.id === selectedNode.recipeId;
     case 'output':
@@ -723,6 +754,7 @@ function endpointDisplayName(
   switch (endpoint.kind) {
     case 'resource':
     case 'externalInput':
+    case 'assumedInput':
     case 'byproduct':
       return dataset.items[endpoint.id]?.displayName ?? endpoint.id;
     case 'recipe':
@@ -772,10 +804,11 @@ function warningMessage(warning: PlanWarning): string {
 function itemRateRows(
   dataset: GameDataset,
   amounts: Readonly<Record<ItemId, number>>,
+  role: PlanReportItemRateRole | null = null,
 ): PlanReportItemRate[] {
   return Object.entries(amounts)
     .filter(([, amountPerMinute]) => amountPerMinute > MIN_DISPLAY_RATE)
-    .map(([itemId, amountPerMinute]) => itemRateRow(dataset, itemId, amountPerMinute, null))
+    .map(([itemId, amountPerMinute]) => itemRateRow(dataset, itemId, amountPerMinute, role))
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
 }
 

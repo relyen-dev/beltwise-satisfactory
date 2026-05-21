@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatMachineCountDisplayValue,
+  formatGraphNodeKindDisplayValue,
   formatTargetAmountDisplayValue,
   graphNodeNote,
   graphTooltipFlowKey,
@@ -49,6 +50,7 @@ describe('graph presentation presenter', () => {
     expect(formatTargetAmountDisplayValue(42.5, 3)).toBe('42.5');
     expect(formatTargetAmountDisplayValue(undefined, 3)).toBe('0');
     expect(formatMachineCountDisplayValue(1.25, 2)).toBe('1.25');
+    expect(formatGraphNodeKindDisplayValue('assumedInput')).toBe('assumed input');
     expect(graphTooltipStatKey('4x Constructor', 0)).toBe('stat:0:4x Constructor');
     expect(
       graphTooltipFlowKey(

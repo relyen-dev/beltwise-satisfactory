@@ -9,7 +9,7 @@ export interface GraphPresentationModel {
 
 export interface GraphPresentationNode {
   id: string;
-  kind: 'resource' | 'externalInput' | 'recipe' | 'output' | 'byproduct';
+  kind: ProductionGraphNode['kind'];
   position: Point;
   size?: Size;
   data: ProductionGraphNode;

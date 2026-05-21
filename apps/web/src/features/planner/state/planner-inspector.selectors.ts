@@ -90,6 +90,7 @@ export interface InspectorOverviewViewModel {
   targets: InspectorTargetSummary[];
   topRawInputs: InspectorItemRateRow[];
   externalInputs: InspectorItemRateRow[];
+  assumedInputs: InspectorItemRateRow[];
   surplus: InspectorItemRateRow[];
   machineSummary: InspectorMachineSummaryRow[];
   machineSummaryTotalCount: number;
@@ -118,6 +119,7 @@ export type SelectedNodeDetails =
   | RecipeNodeDetails
   | ResourceNodeDetails
   | ExternalInputNodeDetails
+  | AssumedInputNodeDetails
   | OutputNodeDetails
   | ByproductNodeDetails;
 
@@ -143,6 +145,12 @@ export interface ResourceNodeDetails {
 
 export interface ExternalInputNodeDetails {
   kind: 'externalInput';
+  item: InspectorItemRateRow;
+  sourceNote: string;
+}
+
+export interface AssumedInputNodeDetails {
+  kind: 'assumedInput';
   item: InspectorItemRateRow;
   sourceNote: string;
 }
@@ -264,6 +272,7 @@ function selectOverviewViewModel(
       .slice(0, MAX_OVERVIEW_RAW_INPUTS)
       .map(itemRateRow),
     externalInputs: report.externalInputs.map(itemRateRow),
+    assumedInputs: report.assumedInputs.map(itemRateRow),
     surplus: report.surplus.map(itemRateRow),
     machineSummary: machineSummaryRows.slice(0, MAX_OVERVIEW_MACHINE_ROWS),
     machineSummaryTotalCount: machineSummaryRows.length,
@@ -337,6 +346,8 @@ function selectedNodeDetails(details: SelectedNodeReportDetails): SelectedNodeDe
       return resourceNodeDetails(details);
     case 'externalInput':
       return externalInputNodeDetails(details);
+    case 'assumedInput':
+      return assumedInputNodeDetails(details);
     case 'output':
       return outputNodeDetails(details);
     case 'byproduct':
@@ -389,6 +400,16 @@ function externalInputNodeDetails(
     kind: 'externalInput',
     item: itemRateRow(details.item),
     sourceNote: 'Manual supply from another factory.',
+  };
+}
+
+function assumedInputNodeDetails(
+  details: Extract<SelectedNodeReportDetails, { kind: 'assumedInput' }>,
+): AssumedInputNodeDetails {
+  return {
+    kind: 'assumedInput',
+    item: itemRateRow(details.item),
+    sourceNote: details.sourceNote,
   };
 }
 
@@ -464,6 +485,8 @@ function selectedNodeMetrics(details: SelectedNodeDetails): InspectorMetric[] {
       ];
     case 'externalInput':
       return [metric('Supplied', details.item.amountPerMinuteLabel), metric('Source', 'Manual')];
+    case 'assumedInput':
+      return [metric('Supplied', details.item.amountPerMinuteLabel), metric('Source', 'Assumed')];
     case 'output':
       return [
         metric('Mode', details.targetModeLabel),
@@ -572,6 +595,8 @@ function itemRateDetail(role: PlanReportItemRateRole | null): string | null {
       return 'consumed from raw resources';
     case 'external-input-supply':
       return 'supplied externally';
+    case 'assumed-input-supply':
+      return 'Modeled as supplied nuclear waste. Add this item in Inputs to replace the assumed source.';
     case 'maximized-output':
       return 'maximized output';
     case 'requested-output':
@@ -634,6 +659,8 @@ function nodeKindLabel(kind: ProductionGraphNode['kind']): string {
       return 'Resource';
     case 'externalInput':
       return 'External input';
+    case 'assumedInput':
+      return 'Assumed input';
     case 'recipe':
       return 'Recipe';
     case 'output':
@@ -649,6 +676,8 @@ function endpointKindLabel(kind: PlanReportFlow['endpointKind']): string {
       return 'Resource';
     case 'externalInput':
       return 'External input';
+    case 'assumedInput':
+      return 'Assumed input';
     case 'recipe':
       return 'Recipe';
     case 'output':

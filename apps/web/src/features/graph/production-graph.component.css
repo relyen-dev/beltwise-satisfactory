@@ -121,6 +121,11 @@
   --node-border: color-mix(in srgb, var(--color-power) 52%, var(--color-border));
 }
 
+.production-node--assumed-input {
+  --node-accent: #d6c95f;
+  --node-border: color-mix(in srgb, #d6c95f 52%, var(--color-border));
+}
+
 .production-node--recipe {
   --node-accent: var(--color-machine);
   --node-border: color-mix(in srgb, var(--color-machine) 46%, var(--color-border));

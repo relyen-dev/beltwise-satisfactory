@@ -306,6 +306,59 @@
             </section>
           }
 
+          @if (overview.assumedInputs.length > 0) {
+            @let assumedInputsCollapsed = isOverviewSectionCollapsed('assumed-inputs');
+            <section class="inspector-section" aria-labelledby="inspector-assumed-heading">
+              <div class="inspector-section-heading">
+                <h3 id="inspector-assumed-heading">Assumed Inputs</h3>
+                <div class="inspector-section-heading__actions">
+                  <span>{{ overview.assumedInputs.length }}</span>
+                  <button
+                    type="button"
+                    class="inspector-section-toggle"
+                    [attr.aria-expanded]="!assumedInputsCollapsed"
+                    aria-controls="inspector-assumed-content"
+                    [attr.aria-label]="
+                      assumedInputsCollapsed ? 'Expand Assumed Inputs' : 'Collapse Assumed Inputs'
+                    "
+                    [title]="
+                      assumedInputsCollapsed ? 'Expand Assumed Inputs' : 'Collapse Assumed Inputs'
+                    "
+                    (click)="toggleOverviewSection('assumed-inputs')"
+                  >
+                    {{ assumedInputsCollapsed ? '+' : '-' }}
+                  </button>
+                </div>
+              </div>
+              <div
+                id="inspector-assumed-content"
+                class="inspector-section-body"
+                [hidden]="assumedInputsCollapsed"
+              >
+                <div class="inspector-list">
+                  @for (row of overview.assumedInputs; track row.itemId) {
+                    <div class="inspector-row">
+                      <bw-game-icon
+                        [src]="row.iconSrc"
+                        [label]="row.displayName"
+                        [size]="'sm'"
+                        [kind]="'item'"
+                        [showTitle]="true"
+                      />
+                      <span class="inspector-row__copy">
+                        <strong>{{ row.displayName }}</strong>
+                        @if (row.detail) {
+                          <span>{{ row.detail }}</span>
+                        }
+                      </span>
+                      <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </section>
+          }
+
           @if (overview.surplus.length > 0) {
             @let surplusCollapsed = isOverviewSectionCollapsed('surplus');
             <section class="inspector-section" aria-labelledby="inspector-surplus-heading">
