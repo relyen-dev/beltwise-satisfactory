@@ -74,6 +74,11 @@ export const GRAPH_DISPLAY_EDGE_STYLE_OPTIONS = [
 
 export const PLANNER_OBJECTIVE_PRESETS = OBJECTIVE_PRESET_DEFINITIONS;
 
+export const RAW_RESOURCE_COST_FORMULA_LABEL =
+  'Built-in cost x custom multiplier = effective cost.';
+export const RAW_RESOURCE_COST_HELP_TEXT =
+  'Built-in cost uses static map availability: scarcer resources start higher. Custom multiplier is your preference; the solver uses effective cost when choosing among feasible routes.';
+
 export const OBJECTIVE_WEIGHT_CONTROLS = [
   { key: 'resourceScarcityWeight', label: 'Raw resources', step: 0.05 },
   { key: 'powerWeight', label: 'Power', step: 0.05 },

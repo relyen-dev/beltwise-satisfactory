@@ -15,6 +15,8 @@ import {
   GRAPH_DISPLAY_RATE_DECIMAL_OPTIONS,
   objectiveWeightValue,
   OBJECTIVE_WEIGHT_CONTROLS,
+  RAW_RESOURCE_COST_FORMULA_LABEL,
+  RAW_RESOURCE_COST_HELP_TEXT,
   recipeRowsForBasePanel,
   recipeRowsForDefaultPanel,
 } from './planner-configuration-surface';
@@ -46,6 +48,12 @@ describe('planner configuration surface', () => {
   });
 
   it('defines shared objective weight controls in planner order', () => {
+    expect(RAW_RESOURCE_COST_FORMULA_LABEL).toBe(
+      'Built-in cost x custom multiplier = effective cost.',
+    );
+    expect(RAW_RESOURCE_COST_HELP_TEXT).toBe(
+      'Built-in cost uses static map availability: scarcer resources start higher. Custom multiplier is your preference; the solver uses effective cost when choosing among feasible routes.',
+    );
     expect(OBJECTIVE_WEIGHT_CONTROLS).toEqual([
       { key: 'resourceScarcityWeight', label: 'Raw resources', step: 0.05 },
       { key: 'powerWeight', label: 'Power', step: 0.05 },

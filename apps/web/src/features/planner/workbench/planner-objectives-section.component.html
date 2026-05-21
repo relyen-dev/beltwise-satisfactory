@@ -58,17 +58,19 @@
         }
       </div>
 
-      <section class="objective-resource-panel" aria-label="Raw resource route preferences">
+      <section
+        class="objective-resource-panel"
+        aria-label="Raw resource route preferences"
+        aria-describedby="objective-resource-cost-summary"
+      >
         <div class="section-heading">
           <div>
             <h4>Raw resource preferences</h4>
-            <span>Built-in cost x custom multiplier = effective cost.</span>
+            <span>{{ rawResourceCostFormulaLabel }}</span>
           </div>
         </div>
-        <p class="objective-resource-note">
-          Built-in cost is normalized so the cheapest raw resource starts at 1. Lower effective cost
-          is cheaper and can be used more where routes are feasible; higher cost is avoided when
-          alternatives exist.
+        <p class="objective-resource-note" id="objective-resource-cost-summary">
+          {{ rawResourceCostHelpText }}
         </p>
 
         <div class="objective-resource-grid">
@@ -84,10 +86,7 @@
             <span></span>
           </div>
 
-          @for (
-            row of planConfig.rawResourceMultiplierRows();
-            track row.resource.itemId
-          ) {
+          @for (row of planConfig.rawResourceMultiplierRows(); track row.resource.itemId) {
             <div
               class="objective-resource-row"
               [class.objective-resource-row--custom]="!row.isNeutral"
@@ -114,15 +113,7 @@
               <div
                 class="objective-resource-formula"
                 role="group"
-                [attr.aria-label]="
-                  row.resource.displayName +
-                  ' route cost: built-in ' +
-                  row.builtInCostLabel +
-                  ' times custom ' +
-                  row.multiplierLabel +
-                  ' equals effective ' +
-                  row.effectiveCostLabel
-                "
+                [attr.aria-label]="row.costFormulaAriaLabel"
               >
                 <span class="objective-resource-factor">
                   <strong>{{ row.builtInCostLabel }}</strong>
@@ -146,8 +137,7 @@
                   <strong>{{ row.effectiveCostLabel }}</strong>
                 </span>
                 <span class="sr-only" [id]="'objective-resource-cost-' + row.resource.itemId">
-                  Built-in cost {{ row.builtInCostLabel }} times custom multiplier
-                  {{ row.multiplierLabel }} equals effective cost {{ row.effectiveCostLabel }}.
+                  {{ row.builtInCostHelpText }}
                 </span>
               </div>
 

@@ -19,6 +19,8 @@ import {
   objectiveWeightValue,
   OBJECTIVE_WEIGHT_CONTROLS,
   PLANNER_OBJECTIVE_PRESETS,
+  RAW_RESOURCE_COST_FORMULA_LABEL,
+  RAW_RESOURCE_COST_HELP_TEXT,
 } from './planner-configuration-surface';
 
 @Component({
@@ -32,6 +34,8 @@ export class PlannerObjectivesSectionComponent {
   public readonly planConfig = inject(PlannerPlanConfigStore);
   public readonly presets = PLANNER_OBJECTIVE_PRESETS;
   public readonly weightControls = OBJECTIVE_WEIGHT_CONTROLS;
+  public readonly rawResourceCostFormulaLabel = RAW_RESOURCE_COST_FORMULA_LABEL;
+  public readonly rawResourceCostHelpText = RAW_RESOURCE_COST_HELP_TEXT;
 
   public activePresetId(profile: ObjectiveProfile): ObjectivePresetId {
     return activeObjectivePresetId(profile);
