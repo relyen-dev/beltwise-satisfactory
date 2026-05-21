@@ -35,11 +35,15 @@ import {
 import { PlannerStoreService } from './state/planner-store.service';
 import { PlannerGraphStore } from './state/planner-graph.store';
 import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
+import { PlannerWorkspaceSlice } from './state/planner-store.workspace';
+import { DatasetService } from './dataset.service';
+import { PlannerSolverService } from './solving/planner-solver.service';
 import {
   getPlannerWorkbenchPanel,
   PLANNER_WORKBENCH_PANELS,
 } from './workbench/planner-workbench-panel-registry';
 import { type WorkbenchPanelId } from './workbench/planner-workbench.models';
+import { PlannerWorkbenchSlice } from './workbench/planner-workbench-state';
 import { PlannerShellOverlayCoordinator } from './planner-shell-overlay-coordinator';
 
 interface GraphSolveNotice {
@@ -67,16 +71,20 @@ const RECENT_PLAN_MEMORY_LIMIT = 12;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerPageComponent implements OnInit {
-  public readonly store = inject(PlannerStoreService);
+  private readonly runtime = inject(PlannerStoreService);
+  public readonly datasetService = inject(DatasetService);
   public readonly graph = inject(PlannerGraphStore);
   public readonly planConfig = inject(PlannerPlanConfigStore);
+  public readonly solver = inject(PlannerSolverService);
+  public readonly workbench = inject(PlannerWorkbenchSlice);
+  public readonly workspace = inject(PlannerWorkspaceSlice);
   private readonly injector = inject(Injector);
   private readonly planTransfer = inject(PlannerPlanTransferService);
   private readonly shell = new PlannerShellOverlayCoordinator();
   private lastProcessedShareCode: string | null = null;
 
   public readonly workPanelOpen = linkedSignal({
-    source: () => this.store.workbenchFocusRequest(),
+    source: () => this.workbench.focusRequest(),
     computation: (request, previous) => {
       return request ? request.mode === 'open-plan' : (previous?.value ?? false);
     },
@@ -98,28 +106,28 @@ export class PlannerPageComponent implements OnInit {
   public readonly projectNameDraft = this.shell.projectNameDraft;
   public readonly sessionNameDraft = this.shell.sessionNameDraft;
   public readonly projectNameEditing = computed(() => {
-    return this.shell.isProjectNameEditing(this.store.activeProjectId());
+    return this.shell.isProjectNameEditing(this.workspace.activeProjectId());
   });
   public readonly sessionNameEditing = computed(() => {
-    return this.shell.isSessionNameEditing(this.store.activeSessionId());
+    return this.shell.isSessionNameEditing(this.workspace.activeSessionId());
   });
   public readonly workbenchPanels = PLANNER_WORKBENCH_PANELS;
   public readonly activeWorkbenchPanel = computed(() => {
-    return getPlannerWorkbenchPanel(this.store.activeWorkbenchPanelId());
+    return getPlannerWorkbenchPanel(this.workbench.activePanelId());
   });
   public readonly activeSectionLabel = computed(() => {
     return this.activeWorkbenchPanel().label;
   });
   public readonly graphSolveNotice = computed<GraphSolveNotice | null>(() => {
-    const status = this.store.solveStatus();
+    const status = this.solver.solveStatus();
     if (status === 'solving') {
       return { kind: 'info', message: 'Solving plan' };
     }
     if (status === 'error') {
-      return { kind: 'error', message: this.store.solveError() ?? 'Solve error' };
+      return { kind: 'error', message: this.solver.solveError() ?? 'Solve error' };
     }
 
-    const result = this.store.solveResult();
+    const result = this.solver.solveResult();
     const problemMessage = result
       ? solveProblemMessage(result.status, result.warnings?.[0]?.message)
       : null;
@@ -127,9 +135,9 @@ export class PlannerPageComponent implements OnInit {
   });
   public readonly planDockItems = computed(() =>
     selectPlanDockItems(
-      this.store.activeSessionProjects(),
-      this.store.dataset(),
-      this.store.activeProjectId(),
+      this.workspace.activeSessionProjects(),
+      this.datasetService.dataset(),
+      this.workspace.activeProjectId(),
     ),
   );
   public readonly activePlanDockItem = computed(() => {
@@ -138,16 +146,18 @@ export class PlannerPageComponent implements OnInit {
   public readonly visiblePlanDockItems = computed(() =>
     selectCompactPlanDockItems(
       this.planDockItems(),
-      this.store.activeProjectId(),
+      this.workspace.activeProjectId(),
       this.recentlyTouchedProjectIds(),
       VISIBLE_PLAN_CHIP_COUNT,
     ),
   );
 
   public ngOnInit(): void {
+    void this.runtime;
+
     effect(
       () => {
-        if (!this.store.dataset()) {
+        if (!this.datasetService.dataset()) {
           return;
         }
 
@@ -159,7 +169,7 @@ export class PlannerPageComponent implements OnInit {
     effect(
       () => {
         const panel = this.inspectorPanel()?.nativeElement;
-        const context = `${this.store.activeProjectId() ?? 'no-project'}:${
+        const context = `${this.workspace.activeProjectId() ?? 'no-project'}:${
           this.graph.readModel.selectedNodeId() ?? 'overview'
         }`;
         if (!panel || context === this.inspectorScrollContext) {
@@ -174,12 +184,12 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public openSection(section: WorkbenchPanelId): void {
-    if (this.store.activeWorkbenchPanelId() === section && this.workPanelOpen()) {
+    if (this.workbench.activePanelId() === section && this.workPanelOpen()) {
       this.closeWorkPanel();
       return;
     }
 
-    this.store.setActiveWorkbenchPanel(section);
+    this.workbench.setActivePanel(section);
     this.workPanelOpen.set(true);
   }
 
@@ -190,38 +200,38 @@ export class PlannerPageComponent implements OnInit {
   public selectSession(sessionId: string): void {
     this.clearTransientNavigationState();
     this.recentlyTouchedProjectIds.set([]);
-    this.store.selectSession(sessionId);
+    this.workspace.selectSession(sessionId);
     this.touchActiveProject();
   }
 
   public selectProject(projectId: string): void {
-    if (projectId === this.store.activeProjectId()) {
+    if (projectId === this.workspace.activeProjectId()) {
       this.clearTransientNavigationState();
       this.touchProject(projectId);
       return;
     }
 
     this.clearTransientNavigationState();
-    this.store.selectProject(projectId);
+    this.workspace.selectProject(projectId);
     this.touchProject(projectId);
   }
 
   public createSession(): void {
     this.clearTransientNavigationState();
     this.recentlyTouchedProjectIds.set([]);
-    this.store.createSession();
+    this.workspace.createSession();
     this.touchActiveProject();
   }
 
   public createProject(): void {
     this.clearTransientNavigationState();
-    this.store.createProject();
+    this.workspace.createProject();
     this.touchActiveProject();
   }
 
   public duplicateProject(): void {
     this.clearTransientNavigationState();
-    this.store.duplicateProject();
+    this.workspace.duplicateProject();
     this.touchActiveProject();
   }
 
@@ -231,9 +241,9 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public saveSessionNameEdit(): void {
-    const name = this.shell.saveSessionNameEdit(this.store.activeSessionId());
+    const name = this.shell.saveSessionNameEdit(this.workspace.activeSessionId());
     if (name) {
-      this.store.renameSession(name);
+      this.workspace.renameSession(name);
     }
   }
 
@@ -242,13 +252,13 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public deleteActiveSession(): void {
-    const session = this.store.activeSession();
+    const session = this.workspace.activeSession();
     if (!session) {
       return;
     }
 
     if (
-      sessionRequiresDeleteConfirmation(this.store.activeSessionProjects()) &&
+      sessionRequiresDeleteConfirmation(this.workspace.activeSessionProjects()) &&
       !confirm(`Delete "${session.name}" and every plan in it? This cannot be undone.`)
     ) {
       return;
@@ -256,12 +266,12 @@ export class PlannerPageComponent implements OnInit {
 
     this.clearTransientNavigationState();
     this.recentlyTouchedProjectIds.set([]);
-    this.store.deleteSession(session.id);
+    this.workspace.deleteSession(session.id);
     this.touchActiveProject();
   }
 
   public deleteActiveProject(): void {
-    const project = this.store.activeProject();
+    const project = this.workspace.activeProject();
     if (!project) {
       return;
     }
@@ -274,7 +284,7 @@ export class PlannerPageComponent implements OnInit {
     }
 
     this.clearTransientNavigationState();
-    this.store.deleteProject();
+    this.workspace.deleteProject();
     this.touchActiveProject();
   }
 
@@ -284,9 +294,9 @@ export class PlannerPageComponent implements OnInit {
   }
 
   public saveProjectNameEdit(): void {
-    const name = this.shell.saveProjectNameEdit(this.store.activeProjectId());
+    const name = this.shell.saveProjectNameEdit(this.workspace.activeProjectId());
     if (name) {
-      this.store.renameProject(name);
+      this.workspace.renameProject(name);
     }
   }
 
@@ -404,7 +414,7 @@ export class PlannerPageComponent implements OnInit {
 
   @HostListener('window:hashchange')
   public importPlanShareCodeFromLocation(): void {
-    if (!this.store.dataset()) {
+    if (!this.datasetService.dataset()) {
       return;
     }
 
@@ -420,8 +430,8 @@ export class PlannerPageComponent implements OnInit {
   @HostListener('document:keydown.escape', ['$event'])
   public handleEscapeKey(event: KeyboardEvent): void {
     const result = this.shell.handleEscape({
-      activeProjectId: this.store.activeProjectId(),
-      activeSessionId: this.store.activeSessionId(),
+      activeProjectId: this.workspace.activeProjectId(),
+      activeSessionId: this.workspace.activeSessionId(),
       hasSelectedGraphNode: Boolean(this.graph.readModel.selectedNodeId()),
       isEditableTarget: isEditableKeyboardTarget(event.target),
     });
@@ -453,13 +463,13 @@ export class PlannerPageComponent implements OnInit {
   }
 
   private touchActiveProject(): void {
-    this.touchProject(this.store.activeProjectId());
+    this.touchProject(this.workspace.activeProjectId());
   }
 
   private touchProject(projectId: string | undefined): void {
     if (
       !projectId ||
-      !this.store.activeSessionProjects().some((project) => project.id === projectId)
+      !this.workspace.activeSessionProjects().some((project) => project.id === projectId)
     ) {
       return;
     }

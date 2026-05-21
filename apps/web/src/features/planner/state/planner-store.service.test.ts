@@ -21,6 +21,7 @@ import { PlannerPersistenceCoordinatorService } from '../persistence/planner-per
 import { selectPlannerSolveInput, type PlannerSolveInput } from '../solving/planner-solve-input';
 import { PlannerSolverService, type SolveStatus } from '../solving/planner-solver.service';
 import { PlannerStoreService } from './planner-store.service';
+import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
 import {
   GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS,
   PLANNER_GRAPH_STORE_PORT,
@@ -224,7 +225,7 @@ describe('selectPlannerSolveInput', () => {
 
 describe('PlannerStoreService', () => {
   it('initializes a starter project through the persistence coordinator facade', () => {
-    const { store, connectedSolveInput } = createStoreHarness((binding) => {
+    const { connectedSolveInput, store, workbench } = createStoreHarness((binding) => {
       binding.initializeStarterProject(tinySatisfactoryDataset);
     });
 
@@ -234,7 +235,7 @@ describe('PlannerStoreService', () => {
     expect(store.projects()).toHaveLength(1);
     expect(activeProject?.name).toBe('Starter factory');
     expect(store.activeProjectId()).toBe(activeProject?.id);
-    expect(store.workbenchFocusRequest()).toMatchObject({
+    expect(workbench.focusRequest()).toMatchObject({
       projectId: activeProject?.id,
       mode: 'open-plan',
     });
@@ -272,7 +273,7 @@ describe('PlannerStoreService', () => {
 
   it('keeps graph focus when a stored active project already has targets', () => {
     const project = createProject();
-    const { store } = createStoreHarness((binding) => {
+    const { store, workbench } = createStoreHarness((binding) => {
       binding.initializeFromStoredState({
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeSessionId: 'session-a',
@@ -284,7 +285,7 @@ describe('PlannerStoreService', () => {
     });
 
     expect(store.activeProjectId()).toBe(project.id);
-    expect(store.workbenchFocusRequest()).toMatchObject({
+    expect(workbench.focusRequest()).toMatchObject({
       projectId: project.id,
       mode: 'focus-graph',
     });
@@ -297,7 +298,7 @@ describe('PlannerStoreService', () => {
       id: 'project-target',
       name: 'Target factory',
     };
-    const { store } = createStoreHarness((binding) => {
+    const { store, workbench } = createStoreHarness((binding) => {
       binding.initializeFromStoredState({
         schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
         activeSessionId: 'session-a',
@@ -309,8 +310,8 @@ describe('PlannerStoreService', () => {
     });
 
     expect(store.activeProjectId()).toBe(draftProject.id);
-    expect(store.activeWorkbenchPanelId()).toBe('plan');
-    expect(store.workbenchFocusRequest()).toMatchObject({
+    expect(workbench.activePanelId()).toBe('plan');
+    expect(workbench.focusRequest()).toMatchObject({
       projectId: draftProject.id,
       mode: 'open-plan',
     });
@@ -319,30 +320,33 @@ describe('PlannerStoreService', () => {
   it('requests the matching focus mode when selecting projects and clears graph selection', () => {
     const graphProject = createProject();
     const draftProject = createEmptyProject('project-draft', 'Draft factory');
-    const { graph, store } = createInitializedStore([graphProject, draftProject], graphProject.id);
-    const initialFocusSequence = store.workbenchFocusRequest()?.sequence ?? 0;
+    const { graph, store, workbench } = createInitializedStore(
+      [graphProject, draftProject],
+      graphProject.id,
+    );
+    const initialFocusSequence = workbench.focusRequest()?.sequence ?? 0;
 
-    store.setActiveWorkbenchPanel('recipes');
+    workbench.setActivePanel('recipes');
     graph.selectionCommands.select('recipe:Recipe_IronPlate_C');
     store.selectProject(draftProject.id);
 
     expect(store.activeProjectId()).toBe(draftProject.id);
-    expect(store.activeWorkbenchPanelId()).toBe('plan');
+    expect(workbench.activePanelId()).toBe('plan');
     expect(graph.readModel.selectedNodeId()).toBeNull();
-    expect(store.workbenchFocusRequest()).toMatchObject({
+    expect(workbench.focusRequest()).toMatchObject({
       projectId: draftProject.id,
       mode: 'open-plan',
       sequence: initialFocusSequence + 1,
     });
 
-    store.setActiveWorkbenchPanel('resources');
+    workbench.setActivePanel('resources');
     graph.selectionCommands.select('recipe:Recipe_IronRod_C');
     store.selectProject(graphProject.id);
 
     expect(store.activeProjectId()).toBe(graphProject.id);
-    expect(store.activeWorkbenchPanelId()).toBe('resources');
+    expect(workbench.activePanelId()).toBe('resources');
     expect(graph.readModel.selectedNodeId()).toBeNull();
-    expect(store.workbenchFocusRequest()).toMatchObject({
+    expect(workbench.focusRequest()).toMatchObject({
       projectId: graphProject.id,
       mode: 'focus-graph',
       sequence: initialFocusSequence + 2,
@@ -1117,10 +1121,10 @@ describe('PlannerStoreService', () => {
 
   it('flushes pending graph node positions on destroy', () => {
     vi.useFakeTimers();
-    const { graph, store } = createInitializedStore();
+    const { graph, runtime, store } = createInitializedStore();
 
     graph.layoutCommands.setNodePosition('recipe:Recipe_IronPlate_C', { x: 19, y: 29 });
-    store.ngOnDestroy();
+    runtime.ngOnDestroy();
 
     expect(store.activeProject()?.graphLayout.nodePositions).toEqual({
       'recipe:Recipe_IronPlate_C': { x: 19, y: 29 },
@@ -1197,7 +1201,7 @@ function firstTarget(project: PlannerProject): ProductTarget {
   return target;
 }
 
-function requiredProject(store: PlannerStoreService): PlannerProject {
+function requiredProject(store: PlannerWorkspaceSlice): PlannerProject {
   const project = store.activeProject();
   if (!project) {
     throw new Error('Expected an active project');
@@ -1205,7 +1209,7 @@ function requiredProject(store: PlannerStoreService): PlannerProject {
   return project;
 }
 
-function loadedStoreProject(store: PlannerStoreService, projectId: string): PlannerProject {
+function loadedStoreProject(store: PlannerWorkspaceSlice, projectId: string): PlannerProject {
   const project = store.projects().find((candidate) => candidate.id === projectId);
   if (!project) {
     throw new Error(`Expected project ${projectId}`);
@@ -1234,7 +1238,9 @@ function createInitializedStore(
   defaults: PlannerDefaultsStore;
   graph: PlannerGraphStore;
   planConfig: PlannerPlanConfigStore;
-  store: PlannerStoreService;
+  runtime: PlannerStoreService;
+  store: PlannerWorkspaceSlice;
+  workbench: PlannerWorkbenchSlice;
 } {
   return createStoreHarness((binding) => {
     binding.initializeFromStoredState({
@@ -1268,7 +1274,9 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
   defaults: PlannerDefaultsStore;
   graph: PlannerGraphStore;
   planConfig: PlannerPlanConfigStore;
-  store: PlannerStoreService;
+  runtime: PlannerStoreService;
+  store: PlannerWorkspaceSlice;
+  workbench: PlannerWorkbenchSlice;
 } {
   let connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
   const datasetService: Pick<DatasetService, 'dataset' | 'loadError'> = {
@@ -1341,12 +1349,15 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
         },
       },
       PlannerPlanConfigStore,
+      PlannerWorkbenchSlice,
     ],
   });
-  const store = runInInjectionContext(injector, () => new PlannerStoreService());
+  const runtime = runInInjectionContext(injector, () => new PlannerStoreService());
   const defaults = injector.get(PlannerDefaultsStore);
   const graph = injector.get(PlannerGraphStore);
   const planConfig = injector.get(PlannerPlanConfigStore);
+  const store = injector.get(PlannerWorkspaceSlice);
+  const workbench = injector.get(PlannerWorkbenchSlice);
 
-  return { connectedSolveInput, defaults, graph, planConfig, store };
+  return { connectedSolveInput, defaults, graph, planConfig, runtime, store, workbench };
 }

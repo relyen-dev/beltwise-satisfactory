@@ -4,23 +4,22 @@ Status: Draft refactor guide
 
 ## Summary
 
-`PlannerStoreService` is now a broad root facade for workspace state, plan editing, graph interaction, defaults, transfer, view selectors, persistence, and solver wiring. The current slices are useful prior art, but later refactors should extract deep capability Modules with real Interfaces rather than moving one-line forwards into new shallow stores.
+`PlannerStoreService` started as a broad root facade for workspace state, plan editing, graph interaction, defaults, transfer, view selectors, persistence, and solver wiring. The current slices are useful prior art, but later refactors should extract deep capability Modules with real Interfaces rather than moving one-line forwards into new shallow stores.
 
 Use this RFC as the surface map for the next refactories. The goal is more Depth and Locality: a component should depend on the capability that owns its use case, and deleting a root-store forward should prove the extraction created Leverage instead of another pass-through Seam.
 
 ## Current Root Shape
 
-`PlannerStoreService` currently composes:
+`PlannerStoreService` now acts as planner runtime/composition glue. It connects:
 
 - Workspace lifecycle: sessions, projects, active project, user defaults, persistence initialization.
-- Plan config commands: targets, external inputs, resources, recipes, machines, objectives, plan notes, graph display settings.
-- Graph commands and read model: production graph, selection, node notes/done state, layout, locks, inspector model.
-- Defaults commands and default-facing rows.
-- Transfer commands for plan JSON and share payloads.
-- Dataset and solver status signals.
-- Workbench panel focus state.
+- Dataset/persistence startup to workspace initialization.
+- Active project changes to solver input scheduling.
+- Workspace graph lifecycle hooks to graph state flushing, pending-layout clearing, and selection clearing.
+- Workspace activation hooks to workbench panel/focus behavior.
+- Destroy-time graph node-position flushing.
 
-The biggest smell is not file size by itself. The smell is that many public root methods are one-line forwards with no capability Interface of their own, so consumers learn the whole root store instead of the Module they actually use.
+The root should stay out of feature command surfaces. UI consumers should depend on `PlannerWorkspaceSlice`, `PlannerGraphStore`, `PlannerPlanConfigStore`, `PlannerDefaultsStore`, `PlannerPlanTransferService`, `DatasetService`, `PlannerSolverService`, and `PlannerWorkbenchSlice` according to the use case they own.
 
 ## Refactories
 
@@ -66,17 +65,17 @@ Fix: Promote the transfer port as the Interface. Migrate transfer tests away fro
 
 ### Workspace Root Slimming
 
-Definition: Slim `PlannerStoreService` into the planner composition Module: dataset and solver connections, persistence wiring, workspace/session/project lifecycle, workbench shell focus, and capability construction.
+Definition: Slim `PlannerStoreService` into the planner composition Module: dataset and solver connections, persistence wiring, workspace/session/project lifecycle hooks, workbench shell focus hooks, and capability construction.
 
 Reason: The root should coordinate high-level planner lifecycle, not be the Interface for every panel. Keeping per-capability forwards on the root erases Locality and makes future work harder to review.
 
-Fix: Migrate consumers first. Keep root access only where the planner shell genuinely spans workspace, dataset load state, active session/project navigation, and capability composition. Delete forwards once no production consumer uses them; do not leave aliases for convenience.
+Fix: Migrate consumers first. Keep root access only for runtime construction/composition. Delete forwards once no production consumer uses them; do not leave aliases for convenience.
 
 ## Surface Map
 
 | Current consumer | Root surface used today | Future dependency |
 | --- | --- | --- |
-| `apps/web/src/features/planner/planner-page.component.ts` and `.html` | Dataset load/error, solver status, active session/project navigation, workbench panel state, graph toolbar and renderer bindings, share/import orchestration, root graph flush before unload. | Workspace Root for shell/navigation/load state; Graph Capability for toolbar, renderer-neutral graph bindings, selection, locks, layout, and flush; Transfer Capability through `PlannerPlanTransferService`; Plan Config Capability only for graph target amount edits. |
+| `apps/web/src/features/planner/planner-page.component.ts` and `.html` | Runtime construction only through `PlannerStoreService`; dataset load/error through `DatasetService`; solver status through `PlannerSolverService`; active session/project navigation through `PlannerWorkspaceSlice`; workbench panel/focus state through `PlannerWorkbenchSlice`; graph toolbar and renderer bindings through `PlannerGraphStore`; share/import orchestration through transfer; graph target amount edits through plan config. | Keep this split. The page may privately inject the root runtime to ensure composition hooks exist, but page HTML should bind to the owning capability rather than `store.*`. |
 | `apps/web/src/features/planner/transfer/planner-plan-transfer.service.ts` | `exportActivePlan`, `importPlanJson`, `exportActivePlanSharePayload`, `importPlanSharePayload`. | Transfer Capability port with dataset, active project, active session projects, graph flush, and import-project operations. |
 | `apps/web/src/features/planner/workbench/planner-targets-section.component.ts` and `.html` | Active project targets/notes, item options, plan lock, add/duplicate/remove/update targets, set/clear notes. | Plan Config Capability. |
 | `apps/web/src/features/planner/workbench/planner-inputs-section.component.ts` and `.html` | Active project id, item options, external input rows, plan lock, set/move/remove item inputs. | Plan Config Capability. |
@@ -89,7 +88,7 @@ Fix: Migrate consumers first. Keep root access only where the planner shell genu
 | `apps/web/src/features/planner/workbench/planner-inspector.component.ts` and `.html` | Inspector view model, solve error, selected node navigation. | Graph Capability for inspector model and graph selection. Solver status may stay on Workspace Root until a solve-status capability exists. |
 | `apps/web/src/features/planner/workbench/selected-node-inspector.component.ts` and `.html` | Selected-node inspector model, clear selection, selected node done/note commands. | Graph Capability. |
 | `apps/web/src/features/graph/production-graph.component.ts` and `adapters/` | No direct `PlannerStoreService` dependency found; receives graph inputs and emits renderer events through the planner page. | Keep as graph renderer Adapter. It should not inject planner capabilities unless a future graph host Module intentionally owns that boundary. |
-| Planner component/service tests that mock `PlannerStoreService` | Broad root-store test doubles. | Test the capability Interface used by the subject. Root-store tests should shrink toward composition, persistence/solver wiring, and workspace lifecycle. |
+| Planner component/service tests that mock `PlannerStoreService` | Planner page tests now mock `DatasetService`, `PlannerSolverService`, `PlannerWorkspaceSlice`, `PlannerWorkbenchSlice`, graph, plan config, and transfer directly. | Continue testing the capability Interface used by the subject. Root runtime tests should focus on composition, persistence/solver wiring, lifecycle hooks, and workspace initialization. |
 
 ## Capability Interface Notes
 
@@ -115,10 +114,10 @@ Fix: Migrate consumers first. Keep root access only where the planner shell genu
 2. Extract Graph Capability next to protect the renderer Adapter Seam before changing more workbench panels.
 3. Move one workbench panel at a time to Plan Config Capability, deleting each matching root forward when unused.
 4. Extract Defaults Capability after Plan Config naming settles, so mirrored default commands use consistent vocabulary without sharing the wrong Interface.
-5. Slim Workspace Root last, once only shell/navigation/load-state consumers remain.
+5. Slim Workspace Root last, once only runtime construction/composition remains. Completed for the planner page in Refactory 6; future root changes should preserve the no-convenience-forward rule.
 
 ## Open Questions
 
 - Should plan-lock state belong entirely to Graph Capability, or should Plan Config Capability expose an `editingLocked` signal derived from graph build state through a port?
 - Should solve status remain on Workspace Root, or become a small solving capability once graph and inspector consumers are migrated?
-- Should workbench panel focus stay on Workspace Root, or become a separate shell/workbench capability if planner page continues to grow?
+- Should the remaining runtime test coverage move workspace command cases into a dedicated `planner-store.workspace` spec so `planner-store.service` tests describe only runtime composition?

@@ -5,9 +5,9 @@
       <div class="tagline">Unofficial local-first factory planner for Satisfactory</div>
     </div>
 
-    @if (store.activeProject(); as project) {
+    @if (workspace.activeProject(); as project) {
       <div class="workspace-context" aria-label="Session and plan controls">
-        @if (store.activeSession(); as session) {
+        @if (workspace.activeSession(); as session) {
           <div class="session-card">
             <span class="context-label">Save session</span>
             @if (sessionNameEditing()) {
@@ -35,7 +35,7 @@
                   [ngModel]="session.id"
                   (ngModelChange)="selectSession($event)"
                 >
-                  @for (candidate of store.sessions(); track candidate.id) {
+                  @for (candidate of workspace.sessions(); track candidate.id) {
                     <option [value]="candidate.id">{{ candidate.name }}</option>
                   }
                 </select>
@@ -227,7 +227,7 @@
                   aria-label="Plan actions"
                   (click)="closeActionMenu()"
                 >
-                  @if (store.activeSession(); as session) {
+                  @if (workspace.activeSession(); as session) {
                     <button
                       type="button"
                       title="Rename save session"
@@ -361,20 +361,20 @@
     <bw-planner-defaults-panel (closed)="closeDefaultsPanel()" />
   }
 
-  @if (store.datasetError()) {
-    <section class="load-error" role="alert">{{ store.datasetError() }}</section>
-  } @else if (!store.dataset()) {
+  @if (datasetService.loadError()) {
+    <section class="load-error" role="alert">{{ datasetService.loadError() }}</section>
+  } @else if (!datasetService.dataset()) {
     <section class="loading-panel">Loading generated planner data...</section>
-  } @else if (store.activeProject(); as project) {
+  } @else if (workspace.activeProject(); as project) {
     <main class="workspace-body" [class.workspace-body--panel-open]="workPanelOpen()">
       <nav class="section-rail" aria-label="Planner workspace sections">
         @for (panel of workbenchPanels; track panel.id) {
           <button
             type="button"
             class="rail-button"
-            [class.is-active]="store.activeWorkbenchPanelId() === panel.id && workPanelOpen()"
+            [class.is-active]="workbench.activePanelId() === panel.id && workPanelOpen()"
             [attr.aria-current]="
-              store.activeWorkbenchPanelId() === panel.id && workPanelOpen() ? 'page' : null
+              workbench.activePanelId() === panel.id && workPanelOpen() ? 'page' : null
             "
             (click)="openSection(panel.id)"
           >
@@ -465,7 +465,7 @@
 
         <bw-production-graph
           [graph]="graph.readModel.graph()"
-          [dataset]="store.dataset()"
+          [dataset]="datasetService.dataset()"
           [layout]="graph.readModel.layout()"
           [displaySettings]="graph.readModel.displaySettings()"
           [selectedNodeId]="graph.readModel.selectedNodeId()"

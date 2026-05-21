@@ -21,12 +21,13 @@ import {
 import { PlannerStoreService } from './state/planner-store.service';
 import { PlannerGraphStore } from './state/planner-graph.store';
 import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
+import { PlannerWorkspaceSlice } from './state/planner-store.workspace';
+import { DatasetService } from './dataset.service';
+import { PlannerSolverService } from './solving/planner-solver.service';
 import { encodePlannerShareCode } from './transfer/planner-share-codec';
 import { PLANNER_PLAN_TRANSFER_PORT } from './transfer/planner-plan-transfer-capability';
-import {
-  type WorkbenchFocusRequest,
-  type WorkbenchPanelId,
-} from './workbench/planner-workbench.models';
+import { type WorkbenchPanelId } from './workbench/planner-workbench.models';
+import { PlannerWorkbenchSlice } from './workbench/planner-workbench-state';
 
 describe('PlannerPageComponent', () => {
   beforeEach(() => {
@@ -40,16 +41,16 @@ describe('PlannerPageComponent', () => {
   });
 
   it('opens a workbench section and closes it when the active open section is requested again', () => {
-    const { component, store } = createComponentHarness();
+    const { component, workbench } = createComponentHarness();
 
     component.openSection('recipes');
 
-    expect(store.activeWorkbenchPanelId()).toBe('recipes');
+    expect(workbench.activePanelId()).toBe('recipes');
     expect(component.workPanelOpen()).toBe(true);
 
     component.openSection('recipes');
 
-    expect(store.activeWorkbenchPanelId()).toBe('recipes');
+    expect(workbench.activePanelId()).toBe('recipes');
     expect(component.workPanelOpen()).toBe(false);
   });
 
@@ -138,10 +139,10 @@ describe('PlannerPageComponent', () => {
   });
 
   it('does not save a plan rename after the active project changes', () => {
-    const { component, renameProject, store } = createComponentHarness();
+    const { component, renameProject, workspace } = createComponentHarness();
     component.startProjectNameEdit('project-a', 'Draft factory');
     component.projectNameDraft.set('Renamed factory');
-    store.activeProjectId.set('project-b');
+    workspace.activeProjectId.set('project-b');
 
     component.saveProjectNameEdit();
 
@@ -150,10 +151,10 @@ describe('PlannerPageComponent', () => {
   });
 
   it('does not save a session rename after the active session changes', () => {
-    const { component, renameSession, store } = createComponentHarness();
+    const { component, renameSession, workspace } = createComponentHarness();
     component.startSessionNameEdit('session-a', 'Default session');
     component.sessionNameDraft.set('Rocky Desert');
-    store.activeSessionId.set('session-b');
+    workspace.activeSessionId.set('session-b');
 
     component.saveSessionNameEdit();
 
@@ -230,10 +231,10 @@ describe('PlannerPageComponent', () => {
   });
 
   it('lists all plans in the active plan selector and switches from it', () => {
-    const { component, selectProject, store } = createComponentHarness();
+    const { component, selectProject, workspace } = createComponentHarness();
     const projects = createPageProjectList(7);
-    store.activeSessionProjects.set(projects);
-    store.activeProjectId.set('project-4');
+    workspace.activeSessionProjects.set(projects);
+    workspace.activeProjectId.set('project-4');
 
     component.openPlanSelector();
 
@@ -255,11 +256,11 @@ describe('PlannerPageComponent', () => {
   });
 
   it('focuses the active plan option when opening the selector', () => {
-    const { component, store } = createComponentHarness();
+    const { component, workspace } = createComponentHarness();
     const firstFocus = vi.fn();
     const activeFocus = vi.fn();
-    store.activeSessionProjects.set(createPageProjectList(2));
-    store.activeProjectId.set('project-2');
+    workspace.activeSessionProjects.set(createPageProjectList(2));
+    workspace.activeProjectId.set('project-2');
     stubElementViewChildren(component, 'planSelectorOptions', [firstFocus, activeFocus]);
     vi.useFakeTimers();
 
@@ -275,9 +276,9 @@ describe('PlannerPageComponent', () => {
   });
 
   it('keeps the visible plan strip bounded around recently touched plans', () => {
-    const { component, selectProject, store } = createComponentHarness();
-    store.activeSessionProjects.set(createPageProjectList(8));
-    store.activeProjectId.set('project-5');
+    const { component, selectProject, workspace } = createComponentHarness();
+    workspace.activeSessionProjects.set(createPageProjectList(8));
+    workspace.activeProjectId.set('project-5');
 
     component.selectProject('project-2');
     component.selectProject('project-7');
@@ -300,9 +301,9 @@ describe('PlannerPageComponent', () => {
   });
 
   it('keeps create plan available beside the active selector when many plans exist', () => {
-    const { component, createProject, store } = createComponentHarness();
-    store.activeSessionProjects.set(createPageProjectList(10));
-    store.activeProjectId.set('project-10');
+    const { component, createProject, workspace } = createComponentHarness();
+    workspace.activeSessionProjects.set(createPageProjectList(10));
+    workspace.activeProjectId.set('project-10');
     component.openPlanSelector();
 
     component.createProject();
@@ -396,29 +397,29 @@ describe('PlannerPageComponent', () => {
   });
 
   it('shows graph solve notices only for pending or problem states', () => {
-    const { component, store } = createComponentHarness();
+    const { component, solver } = createComponentHarness();
 
     expect(component.graphSolveNotice()).toBeNull();
 
-    store.solveStatus.set('solving');
+    solver.solveStatus.set('solving');
     expect(component.graphSolveNotice()).toEqual({ kind: 'info', message: 'Solving plan' });
 
-    store.solveStatus.set('error');
-    store.solveError.set('LP failed');
+    solver.solveStatus.set('error');
+    solver.solveError.set('LP failed');
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'LP failed' });
 
-    store.solveStatus.set('solved');
-    store.solveError.set(null);
-    store.solveResult.set({ status: 'infeasible' });
+    solver.solveStatus.set('solved');
+    solver.solveError.set(null);
+    solver.solveResult.set({ status: 'infeasible' });
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Infeasible plan' });
 
-    store.solveResult.set({ status: 'unbounded' });
+    solver.solveResult.set({ status: 'unbounded' });
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Unbounded plan' });
 
-    store.solveResult.set({ status: 'error' });
+    solver.solveResult.set({ status: 'error' });
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
 
-    store.solveResult.set({
+    solver.solveResult.set({
       status: 'error',
       warnings: [{ message: 'HiGHS returned an error' }],
     });
@@ -427,7 +428,7 @@ describe('PlannerPageComponent', () => {
       message: 'HiGHS returned an error',
     });
 
-    store.solveResult.set({ status: 'error', warnings: [{ message: '   ' }] });
+    solver.solveResult.set({ status: 'error', warnings: [{ message: '   ' }] });
     expect(component.graphSolveNotice()).toEqual({ kind: 'error', message: 'Solve error' });
   });
 
@@ -456,8 +457,8 @@ describe('PlannerPageComponent', () => {
   });
 
   it('confirms before deleting a session with configured plans', () => {
-    const { component, deleteSession, store } = createComponentHarness();
-    store.activeSessionProjects.set([
+    const { component, deleteSession, workspace } = createComponentHarness();
+    workspace.activeSessionProjects.set([
       createPageProject('project-a', 'Factory', [
         {
           id: 'target-a',
@@ -494,8 +495,8 @@ describe('PlannerPageComponent', () => {
   });
 
   it('confirms before deleting a plan with configured target items', () => {
-    const { component, deleteProject, store } = createComponentHarness();
-    store.activeProject.set(
+    const { component, deleteProject, workspace } = createComponentHarness();
+    workspace.activeProject.set(
       createPageProject('project-a', 'Factory', [
         {
           id: 'target-a',
@@ -598,7 +599,9 @@ function createComponentHarness(): {
   shareLocationAdapter: PlannerPageShareLocationAdapterHarness;
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
-  store: PlannerPageStoreHarness;
+  solver: PlannerPageSolverHarness;
+  workbench: PlannerPageWorkbenchHarness;
+  workspace: PlannerPageWorkspaceHarness;
 } {
   const clearSelectedGraphNode = vi.fn();
   const createProject = vi.fn();
@@ -660,15 +663,31 @@ function createComponentHarness(): {
       updateAmount: vi.fn(),
     },
   };
-  let store: PlannerPageStoreHarness;
+  let workspace: PlannerPageWorkspaceHarness;
   const selectProject = vi.fn((projectId: string) => {
-    store.activeProjectId.set(projectId);
-    store.activeProject.set(
-      store.activeSessionProjects().find((project) => project.id === projectId) ?? null,
+    workspace.activeProjectId.set(projectId);
+    workspace.activeProject.set(
+      workspace.activeSessionProjects().find((project) => project.id === projectId) ?? null,
     );
   });
   const selectSession = vi.fn();
-  store = {
+  const datasetService: PlannerPageDatasetHarness = {
+    dataset: signal({ id: 'dataset' }),
+    loadError: signal<string | null>(null),
+  };
+  const solver: PlannerPageSolverHarness = {
+    solveError: signal<string | null>(null),
+    solveResult: signal<PlannerPageSolveResult | null>({ status: 'optimal' }),
+    solveStatus: signal<'idle' | 'solving' | 'solved' | 'error'>('solved'),
+  };
+  const workbench: PlannerPageWorkbenchHarness = {
+    activePanelId: signal<WorkbenchPanelId>('plan'),
+    focusRequest: signal(null),
+    setActivePanel: (panelId: WorkbenchPanelId) => {
+      workbench.activePanelId.set(panelId);
+    },
+  };
+  workspace = {
     activeProject: signal<PlannerProject | null>(
       createPageProject('project-a', 'Draft factory', []),
     ),
@@ -681,30 +700,24 @@ function createComponentHarness(): {
     activeSessionProjects: signal<PlannerProject[]>([
       createPageProject('project-a', 'Draft factory', []),
     ]),
-    activeWorkbenchPanelId: signal<WorkbenchPanelId>('plan'),
     createProject,
     createSession,
-    dataset: signal({ id: 'dataset' }),
     deleteProject,
     deleteSession,
     duplicateProject,
-    flushGraphNodePositions,
     renameProject,
     renameSession,
     selectProject,
     selectSession,
-    setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => {
-      store.activeWorkbenchPanelId.set(panelId);
-    },
-    solveError: signal<string | null>(null),
-    solveResult: signal<PlannerPageSolveResult | null>({ status: 'optimal' }),
-    solveStatus: signal<'idle' | 'solving' | 'solved' | 'error'>('solved'),
-    workbenchFocusRequest: signal<WorkbenchFocusRequest | null>(null),
   };
   const injector = Injector.create({
     providers: [
       PlannerPlanTransferService,
-      { provide: PlannerStoreService, useValue: store },
+      { provide: PlannerStoreService, useValue: {} },
+      { provide: DatasetService, useValue: datasetService },
+      { provide: PlannerSolverService, useValue: solver },
+      { provide: PlannerWorkbenchSlice, useValue: workbench },
+      { provide: PlannerWorkspaceSlice, useValue: workspace },
       {
         provide: PLANNER_PLAN_TRANSFER_PORT,
         useValue: {
@@ -743,7 +756,9 @@ function createComponentHarness(): {
     shareLocationAdapter,
     selectProject,
     selectSession,
-    store,
+    solver,
+    workbench,
+    workspace,
   };
 }
 
@@ -765,8 +780,24 @@ function keyboardEvent(target: TestHTMLElement): KeyboardEvent & {
   } as unknown as KeyboardEvent & { preventDefault: ReturnType<typeof vi.fn> };
 }
 
-interface PlannerPageStoreHarness {
-  activeWorkbenchPanelId: WritableSignal<WorkbenchPanelId>;
+interface PlannerPageDatasetHarness {
+  dataset: WritableSignal<{ id: string } | null>;
+  loadError: WritableSignal<string | null>;
+}
+
+interface PlannerPageSolverHarness {
+  solveError: WritableSignal<string | null>;
+  solveResult: WritableSignal<PlannerPageSolveResult | null>;
+  solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
+}
+
+interface PlannerPageWorkbenchHarness {
+  activePanelId: WritableSignal<WorkbenchPanelId>;
+  focusRequest: WritableSignal<null>;
+  setActivePanel: (panelId: WorkbenchPanelId) => void;
+}
+
+interface PlannerPageWorkspaceHarness {
   activeProject: WritableSignal<PlannerProject | null>;
   activeProjectId: WritableSignal<string | undefined>;
   activeSession: WritableSignal<PlannerSession | null>;
@@ -782,11 +813,6 @@ interface PlannerPageStoreHarness {
   renameSession: ReturnType<typeof vi.fn>;
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
-  setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => void;
-  solveError: WritableSignal<string | null>;
-  solveResult: WritableSignal<PlannerPageSolveResult | null>;
-  solveStatus: WritableSignal<'idle' | 'solving' | 'solved' | 'error'>;
-  workbenchFocusRequest: WritableSignal<WorkbenchFocusRequest | null>;
 }
 
 interface PlannerPageGraphHarness {
