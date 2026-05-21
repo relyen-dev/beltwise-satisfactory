@@ -1,19 +1,14 @@
 import { type Type } from '@angular/core';
-import { PlannerDisplaySectionComponent } from './planner-display-section.component';
-import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
-import { PlannerMachinesSectionComponent } from './planner-machines-section.component';
-import { PlannerObjectivesSectionComponent } from './planner-objectives-section.component';
-import { PlannerRecipesSectionComponent } from './planner-recipes-section.component';
-import { PlannerResourcesSectionComponent } from './planner-resources-section.component';
-import { PlannerTargetsSectionComponent } from './planner-targets-section.component';
 import { type WorkbenchPanelId } from './planner-workbench.models';
 
 export type WorkbenchPanelWidth = 'standard' | 'wide';
+export type WorkbenchPanelComponent = Type<unknown>;
+export type WorkbenchPanelComponentLoader = () => Promise<WorkbenchPanelComponent>;
 
 export interface WorkbenchPanelDefinition {
   readonly id: WorkbenchPanelId;
   readonly label: string;
-  readonly component: Type<unknown>;
+  readonly loadComponent: WorkbenchPanelComponentLoader;
   readonly width: WorkbenchPanelWidth;
   readonly panelClass: string | null;
 }
@@ -22,49 +17,84 @@ export const PLANNER_WORKBENCH_PANELS = [
   {
     id: 'plan',
     label: 'Plan',
-    component: PlannerTargetsSectionComponent,
+    loadComponent: async () => {
+      const { PlannerTargetsSectionComponent } = await import(
+        './planner-targets-section.component'
+      );
+      return PlannerTargetsSectionComponent;
+    },
     width: 'standard',
     panelClass: null,
   },
   {
     id: 'objectives',
     label: 'Objectives',
-    component: PlannerObjectivesSectionComponent,
+    loadComponent: async () => {
+      const { PlannerObjectivesSectionComponent } = await import(
+        './planner-objectives-section.component'
+      );
+      return PlannerObjectivesSectionComponent;
+    },
     width: 'standard',
     panelClass: null,
   },
   {
     id: 'recipes',
     label: 'Recipes',
-    component: PlannerRecipesSectionComponent,
+    loadComponent: async () => {
+      const { PlannerRecipesSectionComponent } = await import(
+        './planner-recipes-section.component'
+      );
+      return PlannerRecipesSectionComponent;
+    },
     width: 'wide',
     panelClass: 'work-panel--recipes',
   },
   {
     id: 'inputs',
     label: 'Inputs',
-    component: PlannerInputsSectionComponent,
+    loadComponent: async () => {
+      const { PlannerInputsSectionComponent } = await import(
+        './planner-inputs-section.component'
+      );
+      return PlannerInputsSectionComponent;
+    },
     width: 'standard',
     panelClass: null,
   },
   {
     id: 'resources',
     label: 'Resources',
-    component: PlannerResourcesSectionComponent,
+    loadComponent: async () => {
+      const { PlannerResourcesSectionComponent } = await import(
+        './planner-resources-section.component'
+      );
+      return PlannerResourcesSectionComponent;
+    },
     width: 'standard',
     panelClass: null,
   },
   {
     id: 'machines',
     label: 'Machines',
-    component: PlannerMachinesSectionComponent,
+    loadComponent: async () => {
+      const { PlannerMachinesSectionComponent } = await import(
+        './planner-machines-section.component'
+      );
+      return PlannerMachinesSectionComponent;
+    },
     width: 'standard',
     panelClass: null,
   },
   {
     id: 'display',
     label: 'Display',
-    component: PlannerDisplaySectionComponent,
+    loadComponent: async () => {
+      const { PlannerDisplaySectionComponent } = await import(
+        './planner-display-section.component'
+      );
+      return PlannerDisplaySectionComponent;
+    },
     width: 'standard',
     panelClass: null,
   },

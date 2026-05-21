@@ -9,6 +9,7 @@ import {
   linkedSignal,
   type ElementRef,
   type OnInit,
+  type Type,
   signal,
   viewChild,
   viewChildren,
@@ -41,6 +42,7 @@ import { PlannerSolverService } from './solving/planner-solver.service';
 import {
   getPlannerWorkbenchPanel,
   PLANNER_WORKBENCH_PANELS,
+  type WorkbenchPanelDefinition,
 } from './workbench/planner-workbench-panel-registry';
 import { type WorkbenchPanelId } from './workbench/planner-workbench.models';
 import { PlannerWorkbenchSlice } from './workbench/planner-workbench-state';
@@ -54,6 +56,11 @@ interface GraphSolveNotice {
 interface GraphBlockingNotice {
   title: string;
   detail: string;
+}
+
+interface LoadedWorkbenchPanel {
+  id: WorkbenchPanelId;
+  component: Type<unknown>;
 }
 
 const VISIBLE_PLAN_CHIP_COUNT = 6;
@@ -120,6 +127,11 @@ export class PlannerPageComponent implements OnInit {
   public readonly activeWorkbenchPanel = computed(() => {
     return getPlannerWorkbenchPanel(this.workbench.activePanelId());
   });
+  private readonly loadedWorkbenchPanel = signal<LoadedWorkbenchPanel | null>(null);
+  public readonly activeWorkbenchPanelComponent = computed(() => {
+    const loadedPanel = this.loadedWorkbenchPanel();
+    return loadedPanel?.id === this.workbench.activePanelId() ? loadedPanel.component : null;
+  });
   public readonly activeSectionLabel = computed(() => {
     return this.activeWorkbenchPanel().label;
   });
@@ -170,6 +182,17 @@ export class PlannerPageComponent implements OnInit {
 
   public ngOnInit(): void {
     void this.runtime;
+
+    effect(
+      () => {
+        if (!this.workPanelOpen()) {
+          return;
+        }
+
+        void this.loadWorkbenchPanelComponent(this.activeWorkbenchPanel());
+      },
+      { injector: this.injector },
+    );
 
     effect(
       () => {
@@ -533,6 +556,16 @@ export class PlannerPageComponent implements OnInit {
     }
     this.showPlanTransferStatus(result.status);
     return result.imported;
+  }
+
+  private async loadWorkbenchPanelComponent(panel: WorkbenchPanelDefinition): Promise<void> {
+    const component = await panel.loadComponent();
+
+    if (!this.workPanelOpen() || this.workbench.activePanelId() !== panel.id) {
+      return;
+    }
+
+    this.loadedWorkbenchPanel.set({ id: panel.id, component });
   }
 }
 
