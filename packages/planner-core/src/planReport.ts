@@ -750,10 +750,23 @@ function relatedWarnings(
 function warningRows(warnings: readonly PlanWarning[]): PlanReportWarning[] {
   return warnings.map((warning) => ({
     code: warning.code,
-    message: warning.message,
+    message: warningMessage(warning),
     ...(warning.itemId !== undefined ? { itemId: warning.itemId } : {}),
     ...(warning.recipeId !== undefined ? { recipeId: warning.recipeId } : {}),
   }));
+}
+
+function warningMessage(warning: PlanWarning): string {
+  switch (warning.code) {
+    case 'solver-infeasible':
+      return 'This plan cannot be built with the current recipes, available raw resources, and Inputs.';
+    case 'solver-unbounded':
+      return 'This plan needs a practical limit before the planner can choose a final rate.';
+    case 'solver-error':
+      return 'The planner could not finish calculating this plan.';
+    default:
+      return warning.message;
+  }
 }
 
 function itemRateRows(

@@ -143,12 +143,21 @@ export class PlannerGraphStore implements OnDestroy {
     selectGraphNodeNotes(this.port.activeProject()),
   );
 
+  private readonly selectedNodeId = computed<string | null>(() => {
+    const selectedNodeId = this.graphBuild.selectedGraphNodeId();
+    const graph = this.productionGraph();
+    if (!selectedNodeId || !graph) {
+      return selectedNodeId;
+    }
+    return graph.nodes.some((node) => node.id === selectedNodeId) ? selectedNodeId : null;
+  });
+
   private readonly selectedNode = computed<ProductionGraphNode | null>(() =>
-    selectGraphNode(this.productionGraph(), this.graphBuild.selectedGraphNodeId()),
+    selectGraphNode(this.productionGraph(), this.selectedNodeId()),
   );
 
   private readonly selectedNodeState = computed<GraphNodeBuildState>(() =>
-    selectGraphNodeState(this.port.activeProject(), this.graphBuild.selectedGraphNodeId()),
+    selectGraphNodeState(this.port.activeProject(), this.selectedNodeId()),
   );
 
   private readonly inspectorViewModel = computed(() =>
@@ -166,7 +175,7 @@ export class PlannerGraphStore implements OnDestroy {
     graph: this.productionGraph,
     layout: this.layout,
     displaySettings: this.displaySettings,
-    selectedNodeId: this.graphBuild.selectedGraphNodeId,
+    selectedNodeId: this.selectedNodeId,
     selectedNode: this.selectedNode,
     selectedNodeState: this.selectedNodeState,
     inspectorViewModel: this.inspectorViewModel,

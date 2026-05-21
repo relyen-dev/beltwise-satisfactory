@@ -137,6 +137,33 @@ describe('plan report module', () => {
     ]);
   });
 
+  it('keeps internal solver details out of overview warnings', () => {
+    const context = createReportContext();
+    const result: ProductionPlanResult = {
+      status: 'infeasible',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [
+        {
+          code: 'solver-infeasible',
+          message: 'raw-resources: HiGHS returned Infeasible.',
+        },
+      ],
+    };
+
+    const overview = buildPlanOverviewReport(context.dataset, context.project, result, null);
+
+    expect(overview.warnings.map((warning) => warning.message)).toEqual([
+      'This plan cannot be built with the current recipes, available raw resources, and Inputs.',
+    ]);
+  });
+
   it('builds selected resource details with cap source, headroom, flows, and related warnings', () => {
     const context = createReportContext();
     const report = buildSelectedNodeReport(

@@ -51,6 +51,11 @@ interface GraphSolveNotice {
   message: string;
 }
 
+interface GraphBlockingNotice {
+  title: string;
+  detail: string;
+}
+
 const VISIBLE_PLAN_CHIP_COUNT = 6;
 const RECENT_PLAN_MEMORY_LIMIT = 12;
 
@@ -123,15 +128,26 @@ export class PlannerPageComponent implements OnInit {
     if (status === 'solving') {
       return { kind: 'info', message: 'Solving plan' };
     }
+
+    const blockingNotice = this.graphBlockingNotice();
+    return blockingNotice ? { kind: 'error', message: blockingNotice.title } : null;
+  });
+  public readonly graphBlockingNotice = computed<GraphBlockingNotice | null>(() => {
+    const status = this.solver.solveStatus();
+    if (status === 'solving' || status === 'idle') {
+      return null;
+    }
     if (status === 'error') {
-      return { kind: 'error', message: this.solver.solveError() ?? 'Solve error' };
+      return {
+        title: 'Plan calculation failed',
+        detail:
+          safeSolverDetail(this.solver.solveError()) ??
+          'The planner could not finish calculating this plan.',
+      };
     }
 
     const result = this.solver.solveResult();
-    const problemMessage = result
-      ? solveProblemMessage(result.status, result.warnings?.[0]?.message)
-      : null;
-    return problemMessage ? { kind: 'error', message: problemMessage } : null;
+    return result ? solveProblemNotice(result.status, result.warnings?.[0]?.message) : null;
   });
   public readonly planDockItems = computed(() =>
     selectPlanDockItems(
@@ -549,18 +565,47 @@ function blurFocusedGraphNode(): void {
   }
 }
 
-function solveProblemMessage(status: ProductionPlanStatus, detail?: string): string | null {
-  const message = detail?.trim();
+function solveProblemNotice(
+  status: ProductionPlanStatus,
+  detail?: string,
+): GraphBlockingNotice | null {
   switch (status) {
     case 'optimal':
       return null;
     case 'infeasible':
-      return message || 'Infeasible plan';
+      return {
+        title: 'Plan cannot be built',
+        detail:
+          'The requested outputs cannot be made with the current recipes, available raw resources, and Inputs. Add supplied items or relax disabled recipes and resources.',
+      };
     case 'unbounded':
-      return message || 'Unbounded plan';
+      return {
+        title: 'Plan needs a limit',
+        detail:
+          'The maximize target has no practical ceiling from resources, recipes, or inputs, so the planner cannot choose a final rate.',
+      };
     case 'error':
-      return message || 'Solve error';
+      return {
+        title: 'Plan calculation failed',
+        detail: safeSolverDetail(detail) ?? 'The planner could not finish calculating this plan.',
+      };
   }
+}
+
+function safeSolverDetail(detail: string | null | undefined): string | null {
+  const message = detail?.trim();
+  if (!message || isInternalSolverDetail(message)) {
+    return null;
+  }
+  return message;
+}
+
+function isInternalSolverDetail(message: string): boolean {
+  return (
+    /\bHiGHS\b/i.test(message) ||
+    /\bLP\b/i.test(message) ||
+    /^(target-output|raw-resources|surplus|recipe-activity|power|balanced):/i.test(message)
+  );
 }
 
 function focusElementAfterRender(element: () => HTMLElement | undefined, attempts = 4): void {
