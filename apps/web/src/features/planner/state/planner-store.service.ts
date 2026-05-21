@@ -28,6 +28,11 @@ import { PlannerGraphBuildSlice } from './planner-store-graph-build';
 import { PlannerDefaultsCommandSlice } from './planner-store-defaults';
 import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
+import {
+  createPlannerStoreViewSurface,
+  type PlannerStoreGraphView,
+  type PlannerStoreWorkbenchViews,
+} from './planner-store-view-surface';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
@@ -47,6 +52,10 @@ export {
 } from '../solving/planner-solver.service';
 export type { SolveStatus } from '../solving/planner-solver.service';
 export { GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS } from './planner-store-graph-build';
+export type {
+  PlannerStoreGraphView,
+  PlannerStoreWorkbenchViews,
+} from './planner-store-view-surface';
 export type {
   WorkbenchFocusMode,
   WorkbenchFocusRequest,
@@ -96,16 +105,18 @@ export class PlannerStoreService implements OnDestroy {
   private readonly graphBuild: PlannerGraphBuildSlice;
   private readonly defaultsCommands: PlannerDefaultsCommandSlice;
   private readonly planCommands: PlannerPlanCommandSlice;
-  private readonly views: PlannerStoreViewSelectors;
+  private readonly viewSelectors: PlannerStoreViewSelectors;
   private readonly connections: PlannerStoreConnections;
+  private readonly recipeSearch = signal('');
+  private readonly defaultRecipeSearch = signal('');
 
   public readonly dataset = this.datasetService.dataset;
   public readonly datasetError = this.datasetService.loadError;
-  public readonly recipeSearch = signal('');
-  public readonly defaultRecipeSearch = signal('');
   public readonly solveStatus = this.solver.solveStatus;
   public readonly solveError = this.solver.solveError;
   public readonly solveResult = this.solver.solveResult;
+  public readonly workbenchViews: PlannerStoreWorkbenchViews;
+  public readonly graphView: PlannerStoreGraphView;
 
   public readonly sessions: PlannerWorkspaceSlice['sessions'];
   public readonly activeSessionId: PlannerWorkspaceSlice['activeSessionId'];
@@ -117,37 +128,6 @@ export class PlannerStoreService implements OnDestroy {
   public readonly activeWorkbenchPanelId: PlannerWorkbenchSlice['activePanelId'];
   public readonly workbenchFocusRequest: PlannerWorkbenchSlice['focusRequest'];
   public readonly activeProject: PlannerWorkspaceSlice['activeProject'];
-  public readonly selectedGraphNodeId: PlannerGraphBuildSlice['selectedGraphNodeId'];
-  public readonly itemOptions: PlannerStoreViewSelectors['itemOptions'];
-  public readonly resourceRows: PlannerStoreViewSelectors['resourceRows'];
-  public readonly defaultResourceRows: PlannerStoreViewSelectors['defaultResourceRows'];
-  public readonly rawResourceMultiplierRows: PlannerStoreViewSelectors['rawResourceMultiplierRows'];
-  public readonly defaultRawResourceMultiplierRows: PlannerStoreViewSelectors['defaultRawResourceMultiplierRows'];
-  public readonly externalInputRows: PlannerStoreViewSelectors['externalInputRows'];
-  public readonly machineRows: PlannerStoreViewSelectors['machineRows'];
-  public readonly defaultMachineRows: PlannerStoreViewSelectors['defaultMachineRows'];
-  public readonly machinePanelSummary: PlannerStoreViewSelectors['machinePanelSummary'];
-  public readonly machineUsageRows: PlannerStoreViewSelectors['machineUsageRows'];
-  public readonly recipeRows: PlannerStoreViewSelectors['recipeRows'];
-  public readonly defaultRecipeRows: PlannerStoreViewSelectors['defaultRecipeRows'];
-  public readonly baseRecipeRows: PlannerStoreViewSelectors['baseRecipeRows'];
-  public readonly defaultBaseRecipeRows: PlannerStoreViewSelectors['defaultBaseRecipeRows'];
-  public readonly standardBaseRecipeRows: PlannerStoreViewSelectors['standardBaseRecipeRows'];
-  public readonly defaultStandardBaseRecipeRows: PlannerStoreViewSelectors['defaultStandardBaseRecipeRows'];
-  public readonly converterResourceRecipeRows: PlannerStoreViewSelectors['converterResourceRecipeRows'];
-  public readonly defaultConverterResourceRecipeRows: PlannerStoreViewSelectors['defaultConverterResourceRecipeRows'];
-  public readonly alternateRecipeRows: PlannerStoreViewSelectors['alternateRecipeRows'];
-  public readonly defaultAlternateRecipeRows: PlannerStoreViewSelectors['defaultAlternateRecipeRows'];
-  public readonly graph: PlannerStoreViewSelectors['graph'];
-  public readonly planLocked: PlannerStoreViewSelectors['planLocked'];
-  public readonly nodeLayoutLocked: PlannerStoreViewSelectors['nodeLayoutLocked'];
-  public readonly completedGraphNodeIds: PlannerStoreViewSelectors['completedGraphNodeIds'];
-  public readonly graphNodeNotes: PlannerStoreViewSelectors['graphNodeNotes'];
-  public readonly graphDisplaySettings: PlannerStoreViewSelectors['graphDisplaySettings'];
-  public readonly defaultGraphDisplaySettings: PlannerStoreViewSelectors['defaultGraphDisplaySettings'];
-  public readonly selectedGraphNode: PlannerStoreViewSelectors['selectedGraphNode'];
-  public readonly selectedGraphNodeState: PlannerStoreViewSelectors['selectedGraphNodeState'];
-  public readonly inspectorViewModel: PlannerStoreViewSelectors['inspectorViewModel'];
 
   public constructor() {
     this.workspace = new PlannerWorkspaceSlice({
@@ -167,7 +147,7 @@ export class PlannerStoreService implements OnDestroy {
     this.workspace.connectActivationHooks({
       projectActivated: (project) => this.workbench.activateProject(project),
     });
-    this.views = new PlannerStoreViewSelectors({
+    this.viewSelectors = new PlannerStoreViewSelectors({
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
       userDefaults: this.workspace.userDefaults,
@@ -176,6 +156,14 @@ export class PlannerStoreService implements OnDestroy {
       selectedGraphNodeId: this.graphBuild.selectedGraphNodeId,
       solveResult: this.solveResult,
     });
+    const viewSurface = createPlannerStoreViewSurface({
+      selectors: this.viewSelectors,
+      recipeSearch: this.recipeSearch,
+      defaultRecipeSearch: this.defaultRecipeSearch,
+      selectedGraphNodeId: this.graphBuild.selectedGraphNodeId,
+    });
+    this.workbenchViews = viewSurface.workbench;
+    this.graphView = viewSurface.graph;
     this.defaultsCommands = new PlannerDefaultsCommandSlice({
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
@@ -184,8 +172,8 @@ export class PlannerStoreService implements OnDestroy {
     this.planCommands = new PlannerPlanCommandSlice({
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
-      itemOptions: this.views.itemOptions,
-      planLocked: () => this.views.planLocked(),
+      itemOptions: this.viewSelectors.itemOptions,
+      planLocked: () => this.viewSelectors.planLocked(),
       updateActiveProject: (mapper) => this.workspace.updateActiveProject(mapper),
     });
     this.connections = new PlannerStoreConnections({
@@ -211,37 +199,6 @@ export class PlannerStoreService implements OnDestroy {
     this.activeWorkbenchPanelId = this.workbench.activePanelId;
     this.workbenchFocusRequest = this.workbench.focusRequest;
     this.activeProject = this.workspace.activeProject;
-    this.selectedGraphNodeId = this.graphBuild.selectedGraphNodeId;
-    this.itemOptions = this.views.itemOptions;
-    this.resourceRows = this.views.resourceRows;
-    this.defaultResourceRows = this.views.defaultResourceRows;
-    this.rawResourceMultiplierRows = this.views.rawResourceMultiplierRows;
-    this.defaultRawResourceMultiplierRows = this.views.defaultRawResourceMultiplierRows;
-    this.externalInputRows = this.views.externalInputRows;
-    this.machineRows = this.views.machineRows;
-    this.defaultMachineRows = this.views.defaultMachineRows;
-    this.machinePanelSummary = this.views.machinePanelSummary;
-    this.machineUsageRows = this.views.machineUsageRows;
-    this.recipeRows = this.views.recipeRows;
-    this.defaultRecipeRows = this.views.defaultRecipeRows;
-    this.baseRecipeRows = this.views.baseRecipeRows;
-    this.defaultBaseRecipeRows = this.views.defaultBaseRecipeRows;
-    this.standardBaseRecipeRows = this.views.standardBaseRecipeRows;
-    this.defaultStandardBaseRecipeRows = this.views.defaultStandardBaseRecipeRows;
-    this.converterResourceRecipeRows = this.views.converterResourceRecipeRows;
-    this.defaultConverterResourceRecipeRows = this.views.defaultConverterResourceRecipeRows;
-    this.alternateRecipeRows = this.views.alternateRecipeRows;
-    this.defaultAlternateRecipeRows = this.views.defaultAlternateRecipeRows;
-    this.graph = this.views.graph;
-    this.planLocked = this.views.planLocked;
-    this.nodeLayoutLocked = this.views.nodeLayoutLocked;
-    this.completedGraphNodeIds = this.views.completedGraphNodeIds;
-    this.graphNodeNotes = this.views.graphNodeNotes;
-    this.graphDisplaySettings = this.views.graphDisplaySettings;
-    this.defaultGraphDisplaySettings = this.views.defaultGraphDisplaySettings;
-    this.selectedGraphNode = this.views.selectedGraphNode;
-    this.selectedGraphNodeState = this.views.selectedGraphNodeState;
-    this.inspectorViewModel = this.views.inspectorViewModel;
 
     this.connections.connect(this.persistenceCoordinator, this.solver);
   }

@@ -28,16 +28,12 @@
       </div>
 
       @for (row of rows; track row.id) {
-        <div
-          class="input-row"
-          [class.input-row--needs-item]="row.itemId.length === 0"
-          role="row"
-        >
+        <div class="input-row" [class.input-row--needs-item]="row.itemId.length === 0" role="row">
           <div class="target-item-picker">
             <bw-target-item-picker
-              [items]="store.itemOptions()"
+              [items]="store.workbenchViews.itemOptions()"
               [selectedItemId]="row.itemId"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               [allowEmptySelection]="false"
               searchLabel="Search external input items"
               (itemSelected)="updateInputItem(row, $event)"
@@ -51,7 +47,7 @@
               min="0"
               step="1"
               [ngModel]="row.amountPerMinute"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               (ngModelChange)="updateInputAmount(row, $event)"
             />
           </label>
@@ -61,7 +57,7 @@
               type="button"
               title="Remove external input"
               aria-label="Remove external input"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               (click)="removeInput(row)"
             >
               Remove

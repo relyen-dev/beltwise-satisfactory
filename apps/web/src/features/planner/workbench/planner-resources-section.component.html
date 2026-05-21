@@ -5,19 +5,23 @@
       <span>Map resource caps for this project. External factory inputs live in Inputs.</span>
     </div>
     <div class="section-actions resource-actions">
-      <button type="button" [disabled]="store.planLocked()" (click)="store.resetAllResources()">
+      <button
+        type="button"
+        [disabled]="store.graphView.planLocked()"
+        (click)="store.resetAllResources()"
+      >
         Reset all to map limits
       </button>
       <button
         type="button"
-        [disabled]="store.planLocked()"
+        [disabled]="store.graphView.planLocked()"
         (click)="store.setAllResourcesEnabled(false)"
       >
         Disable all
       </button>
       <button
         type="button"
-        [disabled]="store.planLocked()"
+        [disabled]="store.graphView.planLocked()"
         (click)="store.setAllResourcesEnabled(true)"
       >
         Enable all
@@ -26,7 +30,7 @@
   </div>
 
   <div class="resource-grid" aria-label="Raw resource caps">
-    @for (row of store.resourceRows(); track row.resource.itemId) {
+    @for (row of store.workbenchViews.resourceRows(); track row.resource.itemId) {
       <div
         class="resource-row"
         [class.resource-row--disabled]="!row.enabled"
@@ -37,7 +41,7 @@
             type="checkbox"
             [attr.aria-label]="'Enable ' + row.resource.displayName"
             [ngModel]="row.enabled"
-            [disabled]="store.planLocked()"
+            [disabled]="store.graphView.planLocked()"
             (ngModelChange)="store.setResourceEnabled(row.resource.itemId, $event)"
           />
         </label>
@@ -72,7 +76,7 @@
             step="1"
             placeholder="Unlimited"
             [ngModel]="row.capInputValue"
-            [disabled]="store.planLocked()"
+            [disabled]="store.graphView.planLocked()"
             (ngModelChange)="setResourceCap(row.resource.itemId, $event)"
           />
           <span>/ min</span>
@@ -82,7 +86,7 @@
           type="button"
           title="Reset to map limit"
           [attr.aria-label]="'Reset ' + row.resource.displayName + ' to map limit'"
-          [disabled]="store.planLocked()"
+          [disabled]="store.graphView.planLocked()"
           (click)="store.resetResource(row.resource.itemId)"
         >
           Reset

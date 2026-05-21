@@ -414,7 +414,7 @@
             }
           </div>
           <div class="graph-toolbar__actions">
-            @if (store.selectedGraphNode()) {
+            @if (store.graphView.selectedGraphNode()) {
               <button
                 type="button"
                 title="Clear selected graph node (Esc)"
@@ -464,15 +464,15 @@
         </div>
 
         <bw-production-graph
-          [graph]="store.graph()"
+          [graph]="store.graphView.graph()"
           [dataset]="store.dataset()"
           [layout]="project.graphLayout"
           [displaySettings]="project.graphDisplay"
-          [selectedNodeId]="store.selectedGraphNodeId()"
-          [completedNodeIds]="store.completedGraphNodeIds()"
-          [nodeNotes]="store.graphNodeNotes()"
-          [interactionLocked]="store.nodeLayoutLocked()"
-          [targetEditingLocked]="store.planLocked()"
+          [selectedNodeId]="store.graphView.selectedGraphNodeId()"
+          [completedNodeIds]="store.graphView.completedGraphNodeIds()"
+          [nodeNotes]="store.graphView.graphNodeNotes()"
+          [interactionLocked]="store.graphView.nodeLayoutLocked()"
+          [targetEditingLocked]="store.graphView.planLocked()"
           (nodeSelectionSet)="store.setGraphNodeSelection($event)"
           (nodeSelectionToggled)="store.toggleGraphNodeSelection($event)"
           (nodeDoneToggled)="store.toggleGraphNodeDone($event)"

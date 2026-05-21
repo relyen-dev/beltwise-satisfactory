@@ -25,7 +25,7 @@
           class="objective-preset-card"
           [class.objective-preset-card--active]="activePreset === preset.id"
           [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
-          [disabled]="store.planLocked()"
+          [disabled]="store.graphView.planLocked()"
           [title]="preset.description"
           (click)="store.setObjectivePreset(preset.id)"
         >
@@ -51,7 +51,7 @@
               type="number"
               min="0"
               [step]="control.step"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               [ngModel]="weightValue(profile, control.key)"
               (ngModelChange)="setObjectiveWeight(control.key, $event)"
             />
@@ -85,7 +85,10 @@
             <span></span>
           </div>
 
-          @for (row of store.rawResourceMultiplierRows(); track row.resource.itemId) {
+          @for (
+            row of store.workbenchViews.rawResourceMultiplierRows();
+            track row.resource.itemId
+          ) {
             <div
               class="objective-resource-row"
               [class.objective-resource-row--custom]="!row.isNeutral"
@@ -134,7 +137,7 @@
                     step="0.05"
                     [attr.aria-label]="row.resource.displayName + ' custom route multiplier'"
                     [attr.aria-describedby]="'objective-resource-cost-' + row.resource.itemId"
-                    [disabled]="store.planLocked()"
+                    [disabled]="store.graphView.planLocked()"
                     [ngModel]="row.multiplier"
                     (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
                   />
@@ -153,7 +156,7 @@
                 type="button"
                 title="Reset to neutral"
                 [attr.aria-label]="'Reset ' + row.resource.displayName + ' route multiplier'"
-                [disabled]="store.planLocked() || row.isNeutral"
+                [disabled]="store.graphView.planLocked() || row.isNeutral"
                 (click)="resetRawResourceMultiplier(row.resource.itemId)"
               >
                 Reset

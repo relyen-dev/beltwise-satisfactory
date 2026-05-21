@@ -9,7 +9,7 @@
       class="primary-action"
       title="Add product target"
       aria-label="Add product target"
-      [disabled]="store.planLocked()"
+      [disabled]="store.graphView.planLocked()"
       (click)="store.addTarget()"
     >
       Add product
@@ -25,7 +25,7 @@
         class="primary-action"
         title="Add product target"
         aria-label="Add product target"
-        [disabled]="store.planLocked()"
+        [disabled]="store.graphView.planLocked()"
         (click)="store.addTarget()"
       >
         Add product
@@ -48,9 +48,9 @@
         >
           <div class="target-item-picker">
             <bw-target-item-picker
-              [items]="store.itemOptions()"
+              [items]="store.workbenchViews.itemOptions()"
               [selectedItemId]="target.itemId"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               (itemSelected)="updateTargetItem(target.id, $event)"
             />
           </div>
@@ -59,7 +59,7 @@
             <span class="sr-only">Target mode</span>
             <select
               [ngModel]="target.mode"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               (ngModelChange)="store.updateTargetMode(target.id, $event)"
             >
               <option value="fixed">Fixed</option>
@@ -73,7 +73,7 @@
               type="number"
               min="0"
               step="1"
-              [disabled]="target.mode === 'maximize' || store.planLocked()"
+              [disabled]="target.mode === 'maximize' || store.graphView.planLocked()"
               [ngModel]="target.amountPerMinute ?? 0"
               (ngModelChange)="updateTargetAmount(target.id, $event)"
             />
@@ -84,7 +84,7 @@
               type="button"
               title="Duplicate target"
               aria-label="Duplicate target"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               (click)="store.duplicateTarget(target)"
             >
               Duplicate
@@ -93,7 +93,7 @@
               type="button"
               title="Remove target"
               aria-label="Remove target"
-              [disabled]="store.planLocked()"
+              [disabled]="store.graphView.planLocked()"
               (click)="store.removeTarget(target.id)"
             >
               Remove

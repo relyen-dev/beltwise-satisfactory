@@ -37,7 +37,7 @@ export class PlannerInputsSectionComponent {
 
   public readonly inputRows = computed<ExternalInputViewRow[]>(() => {
     const projectId = this.store.activeProject()?.id;
-    const savedRows = this.store.externalInputRows().map((row) => ({
+    const savedRows = this.store.workbenchViews.externalInputRows().map((row) => ({
       id: row.item.id,
       itemId: row.item.id,
       amountPerMinute: row.amountPerMinute,
@@ -51,11 +51,11 @@ export class PlannerInputsSectionComponent {
   });
 
   public readonly canAddInput = computed(() => {
-    if (this.store.planLocked() || !this.store.activeProject()) {
+    if (this.store.graphView.planLocked() || !this.store.activeProject()) {
       return false;
     }
 
-    return this.store.itemOptions().length > 0;
+    return this.store.workbenchViews.itemOptions().length > 0;
   });
 
   public addDraftInput(): void {
@@ -77,7 +77,7 @@ export class PlannerInputsSectionComponent {
   }
 
   public updateInputItem(row: ExternalInputViewRow, itemId: ItemId): void {
-    if (this.store.planLocked() || itemId.length === 0) {
+    if (this.store.graphView.planLocked() || itemId.length === 0) {
       return;
     }
 
@@ -87,7 +87,7 @@ export class PlannerInputsSectionComponent {
     }
 
     const existingAmountPerMinute =
-      this.store.externalInputRows().find((inputRow) => inputRow.item.id === itemId)
+      this.store.workbenchViews.externalInputRows().find((inputRow) => inputRow.item.id === itemId)
         ?.amountPerMinute ?? 0;
     this.store.setItemInput(
       itemId,
@@ -97,7 +97,7 @@ export class PlannerInputsSectionComponent {
   }
 
   public updateInputAmount(row: ExternalInputViewRow, value: string | number | null): void {
-    if (this.store.planLocked()) {
+    if (this.store.graphView.planLocked()) {
       return;
     }
 
@@ -120,7 +120,7 @@ export class PlannerInputsSectionComponent {
   }
 
   public removeInput(row: ExternalInputViewRow): void {
-    if (this.store.planLocked()) {
+    if (this.store.graphView.planLocked()) {
       return;
     }
 

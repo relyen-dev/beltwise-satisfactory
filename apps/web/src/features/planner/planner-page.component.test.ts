@@ -57,7 +57,7 @@ describe('PlannerPageComponent', () => {
     component.handleEscapeKey(event);
 
     expect(clearSelectedGraphNode).toHaveBeenCalledOnce();
-    expect(store.selectedGraphNodeId()).toBeNull();
+    expect(store.graphView.selectedGraphNodeId()).toBeNull();
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
@@ -76,7 +76,7 @@ describe('PlannerPageComponent', () => {
       component.handleEscapeKey(event);
 
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-      expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
       expect(event.preventDefault).not.toHaveBeenCalled();
     }
   });
@@ -90,7 +90,7 @@ describe('PlannerPageComponent', () => {
 
     expect(component.defaultsPanelOpen()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
@@ -103,7 +103,7 @@ describe('PlannerPageComponent', () => {
 
     expect(component.defaultsPanelOpen()).toBe(true);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
 
@@ -317,7 +317,7 @@ describe('PlannerPageComponent', () => {
     component.selectProject('project-a');
 
     expect(selectProject).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(component.planSelectorOpen()).toBe(false);
     expect(component.actionMenuOpen()).toBe(false);
   });
@@ -329,7 +329,7 @@ describe('PlannerPageComponent', () => {
     component.selectProjectFromSelector('project-a');
 
     expect(selectProject).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(component.planSelectorOpen()).toBe(false);
   });
 
@@ -347,7 +347,7 @@ describe('PlannerPageComponent', () => {
 
       expect(component.planSelectorOpen()).toBe(false);
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-      expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
       expect(event.preventDefault).toHaveBeenCalledOnce();
       expect(focus).toHaveBeenCalledOnce();
     } finally {
@@ -369,7 +369,7 @@ describe('PlannerPageComponent', () => {
 
       expect(component.actionMenuOpen()).toBe(false);
       expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-      expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+      expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
       expect(event.preventDefault).toHaveBeenCalledOnce();
       expect(focus).toHaveBeenCalledOnce();
     } finally {
@@ -437,7 +437,7 @@ describe('PlannerPageComponent', () => {
 
     expect(component.projectNameEditing()).toBe(false);
     expect(clearSelectedGraphNode).not.toHaveBeenCalled();
-    expect(store.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
+    expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
@@ -518,8 +518,7 @@ describe('PlannerPageComponent', () => {
   });
 
   it('copies a self-contained plan link and reports success', async () => {
-    const { clipboardAdapter, component, exportActivePlanSharePayload } =
-      createComponentHarness();
+    const { clipboardAdapter, component, exportActivePlanSharePayload } = createComponentHarness();
 
     await component.copyActivePlanShareLink();
 
@@ -624,7 +623,9 @@ function createComponentHarness(): {
     downloadJsonFile: vi.fn(),
   };
   const shareLocationAdapter: PlannerPageShareLocationAdapterHarness = {
-    createShareUrl: vi.fn((code: string) => `https://beltwise.test/planner#panel=plan&plan=${code}`),
+    createShareUrl: vi.fn(
+      (code: string) => `https://beltwise.test/planner#panel=plan&plan=${code}`,
+    ),
     readShareCode: vi.fn(() => null),
     clearShareCode: vi.fn(),
   };
@@ -654,7 +655,7 @@ function createComponentHarness(): {
     activeWorkbenchPanelId: signal<WorkbenchPanelId>('plan'),
     clearSelectedGraphNode: () => {
       clearSelectedGraphNode();
-      store.selectedGraphNodeId.set(null);
+      store.graphView.selectedGraphNodeId.set(null);
     },
     createProject,
     createSession,
@@ -670,7 +671,9 @@ function createComponentHarness(): {
     renameSession,
     selectProject,
     selectSession,
-    selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
+    graphView: {
+      selectedGraphNodeId: signal<string | null>('recipe:Recipe_IronPlate_C'),
+    },
     setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => {
       store.activeWorkbenchPanelId.set(panelId);
     },
@@ -752,7 +755,9 @@ interface PlannerPageStoreHarness {
   renameSession: ReturnType<typeof vi.fn>;
   selectProject: ReturnType<typeof vi.fn>;
   selectSession: ReturnType<typeof vi.fn>;
-  selectedGraphNodeId: WritableSignal<string | null>;
+  graphView: {
+    selectedGraphNodeId: WritableSignal<string | null>;
+  };
   setActiveWorkbenchPanel: (panelId: WorkbenchPanelId) => void;
   solveError: WritableSignal<string | null>;
   solveResult: WritableSignal<PlannerPageSolveResult | null>;
