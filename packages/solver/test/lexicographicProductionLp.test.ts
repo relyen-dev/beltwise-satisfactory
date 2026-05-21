@@ -60,6 +60,7 @@ function lexicographicFixtureModel(): ProductionLpModel {
         ore: 'rawInput:ore',
       },
       externalInputVariableByItemId: {},
+      assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
     },
@@ -254,6 +255,7 @@ describe('solveLexicographicProductionLp', () => {
         recipeVariableById: {},
         rawInputVariableByItemId: {},
         externalInputVariableByItemId: {},
+        assumedInputVariableByItemId: {},
         surplusVariableByItemId: {},
         maximizeVariableByTargetId: {
           'target-plate': 'maximizeTarget:plate',

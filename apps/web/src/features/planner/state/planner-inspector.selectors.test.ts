@@ -560,6 +560,97 @@ describe('planner inspector selectors', () => {
     expect(selection.outgoingFlows.map((flow) => flow.endpointLabel)).toEqual(['Iron Plate']);
   });
 
+  it('builds assumed input overview rows and selected-node details', () => {
+    const dataset = datasetWithSinkPoints();
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-waste',
+        itemId: 'Desc_NuclearWaste_C',
+        mode: 'fixed',
+        amountPerMinute: 25,
+        sortOrder: 0,
+      },
+    ];
+    const project = createPlannerProject({
+      id: 'project-assumed-waste',
+      name: 'Assumed waste',
+      dataset,
+      targets,
+      now: NOW,
+    });
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      assumedInputs: {
+        Desc_NuclearWaste_C: 25,
+      },
+      itemFlows: [
+        {
+          itemId: 'Desc_NuclearWaste_C',
+          amountPerMinute: 25,
+          source: { kind: 'assumedInput', id: 'Desc_NuclearWaste_C' },
+          target: { kind: 'output', id: 'target-waste' },
+        },
+      ],
+      outputs: {
+        Desc_NuclearWaste_C: 25,
+      },
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+    const graph = buildProductionGraph(dataset, targets, result);
+    const context: InspectorTestContext = {
+      dataset,
+      project,
+      result,
+      graph,
+      nodes: graph.nodes,
+    };
+
+    const overview = selectInspectorViewModel(dataset, project, result, graph, null, {});
+    const selection = selectSelection(
+      context,
+      nodeById(context, 'assumed-input:Desc_NuclearWaste_C'),
+    );
+
+    expect(overview?.overview?.metrics).toContainEqual({
+      label: 'Raw inputs',
+      value: '0',
+      detail: 'resource types',
+    });
+    expect(overview?.overview?.assumedInputs).toMatchObject([
+      {
+        itemId: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        amountPerMinuteLabel: '25/min',
+        detail:
+          'Modeled as supplied nuclear waste. Add this item in Inputs to replace the assumed source.',
+      },
+    ]);
+    expect(selection.kindLabel).toBe('Assumed input');
+    expect(selection.metrics).toEqual([
+      { label: 'Supplied', value: '25/min', detail: null },
+      { label: 'Source', value: 'Assumed', detail: null },
+    ]);
+    if (selection.details.kind !== 'assumedInput') {
+      throw new Error('Expected assumed input details');
+    }
+    expect(selection.details.sourceNote).toBe(
+      'Modeled as supplied nuclear waste. Add this item in Inputs to replace the assumed source.',
+    );
+    expect(selection.outgoingFlows).toMatchObject([
+      {
+        endpointKindLabel: 'Output',
+        endpointLabel: 'Uranium Waste',
+        amountPerMinuteLabel: '25/min',
+      },
+    ]);
+  });
+
   it('builds byproduct node details with surplus and potential sink points', () => {
     const context = createInspectorContext();
     const node = nodeById(context, 'byproduct:Desc_Screw_C');

@@ -79,6 +79,7 @@
           tabindex="0"
           [class.production-node--resource]="node.kind === 'resource'"
           [class.production-node--external-input]="node.kind === 'externalInput'"
+          [class.production-node--assumed-input]="node.kind === 'assumedInput'"
           [class.production-node--recipe]="node.kind === 'recipe'"
           [class.production-node--output]="node.kind === 'output'"
           [class.production-node--byproduct]="node.kind === 'byproduct'"
@@ -97,7 +98,7 @@
             (pointerup)="handleNodePointerUp(node.id, $event)"
             (dblclick)="handleNodeDoubleClick(node.id, $event)"
           >
-            <div class="node-kicker">{{ node.kind }}</div>
+            <div class="node-kicker">{{ formatNodeKind(node.kind) }}</div>
             <div class="node-title">{{ node.data.label }}</div>
             @if (isFixedOutputTarget(node) && !shouldShowTargetAmountInput(node)) {
               <div class="node-target-rate-display">

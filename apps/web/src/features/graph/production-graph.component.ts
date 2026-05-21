@@ -38,6 +38,7 @@ import {
   type GraphFocusScope,
 } from './graph-interaction.presenter';
 import {
+  formatGraphNodeKindDisplayValue,
   formatMachineCountDisplayValue,
   formatTargetAmountDisplayValue,
   graphNodeNote,
@@ -249,6 +250,10 @@ export class ProductionGraphComponent implements OnDestroy {
 
   public formatMachineCount(machineCount: number | undefined): string {
     return formatMachineCountDisplayValue(machineCount, this.displaySettings().rateDecimalPlaces);
+  }
+
+  public formatNodeKind(kind: BeltwiseFoblexFlowNode['kind']): string {
+    return formatGraphNodeKindDisplayValue(kind);
   }
 
   public tooltipStatKey(stat: string, index: number): string {

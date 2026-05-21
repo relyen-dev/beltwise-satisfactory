@@ -235,6 +235,42 @@ function cycleDataset(): GameDataset {
   };
 }
 
+function wasteInputDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_NuclearWaste_C: {
+        id: 'Desc_NuclearWaste_C',
+        className: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        form: 'solid',
+      },
+      Desc_WasteWidget_C: {
+        id: 'Desc_WasteWidget_C',
+        className: 'Desc_WasteWidget_C',
+        displayName: 'Waste Widget',
+        form: 'solid',
+      },
+    },
+    recipes: {
+      ...tinySatisfactoryDataset.recipes,
+      Recipe_WasteWidget_C: {
+        id: 'Recipe_WasteWidget_C',
+        className: 'Recipe_WasteWidget_C',
+        displayName: 'Waste Widget',
+        ingredients: [{ itemId: 'Desc_NuclearWaste_C', amount: 1 }],
+        products: [{ itemId: 'Desc_WasteWidget_C', amount: 1 }],
+        durationSeconds: 6,
+        producedIn: ['Build_ConstructorMk1_C'],
+        isAlternate: false,
+        isHandCraftOnly: false,
+        tags: [],
+      },
+    },
+  };
+}
+
 function fullDataset(): GameDataset {
   const datasetPath = fileURLToPath(
     new URL('../../../apps/web/public/data/satisfactory-current.json', import.meta.url),
@@ -277,6 +313,7 @@ describe('solveProductionPlan real LP solver', () => {
       recipeRates: {},
       rawInputs: {},
       externalInputs: {},
+      assumedInputs: {},
       itemFlows: [],
       outputs: {},
       surplus: {},
@@ -397,6 +434,65 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.externalInputs?.['Desc_IngotIron_C']).toBeCloseTo(20, 6);
     expect(result.recipeRates['Recipe_IronIngot_C']).toBeCloseTo(30, 6);
     expect(result.rawInputs['Desc_OreIron_C']).toBeCloseTo(30, 6);
+  });
+
+  it('sources nuclear waste through assumed inputs when no manual input exists', async () => {
+    const dataset = wasteInputDataset();
+    const project = fixtureProject(
+      [fixedTarget('target-widget', 'Desc_WasteWidget_C', 10)],
+      dataset,
+    );
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.rawInputs['Desc_NuclearWaste_C']).toBeUndefined();
+    expect(result.externalInputs?.['Desc_NuclearWaste_C']).toBeUndefined();
+    expect(result.assumedInputs?.['Desc_NuclearWaste_C']).toBeCloseTo(10, 6);
+    expect(
+      result.itemFlows.find(
+        (flow) =>
+          flow.itemId === 'Desc_NuclearWaste_C' &&
+          flow.source.kind === 'assumedInput' &&
+          flow.target.id === 'Recipe_WasteWidget_C',
+      )?.amountPerMinute,
+    ).toBeCloseTo(10, 6);
+  });
+
+  it('uses manual nuclear waste inputs before any assumed stream', async () => {
+    const dataset = wasteInputDataset();
+    const partialProject = fixtureProject(
+      [fixedTarget('target-widget', 'Desc_WasteWidget_C', 10)],
+      dataset,
+    );
+    partialProject.itemInputs['Desc_NuclearWaste_C'] = { amountPerMinute: 4 };
+
+    const partialResult = await solveProductionPlan({
+      dataset,
+      project: partialProject,
+    });
+
+    expect(partialResult.status).toBe('optimal');
+    expect(partialResult.externalInputs?.['Desc_NuclearWaste_C']).toBeCloseTo(4, 6);
+    expect(partialResult.assumedInputs?.['Desc_NuclearWaste_C']).toBeCloseTo(6, 6);
+
+    const fullProject = fixtureProject(
+      [fixedTarget('target-widget', 'Desc_WasteWidget_C', 10)],
+      dataset,
+    );
+    fullProject.itemInputs['Desc_NuclearWaste_C'] = { amountPerMinute: 10 };
+
+    const fullResult = await solveProductionPlan({
+      dataset,
+      project: fullProject,
+    });
+
+    expect(fullResult.status).toBe('optimal');
+    expect(fullResult.externalInputs?.['Desc_NuclearWaste_C']).toBeCloseTo(10, 6);
+    expect(fullResult.assumedInputs?.['Desc_NuclearWaste_C']).toBeUndefined();
   });
 
   it('maximizes an output under raw resource caps without rewarding surplus', async () => {
@@ -679,6 +775,58 @@ describe('solveProductionPlan real LP solver', () => {
       true,
     );
     expect(Math.max(0, ...Object.values(result.surplus))).toBeLessThan(1_000);
+  });
+
+  it('solves a full-data Plutonium Fuel Rod target using assumed uranium waste', async () => {
+    const dataset = fullDataset();
+    const project = fixtureProject(
+      [fixedTarget('target-plutonium-fuel-rod', 'Desc_PlutoniumFuelRod_C', 10)],
+      dataset,
+    );
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.warnings).toEqual([]);
+    expect(result.outputs['Desc_PlutoniumFuelRod_C']).toBeCloseTo(10, 6);
+    expect(result.rawInputs['Desc_NuclearWaste_C']).toBeUndefined();
+    expect(result.externalInputs?.['Desc_NuclearWaste_C']).toBeUndefined();
+    expect(result.assumedInputs?.['Desc_NuclearWaste_C']).toBeGreaterThan(0);
+    expect(
+      result.itemFlows.some(
+        (flow) =>
+          flow.itemId === 'Desc_NuclearWaste_C' && flow.source.kind === 'assumedInput',
+      ),
+    ).toBe(true);
+  });
+
+  it('solves a full-data Ficsonium Fuel Rod target using assumed plutonium waste', async () => {
+    const dataset = fullDataset();
+    const project = fixtureProject(
+      [fixedTarget('target-ficsonium-fuel-rod', 'Desc_FicsoniumFuelRod_C', 1)],
+      dataset,
+    );
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.warnings).toEqual([]);
+    expect(result.outputs['Desc_FicsoniumFuelRod_C']).toBeCloseTo(1, 6);
+    expect(result.rawInputs['Desc_PlutoniumWaste_C']).toBeUndefined();
+    expect(result.externalInputs?.['Desc_PlutoniumWaste_C']).toBeUndefined();
+    expect(result.assumedInputs?.['Desc_PlutoniumWaste_C']).toBeGreaterThan(0);
+    expect(
+      result.itemFlows.some(
+        (flow) =>
+          flow.itemId === 'Desc_PlutoniumWaste_C' && flow.source.kind === 'assumedInput',
+      ),
+    ).toBe(true);
   });
 
   it('does not report orphan resources or tiny split screw routes in a Uranium Fuel Rod plan', async () => {

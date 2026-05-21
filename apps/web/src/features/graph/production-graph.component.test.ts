@@ -258,6 +258,33 @@ describe('ProductionGraphComponent template', () => {
     expect(element.querySelector('script')).toBeNull();
     expect(globals.__beltwiseGraphXss).toBeUndefined();
   });
+
+  it('renders assumed input nodes with their own graph class', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+
+    controls.graph.set({
+      nodes: [
+        {
+          id: 'assumed-input:Desc_NuclearWaste_C',
+          kind: 'assumedInput',
+          label: 'Uranium Waste',
+          subtitle: '25/min assumed source',
+          itemId: 'Desc_NuclearWaste_C',
+          amountPerMinute: 25,
+        },
+      ],
+      edges: [],
+    });
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const assumedNode = element.querySelector('.production-node--assumed-input');
+
+    expect(assumedNode).not.toBeNull();
+    expect(assumedNode?.textContent).toContain('assumed input');
+    expect(assumedNode?.textContent).toContain('Uranium Waste');
+    expect(assumedNode?.textContent).toContain('25/min assumed source');
+  });
 });
 
 function createComponentHarness(): ProductionGraphHarness {

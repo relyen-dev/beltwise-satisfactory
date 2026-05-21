@@ -5,7 +5,7 @@ import type {
   MachineUsage,
   PlanWarning,
   ProductTarget,
-  ProductionPlanResult
+  ProductionPlanResult,
 } from '@beltwise/planner-core';
 import type { LinearSolverResult } from './SolverAdapter';
 import type { ProductionLpModel, ProductionPlanInput } from './lpModel';
@@ -18,6 +18,7 @@ interface SolvedProductionValues {
   recipeRates: Record<RecipeId, number>;
   rawInputs: Record<ItemId, number>;
   externalInputs: Record<ItemId, number>;
+  assumedInputs: Record<ItemId, number>;
   surplus: Record<ItemId, number>;
   outputs: Record<ItemId, number>;
   maximizeOutputsByTargetId: Record<string, number>;
@@ -46,8 +47,9 @@ export function buildProductionPlanResultFromSolution(
     return emptyResult(linearResult.status, [
       {
         code: `solver-${linearResult.status}`,
-        message: linearResult.message ?? `Production solve finished with ${linearResult.status} status.`
-      }
+        message:
+          linearResult.message ?? `Production solve finished with ${linearResult.status} status.`,
+      },
     ]);
   }
 
@@ -59,12 +61,13 @@ export function buildProductionPlanResultFromSolution(
     recipeRates: solvedValues.recipeRates,
     rawInputs: solvedValues.rawInputs,
     externalInputs: solvedValues.externalInputs,
+    assumedInputs: solvedValues.assumedInputs,
     itemFlows: buildItemFlows(input, solvedValues),
     outputs: solvedValues.outputs,
     surplus: solvedValues.surplus,
     machineUsage,
     powerMw: cleanNumber(machineUsage.reduce((total, usage) => total + usage.powerMw, 0)),
-    warnings: []
+    warnings: [],
   };
 }
 
@@ -88,7 +91,7 @@ export function buildMachineUsage(
         recipeDisplayName: recipe?.displayName ?? recipeId,
         recipeRatePerMinute: cleanNumber(recipeRatePerMinute),
         machineCount: cleanNumber(machineCount),
-        powerMw: cleanNumber(machineCount * machinePowerMw(machine))
+        powerMw: cleanNumber(machineCount * machinePowerMw(machine)),
       };
     });
 }
@@ -120,8 +123,17 @@ function collectSolvedValues(
   }
 
   const externalInputs: Record<ItemId, number> = {};
-  for (const [itemId, variableName] of Object.entries(model.metadata.externalInputVariableByItemId)) {
+  for (const [itemId, variableName] of Object.entries(
+    model.metadata.externalInputVariableByItemId,
+  )) {
     externalInputs[itemId] = variableValue(variables, variableName);
+  }
+
+  const assumedInputs: Record<ItemId, number> = {};
+  for (const [itemId, variableName] of Object.entries(
+    model.metadata.assumedInputVariableByItemId,
+  )) {
+    assumedInputs[itemId] = variableValue(variables, variableName);
   }
 
   const surplus: Record<ItemId, number> = {};
@@ -130,7 +142,9 @@ function collectSolvedValues(
   }
 
   const maximizeOutputsByTargetId: Record<string, number> = {};
-  for (const [targetId, variableName] of Object.entries(model.metadata.maximizeVariableByTargetId)) {
+  for (const [targetId, variableName] of Object.entries(
+    model.metadata.maximizeVariableByTargetId,
+  )) {
     maximizeOutputsByTargetId[targetId] = variableValue(variables, variableName);
   }
 
@@ -138,9 +152,10 @@ function collectSolvedValues(
     recipeRates: cleanPositiveRecord(recipeRates, relativeNoiseThreshold(recipeRates)),
     rawInputs: cleanPositiveRecord(rawInputs, relativeNoiseThreshold(rawInputs)),
     externalInputs: cleanPositiveRecord(externalInputs, relativeNoiseThreshold(externalInputs)),
+    assumedInputs: cleanPositiveRecord(assumedInputs, relativeNoiseThreshold(assumedInputs)),
     surplus: cleanPositiveRecord(surplus, relativeNoiseThreshold(surplus)),
     outputs: buildOutputs(input.project.targets, maximizeOutputsByTargetId),
-    maximizeOutputsByTargetId: cleanPositiveRecord(maximizeOutputsByTargetId)
+    maximizeOutputsByTargetId: cleanPositiveRecord(maximizeOutputsByTargetId),
   };
 }
 
@@ -151,7 +166,9 @@ function buildOutputs(
   const outputs: Record<ItemId, number> = {};
   for (const target of targets) {
     const amountPerMinute =
-      target.mode === 'fixed' ? (target.amountPerMinute ?? 0) : (maximizeOutputsByTargetId[target.id] ?? 0);
+      target.mode === 'fixed'
+        ? (target.amountPerMinute ?? 0)
+        : (maximizeOutputsByTargetId[target.id] ?? 0);
     if (amountPerMinute <= EPSILON) {
       continue;
     }
@@ -160,13 +177,19 @@ function buildOutputs(
   return cleanPositiveRecord(outputs);
 }
 
-function buildItemFlows(input: ProductionPlanInput, solvedValues: SolvedProductionValues): ItemFlow[] {
+function buildItemFlows(
+  input: ProductionPlanInput,
+  solvedValues: SolvedProductionValues,
+): ItemFlow[] {
   const itemIds = new Set<ItemId>();
   const allocationContext = buildItemFlowAllocationContext(input.dataset, solvedValues.recipeRates);
   for (const itemId of Object.keys(solvedValues.rawInputs)) {
     itemIds.add(itemId);
   }
   for (const itemId of Object.keys(solvedValues.externalInputs)) {
+    itemIds.add(itemId);
+  }
+  for (const itemId of Object.keys(solvedValues.assumedInputs)) {
     itemIds.add(itemId);
   }
   for (const itemId of Object.keys(solvedValues.surplus)) {
@@ -254,7 +277,7 @@ function buildItemSources(
   if (rawInputAmount > EPSILON) {
     sources.push({
       endpoint: { kind: 'resource', id: itemId },
-      amountPerMinute: rawInputAmount
+      amountPerMinute: rawInputAmount,
     });
   }
 
@@ -262,12 +285,20 @@ function buildItemSources(
   if (externalInputAmount > EPSILON) {
     sources.push({
       endpoint: { kind: 'externalInput', id: itemId },
-      amountPerMinute: externalInputAmount
+      amountPerMinute: externalInputAmount,
     });
   }
 
-  for (const [recipeId, recipeRatePerMinute] of Object.entries(solvedValues.recipeRates).toSorted(([left], [right]) =>
-    left.localeCompare(right),
+  const assumedInputAmount = solvedValues.assumedInputs[itemId] ?? 0;
+  if (assumedInputAmount > EPSILON) {
+    sources.push({
+      endpoint: { kind: 'assumedInput', id: itemId },
+      amountPerMinute: assumedInputAmount,
+    });
+  }
+
+  for (const [recipeId, recipeRatePerMinute] of Object.entries(solvedValues.recipeRates).toSorted(
+    ([left], [right]) => left.localeCompare(right),
   )) {
     const recipe = dataset.recipes[recipeId];
     if (!recipe || recipeRatePerMinute <= EPSILON) {
@@ -279,7 +310,7 @@ function buildItemSources(
     }
     sources.push({
       endpoint: { kind: 'recipe', id: recipeId },
-      amountPerMinute: productAmountPerMinute
+      amountPerMinute: productAmountPerMinute,
     });
   }
 
@@ -294,8 +325,8 @@ function buildItemDemands(
 ): ItemDemand[] {
   const demands: ItemDemand[] = [];
 
-  for (const [recipeId, recipeRatePerMinute] of Object.entries(solvedValues.recipeRates).toSorted(([left], [right]) =>
-    left.localeCompare(right),
+  for (const [recipeId, recipeRatePerMinute] of Object.entries(solvedValues.recipeRates).toSorted(
+    ([left], [right]) => left.localeCompare(right),
   )) {
     const recipeDemand = recipeIngredientDemand(recipeId, itemId, recipeRatePerMinute);
     if (recipeDemand) {
@@ -316,7 +347,7 @@ function buildItemDemands(
     }
     demands.push({
       endpoint: { kind: 'output', id: target.id },
-      amountPerMinute
+      amountPerMinute,
     });
   }
 
@@ -324,7 +355,7 @@ function buildItemDemands(
   if (surplusAmount > EPSILON) {
     demands.push({
       endpoint: { kind: 'byproduct', id: itemId },
-      amountPerMinute: surplusAmount
+      amountPerMinute: surplusAmount,
     });
   }
 
@@ -348,7 +379,7 @@ function buildItemDemands(
     }
     return {
       endpoint: { kind: 'recipe', id: recipeId },
-      amountPerMinute
+      amountPerMinute,
     };
   }
 
@@ -385,7 +416,7 @@ function matchItemFlows(
           itemId,
           amountPerMinute: cleanNumber(amountPerMinute),
           source: source.endpoint,
-          target: demand.endpoint
+          target: demand.endpoint,
         });
       }
 
@@ -466,24 +497,31 @@ function isDownstreamRecipe(
   return false;
 }
 
-function sumItemAmount(amounts: ReadonlyArray<{ itemId: ItemId; amount: number }>, itemId: ItemId): number {
+function sumItemAmount(
+  amounts: ReadonlyArray<{ itemId: ItemId; amount: number }>,
+  itemId: ItemId,
+): number {
   return amounts
     .filter((amount) => amount.itemId === itemId)
     .reduce((total, amount) => total + amount.amount, 0);
 }
 
-function emptyResult(status: ProductionPlanResult['status'], warnings: PlanWarning[]): ProductionPlanResult {
+function emptyResult(
+  status: ProductionPlanResult['status'],
+  warnings: PlanWarning[],
+): ProductionPlanResult {
   return {
     status,
     recipeRates: {},
     rawInputs: {},
     externalInputs: {},
+    assumedInputs: {},
     itemFlows: [],
     outputs: {},
     surplus: {},
     machineUsage: [],
     powerMw: 0,
-    warnings
+    warnings,
   };
 }
 

@@ -365,6 +365,87 @@ describe('production graph conversion', () => {
       'external-input:Desc_IngotIron_C',
     );
   });
+
+  it('maps assumed inputs to their own source nodes', () => {
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-widget',
+        itemId: 'Desc_ReinforcedIronPlate_C',
+        mode: 'fixed',
+        amountPerMinute: 10,
+        sortOrder: 0,
+      },
+    ];
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_ReinforcedIronPlate_C: 10,
+      },
+      rawInputs: {},
+      externalInputs: {},
+      assumedInputs: {
+        Desc_NuclearWaste_C: 15,
+      },
+      outputs: {
+        Desc_ReinforcedIronPlate_C: 10,
+      },
+      surplus: {},
+      powerMw: 10,
+      warnings: [],
+      machineUsage: [
+        {
+          recipeId: 'Recipe_ReinforcedIronPlate_C',
+          machineId: 'Build_AssemblerMk1_C',
+          machineDisplayName: 'Assembler',
+          recipeDisplayName: 'Reinforced Iron Plate',
+          recipeRatePerMinute: 10,
+          machineCount: 2,
+          powerMw: 10,
+        },
+      ],
+      itemFlows: [
+        {
+          itemId: 'Desc_NuclearWaste_C',
+          amountPerMinute: 15,
+          source: { kind: 'assumedInput', id: 'Desc_NuclearWaste_C' },
+          target: { kind: 'recipe', id: 'Recipe_ReinforcedIronPlate_C' },
+        },
+      ],
+    };
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_NuclearWaste_C: {
+          id: 'Desc_NuclearWaste_C',
+          className: 'Desc_NuclearWaste_C',
+          displayName: 'Uranium Waste',
+          form: 'solid' as const,
+        },
+      },
+    };
+
+    const graph = buildProductionGraph(dataset, targets, result);
+    const renderer = toGraphPresentationModel(graph);
+
+    expect(graph.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'assumed-input:Desc_NuclearWaste_C',
+        kind: 'assumedInput',
+        label: 'Uranium Waste',
+        subtitle: '15/min assumed source',
+      }),
+    );
+    expect(graph.nodes.some((node) => node.id === 'resource:Desc_NuclearWaste_C')).toBe(false);
+    expect(graph.edges.map((edge) => edge.sourceNodeId)).toContain(
+      'assumed-input:Desc_NuclearWaste_C',
+    );
+    expect(
+      renderer.nodes.find((node) => node.id === 'assumed-input:Desc_NuclearWaste_C'),
+    ).toMatchObject({
+      kind: 'assumedInput',
+    });
+  });
 });
 
 function nodePosition(renderer: GraphPresentationModel, nodeId: string): { x: number; y: number } {

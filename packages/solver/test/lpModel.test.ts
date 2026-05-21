@@ -6,6 +6,7 @@ import {
   type PlannerProject,
 } from '@beltwise/planner-core';
 import {
+  assumedInputVariable,
   buildMachineUsage,
   buildProductionLpModel,
   DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS,
@@ -68,6 +69,42 @@ function variablePowerMachineDataset(): GameDataset {
       Recipe_IronPlate_C: {
         ...ironPlateRecipe,
         producedIn: ['Build_FastVariableConstructor_C', 'Build_ConstructorMk1_C'],
+      },
+    },
+  };
+}
+
+function wasteInputDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_NuclearWaste_C: {
+        id: 'Desc_NuclearWaste_C',
+        className: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        form: 'solid',
+      },
+      Desc_WasteWidget_C: {
+        id: 'Desc_WasteWidget_C',
+        className: 'Desc_WasteWidget_C',
+        displayName: 'Waste Widget',
+        form: 'solid',
+      },
+    },
+    recipes: {
+      ...tinySatisfactoryDataset.recipes,
+      Recipe_WasteWidget_C: {
+        id: 'Recipe_WasteWidget_C',
+        className: 'Recipe_WasteWidget_C',
+        displayName: 'Waste Widget',
+        ingredients: [{ itemId: 'Desc_NuclearWaste_C', amount: 1 }],
+        products: [{ itemId: 'Desc_WasteWidget_C', amount: 1 }],
+        durationSeconds: 6,
+        producedIn: ['Build_ConstructorMk1_C'],
+        isAlternate: false,
+        isHandCraftOnly: false,
+        tags: [],
       },
     },
   };
@@ -151,6 +188,43 @@ describe('buildProductionLpModel', () => {
       lowerBound: 0,
       upperBound: 600,
     });
+  });
+
+  it('adds assumed input variables for nuclear waste without making them raw inputs', () => {
+    const dataset = wasteInputDataset();
+    const project = createPlannerProject({
+      id: 'project-waste',
+      name: 'Waste factory',
+      dataset,
+      now: '2026-05-12T00:00:00.000Z',
+      targets: [
+        {
+          id: 'target-widget',
+          itemId: 'Desc_WasteWidget_C',
+          mode: 'fixed',
+          amountPerMinute: 10,
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    const model = buildProductionLpModel({
+      dataset,
+      project,
+    });
+    const assumedVar = assumedInputVariable('Desc_NuclearWaste_C');
+    const wasteBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:Desc_NuclearWaste_C',
+    );
+    const rawResourceStage = model.objectiveStages.find((stage) => stage.name === 'raw-resources');
+
+    expect(model.metadata.rawInputVariableByItemId['Desc_NuclearWaste_C']).toBeUndefined();
+    expect(model.metadata.assumedInputVariableByItemId['Desc_NuclearWaste_C']).toBe(assumedVar);
+    expect(model.variables.find((variable) => variable.name === assumedVar)).toMatchObject({
+      lowerBound: 0,
+    });
+    expect(wasteBalance?.coefficients[assumedVar]).toBe(1);
+    expect(rawResourceStage?.objective.coefficients[assumedVar]).toBeGreaterThan(0);
   });
 
   it('removes disabled recipes from the LP model', () => {
