@@ -30,6 +30,7 @@ describe('plan report module', () => {
       powerMw: 16,
       activeRecipeGroupCount: 3,
       totalMachineCount: 1.8,
+      totalPhysicalMachineCount: 3,
       rawInputTypeCount: 2,
       targetCount: 2,
       objective: {
@@ -56,6 +57,7 @@ describe('plan report module', () => {
         machineId: 'Build_ConstructorMk1_C',
         machineDisplayName: 'Constructor',
         machineCount: 1.8,
+        physicalMachineCount: 3,
         powerMw: 16,
         recipeGroupCount: 3,
       },
@@ -414,12 +416,14 @@ describe('plan report module', () => {
       activeRecipeGroupCount: 0,
       usedMachineTypeCount: 0,
       totalMachineCount: 0,
+      totalPhysicalMachineCount: 0,
       totalPowerMw: 0,
     });
     expect(buildMachinePanelReport(context.result)).toEqual({
       activeRecipeGroupCount: 3,
       usedMachineTypeCount: 1,
       totalMachineCount: 1.8,
+      totalPhysicalMachineCount: 3,
       totalPowerMw: 16,
     });
   });
