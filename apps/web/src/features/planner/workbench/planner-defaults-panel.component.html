@@ -16,10 +16,10 @@
   </header>
 
   <div class="defaults-actions" aria-label="Default actions">
-    <button type="button" class="primary-action" (click)="store.saveActivePlanAsDefaults()">
+    <button type="button" class="primary-action" (click)="defaults.saveActivePlanAsDefaults()">
       Save current plan settings as defaults
     </button>
-    <button type="button" (click)="store.resetUserDefaults()">Reset to Beltwise defaults</button>
+    <button type="button" (click)="defaults.resetUserDefaults()">Reset to Beltwise defaults</button>
   </div>
 
   <nav class="defaults-tabs" aria-label="Default setting sections">
@@ -52,18 +52,17 @@
               <span class="sr-only">Search default recipes</span>
               <input
                 placeholder="Search recipes"
-                [ngModel]="store.workbenchViews.defaultRecipeSearch()"
-                (ngModelChange)="store.workbenchViews.defaultRecipeSearch.set($event)"
+                [ngModel]="defaults.recipeSearch()"
+                (ngModelChange)="defaults.recipeSearch.set($event)"
               />
             </label>
           </div>
 
           <div class="recipe-columns defaults-recipe-columns">
             <section class="recipe-group" aria-labelledby="default-recipes-title">
-              @let standardBaseRows = store.workbenchViews.defaultStandardBaseRecipeRows();
-              @let converterResourceRows =
-                store.workbenchViews.defaultConverterResourceRecipeRows();
-              @let alternateRows = store.workbenchViews.defaultAlternateRecipeRows();
+              @let standardBaseRows = defaults.standardBaseRecipeRows();
+              @let converterResourceRows = defaults.converterResourceRecipeRows();
+              @let alternateRows = defaults.alternateRecipeRows();
               @let recipeRows = activeRecipeRows();
               <div class="recipe-group-header">
                 <div>
@@ -120,7 +119,7 @@
                         type="checkbox"
                         [ngModel]="row.enabled"
                         [attr.aria-label]="row.toggleLabel"
-                        (ngModelChange)="store.setDefaultRecipeEnabled(row.recipe.id, $event)"
+                        (ngModelChange)="defaults.recipeCommands.setEnabled(row.recipe.id, $event)"
                       />
                       <span class="config-toggle-row__indicator" aria-hidden="true"></span>
                       <span class="config-toggle-row__copy">
@@ -203,7 +202,7 @@
 
       @case ('machines') {
         <section class="defaults-section">
-          @let rows = store.workbenchViews.defaultMachineRows();
+          @let rows = defaults.machineRows();
           <div class="section-heading">
             <div>
               <h3>Machine defaults</h3>
@@ -235,7 +234,7 @@
                     type="checkbox"
                     [ngModel]="row.enabled"
                     [attr.aria-label]="row.toggleLabel"
-                    (ngModelChange)="store.setDefaultMachineEnabled(row.machine.id, $event)"
+                    (ngModelChange)="defaults.machineCommands.setEnabled(row.machine.id, $event)"
                   />
                   <span class="config-toggle-row__indicator" aria-hidden="true"></span>
                   <span class="machine-icon-slot">
@@ -275,20 +274,20 @@
               <span>Raw resource availability and caps for future plans.</span>
             </div>
             <div class="section-actions resource-actions">
-              <button type="button" (click)="store.resetAllDefaultResources()">
+              <button type="button" (click)="defaults.resourceCommands.resetAll()">
                 Reset all to map limits
               </button>
-              <button type="button" (click)="store.setAllDefaultResourcesEnabled(false)">
+              <button type="button" (click)="defaults.resourceCommands.setAllEnabled(false)">
                 Disable all
               </button>
-              <button type="button" (click)="store.setAllDefaultResourcesEnabled(true)">
+              <button type="button" (click)="defaults.resourceCommands.setAllEnabled(true)">
                 Enable all
               </button>
             </div>
           </div>
 
           <div class="resource-grid" aria-label="Default raw resource caps">
-            @for (row of store.workbenchViews.defaultResourceRows(); track row.resource.itemId) {
+            @for (row of defaults.resourceRows(); track row.resource.itemId) {
               <div
                 class="resource-row"
                 [class.resource-row--disabled]="!row.enabled"
@@ -299,7 +298,9 @@
                     type="checkbox"
                     [attr.aria-label]="'Enable ' + row.resource.displayName + ' by default'"
                     [ngModel]="row.enabled"
-                    (ngModelChange)="store.setDefaultResourceEnabled(row.resource.itemId, $event)"
+                    (ngModelChange)="
+                      defaults.resourceCommands.setEnabled(row.resource.itemId, $event)
+                    "
                   />
                 </label>
 
@@ -342,7 +343,7 @@
                   type="button"
                   title="Reset default to map limit"
                   [attr.aria-label]="'Reset ' + row.resource.displayName + ' default to map limit'"
-                  (click)="store.resetDefaultResource(row.resource.itemId)"
+                  (click)="defaults.resourceCommands.reset(row.resource.itemId)"
                 >
                   Reset
                 </button>
@@ -357,17 +358,13 @@
           <div class="section-heading">
             <div>
               <h3>Objective defaults</h3>
-              @if (store.userDefaults(); as defaults) {
-                <span
-                  >{{ activeObjectivePresetLabel(defaults.objectiveProfile) }} for future
-                  plans.</span
-                >
+              @if (defaults.objectiveProfile(); as profile) {
+                <span>{{ activeObjectivePresetLabel(profile) }} for future plans.</span>
               }
             </div>
           </div>
 
-          @if (store.userDefaults(); as defaults) {
-            @let profile = defaults.objectiveProfile;
+          @if (defaults.objectiveProfile(); as profile) {
             @let activePreset = activeObjectivePresetId(profile);
 
             <div class="objective-preset-grid" aria-label="Default objective presets">
@@ -378,7 +375,7 @@
                   [class.objective-preset-card--active]="activePreset === preset.id"
                   [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
                   [title]="preset.description"
-                  (click)="store.setDefaultObjectivePreset(preset.id)"
+                  (click)="defaults.objectiveCommands.setPreset(preset.id)"
                 >
                   <strong>{{ preset.label }}</strong>
                   <span>{{ preset.description }}</span>
@@ -441,10 +438,7 @@
                     <span></span>
                   </div>
 
-                  @for (
-                    row of store.workbenchViews.defaultRawResourceMultiplierRows();
-                    track row.resource.itemId
-                  ) {
+                  @for (row of defaults.rawResourceMultiplierRows(); track row.resource.itemId) {
                     <div
                       class="objective-resource-row"
                       [class.objective-resource-row--custom]="!row.isNeutral"
@@ -550,13 +544,13 @@
             </div>
           </div>
 
-          @if (store.workbenchViews.defaultGraphDisplaySettings(); as display) {
+          @if (defaults.graphDisplaySettings(); as display) {
             <div class="display-settings-grid" aria-label="Default graph display settings">
               <label class="display-setting-card">
                 <span class="display-setting-card__label">Max belt</span>
                 <select
                   [ngModel]="display.maxBeltTier"
-                  (ngModelChange)="store.setDefaultMaxBeltTier($event)"
+                  (ngModelChange)="defaults.displayCommands.setMaxBeltTier($event)"
                 >
                   @for (tier of beltTierOptions; track tier.value) {
                     <option [ngValue]="tier.value">
@@ -570,7 +564,7 @@
                 <span class="display-setting-card__label">Max pipe</span>
                 <select
                   [ngModel]="display.maxPipeTier"
-                  (ngModelChange)="store.setDefaultMaxPipeTier($event)"
+                  (ngModelChange)="defaults.displayCommands.setMaxPipeTier($event)"
                 >
                   @for (tier of pipeTierOptions; track tier.value) {
                     <option [ngValue]="tier.value">
@@ -584,7 +578,7 @@
                 <span class="display-setting-card__label">Rate precision</span>
                 <select
                   [ngModel]="display.rateDecimalPlaces"
-                  (ngModelChange)="store.setDefaultRateDecimalPlaces($event)"
+                  (ngModelChange)="defaults.displayCommands.setRateDecimalPlaces($event)"
                 >
                   @for (option of rateDecimalOptions; track option.value) {
                     <option [ngValue]="option.value">{{ option.label }}</option>
@@ -596,7 +590,7 @@
                 <span class="display-setting-card__label">Edge style</span>
                 <select
                   [ngModel]="display.edgeStyle"
-                  (ngModelChange)="store.setDefaultGraphEdgeStyle($event)"
+                  (ngModelChange)="defaults.displayCommands.setGraphEdgeStyle($event)"
                 >
                   @for (option of edgeStyleOptions; track option.value) {
                     <option [ngValue]="option.value">{{ option.label }}</option>
@@ -612,7 +606,7 @@
                 <input
                   type="checkbox"
                   [ngModel]="display.showTransportLabels"
-                  (ngModelChange)="store.setDefaultShowTransportLabels($event)"
+                  (ngModelChange)="defaults.displayCommands.setShowTransportLabels($event)"
                 />
               </label>
 
@@ -624,7 +618,7 @@
                 <input
                   type="checkbox"
                   [ngModel]="display.animateFlowLines"
-                  (ngModelChange)="store.setDefaultAnimateFlowLines($event)"
+                  (ngModelChange)="defaults.displayCommands.setAnimateFlowLines($event)"
                 />
               </label>
             </div>

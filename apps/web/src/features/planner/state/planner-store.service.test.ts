@@ -31,6 +31,11 @@ import {
   type PlannerGraphStorePort,
 } from './planner-graph.store';
 import {
+  PLANNER_DEFAULTS_STORE_PORT,
+  PlannerDefaultsStore,
+  type PlannerDefaultsStorePort,
+} from './planner-defaults.store';
+import {
   PLANNER_PLAN_CONFIG_STORE_PORT,
   PlannerPlanConfigStore,
   type PlannerPlanConfigStorePort,
@@ -622,9 +627,9 @@ describe('PlannerStoreService', () => {
 
   it('applies objective defaults only to newly created projects', () => {
     const originalProject = createProject();
-    const { store } = createInitializedStore([originalProject], originalProject.id);
+    const { defaults, store } = createInitializedStore([originalProject], originalProject.id);
 
-    store.setDefaultObjectivePreset('low-power');
+    defaults.objectiveCommands.setPreset('low-power');
 
     expect(loadedStoreProject(store, originalProject.id).objectiveProfile).toEqual(
       originalProject.objectiveProfile,
@@ -642,9 +647,9 @@ describe('PlannerStoreService', () => {
 
   it('applies default raw resource multipliers only to newly created projects', () => {
     const originalProject = createProject();
-    const { store } = createInitializedStore([originalProject], originalProject.id);
+    const { defaults, store } = createInitializedStore([originalProject], originalProject.id);
 
-    store.setDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C', 2.5);
+    defaults.objectiveCommands.setRawResourceMultiplier('Desc_OreCopper_C', 2.5);
 
     expect(loadedStoreProject(store, originalProject.id).objectiveProfile).toEqual(
       originalProject.objectiveProfile,
@@ -655,12 +660,12 @@ describe('PlannerStoreService', () => {
         Desc_OreCopper_C: 2.5,
       },
     });
-    store.resetDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C');
+    defaults.objectiveCommands.resetRawResourceMultiplier('Desc_OreCopper_C');
     expect(store.userDefaults()?.objectiveProfile).toMatchObject({
       presetId: 'custom',
       rawResourceMultipliers: {},
     });
-    store.setDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C', 2.5);
+    defaults.objectiveCommands.setRawResourceMultiplier('Desc_OreCopper_C', 2.5);
 
     store.createProject();
 
@@ -850,15 +855,15 @@ describe('PlannerStoreService', () => {
     expect(store.activeProjectId()).toBe(projectB.id);
   });
 
-  it('keeps defaults commands separate from the active project', () => {
-    const { store } = createInitializedStore();
+  it('keeps the defaults capability separate from the active project', () => {
+    const { defaults, store } = createInitializedStore();
     const beforeProject = requiredProject(store);
 
-    store.setDefaultRecipeEnabled('Recipe_IronPlate_C', false);
-    store.setDefaultMachineEnabled('Build_ConstructorMk1_C', false);
-    store.setDefaultResourceCap('Desc_OreIron_C', 120);
-    store.setDefaultObjectiveRawResourceMultiplier('Desc_OreCopper_C', 2);
-    store.setDefaultGraphEdgeStyle('curved');
+    defaults.recipeCommands.setEnabled('Recipe_IronPlate_C', false);
+    defaults.machineCommands.setEnabled('Build_ConstructorMk1_C', false);
+    defaults.resourceCommands.setCap('Desc_OreIron_C', 120);
+    defaults.objectiveCommands.setRawResourceMultiplier('Desc_OreCopper_C', 2);
+    defaults.displayCommands.setGraphEdgeStyle('curved');
 
     expect(requiredProject(store)).toEqual(beforeProject);
     expect(store.userDefaults()?.recipeOverrides['Recipe_IronPlate_C']).toEqual({
@@ -910,9 +915,9 @@ describe('PlannerStoreService', () => {
         nodeStates: { node: { done: true, note: 'Build next' } },
       },
     };
-    const { store } = createInitializedStore([project], project.id);
+    const { defaults, store } = createInitializedStore([project], project.id);
 
-    store.saveActivePlanAsDefaults();
+    defaults.saveActivePlanAsDefaults();
 
     expect(requiredProject(store)).toEqual(project);
     expect(store.userDefaults()).toEqual({
@@ -925,13 +930,13 @@ describe('PlannerStoreService', () => {
   });
 
   it('resets user defaults to built-in behavior for future new projects', () => {
-    const { store } = createInitializedStore(
+    const { defaults, store } = createInitializedStore(
       [createProject()],
       'project-a',
       createCustomUserDefaults(),
     );
 
-    store.resetUserDefaults();
+    defaults.resetUserDefaults();
     store.createProject();
 
     const newProject = requiredProject(store);
@@ -1537,6 +1542,7 @@ function createInitializedStore(
   activeSessionId = sessions[0]?.id,
 ): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  defaults: PlannerDefaultsStore;
   graph: PlannerGraphStore;
   planConfig: PlannerPlanConfigStore;
   store: PlannerStoreService;
@@ -1570,6 +1576,7 @@ function createSession(
 
 function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorBinding) => void): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  defaults: PlannerDefaultsStore;
   graph: PlannerGraphStore;
   planConfig: PlannerPlanConfigStore;
   store: PlannerStoreService;
@@ -1617,6 +1624,20 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
       },
       PlannerGraphStore,
       {
+        provide: PLANNER_DEFAULTS_STORE_PORT,
+        useFactory: (): PlannerDefaultsStorePort => {
+          const injectedDatasetService = inject(DatasetService);
+          const workspace = inject(PlannerWorkspaceSlice);
+          return {
+            dataset: injectedDatasetService.dataset,
+            userDefaults: workspace.userDefaults,
+            activeProject: workspace.activeProject,
+            updateUserDefaults: (mapper) => workspace.updateUserDefaults(mapper),
+          };
+        },
+      },
+      PlannerDefaultsStore,
+      {
         provide: PLANNER_PLAN_CONFIG_STORE_PORT,
         useFactory: (): PlannerPlanConfigStorePort => {
           const injectedDatasetService = inject(DatasetService);
@@ -1634,8 +1655,9 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
     ],
   });
   const store = runInInjectionContext(injector, () => new PlannerStoreService());
+  const defaults = injector.get(PlannerDefaultsStore);
   const graph = injector.get(PlannerGraphStore);
   const planConfig = injector.get(PlannerPlanConfigStore);
 
-  return { connectedSolveInput, graph, planConfig, store };
+  return { connectedSolveInput, defaults, graph, planConfig, store };
 }

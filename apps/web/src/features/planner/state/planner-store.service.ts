@@ -1,23 +1,8 @@
-import { inject, Injectable, signal, type OnDestroy } from '@angular/core';
-import { type ItemId, type MachineId, type RecipeId } from '@beltwise/game-data';
-import {
-  type ConveyorBeltTier,
-  type GraphEdgeStyle,
-  type ObjectivePresetId,
-  type ObjectiveWeightKey,
-  type PipelineTier,
-  type RateDecimalPlaces,
-} from '@beltwise/planner-core';
+import { inject, Injectable, type OnDestroy } from '@angular/core';
 import { DatasetService } from '../dataset.service';
 import { PlannerPersistenceCoordinatorService } from '../persistence/planner-persistence-coordinator.service';
 import { PlannerStoreConnections } from './planner-store-connections';
 import { PlannerGraphStore } from './planner-graph.store';
-import { PlannerDefaultsCommandSlice } from './planner-store-defaults';
-import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
-import {
-  createPlannerStoreViewSurface,
-  type PlannerStoreWorkbenchViews,
-} from './planner-store-view-surface';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
@@ -42,7 +27,6 @@ export {
   PlannerSolverService,
 } from '../solving/planner-solver.service';
 export type { SolveStatus } from '../solving/planner-solver.service';
-export type { PlannerStoreWorkbenchViews } from './planner-store-view-surface';
 export type {
   WorkbenchFocusMode,
   WorkbenchFocusRequest,
@@ -64,19 +48,14 @@ export class PlannerStoreService implements OnDestroy {
   private readonly workspace = inject(PlannerWorkspaceSlice);
   private readonly graphStore = inject(PlannerGraphStore);
   private readonly workbench: PlannerWorkbenchSlice;
-  private readonly defaultsCommands: PlannerDefaultsCommandSlice;
   private readonly planTransfer: PlannerPlanTransferCapability;
-  private readonly viewSelectors: PlannerStoreViewSelectors;
   private readonly connections: PlannerStoreConnections;
-  private readonly recipeSearch = signal('');
-  private readonly defaultRecipeSearch = signal('');
 
   public readonly dataset = this.datasetService.dataset;
   public readonly datasetError = this.datasetService.loadError;
   public readonly solveStatus = this.solver.solveStatus;
   public readonly solveError = this.solver.solveError;
   public readonly solveResult = this.solver.solveResult;
-  public readonly workbenchViews: PlannerStoreWorkbenchViews;
 
   public readonly sessions: PlannerWorkspaceSlice['sessions'];
   public readonly activeSessionId: PlannerWorkspaceSlice['activeSessionId'];
@@ -105,24 +84,6 @@ export class PlannerStoreService implements OnDestroy {
     });
     this.workspace.connectActivationHooks({
       projectActivated: (project) => this.workbench.activateProject(project),
-    });
-    this.viewSelectors = new PlannerStoreViewSelectors({
-      dataset: this.dataset,
-      activeProject: this.workspace.activeProject,
-      userDefaults: this.workspace.userDefaults,
-      recipeSearch: this.recipeSearch,
-      defaultRecipeSearch: this.defaultRecipeSearch,
-      solveResult: this.solveResult,
-    });
-    const viewSurface = createPlannerStoreViewSurface({
-      selectors: this.viewSelectors,
-      defaultRecipeSearch: this.defaultRecipeSearch,
-    });
-    this.workbenchViews = viewSurface.workbench;
-    this.defaultsCommands = new PlannerDefaultsCommandSlice({
-      dataset: this.dataset,
-      activeProject: this.workspace.activeProject,
-      updateUserDefaults: (mapper) => this.workspace.updateUserDefaults(mapper),
     });
     this.connections = new PlannerStoreConnections({
       dataset: this.dataset,
@@ -209,89 +170,5 @@ export class PlannerStoreService implements OnDestroy {
 
   public renameProject(name: string): void {
     this.workspace.renameProject(name);
-  }
-
-  public setDefaultRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
-    this.defaultsCommands.setRecipeEnabled(recipeId, enabled);
-  }
-
-  public setDefaultRecipesEnabled(recipeIds: readonly RecipeId[], enabled: boolean): void {
-    this.defaultsCommands.setRecipesEnabled(recipeIds, enabled);
-  }
-
-  public setDefaultMachineEnabled(machineId: MachineId, enabled: boolean): void {
-    this.defaultsCommands.setMachineEnabled(machineId, enabled);
-  }
-
-  public setDefaultMachinesEnabled(machineIds: readonly MachineId[], enabled: boolean): void {
-    this.defaultsCommands.setMachinesEnabled(machineIds, enabled);
-  }
-
-  public setDefaultResourceCap(itemId: ItemId, maxPerMinute: number): void {
-    this.defaultsCommands.setResourceCap(itemId, maxPerMinute);
-  }
-
-  public setDefaultResourceEnabled(itemId: ItemId, enabled: boolean): void {
-    this.defaultsCommands.setResourceEnabled(itemId, enabled);
-  }
-
-  public resetDefaultResource(itemId: ItemId): void {
-    this.defaultsCommands.resetResource(itemId);
-  }
-
-  public resetAllDefaultResources(): void {
-    this.defaultsCommands.resetAllResources();
-  }
-
-  public setAllDefaultResourcesEnabled(enabled: boolean): void {
-    this.defaultsCommands.setAllResourcesEnabled(enabled);
-  }
-
-  public setDefaultObjectivePreset(presetId: ObjectivePresetId): void {
-    this.defaultsCommands.setObjectivePreset(presetId);
-  }
-
-  public setDefaultObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
-    this.defaultsCommands.setObjectiveWeight(key, value);
-  }
-
-  public setDefaultObjectiveRawResourceMultiplier(itemId: ItemId, value: number): void {
-    this.defaultsCommands.setObjectiveRawResourceMultiplier(itemId, value);
-  }
-
-  public resetDefaultObjectiveRawResourceMultiplier(itemId: ItemId): void {
-    this.defaultsCommands.resetObjectiveRawResourceMultiplier(itemId);
-  }
-
-  public saveActivePlanAsDefaults(): void {
-    this.defaultsCommands.saveActivePlanAsDefaults();
-  }
-
-  public resetUserDefaults(): void {
-    this.defaultsCommands.resetUserDefaults();
-  }
-
-  public setDefaultMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
-    this.defaultsCommands.setMaxBeltTier(maxBeltTier);
-  }
-
-  public setDefaultMaxPipeTier(maxPipeTier: PipelineTier): void {
-    this.defaultsCommands.setMaxPipeTier(maxPipeTier);
-  }
-
-  public setDefaultRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
-    this.defaultsCommands.setRateDecimalPlaces(rateDecimalPlaces);
-  }
-
-  public setDefaultGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
-    this.defaultsCommands.setGraphEdgeStyle(edgeStyle);
-  }
-
-  public setDefaultShowTransportLabels(showTransportLabels: boolean): void {
-    this.defaultsCommands.setShowTransportLabels(showTransportLabels);
-  }
-
-  public setDefaultAnimateFlowLines(animateFlowLines: boolean): void {
-    this.defaultsCommands.setAnimateFlowLines(animateFlowLines);
   }
 }
