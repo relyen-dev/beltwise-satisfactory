@@ -19,6 +19,7 @@ import {
 import {
   EFZoomDirection,
   FCanvasComponent,
+  type FEventTrigger,
   FFlowComponent,
   FZoomDirective,
   F_CONNECTION_BUILDERS,
@@ -44,6 +45,7 @@ import {
   shouldShowTargetAmountInputForNode,
   type GraphFocusScope,
 } from './graph-interaction.presenter';
+import { graphWheelZoomIntent } from './graph-zoom.presenter';
 import {
   formatGraphNodeKindDisplayValue,
   formatMachineCountDisplayValue,
@@ -63,7 +65,7 @@ import {
 
 const GRAPH_ZOOM_MINIMUM = 0.2;
 const GRAPH_ZOOM_MAXIMUM = 2.5;
-const GRAPH_ZOOM_STEP = 0.06;
+const GRAPH_ZOOM_STEP = 0.08;
 const GRAPH_BUTTON_ZOOM_STEP = 0.05;
 const GRAPH_AUTO_FIT_PADDING = { x: 72, y: 56 };
 
@@ -102,6 +104,7 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly graphZoomMaximum = GRAPH_ZOOM_MAXIMUM;
   public readonly graphZoomStep = GRAPH_ZOOM_STEP;
   public readonly graphButtonZoomStep = GRAPH_BUTTON_ZOOM_STEP;
+  public readonly disableBuiltInWheelZoom: FEventTrigger = () => false;
   private readonly flow = viewChild<FFlowComponent>(FFlowComponent);
   private readonly canvas = viewChild<FCanvasComponent>('graphCanvas');
   private readonly zoom = viewChild<FZoomDirective>(FZoomDirective);
@@ -193,7 +196,37 @@ export class ProductionGraphComponent implements OnDestroy {
     }
 
     const centerPoint = visibleGraphCenterPoint(flow.hostElement);
-    zoom.setZoom(centerPoint, GRAPH_BUTTON_ZOOM_STEP, direction, false);
+    this.zoomGraphAroundPoint(zoom, centerPoint, GRAPH_BUTTON_ZOOM_STEP, direction);
+  }
+
+  public zoomGraphAroundPoint(
+    zoom: GraphZoomTarget | undefined,
+    point: { x: number; y: number },
+    step: number,
+    direction: EFZoomDirection,
+  ): void {
+    if (!zoom) {
+      return;
+    }
+
+    zoom.setZoom(point, step, direction, false);
+  }
+
+  public handleGraphWheel(event: WheelEvent): void {
+    const zoom = this.zoom();
+    if (!zoom) {
+      return;
+    }
+
+    event.preventDefault();
+    const intent = graphWheelZoomIntent(event, zoom.getZoomValue(), GRAPH_ZOOM_STEP);
+    if (!intent) {
+      return;
+    }
+
+    const direction =
+      intent.direction === 'in' ? EFZoomDirection.ZOOM_IN : EFZoomDirection.ZOOM_OUT;
+    this.zoomGraphAroundPoint(zoom, intent.point, intent.step, direction);
   }
 
   public inputId(nodeId: string): string {
