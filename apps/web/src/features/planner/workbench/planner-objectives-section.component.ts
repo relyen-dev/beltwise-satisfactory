@@ -7,7 +7,7 @@ import {
   type ObjectiveWeightKey,
 } from '@beltwise/planner-core';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import {
   parsePlannerNumber,
   parseRawResourceMultiplierInput,
@@ -29,7 +29,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerObjectivesSectionComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
   public readonly presets = PLANNER_OBJECTIVE_PRESETS;
   public readonly weightControls = OBJECTIVE_WEIGHT_CONTROLS;
 
@@ -50,14 +50,17 @@ export class PlannerObjectivesSectionComponent {
   }
 
   public setObjectiveWeight(key: ObjectiveWeightKey, value: string | number | null): void {
-    this.store.setObjectiveWeight(key, parsePlannerNumber(value));
+    this.planConfig.objectiveCommands.setWeight(key, parsePlannerNumber(value));
   }
 
   public setRawResourceMultiplier(itemId: ItemId, value: string | number | null): void {
-    this.store.setObjectiveRawResourceMultiplier(itemId, parseRawResourceMultiplierInput(value));
+    this.planConfig.objectiveCommands.setRawResourceMultiplier(
+      itemId,
+      parseRawResourceMultiplierInput(value),
+    );
   }
 
   public resetRawResourceMultiplier(itemId: ItemId): void {
-    this.store.resetObjectiveRawResourceMultiplier(itemId);
+    this.planConfig.objectiveCommands.resetRawResourceMultiplier(itemId);
   }
 }

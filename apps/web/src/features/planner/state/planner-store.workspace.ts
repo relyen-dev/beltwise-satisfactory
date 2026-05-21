@@ -1,4 +1,4 @@
-import { computed, signal, type Signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { type GameDataset } from '@beltwise/game-data';
 import {
   addPlannerProjectToWorkspaceSession,
@@ -27,9 +27,7 @@ import {
   type PlannerUserDefaults,
 } from '@beltwise/planner-core';
 import { type LoadedPlannerState } from '../persistence/planner-persistence.service';
-interface PlannerWorkspaceSliceOptions {
-  readonly dataset: Signal<GameDataset | null>;
-}
+import { DatasetService } from '../dataset.service';
 
 interface PlannerWorkspaceGraphHooks {
   readonly flushPendingGraphState: () => void;
@@ -51,7 +49,9 @@ const noopActivationHooks: PlannerWorkspaceActivationHooks = {
   projectActivated: () => undefined,
 };
 
+@Injectable({ providedIn: 'root' })
 export class PlannerWorkspaceSlice {
+  private readonly dataset = inject(DatasetService).dataset;
   private graphHooks = noopGraphHooks;
   private activationHooks = noopActivationHooks;
 
@@ -73,8 +73,6 @@ export class PlannerWorkspaceSlice {
     return selectActivePlannerProject(this.workspaceState()) ?? null;
   });
 
-  public constructor(private readonly options: PlannerWorkspaceSliceOptions) {}
-
   public connectGraphHooks(hooks: PlannerWorkspaceGraphHooks): void {
     this.graphHooks = hooks;
   }
@@ -90,7 +88,7 @@ export class PlannerWorkspaceSlice {
 
   public selectSession(sessionId: string): void {
     this.graphHooks.flushPendingGraphState();
-    const dataset = this.options.dataset();
+    const dataset = this.dataset();
     const result = selectPlannerSessionInWorkspace(this.workspaceState(), {
       sessionId,
       now: this.now(),
@@ -101,7 +99,7 @@ export class PlannerWorkspaceSlice {
 
   public createSession(): void {
     this.graphHooks.flushPendingGraphState();
-    const dataset = this.options.dataset();
+    const dataset = this.dataset();
     if (!dataset) {
       return;
     }
@@ -115,7 +113,7 @@ export class PlannerWorkspaceSlice {
 
   public deleteSession(sessionId = this.activeSessionId()): void {
     this.graphHooks.flushPendingGraphState();
-    const dataset = this.options.dataset();
+    const dataset = this.dataset();
     const result = deletePlannerSessionFromWorkspace(this.workspaceState(), {
       now: this.now(),
       ...(sessionId !== undefined ? { sessionId } : {}),
@@ -132,7 +130,7 @@ export class PlannerWorkspaceSlice {
 
   public createProject(): void {
     this.graphHooks.flushPendingGraphState();
-    const dataset = this.options.dataset();
+    const dataset = this.dataset();
     if (!dataset) {
       return;
     }
@@ -161,7 +159,7 @@ export class PlannerWorkspaceSlice {
 
   public deleteProject(): void {
     this.graphHooks.flushPendingGraphState();
-    const dataset = this.options.dataset();
+    const dataset = this.dataset();
     const result = deletePlannerProjectFromActiveSession(this.workspaceState(), {
       now: this.now(),
       ...(dataset ? { createReplacementProject: this.createProjectFactory(dataset) } : {}),
@@ -202,7 +200,7 @@ export class PlannerWorkspaceSlice {
   public updateUserDefaults(
     mapper: (userDefaults: PlannerUserDefaults, dataset: GameDataset) => PlannerUserDefaults,
   ): void {
-    const dataset = this.options.dataset();
+    const dataset = this.dataset();
     if (!dataset) {
       return;
     }

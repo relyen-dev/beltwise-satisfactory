@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { type RecipeId } from '@beltwise/game-data';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import { type RecipeRow } from '../state/planner-store.selectors';
 import {
   BASE_RECIPE_PANEL_DEFINITIONS,
@@ -18,14 +18,14 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerRecipesSectionComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
   public readonly activeBaseRecipePanel = signal<BaseRecipePanelId>('standard');
   public readonly baseRecipePanelDefinitions = BASE_RECIPE_PANEL_DEFINITIONS;
 
   public readonly activeBaseRecipeRows = computed(() => {
     return recipeRowsForBasePanel(this.activeBaseRecipePanel(), {
-      standard: this.store.workbenchViews.standardBaseRecipeRows(),
-      converterResources: this.store.workbenchViews.converterResourceRecipeRows(),
+      standard: this.planConfig.standardBaseRecipeRows(),
+      converterResources: this.planConfig.converterResourceRecipeRows(),
     });
   });
 
@@ -41,7 +41,7 @@ export class PlannerRecipesSectionComponent {
   }
 
   public setRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {
-    this.store.setRecipesEnabled(
+    this.planConfig.recipeCommands.setManyEnabled(
       rows.map((row): RecipeId => row.recipe.id),
       enabled,
     );

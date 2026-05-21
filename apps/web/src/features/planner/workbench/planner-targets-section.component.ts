@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import { countConfiguredTargets, parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 import { TargetItemPickerComponent } from '../shared-ui/target-item-picker.component';
 
@@ -13,25 +13,20 @@ import { TargetItemPickerComponent } from '../shared-ui/target-item-picker.compo
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerTargetsSectionComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
 
   public readonly configuredTargetCount = computed(() => {
-    return countConfiguredTargets(this.store.activeProject()?.targets ?? []);
+    return countConfiguredTargets(this.planConfig.targetRows());
   });
 
-  public readonly targets = computed(() => {
-    return this.store.activeProject()?.targets ?? [];
-  });
-
-  public readonly planNotes = computed(() => {
-    return this.store.activeProject()?.notes ?? '';
-  });
+  public readonly targets = this.planConfig.targetRows;
+  public readonly planNotes = this.planConfig.planNotes;
 
   public updateTargetItem(targetId: string, itemId: ItemId): void {
-    this.store.updateTargetItem(targetId, itemId);
+    this.planConfig.targetCommands.updateItem(targetId, itemId);
   }
 
   public updateTargetAmount(targetId: string, value: string | number | null): void {
-    this.store.updateTargetAmount(targetId, parsePlannerNumber(value));
+    this.planConfig.targetCommands.updateAmount(targetId, parsePlannerNumber(value));
   }
 }

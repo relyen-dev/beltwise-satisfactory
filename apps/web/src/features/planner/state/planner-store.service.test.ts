@@ -1,5 +1,5 @@
 import '@angular/compiler';
-import { Injector, runInInjectionContext, signal, type Signal } from '@angular/core';
+import { inject, Injector, runInInjectionContext, signal, type Signal } from '@angular/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
@@ -27,6 +27,12 @@ import {
   GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS,
   PlannerStoreService,
 } from './planner-store.service';
+import {
+  PLANNER_PLAN_CONFIG_STORE_PORT,
+  PlannerPlanConfigStore,
+  type PlannerPlanConfigStorePort,
+} from './planner-plan-config.store';
+import { PlannerWorkspaceSlice } from './planner-store.workspace';
 
 const NOW = '2026-05-12T00:00:00.000Z';
 
@@ -231,15 +237,15 @@ describe('PlannerStoreService', () => {
   });
 
   it('exposes selector read models through focused view surfaces', () => {
-    const { store } = createInitializedStore();
-    const recipeRowCount = store.workbenchViews.recipeRows().length;
+    const { planConfig, store } = createInitializedStore();
+    const recipeRowCount = planConfig.recipeRows().length;
 
-    store.workbenchViews.recipeSearch.set('plate');
+    planConfig.recipeSearch.set('plate');
     store.selectGraphNode('recipe:Recipe_IronPlate_C');
     store.setPlanLocked(true);
 
-    expect(store.workbenchViews.recipeSearch()).toBe('plate');
-    expect(store.workbenchViews.recipeRows().length).toBeLessThanOrEqual(recipeRowCount);
+    expect(planConfig.recipeSearch()).toBe('plate');
+    expect(planConfig.recipeRows().length).toBeLessThanOrEqual(recipeRowCount);
     expect(store.graphView.selectedGraphNodeId()).toBe('recipe:Recipe_IronPlate_C');
     expect(store.graphView.planLocked()).toBe(true);
   });
@@ -542,7 +548,7 @@ describe('PlannerStoreService', () => {
   });
 
   it('applies each objective preset to the active project', () => {
-    const { store } = createInitializedStore();
+    const { planConfig, store } = createInitializedStore();
     const presetIds: readonly ObjectivePresetId[] = [
       'resource-efficient',
       'low-power',
@@ -552,14 +558,14 @@ describe('PlannerStoreService', () => {
     ];
 
     for (const presetId of presetIds) {
-      store.setObjectivePreset(presetId);
+      planConfig.objectiveCommands.setPreset(presetId);
       expect(requiredProject(store).objectiveProfile).toEqual(
         createObjectiveProfileFromPreset(presetId),
       );
     }
 
-    store.setObjectivePreset('low-power');
-    store.setObjectivePreset('custom');
+    planConfig.objectiveCommands.setPreset('low-power');
+    planConfig.objectiveCommands.setPreset('custom');
 
     expect(requiredProject(store).objectiveProfile).toMatchObject({
       presetId: 'custom',
@@ -568,11 +574,11 @@ describe('PlannerStoreService', () => {
   });
 
   it('marks manual objective weight edits as Custom and clamps unsafe values', () => {
-    const { store } = createInitializedStore();
+    const { planConfig, store } = createInitializedStore();
 
-    store.setObjectiveWeight('powerWeight', Number.NaN);
-    store.setObjectiveWeight('machineCountWeight', -5);
-    store.setObjectiveWeight('surplusWeight', 2);
+    planConfig.objectiveCommands.setWeight('powerWeight', Number.NaN);
+    planConfig.objectiveCommands.setWeight('machineCountWeight', -5);
+    planConfig.objectiveCommands.setWeight('surplusWeight', 2);
 
     expect(requiredProject(store).objectiveProfile).toMatchObject({
       presetId: 'custom',
@@ -583,9 +589,9 @@ describe('PlannerStoreService', () => {
   });
 
   it('marks raw resource multiplier edits as Custom and resets neutral values', () => {
-    const { store } = createInitializedStore();
+    const { planConfig, store } = createInitializedStore();
 
-    store.setObjectiveRawResourceMultiplier('Desc_OreIron_C', 2.25);
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreIron_C', 2.25);
     expect(requiredProject(store).objectiveProfile).toMatchObject({
       presetId: 'custom',
       rawResourceMultipliers: {
@@ -593,13 +599,13 @@ describe('PlannerStoreService', () => {
       },
     });
 
-    store.setObjectiveRawResourceMultiplier('Desc_OreCopper_C', 0.5);
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreCopper_C', 0.5);
     expect(requiredProject(store).objectiveProfile.rawResourceMultipliers).toEqual({
       Desc_OreIron_C: 2.25,
       Desc_OreCopper_C: 0.5,
     });
 
-    store.setObjectiveRawResourceMultiplier('Desc_OreIron_C', 1);
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreIron_C', 1);
     expect(requiredProject(store).objectiveProfile).toMatchObject({
       presetId: 'custom',
       rawResourceMultipliers: {
@@ -607,7 +613,7 @@ describe('PlannerStoreService', () => {
       },
     });
 
-    store.resetObjectiveRawResourceMultiplier('Desc_OreCopper_C');
+    planConfig.objectiveCommands.resetRawResourceMultiplier('Desc_OreCopper_C');
     expect(requiredProject(store).objectiveProfile.rawResourceMultipliers).toEqual({});
   });
 
@@ -667,14 +673,14 @@ describe('PlannerStoreService', () => {
   });
 
   it('does not change objectives while the active plan is locked', () => {
-    const { store } = createInitializedStore();
+    const { planConfig, store } = createInitializedStore();
     const before = requiredProject(store).objectiveProfile;
 
     store.setPlanLocked(true);
-    store.setObjectivePreset('low-power');
-    store.setObjectiveWeight('powerWeight', 5);
-    store.setObjectiveRawResourceMultiplier('Desc_OreIron_C', 2);
-    store.resetObjectiveRawResourceMultiplier('Desc_OreIron_C');
+    planConfig.objectiveCommands.setPreset('low-power');
+    planConfig.objectiveCommands.setWeight('powerWeight', 5);
+    planConfig.objectiveCommands.setRawResourceMultiplier('Desc_OreIron_C', 2);
+    planConfig.objectiveCommands.resetRawResourceMultiplier('Desc_OreIron_C');
 
     expect(requiredProject(store).objectiveProfile).toEqual(before);
   });
@@ -942,18 +948,18 @@ describe('PlannerStoreService', () => {
   });
 
   it('ignores solve-relevant plan commands while the plan is locked', () => {
-    const { store, connectedSolveInput } = createInitializedStore();
+    const { planConfig, store, connectedSolveInput } = createInitializedStore();
     const target = firstTarget(requiredProject(store));
 
     store.setPlanLocked(true);
     const lockedProject = requiredProject(store);
     const lockedSolveInput = requiredSolveInput(connectedSolveInput);
 
-    store.addTarget();
+    planConfig.targetCommands.add();
     store.updateTargetAmount(target.id, 999);
-    store.setRecipeEnabled('Recipe_IronPlate_C', false);
-    store.setItemInput('Desc_IngotIron_C', 25);
-    store.removeTarget(target.id);
+    planConfig.recipeCommands.setEnabled('Recipe_IronPlate_C', false);
+    planConfig.inputCommands.set('Desc_IngotIron_C', 25);
+    planConfig.targetCommands.remove(target.id);
 
     expect(requiredProject(store).targets).toEqual(lockedProject.targets);
     expect(requiredProject(store).recipeOverrides).toEqual(lockedProject.recipeOverrides);
@@ -997,28 +1003,28 @@ describe('PlannerStoreService', () => {
   });
 
   it('sets and clears plan notes even when the plan is locked', () => {
-    const { store, connectedSolveInput } = createInitializedStore();
+    const { planConfig, store, connectedSolveInput } = createInitializedStore();
     const originalSolveInput = requiredSolveInput(connectedSolveInput);
 
     store.setPlanLocked(true);
-    store.setPlanNotes('Bring power shards\nLabel floor');
+    planConfig.noteCommands.set('Bring power shards\nLabel floor');
 
     expect(requiredProject(store).notes).toBe('Bring power shards\nLabel floor');
     expect(requiredSolveInput(connectedSolveInput)).toBe(originalSolveInput);
 
-    store.clearPlanNotes();
+    planConfig.noteCommands.clear();
     expect(requiredProject(store).notes).toBe('');
   });
 
   it('keeps the connected solve input stable for solve-irrelevant store commands', () => {
-    const { store, connectedSolveInput } = createInitializedStore();
+    const { planConfig, store, connectedSolveInput } = createInitializedStore();
     const target = firstTarget(requiredProject(store));
     const originalSolveInput = requiredSolveInput(connectedSolveInput);
 
     store.renameProject('Renamed factory');
     expect(requiredSolveInput(connectedSolveInput)).toBe(originalSolveInput);
 
-    store.setGraphEdgeStyle('curved');
+    planConfig.displayCommands.setGraphEdgeStyle('curved');
     expect(requiredSolveInput(connectedSolveInput)).toBe(originalSolveInput);
 
     store.setPlanLocked(true);
@@ -1528,6 +1534,7 @@ function createInitializedStore(
   activeSessionId = sessions[0]?.id,
 ): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  planConfig: PlannerPlanConfigStore;
   store: PlannerStoreService;
 } {
   return createStoreHarness((binding) => {
@@ -1559,6 +1566,7 @@ function createSession(
 
 function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorBinding) => void): {
   connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
+  planConfig: PlannerPlanConfigStore;
   store: PlannerStoreService;
 } {
   let connectedSolveInput: Signal<PlannerSolveInput | null> | undefined;
@@ -1585,9 +1593,26 @@ function createStoreHarness(initialize: (binding: PlannerPersistenceCoordinatorB
       { provide: DatasetService, useValue: datasetService },
       { provide: PlannerPersistenceCoordinatorService, useValue: persistenceCoordinator },
       { provide: PlannerSolverService, useValue: solver },
+      PlannerWorkspaceSlice,
+      {
+        provide: PLANNER_PLAN_CONFIG_STORE_PORT,
+        useFactory: (): PlannerPlanConfigStorePort => {
+          const injectedDatasetService = inject(DatasetService);
+          const workspace = inject(PlannerWorkspaceSlice);
+          const injectedSolver = inject(PlannerSolverService);
+          return {
+            dataset: injectedDatasetService.dataset,
+            activeProject: workspace.activeProject,
+            solveResult: injectedSolver.solveResult,
+            updateActiveProject: (mapper) => workspace.updateActiveProject(mapper),
+          };
+        },
+      },
+      PlannerPlanConfigStore,
     ],
   });
   const store = runInInjectionContext(injector, () => new PlannerStoreService());
+  const planConfig = injector.get(PlannerPlanConfigStore);
 
-  return { connectedSolveInput, store };
+  return { connectedSolveInput, planConfig, store };
 }

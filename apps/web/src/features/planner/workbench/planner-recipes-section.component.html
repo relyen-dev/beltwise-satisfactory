@@ -11,16 +11,16 @@
       <span class="sr-only">Search recipes</span>
       <input
         placeholder="Search recipes"
-        [ngModel]="store.workbenchViews.recipeSearch()"
-        (ngModelChange)="store.workbenchViews.recipeSearch.set($event)"
+        [ngModel]="planConfig.recipeSearch()"
+        (ngModelChange)="planConfig.recipeSearch.set($event)"
       />
     </label>
   </div>
 
   <div class="recipe-columns">
     <section class="recipe-group" aria-labelledby="base-recipes-title">
-      @let standardBaseRows = store.workbenchViews.standardBaseRecipeRows();
-      @let converterResourceRows = store.workbenchViews.converterResourceRecipeRows();
+      @let standardBaseRows = planConfig.standardBaseRecipeRows();
+      @let converterResourceRows = planConfig.converterResourceRecipeRows();
       @let baseRows = activeBaseRecipeRows();
       <div class="recipe-group-header">
         <div>
@@ -30,14 +30,14 @@
         <div class="section-actions recipe-group-actions">
           <button
             type="button"
-            [disabled]="store.graphView.planLocked()"
+            [disabled]="planConfig.editingLocked()"
             (click)="setRowsEnabled(baseRows, true)"
           >
             Enable shown
           </button>
           <button
             type="button"
-            [disabled]="store.graphView.planLocked()"
+            [disabled]="planConfig.editingLocked()"
             (click)="setRowsEnabled(baseRows, false)"
           >
             Disable shown
@@ -75,15 +75,15 @@
               class="config-toggle-row recipe-row"
               [class.config-toggle-row--enabled]="row.enabled"
               [class.config-toggle-row--disabled]="!row.enabled"
-              [class.config-toggle-row--locked]="store.graphView.planLocked()"
+              [class.config-toggle-row--locked]="planConfig.editingLocked()"
             >
               <input
                 class="config-toggle-row__control"
                 type="checkbox"
                 [ngModel]="row.enabled"
-                [disabled]="store.graphView.planLocked()"
+                [disabled]="planConfig.editingLocked()"
                 [attr.aria-label]="row.toggleLabel"
-                (ngModelChange)="store.setRecipeEnabled(row.recipe.id, $event)"
+                (ngModelChange)="planConfig.recipeCommands.setEnabled(row.recipe.id, $event)"
               />
               <span class="config-toggle-row__indicator" aria-hidden="true"></span>
               <span class="config-toggle-row__copy">
@@ -152,7 +152,7 @@
     </section>
 
     <section class="recipe-group" aria-labelledby="alternate-recipes-title">
-      @let alternateRows = store.workbenchViews.alternateRecipeRows();
+      @let alternateRows = planConfig.alternateRecipeRows();
       <div class="recipe-group-header">
         <div>
           <h4 id="alternate-recipes-title">Alternate recipes</h4>
@@ -161,15 +161,15 @@
         <div class="section-actions recipe-group-actions">
           <button
             type="button"
-            [disabled]="store.graphView.planLocked()"
-            (click)="store.setRecipeGroupEnabled(true, true)"
+            [disabled]="planConfig.editingLocked()"
+            (click)="planConfig.recipeCommands.setGroupEnabled(true, true)"
           >
             Enable all alternates
           </button>
           <button
             type="button"
-            [disabled]="store.graphView.planLocked()"
-            (click)="store.setRecipeGroupEnabled(true, false)"
+            [disabled]="planConfig.editingLocked()"
+            (click)="planConfig.recipeCommands.setGroupEnabled(true, false)"
           >
             Disable all alternates
           </button>
@@ -187,15 +187,15 @@
               class="config-toggle-row recipe-row"
               [class.config-toggle-row--enabled]="row.enabled"
               [class.config-toggle-row--disabled]="!row.enabled"
-              [class.config-toggle-row--locked]="store.graphView.planLocked()"
+              [class.config-toggle-row--locked]="planConfig.editingLocked()"
             >
               <input
                 class="config-toggle-row__control"
                 type="checkbox"
                 [ngModel]="row.enabled"
-                [disabled]="store.graphView.planLocked()"
+                [disabled]="planConfig.editingLocked()"
                 [attr.aria-label]="row.toggleLabel"
-                (ngModelChange)="store.setRecipeEnabled(row.recipe.id, $event)"
+                (ngModelChange)="planConfig.recipeCommands.setEnabled(row.recipe.id, $event)"
               />
               <span class="config-toggle-row__indicator" aria-hidden="true"></span>
               <span class="config-toggle-row__copy">

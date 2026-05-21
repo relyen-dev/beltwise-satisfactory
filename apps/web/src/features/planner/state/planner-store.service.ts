@@ -7,8 +7,6 @@ import {
   type ObjectivePresetId,
   type ObjectiveWeightKey,
   type PipelineTier,
-  type PlannerProject,
-  type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
 import { DatasetService } from '../dataset.service';
@@ -16,7 +14,6 @@ import { PlannerPersistenceCoordinatorService } from '../persistence/planner-per
 import { PlannerStoreConnections } from './planner-store-connections';
 import { PlannerGraphBuildSlice } from './planner-store-graph-build';
 import { PlannerDefaultsCommandSlice } from './planner-store-defaults';
-import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import { PlannerStoreViewSelectors } from './planner-store-view-selectors';
 import {
   createPlannerStoreViewSurface,
@@ -27,6 +24,7 @@ import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
 import { type WorkbenchPanelId } from '../workbench/planner-workbench.models';
+import { PlannerPlanConfigStore } from './planner-plan-config.store';
 import {
   PlannerPlanTransferCapability,
   type PlannerPlanExportResult,
@@ -70,11 +68,11 @@ export class PlannerStoreService implements OnDestroy {
   private readonly persistenceCoordinator = inject(PlannerPersistenceCoordinatorService);
   private readonly solver = inject(PlannerSolverService);
 
-  private readonly workspace: PlannerWorkspaceSlice;
+  private readonly workspace = inject(PlannerWorkspaceSlice);
   private readonly workbench: PlannerWorkbenchSlice;
   private readonly graphBuild: PlannerGraphBuildSlice;
   private readonly defaultsCommands: PlannerDefaultsCommandSlice;
-  private readonly planCommands: PlannerPlanCommandSlice;
+  private readonly planConfig = inject(PlannerPlanConfigStore);
   private readonly planTransfer: PlannerPlanTransferCapability;
   private readonly viewSelectors: PlannerStoreViewSelectors;
   private readonly connections: PlannerStoreConnections;
@@ -101,9 +99,6 @@ export class PlannerStoreService implements OnDestroy {
   public readonly activeProject: PlannerWorkspaceSlice['activeProject'];
 
   public constructor() {
-    this.workspace = new PlannerWorkspaceSlice({
-      dataset: this.dataset,
-    });
     this.workbench = new PlannerWorkbenchSlice();
     this.graphBuild = new PlannerGraphBuildSlice({
       activeProject: this.workspace.activeProject,
@@ -136,7 +131,6 @@ export class PlannerStoreService implements OnDestroy {
     });
     const viewSurface = createPlannerStoreViewSurface({
       selectors: this.viewSelectors,
-      recipeSearch: this.recipeSearch,
       defaultRecipeSearch: this.defaultRecipeSearch,
       selectedGraphNodeId: this.graphBuild.selectedGraphNodeId,
     });
@@ -146,13 +140,6 @@ export class PlannerStoreService implements OnDestroy {
       dataset: this.dataset,
       activeProject: this.workspace.activeProject,
       updateUserDefaults: (mapper) => this.workspace.updateUserDefaults(mapper),
-    });
-    this.planCommands = new PlannerPlanCommandSlice({
-      dataset: this.dataset,
-      activeProject: this.workspace.activeProject,
-      itemOptions: this.viewSelectors.itemOptions,
-      planLocked: () => this.viewSelectors.planLocked(),
-      updateActiveProject: (mapper) => this.workspace.updateActiveProject(mapper),
     });
     this.connections = new PlannerStoreConnections({
       dataset: this.dataset,
@@ -245,96 +232,8 @@ export class PlannerStoreService implements OnDestroy {
     this.workspace.renameProject(name);
   }
 
-  public addTarget(): void {
-    this.planCommands.addTarget();
-  }
-
-  public duplicateTarget(target: ProductTarget): void {
-    this.planCommands.duplicateTarget(target);
-  }
-
-  public removeTarget(targetId: string): void {
-    this.planCommands.removeTarget(targetId);
-  }
-
-  public updateTargetItem(targetId: string, itemId: ItemId): void {
-    this.planCommands.updateTargetItem(targetId, itemId);
-  }
-
-  public updateTargetMode(targetId: string, mode: ProductTarget['mode']): void {
-    this.planCommands.updateTargetMode(targetId, mode);
-  }
-
   public updateTargetAmount(targetId: string, amountPerMinute: number): void {
-    this.planCommands.updateTargetAmount(targetId, amountPerMinute);
-  }
-
-  public setRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
-    this.planCommands.setRecipeEnabled(recipeId, enabled);
-  }
-
-  public setRecipesEnabled(recipeIds: readonly RecipeId[], enabled: boolean): void {
-    this.planCommands.setRecipesEnabled(recipeIds, enabled);
-  }
-
-  public setRecipeGroupEnabled(isAlternate: boolean, enabled: boolean): void {
-    this.planCommands.setRecipeGroupEnabled(isAlternate, enabled);
-  }
-
-  public setItemInput(itemId: ItemId, amountPerMinute: number): void {
-    this.planCommands.setItemInput(itemId, amountPerMinute);
-  }
-
-  public addExternalInput(): void {
-    this.planCommands.addExternalInput();
-  }
-
-  public updateExternalInputItem(previousItemId: ItemId, nextItemId: ItemId): void {
-    this.planCommands.updateExternalInputItem(previousItemId, nextItemId);
-  }
-
-  public removeExternalInput(itemId: ItemId): void {
-    this.planCommands.removeExternalInput(itemId);
-  }
-
-  public setResourceCap(itemId: ItemId, maxPerMinute: number): void {
-    this.planCommands.setResourceCap(itemId, maxPerMinute);
-  }
-
-  public setResourceEnabled(itemId: ItemId, enabled: boolean): void {
-    this.planCommands.setResourceEnabled(itemId, enabled);
-  }
-
-  public resetResource(itemId: ItemId): void {
-    this.planCommands.resetResource(itemId);
-  }
-
-  public resetAllResources(): void {
-    this.planCommands.resetAllResources();
-  }
-
-  public setAllResourcesEnabled(enabled: boolean): void {
-    this.planCommands.setAllResourcesEnabled(enabled);
-  }
-
-  public setMachineEnabled(machineId: string, enabled: boolean): void {
-    this.planCommands.setMachineEnabled(machineId, enabled);
-  }
-
-  public setObjectivePreset(presetId: ObjectivePresetId): void {
-    this.planCommands.setObjectivePreset(presetId);
-  }
-
-  public setObjectiveWeight(key: ObjectiveWeightKey, value: number): void {
-    this.planCommands.setObjectiveWeight(key, value);
-  }
-
-  public setObjectiveRawResourceMultiplier(itemId: ItemId, value: number): void {
-    this.planCommands.setObjectiveRawResourceMultiplier(itemId, value);
-  }
-
-  public resetObjectiveRawResourceMultiplier(itemId: ItemId): void {
-    this.planCommands.resetObjectiveRawResourceMultiplier(itemId);
+    this.planConfig.targetCommands.updateAmount(targetId, amountPerMinute);
   }
 
   public setDefaultRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
@@ -429,56 +328,24 @@ export class PlannerStoreService implements OnDestroy {
     this.graphBuild.setNodeLayoutLocked(locked);
   }
 
-  public setMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
-    this.planCommands.setMaxBeltTier(maxBeltTier);
-  }
-
   public setDefaultMaxBeltTier(maxBeltTier: ConveyorBeltTier): void {
     this.defaultsCommands.setMaxBeltTier(maxBeltTier);
-  }
-
-  public setMaxPipeTier(maxPipeTier: PipelineTier): void {
-    this.planCommands.setMaxPipeTier(maxPipeTier);
   }
 
   public setDefaultMaxPipeTier(maxPipeTier: PipelineTier): void {
     this.defaultsCommands.setMaxPipeTier(maxPipeTier);
   }
 
-  public setRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
-    this.planCommands.setRateDecimalPlaces(rateDecimalPlaces);
-  }
-
   public setDefaultRateDecimalPlaces(rateDecimalPlaces: RateDecimalPlaces): void {
     this.defaultsCommands.setRateDecimalPlaces(rateDecimalPlaces);
-  }
-
-  public setGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
-    this.planCommands.setGraphEdgeStyle(edgeStyle);
   }
 
   public setDefaultGraphEdgeStyle(edgeStyle: GraphEdgeStyle): void {
     this.defaultsCommands.setGraphEdgeStyle(edgeStyle);
   }
 
-  public setShowTransportLabels(showTransportLabels: boolean): void {
-    this.planCommands.setShowTransportLabels(showTransportLabels);
-  }
-
   public setDefaultShowTransportLabels(showTransportLabels: boolean): void {
     this.defaultsCommands.setShowTransportLabels(showTransportLabels);
-  }
-
-  public setAnimateFlowLines(animateFlowLines: boolean): void {
-    this.planCommands.setAnimateFlowLines(animateFlowLines);
-  }
-
-  public setPlanNotes(notes: string): void {
-    this.planCommands.setPlanNotes(notes);
-  }
-
-  public clearPlanNotes(): void {
-    this.planCommands.setPlanNotes('');
   }
 
   public setDefaultAnimateFlowLines(animateFlowLines: boolean): void {

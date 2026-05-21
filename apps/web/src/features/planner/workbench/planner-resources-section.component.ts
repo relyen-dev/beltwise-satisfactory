@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
-import { PlannerStoreService } from '../state/planner-store.service';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 
 @Component({
@@ -13,9 +13,9 @@ import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerResourcesSectionComponent {
-  public readonly store = inject(PlannerStoreService);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
 
   public setResourceCap(itemId: ItemId, value: string | number | null): void {
-    this.store.setResourceCap(itemId, parsePlannerNumber(value));
+    this.planConfig.resourceCommands.setCap(itemId, parsePlannerNumber(value));
   }
 }

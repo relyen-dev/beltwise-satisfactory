@@ -1,5 +1,11 @@
 import { type Signal } from '@angular/core';
-import { type GameDataset, type Item, type ItemId, type RecipeId } from '@beltwise/game-data';
+import {
+  type GameDataset,
+  type Item,
+  type ItemId,
+  type MachineId,
+  type RecipeId,
+} from '@beltwise/game-data';
 import {
   createStableId,
   defaultResourceCapPerMinute,
@@ -245,7 +251,7 @@ export class PlannerPlanCommandSlice {
     );
   }
 
-  public setMachineEnabled(machineId: string, enabled: boolean): void {
+  public setMachineEnabled(machineId: MachineId, enabled: boolean): void {
     if (this.options.planLocked()) {
       return;
     }
