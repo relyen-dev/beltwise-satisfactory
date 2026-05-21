@@ -34,7 +34,7 @@ describe('planner inspector selectors', () => {
       { label: 'Solve status', value: 'Optimal', detail: null },
       { label: 'Power', value: '16 MW', detail: null },
       { label: 'Recipes', value: '3', detail: 'active recipe groups' },
-      { label: 'Machines', value: '1.8x', detail: 'total constructors, smelters, etc.' },
+      { label: 'Effective machines', value: '1.8x', detail: '100% clock equivalent' },
       { label: 'Raw inputs', value: '2', detail: 'resource types' },
       { label: 'Targets', value: '2', detail: 'configured outputs' },
     ]);
@@ -66,10 +66,12 @@ describe('planner inspector selectors', () => {
         machineDisplayName: 'Constructor',
         machineIconSrc: '/game-icons/Desc_ConstructorMk1_C.png',
         machineCountLabel: '1.8x',
+        physicalMachineCountLabel: '3',
         powerLabel: '16 MW',
         recipeGroupCountLabel: '3 recipes',
       },
     ]);
+    expect(viewModel?.overview?.totalPhysicalMachineCountLabel).toBe('3');
     expect(viewModel?.overview?.machineSummaryTotalCount).toBe(1);
     expect(viewModel?.overview?.hiddenMachineSummaryCount).toBe(0);
   });
@@ -160,6 +162,7 @@ describe('planner inspector selectors', () => {
         machineDisplayName: 'Constructor',
         machineIconSrc: '/game-icons/Desc_ConstructorMk1_C.png',
         machineCountLabel: '1.8x',
+        physicalMachineCountLabel: '3',
         powerLabel: '16 MW',
         recipeGroupCountLabel: '3 recipes',
       },
@@ -168,10 +171,12 @@ describe('planner inspector selectors', () => {
         machineDisplayName: 'Smelter',
         machineIconSrc: '/game-icons/Desc_SmelterMk1_C.png',
         machineCountLabel: '1x',
+        physicalMachineCountLabel: '1',
         powerLabel: '4 MW',
         recipeGroupCountLabel: '1 recipe',
       },
     ]);
+    expect(viewModel?.overview?.totalPhysicalMachineCountLabel).toBe('4');
     expect(viewModel?.overview?.machineSummaryTotalCount).toBe(2);
     expect(viewModel?.overview?.hiddenMachineSummaryCount).toBe(0);
   });
@@ -185,7 +190,8 @@ describe('planner inspector selectors', () => {
     expect(selection.kindLabel).toBe('Recipe');
     expect(selection.metrics).toEqual([
       { label: 'Machine', value: 'Constructor', detail: null },
-      { label: 'Machines', value: '1x', detail: null },
+      { label: 'Effective machines', value: '1x', detail: '100% clock equivalent' },
+      { label: 'Physical machines', value: '1', detail: 'whole machines to place' },
       { label: 'Executions', value: '10/min', detail: null },
       { label: 'Power', value: '4 MW', detail: null },
     ]);
@@ -196,6 +202,7 @@ describe('planner inspector selectors', () => {
       recipeName: 'Iron Plate',
       machineName: 'Constructor',
       machineCountLabel: '1x',
+      physicalMachineCountLabel: '1',
       recipeRateLabel: '10/min',
       powerLabel: '4 MW',
     });
@@ -216,6 +223,31 @@ describe('planner inspector selectors', () => {
     expect(selection.warnings.map((warning) => warning.message)).toEqual([
       'Iron Plate recipe is constrained.',
     ]);
+  });
+
+  it('shows selected recipe physical machines without rounding the effective count', () => {
+    const context = createInspectorContext();
+    const node = nodeById(context, 'recipe:Recipe_Wire_C');
+
+    const selection = selectSelection(context, node);
+
+    expect(selection.metrics).toContainEqual({
+      label: 'Effective machines',
+      value: '0.5x',
+      detail: '100% clock equivalent',
+    });
+    expect(selection.metrics).toContainEqual({
+      label: 'Physical machines',
+      value: '1',
+      detail: 'whole machines to place',
+    });
+    if (selection.details.kind !== 'recipe') {
+      throw new Error('Expected recipe details');
+    }
+    expect(selection.details).toMatchObject({
+      machineCountLabel: '0.5x',
+      physicalMachineCountLabel: '1',
+    });
   });
 
   it('builds stable flow keys and endpoint kind labels for duplicate item flows', () => {

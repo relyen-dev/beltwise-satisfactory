@@ -74,6 +74,7 @@ export interface InspectorMachineSummaryRow {
   machineDisplayName: string;
   machineIconSrc: string;
   machineCountLabel: string;
+  physicalMachineCountLabel: string;
   powerLabel: string;
   recipeGroupCountLabel: string;
 }
@@ -93,6 +94,7 @@ export interface InspectorOverviewViewModel {
   assumedInputs: InspectorItemRateRow[];
   surplus: InspectorItemRateRow[];
   machineSummary: InspectorMachineSummaryRow[];
+  totalPhysicalMachineCountLabel: string;
   machineSummaryTotalCount: number;
   hiddenMachineSummaryCount: number;
   warnings: InspectorWarningViewModel[];
@@ -129,6 +131,7 @@ export interface RecipeNodeDetails {
   machineName: string;
   machineIcon: InspectorIcon | null;
   machineCountLabel: string;
+  physicalMachineCountLabel: string;
   recipeRateLabel: string;
   powerLabel: string | null;
   inputs: InspectorItemRateRow[];
@@ -257,9 +260,9 @@ function selectOverviewViewModel(
         'active recipe groups',
       ),
       metric(
-        'Machines',
+        'Effective machines',
         `${formatPlannerNumber(report.totalMachineCount)}x`,
-        'total constructors, smelters, etc.',
+        '100% clock equivalent',
       ),
       metric('Raw inputs', formatPlannerInteger(report.rawInputTypeCount), 'resource types'),
       metric('Targets', formatPlannerInteger(report.targetCount), 'configured outputs'),
@@ -275,6 +278,7 @@ function selectOverviewViewModel(
     assumedInputs: report.assumedInputs.map(itemRateRow),
     surplus: report.surplus.map(itemRateRow),
     machineSummary: machineSummaryRows.slice(0, MAX_OVERVIEW_MACHINE_ROWS),
+    totalPhysicalMachineCountLabel: formatPlannerInteger(report.totalPhysicalMachineCount),
     machineSummaryTotalCount: machineSummaryRows.length,
     hiddenMachineSummaryCount: Math.max(0, machineSummaryRows.length - MAX_OVERVIEW_MACHINE_ROWS),
     warnings: report.warnings.map(warningRow),
@@ -306,6 +310,7 @@ function machineSummaryRow(summary: PlanReportMachineSummary): InspectorMachineS
     machineDisplayName: summary.machineDisplayName,
     machineIconSrc: gameIconPathForMachineId(summary.machineId),
     machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
+    physicalMachineCountLabel: formatPlannerInteger(summary.physicalMachineCount),
     powerLabel: formatPower(summary.powerMw),
     recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
       summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
@@ -371,6 +376,7 @@ function recipeNodeDetails(
             kind: 'machine' as const,
           },
     machineCountLabel: `${formatPlannerNumber(details.machineCount)}x`,
+    physicalMachineCountLabel: formatPlannerInteger(details.physicalMachineCount),
     recipeRateLabel: `${formatPlannerNumber(details.recipeRatePerMinute)}/min`,
     powerLabel: details.powerMw === null ? null : formatPower(details.powerMw),
     inputs: details.inputs.map(itemRateRow),
@@ -469,7 +475,8 @@ function selectedNodeMetrics(details: SelectedNodeDetails): InspectorMetric[] {
     case 'recipe':
       return [
         metric('Machine', details.machineName),
-        metric('Machines', details.machineCountLabel),
+        metric('Effective machines', details.machineCountLabel, '100% clock equivalent'),
+        metric('Physical machines', details.physicalMachineCountLabel, 'whole machines to place'),
         metric('Executions', details.recipeRateLabel),
         metric('Power', details.powerLabel ?? 'Unavailable'),
       ];

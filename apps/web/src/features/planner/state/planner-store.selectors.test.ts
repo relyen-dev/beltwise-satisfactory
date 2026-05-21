@@ -266,32 +266,45 @@ describe('planner store selectors', () => {
           machineCount: 0.5,
           powerMw: 2,
         },
+        {
+          recipeId: 'Recipe_Screw_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Screw',
+          recipeRatePerMinute: 3,
+          machineCount: 0.3,
+          powerMw: 1.2,
+        },
       ],
-      powerMw: 6,
+      powerMw: 7.2,
       warnings: [],
     };
 
     const rows = selectMachineRows(tinySatisfactoryDataset, createProject(), result);
 
     expect(rows.find((row) => row.machine.id === 'Build_ConstructorMk1_C')?.usage).toEqual({
-      machineCount: 1.5,
-      powerMw: 6,
-      recipeGroupCount: 2,
-      machineCountLabel: '1.5x',
-      powerLabel: '6 MW',
-      recipeGroupCountLabel: '2 recipes',
+      machineCount: 1.8,
+      physicalMachineCount: 3,
+      powerMw: 7.2,
+      recipeGroupCount: 3,
+      machineCountLabel: '1.8x',
+      physicalMachineCountLabel: '3',
+      powerLabel: '7.2 MW',
+      recipeGroupCountLabel: '3 recipes',
     });
     expect(rows.find((row) => row.machine.id === 'Build_SmelterMk1_C')?.usage).toBeNull();
     expect(selectMachinePanelSummary(result)).toEqual({
-      activeRecipeGroupCount: 2,
+      activeRecipeGroupCount: 3,
       usedMachineTypeCount: 1,
-      totalMachineCountLabel: '1.5x',
-      totalPowerLabel: '6 MW',
+      totalMachineCountLabel: '1.8x',
+      totalPhysicalMachineCountLabel: '3',
+      totalPowerLabel: '7.2 MW',
     });
     expect(selectMachinePanelSummary(null)).toEqual({
       activeRecipeGroupCount: 0,
       usedMachineTypeCount: 0,
       totalMachineCountLabel: '0x',
+      totalPhysicalMachineCountLabel: '0',
       totalPowerLabel: '0 MW',
     });
   });

@@ -80,6 +80,7 @@ export interface PlanReportMachineSummary {
   readonly machineId: MachineId;
   readonly machineDisplayName: string;
   readonly machineCount: number;
+  readonly physicalMachineCount: number;
   readonly powerMw: number;
   readonly recipeGroupCount: number;
 }
@@ -110,6 +111,7 @@ export interface PlanOverviewReport {
   readonly powerMw: number;
   readonly activeRecipeGroupCount: number;
   readonly totalMachineCount: number;
+  readonly totalPhysicalMachineCount: number;
   readonly rawInputTypeCount: number;
   readonly targetCount: number;
   readonly objective: PlanReportObjectiveSummary;
@@ -137,6 +139,7 @@ export interface RecipeNodeReportDetails {
   readonly machineId: MachineId | null;
   readonly machineName: string;
   readonly machineCount: number;
+  readonly physicalMachineCount: number;
   readonly recipeRatePerMinute: number;
   readonly powerMw: number | null;
   readonly inputs: readonly PlanReportItemRate[];
@@ -203,6 +206,7 @@ export interface MachinePanelReport {
   readonly activeRecipeGroupCount: number;
   readonly usedMachineTypeCount: number;
   readonly totalMachineCount: number;
+  readonly totalPhysicalMachineCount: number;
   readonly totalPowerMw: number;
 }
 
@@ -244,6 +248,7 @@ export function buildPlanOverviewReport(
   graph: ProductionGraph | null,
 ): PlanOverviewReport {
   const machineUsage = result?.machineUsage ?? [];
+  const machineSummary = summarizeMachinesByType(machineUsage);
   const rawInputs = itemRateRows(dataset, result?.rawInputs ?? {});
 
   return {
@@ -251,6 +256,7 @@ export function buildPlanOverviewReport(
     powerMw: result?.powerMw ?? 0,
     activeRecipeGroupCount: machineUsage.length,
     totalMachineCount: machineUsage.reduce((total, usage) => total + usage.machineCount, 0),
+    totalPhysicalMachineCount: sumPhysicalMachineCounts(machineUsage),
     rawInputTypeCount: rawInputs.length,
     targetCount: project.targets.length,
     objective: objectiveSummary(project),
@@ -262,7 +268,7 @@ export function buildPlanOverviewReport(
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
     assumedInputs: itemRateRows(dataset, result?.assumedInputs ?? {}, 'assumed-input-supply'),
     surplus: itemRateRows(dataset, result?.surplus ?? {}),
-    machineSummary: summarizeMachinesByType(machineUsage),
+    machineSummary,
     warnings: warningRows(result?.warnings ?? []),
   };
 }
@@ -333,6 +339,7 @@ export function summarizeMachinesByType(
       machineId: MachineId;
       machineDisplayName: string;
       machineCount: number;
+      physicalMachineCount: number;
       powerMw: number;
       recipeGroupCount: number;
     }
@@ -343,6 +350,7 @@ export function summarizeMachinesByType(
     const existing = summaries.get(machineId);
     if (existing) {
       existing.machineCount += usage.machineCount;
+      existing.physicalMachineCount += physicalMachineCountForEffective(usage.machineCount);
       existing.powerMw += usage.powerMw;
       existing.recipeGroupCount += 1;
       continue;
@@ -352,6 +360,7 @@ export function summarizeMachinesByType(
       machineId,
       machineDisplayName: usage.machineDisplayName,
       machineCount: usage.machineCount,
+      physicalMachineCount: physicalMachineCountForEffective(usage.machineCount),
       powerMw: usage.powerMw,
       recipeGroupCount: 1,
     });
@@ -381,6 +390,7 @@ export function buildMachinePanelReport(result: ProductionPlanResult | null): Ma
     activeRecipeGroupCount: machineUsage.length,
     usedMachineTypeCount: usageByMachineId.size,
     totalMachineCount: machineUsage.reduce((total, usage) => total + usage.machineCount, 0),
+    totalPhysicalMachineCount: sumPhysicalMachineCounts(machineUsage),
     totalPowerMw: machineUsage.reduce((total, usage) => total + usage.powerMw, 0),
   };
 }
@@ -439,13 +449,15 @@ function recipeNodeDetails(
     selectedNode.machineDisplayName ??
     machine?.displayName ??
     'Unknown machine';
+  const machineCount = usage?.machineCount ?? selectedNode.machineCount ?? 0;
 
   return {
     kind: 'recipe',
     recipeName: recipe?.displayName ?? selectedNode.label,
     machineId,
     machineName,
-    machineCount: usage?.machineCount ?? selectedNode.machineCount ?? 0,
+    machineCount,
+    physicalMachineCount: physicalMachineCountForEffective(machineCount),
     recipeRatePerMinute,
     powerMw: usage?.powerMw ?? null,
     inputs:
@@ -866,6 +878,17 @@ function nodeKindSortValue(kind: ProductionGraphNode['kind'] | null): string {
 
 function sumAmounts(rows: readonly PlanReportItemRate[]): number {
   return rows.reduce((total, row) => total + row.amountPerMinute, 0);
+}
+
+function sumPhysicalMachineCounts(machineUsage: readonly MachineUsage[]): number {
+  return machineUsage.reduce(
+    (total, usage) => total + physicalMachineCountForEffective(usage.machineCount),
+    0,
+  );
+}
+
+function physicalMachineCountForEffective(machineCount: number): number {
+  return machineCount <= 0 ? 0 : Math.ceil(machineCount);
 }
 
 function biomassGeneratorFuel(fuelPerGeneratorPerMinute: number): GeneratorFuelDefinition {

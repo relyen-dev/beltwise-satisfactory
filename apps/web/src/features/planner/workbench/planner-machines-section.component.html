@@ -2,15 +2,19 @@
   <div class="section-heading">
     <div>
       <h3>Recipe Machines</h3>
-      <span>Machines shown here can affect recipe solving for this project.</span>
+      <span>Effective counts use 100% clock; physical machines round up per recipe.</span>
     </div>
   </div>
   @let summary = planConfig.machinePanelSummary();
   @if (summary.activeRecipeGroupCount > 0) {
     <div class="machine-plan-summary" aria-label="Current plan machine usage">
       <div>
-        <span>Total machines</span>
+        <span>Effective machines</span>
         <strong>{{ summary.totalMachineCountLabel }}</strong>
+      </div>
+      <div>
+        <span>Physical machines</span>
+        <strong>{{ summary.totalPhysicalMachineCountLabel }}</strong>
       </div>
       <div>
         <span>Machine types</span>
@@ -74,9 +78,12 @@
           </span>
           @if (row.usage) {
             <span class="machine-usage-summary">
-              <span>Current plan</span>
+              <span>Effective usage</span>
               <strong>{{ row.usage.machineCountLabel }}</strong>
-              <span>{{ row.usage.powerLabel }} / {{ row.usage.recipeGroupCountLabel }}</span>
+              <span>
+                {{ row.usage.physicalMachineCountLabel }} physical /
+                {{ row.usage.powerLabel }} / {{ row.usage.recipeGroupCountLabel }}
+              </span>
             </span>
           }
         </label>

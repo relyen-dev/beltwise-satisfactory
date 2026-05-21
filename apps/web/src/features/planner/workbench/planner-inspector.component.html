@@ -411,7 +411,7 @@
             <div class="inspector-section-heading">
               <h3 id="inspector-machines-heading">Machine Types</h3>
               <div class="inspector-section-heading__actions">
-                <span>{{ overview.machineSummaryTotalCount }}</span>
+                <span>{{ overview.totalPhysicalMachineCountLabel }} physical</span>
                 <button
                   type="button"
                   class="inspector-section-toggle"
@@ -433,6 +433,10 @@
               [hidden]="machinesCollapsed"
             >
               @if (overview.machineSummary.length > 0) {
+                <p class="inspector-list-note">
+                  Effective counts are 100% clock equivalents; physical counts round up each recipe
+                  group.
+                </p>
                 <div class="machine-usage-list machine-usage-list--compact">
                   @for (row of overview.machineSummary; track row.machineId) {
                     <div class="usage-row inspector-usage-row">
@@ -448,6 +452,7 @@
                           <span class="usage-recipe-name">{{ row.machineDisplayName }}</span>
                         </span>
                         <span class="inspector-usage-row__meta">
+                          {{ row.physicalMachineCountLabel }} physical /
                           {{ row.recipeGroupCountLabel }} / {{ row.powerLabel }}
                         </span>
                       </div>

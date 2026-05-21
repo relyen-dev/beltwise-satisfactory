@@ -79,9 +79,11 @@ export interface MachineRow {
 
 export interface MachineUsageSummary {
   machineCount: number;
+  physicalMachineCount: number;
   powerMw: number;
   recipeGroupCount: number;
   machineCountLabel: string;
+  physicalMachineCountLabel: string;
   powerLabel: string;
   recipeGroupCountLabel: string;
 }
@@ -90,6 +92,7 @@ export interface MachinePanelSummary {
   activeRecipeGroupCount: number;
   usedMachineTypeCount: number;
   totalMachineCountLabel: string;
+  totalPhysicalMachineCountLabel: string;
   totalPowerLabel: string;
 }
 
@@ -284,6 +287,7 @@ export function selectMachinePanelSummary(
     activeRecipeGroupCount: report.activeRecipeGroupCount,
     usedMachineTypeCount: report.usedMachineTypeCount,
     totalMachineCountLabel: `${formatPlannerNumber(report.totalMachineCount)}x`,
+    totalPhysicalMachineCountLabel: formatPlannerInteger(report.totalPhysicalMachineCount),
     totalPowerLabel: `${formatPlannerNumber(report.totalPowerMw)} MW`,
   };
 }
@@ -500,9 +504,11 @@ function selectMachineUsageByMachineId(
       summary.machineId,
       {
         machineCount: summary.machineCount,
+        physicalMachineCount: summary.physicalMachineCount,
         powerMw: summary.powerMw,
         recipeGroupCount: summary.recipeGroupCount,
         machineCountLabel: `${formatPlannerNumber(summary.machineCount)}x`,
+        physicalMachineCountLabel: formatPlannerInteger(summary.physicalMachineCount),
         powerLabel: `${formatPlannerNumber(summary.powerMw)} MW`,
         recipeGroupCountLabel: `${formatPlannerInteger(summary.recipeGroupCount)} ${
           summary.recipeGroupCount === 1 ? 'recipe' : 'recipes'
