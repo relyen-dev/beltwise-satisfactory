@@ -22,6 +22,7 @@ import { PlannerStoreService } from './state/planner-store.service';
 import { PlannerGraphStore } from './state/planner-graph.store';
 import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
 import { encodePlannerShareCode } from './transfer/planner-share-codec';
+import { PLANNER_PLAN_TRANSFER_PORT } from './transfer/planner-plan-transfer-capability';
 import {
   type WorkbenchFocusRequest,
   type WorkbenchPanelId,
@@ -586,6 +587,7 @@ function createComponentHarness(): {
   deleteProject: ReturnType<typeof vi.fn>;
   deleteSession: ReturnType<typeof vi.fn>;
   duplicateProject: ReturnType<typeof vi.fn>;
+  exportActivePlan: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
   flushGraphNodePositions: ReturnType<typeof vi.fn>;
   graph: PlannerPageGraphHarness;
@@ -604,6 +606,11 @@ function createComponentHarness(): {
   const deleteProject = vi.fn();
   const deleteSession = vi.fn();
   const duplicateProject = vi.fn();
+  const exportActivePlan = vi.fn(() => ({
+    ok: true,
+    filename: 'beltwise-factory.json',
+    json: '{"kind":"beltwise.plan"}',
+  }));
   const exportActivePlanSharePayload = vi.fn(() => ({
     ok: true,
     payload: createSharePayload('Copied plan'),
@@ -681,10 +688,7 @@ function createComponentHarness(): {
     deleteProject,
     deleteSession,
     duplicateProject,
-    exportActivePlanSharePayload,
     flushGraphNodePositions,
-    importPlanJson,
-    importPlanSharePayload,
     renameProject,
     renameSession,
     selectProject,
@@ -701,6 +705,15 @@ function createComponentHarness(): {
     providers: [
       PlannerPlanTransferService,
       { provide: PlannerStoreService, useValue: store },
+      {
+        provide: PLANNER_PLAN_TRANSFER_PORT,
+        useValue: {
+          exportActivePlan,
+          exportActivePlanSharePayload,
+          importPlanJson,
+          importPlanSharePayload,
+        },
+      },
       { provide: PlannerGraphStore, useValue: graph },
       { provide: PlannerPlanConfigStore, useValue: planConfig },
       { provide: PLANNER_CLIPBOARD_ADAPTER, useValue: clipboardAdapter },
@@ -719,6 +732,7 @@ function createComponentHarness(): {
     deleteProject,
     deleteSession,
     duplicateProject,
+    exportActivePlan,
     exportActivePlanSharePayload,
     flushGraphNodePositions,
     graph,
@@ -764,9 +778,6 @@ interface PlannerPageStoreHarness {
   deleteProject: ReturnType<typeof vi.fn>;
   deleteSession: ReturnType<typeof vi.fn>;
   duplicateProject: ReturnType<typeof vi.fn>;
-  exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
-  importPlanJson: ReturnType<typeof vi.fn>;
-  importPlanSharePayload: ReturnType<typeof vi.fn>;
   renameProject: ReturnType<typeof vi.fn>;
   renameSession: ReturnType<typeof vi.fn>;
   selectProject: ReturnType<typeof vi.fn>;

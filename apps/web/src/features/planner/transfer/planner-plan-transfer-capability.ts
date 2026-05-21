@@ -1,4 +1,4 @@
-import { type Signal } from '@angular/core';
+import { inject, InjectionToken, type Signal } from '@angular/core';
 import { type GameDataset } from '@beltwise/game-data';
 import {
   createBeltwisePlanExportFilename,
@@ -13,6 +13,16 @@ import {
   type BeltwisePlanSharePayload,
   type PlannerProject,
 } from '@beltwise/planner-core';
+import { DatasetService } from '../dataset.service';
+import { PlannerGraphStore } from '../state/planner-graph.store';
+import { PlannerWorkspaceSlice } from '../state/planner-store.workspace';
+
+export interface PlannerPlanTransferPort {
+  readonly exportActivePlan: () => PlannerPlanExportResult;
+  readonly importPlanJson: (json: string) => PlannerPlanImportResult;
+  readonly exportActivePlanSharePayload: () => PlannerPlanShareExportResult;
+  readonly importPlanSharePayload: (payload: unknown) => PlannerPlanImportResult;
+}
 
 export interface PlannerPlanTransferStorePort {
   readonly dataset: Signal<GameDataset | null>;
@@ -54,7 +64,15 @@ export type PlannerPlanShareExportResult =
       message: string;
     };
 
-export class PlannerPlanTransferCapability {
+export const PLANNER_PLAN_TRANSFER_PORT = new InjectionToken<PlannerPlanTransferPort>(
+  'PLANNER_PLAN_TRANSFER_PORT',
+  {
+    providedIn: 'root',
+    factory: createPlannerPlanTransferPort,
+  },
+);
+
+export class PlannerPlanTransferCapability implements PlannerPlanTransferPort {
   public constructor(private readonly port: PlannerPlanTransferStorePort) {}
 
   public exportActivePlan(): PlannerPlanExportResult {
@@ -132,4 +150,18 @@ export class PlannerPlanTransferCapability {
       warnings,
     };
   }
+}
+
+function createPlannerPlanTransferPort(): PlannerPlanTransferPort {
+  const datasetService = inject(DatasetService);
+  const workspace = inject(PlannerWorkspaceSlice);
+  const graphStore = inject(PlannerGraphStore);
+
+  return new PlannerPlanTransferCapability({
+    dataset: datasetService.dataset,
+    activeProject: workspace.activeProject,
+    activeSessionProjects: workspace.activeSessionProjects,
+    flushGraphNodePositions: () => graphStore.layoutCommands.flushNodePositions(),
+    importProject: (project) => workspace.importProject(project),
+  });
 }

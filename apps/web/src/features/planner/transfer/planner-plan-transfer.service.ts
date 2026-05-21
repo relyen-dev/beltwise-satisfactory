@@ -9,7 +9,10 @@ import {
   PLANNER_PLAN_DOWNLOAD_ADAPTER,
   PLANNER_SHARE_LOCATION_ADAPTER,
 } from './planner-transfer-browser-adapters';
-import { PlannerStoreService, type PlannerPlanImportResult } from '../state/planner-store.service';
+import {
+  PLANNER_PLAN_TRANSFER_PORT,
+  type PlannerPlanImportResult,
+} from './planner-plan-transfer-capability';
 
 export interface PlanTransferStatus {
   kind: 'success' | 'warning' | 'error';
@@ -23,13 +26,13 @@ export interface PlanImportTransferResult {
 
 @Injectable({ providedIn: 'root' })
 export class PlannerPlanTransferService {
-  private readonly store = inject(PlannerStoreService);
+  private readonly planTransfer = inject(PLANNER_PLAN_TRANSFER_PORT);
   private readonly downloadAdapter = inject(PLANNER_PLAN_DOWNLOAD_ADAPTER);
   private readonly clipboardAdapter = inject(PLANNER_CLIPBOARD_ADAPTER);
   private readonly shareLocationAdapter = inject(PLANNER_SHARE_LOCATION_ADAPTER);
 
   public exportActivePlan(): PlanTransferStatus {
-    const result = this.store.exportActivePlan();
+    const result = this.planTransfer.exportActivePlan();
     if (!result.ok) {
       return errorStatus(result.message);
     }
@@ -43,7 +46,7 @@ export class PlannerPlanTransferService {
   }
 
   public async copyActivePlanShareLink(): Promise<PlanTransferStatus> {
-    const result = this.store.exportActivePlanSharePayload();
+    const result = this.planTransfer.exportActivePlanSharePayload();
     if (!result.ok) {
       return errorStatus(result.message);
     }
@@ -79,7 +82,7 @@ export class PlannerPlanTransferService {
   }
 
   public importPlanJson(json: string): PlanImportTransferResult {
-    return createImportTransferResult(this.store.importPlanJson(json));
+    return createImportTransferResult(this.planTransfer.importPlanJson(json));
   }
 
   public async importPlanShareCode(
@@ -90,7 +93,7 @@ export class PlannerPlanTransferService {
     try {
       const payload = await decodePlannerShareCode(value);
       beforeImport?.();
-      const result = createImportTransferResult(this.store.importPlanSharePayload(payload));
+      const result = createImportTransferResult(this.planTransfer.importPlanSharePayload(payload));
       if (result.imported) {
         this.shareLocationAdapter.clearShareCode();
       }

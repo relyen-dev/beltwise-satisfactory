@@ -7,12 +7,6 @@ import { PlannerWorkspaceSlice } from './planner-store.workspace';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerWorkbenchSlice } from '../workbench/planner-workbench-state';
 import { type WorkbenchPanelId } from '../workbench/planner-workbench.models';
-import {
-  PlannerPlanTransferCapability,
-  type PlannerPlanExportResult,
-  type PlannerPlanImportResult,
-  type PlannerPlanShareExportResult,
-} from '../transfer/planner-plan-transfer-capability';
 
 export { plannerRelevantMachineIds } from '@beltwise/planner-core';
 export {
@@ -33,12 +27,6 @@ export type {
   WorkbenchPanelId,
 } from '../workbench/planner-workbench.models';
 
-export type {
-  PlannerPlanExportResult,
-  PlannerPlanImportResult,
-  PlannerPlanShareExportResult,
-} from '../transfer/planner-plan-transfer-capability';
-
 @Injectable({ providedIn: 'root' })
 export class PlannerStoreService implements OnDestroy {
   private readonly datasetService = inject(DatasetService);
@@ -48,7 +36,6 @@ export class PlannerStoreService implements OnDestroy {
   private readonly workspace = inject(PlannerWorkspaceSlice);
   private readonly graphStore = inject(PlannerGraphStore);
   private readonly workbench: PlannerWorkbenchSlice;
-  private readonly planTransfer: PlannerPlanTransferCapability;
   private readonly connections: PlannerStoreConnections;
 
   public readonly dataset = this.datasetService.dataset;
@@ -70,13 +57,6 @@ export class PlannerStoreService implements OnDestroy {
 
   public constructor() {
     this.workbench = new PlannerWorkbenchSlice();
-    this.planTransfer = new PlannerPlanTransferCapability({
-      dataset: this.dataset,
-      activeProject: this.workspace.activeProject,
-      activeSessionProjects: this.workspace.activeSessionProjects,
-      flushGraphNodePositions: () => this.graphStore.layoutCommands.flushNodePositions(),
-      importProject: (project) => this.workspace.importProject(project),
-    });
     this.workspace.connectGraphHooks({
       flushPendingGraphState: () => this.graphStore.lifecycle.flushPendingState(),
       clearPendingGraphState: () => this.graphStore.lifecycle.clearPendingState(),
@@ -150,22 +130,6 @@ export class PlannerStoreService implements OnDestroy {
 
   public deleteProject(): void {
     this.workspace.deleteProject();
-  }
-
-  public exportActivePlan(): PlannerPlanExportResult {
-    return this.planTransfer.exportActivePlan();
-  }
-
-  public importPlanJson(json: string): PlannerPlanImportResult {
-    return this.planTransfer.importPlanJson(json);
-  }
-
-  public exportActivePlanSharePayload(): PlannerPlanShareExportResult {
-    return this.planTransfer.exportActivePlanSharePayload();
-  }
-
-  public importPlanSharePayload(payload: unknown): PlannerPlanImportResult {
-    return this.planTransfer.importPlanSharePayload(payload);
   }
 
   public renameProject(name: string): void {

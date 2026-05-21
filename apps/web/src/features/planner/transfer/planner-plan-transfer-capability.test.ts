@@ -1,13 +1,20 @@
-import { computed, signal, type Signal } from '@angular/core';
+import '@angular/compiler';
+import { computed, Injector, signal, type Signal } from '@angular/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
+  createDefaultUserDefaults,
   createPlannerProject,
+  createPlannerSession,
   encodeBeltwisePlanExport,
   encodeBeltwisePlanShare,
+  PLANNER_STORAGE_SCHEMA_VERSION,
   stringifyBeltwisePlanExport,
   type PlannerProject,
+  type PlannerSession,
 } from '@beltwise/planner-core';
+import { DatasetService } from '../dataset.service';
+import { PlannerWorkspaceSlice } from '../state/planner-store.workspace';
 import { PlannerPlanTransferCapability } from './planner-plan-transfer-capability';
 
 const NOW = '2026-05-12T00:00:00.000Z';
@@ -102,7 +109,7 @@ describe('PlannerPlanTransferCapability', () => {
     vi.setSystemTime(new Date('2026-05-15T00:00:00.000Z'));
     const existingProject = createProject();
     const importSource = createImportSourceProject('project-source', 'Factory');
-    const { capability, projects, importProject } = createCapabilityHarness({
+    const { activeProjectId, capability, projects, importProject } = createCapabilityHarness({
       projects: [existingProject],
     });
 
@@ -133,6 +140,7 @@ describe('PlannerPlanTransferCapability', () => {
       buildState: importSource.buildState,
     });
     expect(projects()[0]).toEqual(existingProject);
+    expect(activeProjectId()).toBe(result.project.id);
   });
 
   it('increments imported project names against only the active session project names', () => {
@@ -150,6 +158,37 @@ describe('PlannerPlanTransferCapability', () => {
       throw new Error(result.message);
     }
     expect(result.project.name).toBe('Factory import 2');
+  });
+
+  it('imports through the workspace port into the active session and activates the project', () => {
+    const projectA = createEmptyProject('project-a', 'Factory A');
+    const projectB = createEmptyProject('project-b', 'Factory B');
+    const sessionA = createSession([projectA], projectA.id, 'session-a');
+    const sessionB = createSession([projectB], projectB.id, 'session-b');
+    const { capability, workspace } = createWorkspaceBackedCapabilityHarness({
+      projects: [projectA, projectB],
+      activeProjectId: projectB.id,
+      sessions: [sessionA, sessionB],
+      activeSessionId: sessionB.id,
+    });
+
+    const result = capability.importPlanJson(
+      createPlanExportJson(createImportSourceProject('project-source', 'Factory B')),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+    expect(result.project.name).toBe('Factory B import');
+    expect(workspace.activeProjectId()).toBe(result.project.id);
+    expect(workspace.sessions().find((session) => session.id === sessionA.id)?.projectIds).toEqual([
+      projectA.id,
+    ]);
+    expect(workspace.sessions().find((session) => session.id === sessionB.id)?.projectIds).toEqual([
+      projectB.id,
+      result.project.id,
+    ]);
   });
 
   it('propagates dataset warnings from decoded plan imports', () => {
@@ -184,7 +223,9 @@ describe('PlannerPlanTransferCapability', () => {
     vi.setSystemTime(new Date('2026-05-15T00:00:00.000Z'));
     const existingProject = createProject();
     const importSource = createImportSourceProject('project-source', 'Factory');
-    const { capability, projects } = createCapabilityHarness({ projects: [existingProject] });
+    const { activeProjectId, capability, projects } = createCapabilityHarness({
+      projects: [existingProject],
+    });
 
     const result = capability.importPlanSharePayload(
       encodeBeltwisePlanShare(importSource, tinySatisfactoryDataset),
@@ -214,6 +255,7 @@ describe('PlannerPlanTransferCapability', () => {
       buildState: importSource.buildState,
     });
     expect(projects()[0]).toEqual(existingProject);
+    expect(activeProjectId()).toBe(result.project.id);
   });
 
   it('leaves projects unchanged when decoded imports are rejected', () => {
@@ -266,10 +308,51 @@ function createCapabilityHarness(
   });
 
   return {
+    activeProjectId,
     capability,
     projects,
     flushGraphNodePositions,
     importProject,
+  };
+}
+
+function createWorkspaceBackedCapabilityHarness(options: {
+  readonly projects: readonly PlannerProject[];
+  readonly activeProjectId: string | undefined;
+  readonly sessions: readonly PlannerSession[];
+  readonly activeSessionId: string | undefined;
+}): {
+  readonly capability: PlannerPlanTransferCapability;
+  readonly workspace: PlannerWorkspaceSlice;
+} {
+  const datasetService: Pick<DatasetService, 'dataset'> = {
+    dataset: signal<GameDataset | null>(tinySatisfactoryDataset),
+  };
+  const injector = Injector.create({
+    providers: [
+      { provide: DatasetService, useValue: datasetService },
+      PlannerWorkspaceSlice,
+    ],
+  });
+  const workspace = injector.get(PlannerWorkspaceSlice);
+  workspace.initializeFromStoredState({
+    schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+    activeSessionId: options.activeSessionId,
+    activeProjectId: options.activeProjectId,
+    sessions: [...options.sessions],
+    projects: [...options.projects],
+    userDefaults: createDefaultUserDefaults(tinySatisfactoryDataset),
+  });
+
+  return {
+    capability: new PlannerPlanTransferCapability({
+      dataset: datasetService.dataset,
+      activeProject: workspace.activeProject,
+      activeSessionProjects: workspace.activeSessionProjects,
+      flushGraphNodePositions: vi.fn(),
+      importProject: (project) => workspace.importProject(project),
+    }),
+    workspace,
   };
 }
 
@@ -288,6 +371,31 @@ function createProject(): PlannerProject {
         sortOrder: 0,
       },
     ],
+  });
+}
+
+function createEmptyProject(id: string, name: string): PlannerProject {
+  return createPlannerProject({
+    id,
+    name,
+    dataset: tinySatisfactoryDataset,
+    now: NOW,
+    targets: [],
+  });
+}
+
+function createSession(
+  projects: readonly PlannerProject[],
+  activeProjectId = projects[0]?.id,
+  id = 'session-a',
+): PlannerSession {
+  return createPlannerSession({
+    id,
+    name: id,
+    datasetId: tinySatisfactoryDataset.id,
+    projectIds: projects.map((project) => project.id),
+    activeProjectId,
+    now: NOW,
   });
 }
 
@@ -375,6 +483,7 @@ function createPlanExportJson(
 }
 
 interface PlannerPlanTransferCapabilityHarness {
+  readonly activeProjectId: Signal<string | undefined>;
   readonly capability: PlannerPlanTransferCapability;
   readonly projects: Signal<readonly PlannerProject[]>;
   readonly flushGraphNodePositions: ReturnType<typeof vi.fn>;
