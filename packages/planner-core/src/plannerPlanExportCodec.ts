@@ -1,5 +1,10 @@
 import type { GameDataset } from '@beltwise/game-data';
-import { createStableId, type PlannerProject } from './plan';
+import {
+  appendPlannerNameSuffix,
+  createStableId,
+  normalizePlannerName,
+  type PlannerProject,
+} from './plan';
 import {
   decodeStoredPlannerProject,
   encodeStoredPlannerProject,
@@ -188,7 +193,7 @@ export function prepareImportedPlannerProject(
   return {
     ...structuredClone(project),
     id: options.id ?? createStableId('project'),
-    name: options.name ?? project.name,
+    name: normalizePlannerName(options.name ?? project.name),
     datasetId: options.dataset.id,
     createdAt: now,
     updatedAt: now,
@@ -199,18 +204,18 @@ export function createUniqueImportedPlannerProjectName(
   importedName: string,
   existingNames: readonly string[],
 ): string {
-  const baseName = importedName.trim() || 'Imported plan';
+  const baseName = normalizePlannerName(importedName) || 'Imported plan';
   if (!hasProjectName(existingNames, baseName)) {
     return baseName;
   }
 
-  const importBaseName = `${baseName} import`;
+  const importBaseName = appendPlannerNameSuffix(baseName, 'import');
   if (!hasProjectName(existingNames, importBaseName)) {
     return importBaseName;
   }
 
   for (let index = 2; ; index += 1) {
-    const candidate = `${importBaseName} ${index}`;
+    const candidate = appendPlannerNameSuffix(importBaseName, String(index));
     if (!hasProjectName(existingNames, candidate)) {
       return candidate;
     }
@@ -347,5 +352,5 @@ function hasProjectName(existingNames: readonly string[], candidate: string): bo
 }
 
 function normalizeProjectNameForComparison(name: string): string {
-  return name.trim().toLowerCase();
+  return normalizePlannerName(name).toLowerCase();
 }

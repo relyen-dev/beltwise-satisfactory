@@ -3,6 +3,7 @@ import {
   createPlannerSession,
   hydratePlannerProject,
   hydratePlannerUserDefaults,
+  normalizePlannerName,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
@@ -555,7 +556,7 @@ function normalizeSessionForStorage(
 
   return {
     id: session.id,
-    name: session.name,
+    name: normalizePlannerName(session.name),
     datasetId: session.datasetId,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
@@ -642,7 +643,7 @@ function copyPlannerSession(session: PlannerSession): PlannerSession {
 function toStoredPlannerSessionV3(session: PlannerSession): StoredPlannerSessionV3 {
   return {
     id: session.id,
-    name: session.name,
+    name: normalizePlannerName(session.name),
     datasetId: session.datasetId,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
@@ -656,7 +657,7 @@ function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProject
   const intent = copyPlannerProjectIntentSnapshot(project);
   return {
     id: project.id,
-    name: project.name,
+    name: normalizePlannerName(project.name),
     notes,
     datasetId: project.datasetId,
     createdAt: project.createdAt,

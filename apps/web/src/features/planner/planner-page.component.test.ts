@@ -7,7 +7,12 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PlannerProject, PlannerSession, ProductionPlanStatus } from '@beltwise/planner-core';
+import {
+  MAX_PLANNER_NAME_LENGTH,
+  type PlannerProject,
+  type PlannerSession,
+  type ProductionPlanStatus,
+} from '@beltwise/planner-core';
 import { PlannerPageComponent } from './planner-page.component';
 import { PlannerPlanTransferService } from './transfer/planner-plan-transfer.service';
 import {
@@ -136,6 +141,24 @@ describe('PlannerPageComponent', () => {
 
     expect(renameSession).toHaveBeenCalledWith('Rocky Desert');
     expect(component.sessionNameEditing()).toBe(false);
+  });
+
+  it('normalizes long inline rename drafts before saving', () => {
+    const { component, renameProject, renameSession } = createComponentHarness();
+    const longName = 'A'.repeat(MAX_PLANNER_NAME_LENGTH + 20);
+    component.startProjectNameEdit('project-a', 'Draft factory');
+    component.projectNameDraft.set(` ${longName}\nignored tail `);
+
+    component.saveProjectNameEdit();
+
+    expect(renameProject).toHaveBeenCalledWith('A'.repeat(MAX_PLANNER_NAME_LENGTH));
+
+    component.startSessionNameEdit('session-a', 'Default session');
+    component.sessionNameDraft.set(` ${longName}\nignored tail `);
+
+    component.saveSessionNameEdit();
+
+    expect(renameSession).toHaveBeenCalledWith('A'.repeat(MAX_PLANNER_NAME_LENGTH));
   });
 
   it('does not save a plan rename after the active project changes', () => {

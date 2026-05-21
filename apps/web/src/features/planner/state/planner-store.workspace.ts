@@ -14,6 +14,7 @@ import {
   duplicatePlannerProjectInWorkspace,
   initializePlannerWorkspace,
   listPlannerSessionProjects,
+  renamePlannerProjectInWorkspace,
   renamePlannerSessionInWorkspace,
   selectActivePlannerProject,
   selectActivePlannerSession,
@@ -168,7 +169,10 @@ export class PlannerWorkspaceSlice {
   }
 
   public renameProject(name: string): void {
-    this.updateActiveProject((project) => ({ ...project, name }));
+    this.graphHooks.flushPendingGraphState();
+    this.applyLifecycleResult(
+      renamePlannerProjectInWorkspace(this.workspaceState(), name, this.now()),
+    );
   }
 
   public renameSession(name: string): void {

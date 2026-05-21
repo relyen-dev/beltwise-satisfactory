@@ -196,6 +196,7 @@ export interface PlannerSessionCreateOptions {
 }
 
 export const PLANNER_STORAGE_SCHEMA_VERSION = 3;
+export const MAX_PLANNER_NAME_LENGTH = 80;
 export const NEUTRAL_RAW_RESOURCE_MULTIPLIER = 1;
 export const DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS: Readonly<Partial<Record<ItemId, number>>> = {
   Desc_OreIron_C: 1,
@@ -501,7 +502,7 @@ export function createPlannerProject(options: PlannerProjectCreateOptions): Plan
 
   return {
     id: options.id ?? createStableId('project'),
-    name: options.name,
+    name: normalizePlannerName(options.name),
     notes: normalizePlainTextNote(options.notes ?? ''),
     datasetId: options.dataset.id,
     createdAt: now,
@@ -529,7 +530,7 @@ export function createPlannerSession(options: PlannerSessionCreateOptions): Plan
 
   return {
     id: options.id ?? createStableId('session'),
-    name: options.name,
+    name: normalizePlannerName(options.name),
     datasetId: options.datasetId,
     createdAt,
     updatedAt,
@@ -609,7 +610,7 @@ export function hydratePlannerUserDefaults(
 export function summarizeProject(project: PlannerProject): PlannerProjectSummary {
   return {
     id: project.id,
-    name: project.name,
+    name: normalizePlannerName(project.name),
     datasetId: project.datasetId,
     updatedAt: project.updatedAt,
   };
@@ -625,6 +626,23 @@ export function createStableId(prefix: string): string {
 
 export function normalizePlainTextNote(note: string): string {
   return normalizePlanTransferNote(note);
+}
+
+export function normalizePlannerName(name: string): string {
+  return takePlannerNameCharacters(name.trim().replace(/\s+/g, ' '), MAX_PLANNER_NAME_LENGTH);
+}
+
+export function appendPlannerNameSuffix(name: string, suffix: string): string {
+  const normalizedSuffix = normalizePlannerName(suffix);
+  if (normalizedSuffix.length === 0) {
+    return normalizePlannerName(name);
+  }
+
+  const suffixText = ` ${normalizedSuffix}`;
+  const baseLength = Math.max(0, MAX_PLANNER_NAME_LENGTH - plannerNameLength(suffixText));
+  const normalizedName = normalizePlannerName(name);
+  const base = takePlannerNameCharacters(normalizedName, baseLength).trimEnd();
+  return normalizePlannerName(base.length > 0 ? `${base}${suffixText}` : normalizedSuffix);
 }
 
 function createLegacyProjectHydrationRecipeOverrides(
@@ -823,4 +841,12 @@ function sanitizeObjectiveWeightOverrides(
 
 function copyNumberRecord(value: Readonly<Record<ItemId, number>>): Record<ItemId, number> {
   return copyNumberRecordForTransfer(value);
+}
+
+function takePlannerNameCharacters(name: string, maxLength: number): string {
+  return Array.from(name).slice(0, maxLength).join('').trimEnd();
+}
+
+function plannerNameLength(name: string): number {
+  return Array.from(name).length;
 }

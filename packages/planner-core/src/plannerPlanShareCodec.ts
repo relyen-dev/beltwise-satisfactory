@@ -4,6 +4,7 @@ import {
   createDefaultObjectiveProfile,
   createObjectiveProfileFromPreset,
   createStableId,
+  normalizePlannerName,
   type GraphDisplaySettings,
   type GraphEdgeStyle,
   type GraphNodeBuildState,
@@ -229,7 +230,7 @@ function encodeCompactPlannerProject(
   dataset: GameDataset,
 ): CompactPlannerProjectV1 {
   const compact: CompactPlannerProjectV1 = {
-    n: project.name,
+    n: normalizePlannerName(project.name),
   };
   const notes = normalizePlanTransferNote(project.notes);
   if (notes.length > 0) {
@@ -601,7 +602,7 @@ function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | nu
   if (name === undefined) {
     return null;
   }
-  const compact: CompactPlannerProjectV1 = { n: name };
+  const compact: CompactPlannerProjectV1 = { n: normalizePlannerName(name) };
   const notes = readTransferString(value['no']);
   if (notes !== undefined && normalizePlanTransferNote(notes).length > 0) {
     compact.no = notes;
