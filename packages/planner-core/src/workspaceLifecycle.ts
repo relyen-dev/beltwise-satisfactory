@@ -1,8 +1,10 @@
 import type { GameDataset } from '@beltwise/game-data';
 import { uniqueStrings } from './internal/uniqueStrings';
 import {
+  appendPlannerNameSuffix,
   createPlannerProject,
   createPlannerSession,
+  normalizePlannerName,
   type PlannerProject,
   type PlannerSession,
   type PlannerUserDefaults,
@@ -492,25 +494,52 @@ export function renamePlannerSessionInWorkspace(
   now: string,
 ): PlannerWorkspaceLifecycleResult {
   const activeSessionId = state.activeSessionId;
-  const trimmedName = name.trim();
-  if (!activeSessionId || trimmedName.length === 0) {
+  const normalizedName = normalizePlannerName(name);
+  if (!activeSessionId || normalizedName.length === 0) {
     return workspaceResult(state);
   }
 
   let changed = false;
   const sessions = state.sessions.map((session) => {
-    if (session.id !== activeSessionId || session.name === trimmedName) {
+    if (session.id !== activeSessionId || session.name === normalizedName) {
       return session;
     }
     changed = true;
     return {
       ...session,
-      name: trimmedName,
+      name: normalizedName,
       updatedAt: now,
     };
   });
 
   return changed ? workspaceResult({ ...state, sessions }) : workspaceResult(state);
+}
+
+export function renamePlannerProjectInWorkspace(
+  state: PlannerWorkspaceLifecycleState,
+  name: string,
+  now: string,
+): PlannerWorkspaceLifecycleResult {
+  const activeProjectId = state.activeProjectId;
+  const normalizedName = normalizePlannerName(name);
+  if (!activeProjectId || normalizedName.length === 0) {
+    return workspaceResult(state);
+  }
+
+  let changed = false;
+  const projects = state.projects.map((project) => {
+    if (project.id !== activeProjectId || project.name === normalizedName) {
+      return project;
+    }
+    changed = true;
+    return {
+      ...project,
+      name: normalizedName,
+      updatedAt: now,
+    };
+  });
+
+  return changed ? workspaceResult({ ...state, projects }) : workspaceResult(state);
 }
 
 export function setPlannerSessionActiveProject(
@@ -545,7 +574,7 @@ export function duplicatePlannerProject(
   return {
     ...structuredClone(project),
     id: options.id,
-    name: `${project.name} copy`,
+    name: appendPlannerNameSuffix(project.name, 'copy'),
     createdAt: options.now,
     updatedAt: options.now,
   };
@@ -556,7 +585,7 @@ export function createNextPlannerPlanName(
 ): string {
   const baseName = 'Plan';
   const existingNames = new Set(
-    existingProjects.map((project) => project.name.trim().toLowerCase()),
+    existingProjects.map((project) => normalizePlannerName(project.name).toLowerCase()),
   );
   let nextIndex = 1;
 
@@ -571,11 +600,13 @@ export function createNextPlannerPlanName(
 
 export function createUniquePlannerSessionName(existingNames: readonly string[]): string {
   const baseName = 'Session';
-  const normalizedNames = new Set(existingNames.map((name) => name.trim().toLowerCase()));
+  const normalizedNames = new Set(
+    existingNames.map((name) => normalizePlannerName(name).toLowerCase()),
+  );
   let nextIndex = 1;
 
   for (const name of existingNames) {
-    const trimmedName = name.trim();
+    const trimmedName = normalizePlannerName(name);
     if (trimmedName.toLowerCase() === baseName.toLowerCase()) {
       nextIndex = Math.max(nextIndex, 2);
       continue;

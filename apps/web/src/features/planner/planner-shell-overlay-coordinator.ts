@@ -1,4 +1,5 @@
 import { signal, type WritableSignal } from '@angular/core';
+import { normalizePlannerName } from '@beltwise/planner-core';
 import { type PlanTransferStatus } from './transfer/planner-plan-transfer.service';
 
 export type PlannerShellEscapeAction =
@@ -54,7 +55,7 @@ export class PlannerShellOverlayCoordinator {
   }
 
   public saveProjectNameEdit(activeProjectId: string | undefined): string | null {
-    const name = this.projectNameDraft().trim();
+    const name = normalizePlannerName(this.projectNameDraft());
     const editedProjectId = this.projectNameEditProjectId();
     this.projectNameEditProjectId.set(null);
     return name.length > 0 && editedProjectId === activeProjectId ? name : null;
@@ -72,7 +73,7 @@ export class PlannerShellOverlayCoordinator {
   }
 
   public saveSessionNameEdit(activeSessionId: string | undefined): string | null {
-    const name = this.sessionNameDraft().trim();
+    const name = normalizePlannerName(this.sessionNameDraft());
     const editedSessionId = this.sessionNameEditSessionId();
     this.sessionNameEditSessionId.set(null);
     return name.length > 0 && editedSessionId === activeSessionId ? name : null;

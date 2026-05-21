@@ -16,7 +16,7 @@ import {
 } from '@angular/core';
 import { NgClass, NgComponentOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { type ProductionPlanStatus } from '@beltwise/planner-core';
+import { MAX_PLANNER_NAME_LENGTH, type ProductionPlanStatus } from '@beltwise/planner-core';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
 import { PlannerDefaultsPanelComponent } from './workbench/planner-defaults-panel.component';
 import { PlannerInspectorComponent } from './workbench/planner-inspector.component';
@@ -117,6 +117,7 @@ export class PlannerPageComponent implements OnInit {
   private inspectorScrollContext: string | null = null;
   public readonly projectNameDraft = this.shell.projectNameDraft;
   public readonly sessionNameDraft = this.shell.sessionNameDraft;
+  public readonly maxPlannerNameLength = MAX_PLANNER_NAME_LENGTH;
   public readonly projectNameEditing = computed(() => {
     return this.shell.isProjectNameEditing(this.workspace.activeProjectId());
   });

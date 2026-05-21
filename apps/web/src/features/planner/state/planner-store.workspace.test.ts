@@ -5,6 +5,7 @@ import {
   createDefaultUserDefaults,
   createPlannerProject,
   createPlannerSession,
+  MAX_PLANNER_NAME_LENGTH,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
   type PlannerSession,
@@ -79,7 +80,7 @@ describe('PlannerWorkspaceSlice', () => {
 
     store.selectProject(projectB.id);
     store.renameProject(' Factory B Prime ');
-    expect(requiredProject(store).name).toBe(' Factory B Prime ');
+    expect(requiredProject(store).name).toBe('Factory B Prime');
 
     store.createProject();
     const createdProject = requiredProject(store);
@@ -103,6 +104,18 @@ describe('PlannerWorkspaceSlice', () => {
       projectB.id,
       createdProject.id,
     ]);
+  });
+
+  it('caps active plan and session renames', () => {
+    const project = createProject('project-a', 'Factory A');
+    const { store } = createInitializedWorkspace([project], project.id);
+    const longName = 'A'.repeat(MAX_PLANNER_NAME_LENGTH + 1);
+
+    store.renameProject(longName);
+    store.renameSession(` ${longName} `);
+
+    expect(requiredProject(store).name).toBe('A'.repeat(MAX_PLANNER_NAME_LENGTH));
+    expect(store.activeSession()?.name).toBe('A'.repeat(MAX_PLANNER_NAME_LENGTH));
   });
 
   it('creates, selects, renames, and deletes sessions while exposing active-session projects', () => {

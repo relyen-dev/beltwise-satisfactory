@@ -14,6 +14,8 @@ import {
   duplicatePlannerProjectInWorkspace,
   initializePlannerWorkspace,
   listPlannerSessionProjects,
+  MAX_PLANNER_NAME_LENGTH,
+  renamePlannerProjectInWorkspace,
   renamePlannerSessionInWorkspace,
   selectPlannerSessionInWorkspace,
   type PlannerProject,
@@ -111,6 +113,56 @@ describe('workspace lifecycle', () => {
         targets: projectB.targets,
       },
     );
+  });
+
+  it('keeps duplicate plan name suffixes within the name cap', () => {
+    const project = createProject('project-a', 'A'.repeat(MAX_PLANNER_NAME_LENGTH));
+    const session = createSession('session-a', [project], project.id);
+
+    const duplicated = duplicatePlannerProjectInWorkspace(
+      {
+        sessions: [session],
+        projects: [project],
+        activeSessionId: session.id,
+        activeProjectId: project.id,
+      },
+      {
+        id: 'project-duplicate',
+        now: LATER,
+      },
+    );
+
+    const duplicate = duplicated.projects.find((candidate) => candidate.id === 'project-duplicate');
+    expect(duplicate?.name).toHaveLength(MAX_PLANNER_NAME_LENGTH);
+    expect(duplicate?.name.endsWith(' copy')).toBe(true);
+  });
+
+  it('normalizes plan and session names at the workspace boundary', () => {
+    const longName = 'A'.repeat(MAX_PLANNER_NAME_LENGTH + 12);
+    const project = createProject('project-a', 'Factory A');
+    const session = createSession('session-a', [project], project.id);
+    const state: PlannerWorkspaceLifecycleState = {
+      sessions: [session],
+      projects: [project],
+      activeSessionId: session.id,
+      activeProjectId: project.id,
+    };
+
+    const renamedProject = renamePlannerProjectInWorkspace(
+      state,
+      `\n ${longName} \t extra words `,
+      LATER,
+    );
+    const renamedSession = renamePlannerSessionInWorkspace(
+      renamedProject,
+      `\n ${longName} \t extra words `,
+      LATER,
+    );
+
+    expect(renamedSession.projects[0]?.name).toBe('A'.repeat(MAX_PLANNER_NAME_LENGTH));
+    expect(renamedSession.sessions[0]?.name).toBe('A'.repeat(MAX_PLANNER_NAME_LENGTH));
+    expect(renamedSession.projects[0]?.updatedAt).toBe(LATER);
+    expect(renamedSession.sessions[0]?.updatedAt).toBe(LATER);
   });
 
   it('repairs stale selected sessions with a replacement project', () => {
