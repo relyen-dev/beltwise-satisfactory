@@ -122,9 +122,15 @@ describe('PlannerGraphStore', () => {
     graph.layoutCommands.setNodePosition(NODE_ID, { x: 30, y: 40 });
 
     expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({});
+    expect(graph.readModel.layout().nodePositions).toEqual({
+      [NODE_ID]: { x: 30, y: 40 },
+    });
 
     vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS - 1);
     expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({});
+    expect(graph.readModel.layout().nodePositions).toEqual({
+      [NODE_ID]: { x: 30, y: 40 },
+    });
 
     vi.advanceTimersByTime(1);
     expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({

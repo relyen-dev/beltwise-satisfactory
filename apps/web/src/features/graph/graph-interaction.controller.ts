@@ -94,6 +94,20 @@ export class GraphInteractionController {
     }
   }
 
+  public endActiveNodeMove(): void {
+    const hadMovedNode = this.movedNodeIds.size > 0;
+    const hadActiveNodePointer = this.nodePointerStarts.size > 0;
+    this.nodePointerStarts.clear();
+    this.movedNodeIds.clear();
+    this.clearPendingNodeDeselection();
+    this.clearImmediateSelectionSnapshot();
+    if (hadMovedNode) {
+      this.options.onNodeMoveEnded();
+    } else if (hadActiveNodePointer) {
+      this.options.onNodeMoveCanceled();
+    }
+  }
+
   public destroy(): void {
     this.clearPendingNodeDeselection();
     this.clearImmediateSelectionSnapshot();

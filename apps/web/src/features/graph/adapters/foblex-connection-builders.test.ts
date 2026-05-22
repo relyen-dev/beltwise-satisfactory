@@ -12,7 +12,7 @@ describe('foblex connection builders', () => {
     const response = registeredBuilder(FOBLEX_CURVED_EDGE_CONNECTION_TYPE).handle({
       source: { x: 0, y: 0 },
       sourceSide: EFConnectableSide.RIGHT,
-      target: { x: 200, y: 100 },
+      target: { x: 260, y: 100 },
       targetSide: EFConnectableSide.LEFT,
       radius: 0,
       offset: 0,
@@ -20,7 +20,7 @@ describe('foblex connection builders', () => {
     });
 
     expect(response.path.match(/\bC\b/g)).toHaveLength(2);
-    expect(response.path).toContain('100 50 C 100 100');
+    expect(response.path).toContain('130 50 C 130 100');
     expect(response.points).toHaveLength(25);
   });
 
@@ -38,6 +38,50 @@ describe('foblex connection builders', () => {
     expect(response.path.match(/\bC\b/g)).toHaveLength(2);
     expect(response.path).toContain('90 60 C');
     expect(response.points).toHaveLength(25);
+  });
+
+  it('recomputes calculated curved-edge tangents from live endpoint positions', () => {
+    const builder = registeredBuilder(FOBLEX_CURVED_EDGE_CONNECTION_TYPE);
+    const responseBelow = builder.handle({
+      source: { x: 0, y: 0 },
+      sourceSide: EFConnectableSide.CALCULATE,
+      target: { x: 0, y: 100 },
+      targetSide: EFConnectableSide.CALCULATE,
+      radius: 0,
+      offset: 0,
+      waypoints: [],
+    });
+    const responseAbove = builder.handle({
+      source: { x: 0, y: 0 },
+      sourceSide: EFConnectableSide.CALCULATE,
+      target: { x: 0, y: -100 },
+      targetSide: EFConnectableSide.CALCULATE,
+      radius: 0,
+      offset: 0,
+      waypoints: [],
+    });
+
+    expect(responseBelow.secondPoint.y).toBeGreaterThan(0);
+    expect(responseBelow.penultimatePoint.y).toBeLessThan(100);
+    expect(responseAbove.secondPoint.y).toBeLessThan(0);
+    expect(responseAbove.penultimatePoint.y).toBeGreaterThan(-100);
+  });
+
+  it('keeps diagonal curved edges perpendicular when wide-node endpoints beat center dominance', () => {
+    const response = registeredBuilder(FOBLEX_CURVED_EDGE_CONNECTION_TYPE).handle({
+      source: { x: 0, y: 0 },
+      sourceSide: EFConnectableSide.RIGHT,
+      target: { x: 220, y: 120 },
+      targetSide: EFConnectableSide.LEFT,
+      radius: 0,
+      offset: 0,
+      waypoints: [],
+    });
+
+    expect(response.secondPoint.x).toBe(0);
+    expect(response.secondPoint.y).toBeGreaterThan(0);
+    expect(response.penultimatePoint.x).toBe(220);
+    expect(response.penultimatePoint.y).toBeLessThan(120);
   });
 
   it('builds reciprocal arcs as smooth side-aware curves offset from the direct edge path', () => {

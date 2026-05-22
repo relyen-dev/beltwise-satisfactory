@@ -382,8 +382,8 @@ export class ProductionGraphComponent implements OnDestroy {
   @HostListener('window:blur')
   public handleWindowBlur(): void {
     cancelDocumentPointerDrag();
-    this.interactionController.cancelActiveNodeMove();
-    queueMicrotask(() => this.interactionController.cancelActiveNodeMove());
+    this.interactionController.endActiveNodeMove();
+    queueMicrotask(() => this.interactionController.endActiveNodeMove());
   }
 
   public ngOnDestroy(): void {
