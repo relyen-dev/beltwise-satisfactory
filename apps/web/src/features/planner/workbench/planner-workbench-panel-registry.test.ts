@@ -13,6 +13,8 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
       PLANNER_WORKBENCH_PANELS.map((panel) => ({
         id: panel.id,
         label: panel.label,
+        navHint: panel.navHint,
+        navGroup: panel.navGroup,
         width: panel.width,
         panelClass: panel.panelClass,
         hasLazyLoader: typeof panel.loadComponent === 'function',
@@ -21,13 +23,8 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
       {
         id: 'plan',
         label: 'Plan',
-        width: 'standard',
-        panelClass: null,
-        hasLazyLoader: true,
-      },
-      {
-        id: 'objectives',
-        label: 'Objectives',
+        navHint: 'Targets',
+        navGroup: 'primary',
         width: 'standard',
         panelClass: null,
         hasLazyLoader: true,
@@ -35,6 +32,8 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
       {
         id: 'recipes',
         label: 'Recipes',
+        navHint: 'Rules',
+        navGroup: 'primary',
         width: 'wide',
         panelClass: 'work-panel--recipes',
         hasLazyLoader: true,
@@ -42,13 +41,8 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
       {
         id: 'inputs',
         label: 'Inputs',
-        width: 'standard',
-        panelClass: null,
-        hasLazyLoader: true,
-      },
-      {
-        id: 'resources',
-        label: 'Resources',
+        navHint: 'Supply',
+        navGroup: 'primary',
         width: 'standard',
         panelClass: null,
         hasLazyLoader: true,
@@ -56,6 +50,26 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
       {
         id: 'machines',
         label: 'Machines',
+        navHint: 'Build',
+        navGroup: 'primary',
+        width: 'standard',
+        panelClass: null,
+        hasLazyLoader: true,
+      },
+      {
+        id: 'resources',
+        label: 'Resources',
+        navHint: 'Caps',
+        navGroup: 'primary',
+        width: 'standard',
+        panelClass: null,
+        hasLazyLoader: true,
+      },
+      {
+        id: 'objectives',
+        label: 'Objectives',
+        navHint: 'Limits',
+        navGroup: 'secondary',
         width: 'standard',
         panelClass: null,
         hasLazyLoader: true,
@@ -63,6 +77,8 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
       {
         id: 'display',
         label: 'Display',
+        navHint: 'View',
+        navGroup: 'secondary',
         width: 'standard',
         panelClass: null,
         hasLazyLoader: true,
@@ -74,12 +90,16 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
     expect(getPlannerWorkbenchPanel('recipes')).toMatchObject({
       id: 'recipes',
       label: 'Recipes',
+      navHint: 'Rules',
+      navGroup: 'primary',
       width: 'wide',
       panelClass: 'work-panel--recipes',
     });
     expect(getPlannerWorkbenchPanel('plan')).toMatchObject({
       id: 'plan',
       label: 'Plan',
+      navHint: 'Targets',
+      navGroup: 'primary',
       width: 'standard',
       panelClass: null,
     });

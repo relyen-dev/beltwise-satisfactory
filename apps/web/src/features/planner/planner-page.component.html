@@ -178,23 +178,19 @@
             }
           </div>
           <div class="plan-direct-actions">
-            <button
-              type="button"
-              class="plan-delete-button"
-              title="Delete active plan"
-              aria-label="Delete active plan"
-              (click)="deleteActiveProject()"
-            >
-              Delete
-            </button>
             <div class="status-strip" aria-label="Global actions">
               <details
                 class="command-menu"
                 [open]="actionMenuOpen()"
                 (toggle)="syncActionMenuOpen($event)"
               >
-                <summary #actionMenuSummary aria-label="Open plan actions">
-                  Actions
+                <summary
+                  #actionMenuSummary
+                  title="Plan and session tools"
+                  aria-label="Open plan and session tools"
+                >
+                  <span class="command-menu__summary-icon" aria-hidden="true"></span>
+                  <span>Tools</span>
                   <svg
                     class="button-caret"
                     viewBox="0 0 24 24"
@@ -206,88 +202,100 @@
                 </summary>
                 <div
                   class="command-menu__panel"
-                  aria-label="Plan actions"
+                  aria-label="Plan and session tools"
                   (click)="closeActionMenu()"
                 >
                   @if (workspace.activeSession(); as session) {
+                    <div class="command-menu__section">
+                      <span class="command-menu__section-title">Session</span>
+                      <button
+                        type="button"
+                        title="Rename save session"
+                        aria-label="Rename save session"
+                        (click)="startSessionNameEdit(session.id, session.name)"
+                      >
+                        Rename session
+                      </button>
+                      <button type="button" (click)="createSession()">New session</button>
+                      <button
+                        type="button"
+                        class="danger-menu-button"
+                        title="Delete save session"
+                        aria-label="Delete save session"
+                        (click)="deleteActiveSession()"
+                      >
+                        Delete session
+                      </button>
+                    </div>
+                  }
+                  <div class="command-menu__section">
+                    <span class="command-menu__section-title">Plan</span>
                     <button
                       type="button"
-                      title="Rename save session"
-                      aria-label="Rename save session"
-                      (click)="startSessionNameEdit(session.id, session.name)"
+                      title="Duplicate active plan"
+                      aria-label="Duplicate active plan"
+                      (click)="duplicateProject()"
                     >
-                      Rename session
+                      Duplicate plan
                     </button>
-                    <button type="button" (click)="createSession()">New session</button>
                     <button
                       type="button"
                       class="danger-menu-button"
-                      title="Delete save session"
-                      aria-label="Delete save session"
-                      (click)="deleteActiveSession()"
+                      title="Delete active plan"
+                      aria-label="Delete active plan"
+                      (click)="deleteActiveProject()"
                     >
-                      Delete session
+                      Delete plan
                     </button>
-                  }
-                  <button
-                    type="button"
-                    title="Duplicate active plan"
-                    aria-label="Duplicate active plan"
-                    (click)="duplicateProject()"
-                  >
-                    Duplicate plan
-                  </button>
-                  <button
-                    type="button"
-                    title="Import a Beltwise plan JSON file"
-                    aria-label="Import a Beltwise plan JSON file"
-                    (click)="planImportInput.click(); closeActionMenu()"
-                  >
-                    Import plan
-                  </button>
-                  <button
-                    type="button"
-                    title="Export active plan as Beltwise JSON"
-                    aria-label="Export active plan as Beltwise JSON"
-                    (click)="exportActivePlan()"
-                  >
-                    Export plan
-                  </button>
-                  <button
-                    type="button"
-                    title="Copy a self-contained plan link"
-                    aria-label="Copy a self-contained plan link"
-                    (click)="copyActivePlanShareLink()"
-                  >
-                    Copy link
-                  </button>
-                  <button
-                    type="button"
-                    title="Paste a Beltwise plan link or code"
-                    aria-label="Paste a Beltwise plan link or code"
-                    [attr.aria-expanded]="shareImportOpen()"
-                    (click)="toggleShareImport()"
-                  >
-                    Paste link
-                  </button>
-                  <button
-                    type="button"
-                    title="Edit defaults for new plans"
-                    aria-label="Edit defaults for new plans"
-                    [attr.aria-expanded]="defaultsPanelOpen()"
-                    (click)="toggleDefaultsPanel()"
-                  >
-                    Plan defaults
-                  </button>
-                  <button
-                    type="button"
-                    class="danger-menu-button"
-                    title="Delete active plan"
-                    aria-label="Delete active plan"
-                    (click)="deleteActiveProject()"
-                  >
-                    Delete plan
-                  </button>
+                  </div>
+                  <div class="command-menu__section">
+                    <span class="command-menu__section-title">Transfer</span>
+                    <button
+                      type="button"
+                      title="Import a Beltwise plan JSON file"
+                      aria-label="Import a Beltwise plan JSON file"
+                      (click)="planImportInput.click(); closeActionMenu()"
+                    >
+                      Import plan
+                    </button>
+                    <button
+                      type="button"
+                      title="Export active plan as Beltwise JSON"
+                      aria-label="Export active plan as Beltwise JSON"
+                      (click)="exportActivePlan()"
+                    >
+                      Export plan
+                    </button>
+                    <button
+                      type="button"
+                      title="Copy a self-contained plan link"
+                      aria-label="Copy a self-contained plan link"
+                      (click)="copyActivePlanShareLink()"
+                    >
+                      Copy link
+                    </button>
+                    <button
+                      type="button"
+                      title="Paste a Beltwise plan link or code"
+                      aria-label="Paste a Beltwise plan link or code"
+                      [attr.aria-expanded]="shareImportOpen()"
+                      (click)="toggleShareImport()"
+                    >
+                      Paste link
+                    </button>
+                  </div>
+                  <div class="command-menu__section">
+                    <span class="command-menu__section-title">Settings</span>
+                    <button
+                      type="button"
+                      title="Edit defaults for new plans"
+                      aria-label="Edit defaults for new plans"
+                      [attr.aria-expanded]="defaultsPanelOpen()"
+                      (click)="toggleDefaultsPanel()"
+                    >
+                      Plan defaults
+                    </button>
+                  </div>
                 </div>
               </details>
               @if (sessionNameEditing()) {
@@ -371,30 +379,65 @@
   } @else if (workspace.activeProject(); as project) {
     <main class="workspace-body" [class.workspace-body--panel-open]="workPanelOpen()">
       <nav class="section-rail" aria-label="Planner workspace sections">
-        @for (panel of workbenchPanels; track panel.id) {
-          <button
-            type="button"
-            class="rail-button"
-            [class.is-active]="workbench.activePanelId() === panel.id && workPanelOpen()"
-            [attr.aria-current]="
-              workbench.activePanelId() === panel.id && workPanelOpen() ? 'page' : null
-            "
-            (click)="openSection(panel.id)"
-          >
-            <span class="rail-mark">{{ panel.label.slice(0, 1) }}</span>
-            <span>{{ panel.label }}</span>
-          </button>
-        }
+        <div class="section-rail__group" aria-label="Planning workflow">
+          @for (panel of primaryWorkbenchPanels; track panel.id) {
+            <button
+              type="button"
+              class="rail-button"
+              [class.is-active]="workbench.activePanelId() === panel.id && workPanelOpen()"
+              [attr.aria-current]="
+                workbench.activePanelId() === panel.id && workPanelOpen() ? 'page' : null
+              "
+              [attr.data-panel]="panel.id"
+              [title]="panel.label + ': ' + panel.navHint"
+              (click)="openSection(panel.id)"
+            >
+              <span class="rail-icon" aria-hidden="true"><span></span></span>
+              <span class="rail-copy">
+                <span class="rail-label">{{ panel.label }}</span>
+                <span class="rail-hint">{{ panel.navHint }}</span>
+              </span>
+            </button>
+          }
+        </div>
+
+        <div class="section-rail__group section-rail__group--secondary" aria-label="Planner tuning">
+          @for (panel of secondaryWorkbenchPanels; track panel.id) {
+            <button
+              type="button"
+              class="rail-button rail-button--secondary"
+              [class.is-active]="workbench.activePanelId() === panel.id && workPanelOpen()"
+              [attr.aria-current]="
+                workbench.activePanelId() === panel.id && workPanelOpen() ? 'page' : null
+              "
+              [attr.data-panel]="panel.id"
+              [title]="panel.label + ': ' + panel.navHint"
+              (click)="openSection(panel.id)"
+            >
+              <span class="rail-icon" aria-hidden="true"><span></span></span>
+              <span class="rail-copy">
+                <span class="rail-label">{{ panel.label }}</span>
+                <span class="rail-hint">{{ panel.navHint }}</span>
+              </span>
+            </button>
+          }
+        </div>
 
         <button
           type="button"
           class="rail-button rail-button--graph"
+          [class.is-active]="!workPanelOpen()"
+          [attr.aria-current]="!workPanelOpen() ? 'page' : null"
+          data-panel="graph"
           title="Close work panel and focus graph"
           aria-label="Close work panel and focus graph"
           (click)="closeWorkPanel()"
         >
-          <span class="rail-mark">G</span>
-          <span>Graph</span>
+          <span class="rail-icon" aria-hidden="true"><span></span></span>
+          <span class="rail-copy">
+            <span class="rail-label">Graph</span>
+            <span class="rail-hint">Canvas</span>
+          </span>
         </button>
       </nav>
 
