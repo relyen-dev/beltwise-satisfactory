@@ -14,6 +14,11 @@ interface PendingGraphNodePositionCommit {
   timeout: ReturnType<typeof setTimeout> | null;
 }
 
+interface PendingGraphNodePositionPreview {
+  projectId: string;
+  positions: GraphLayoutState['nodePositions'];
+}
+
 interface ActiveGraphNodePositionDrag {
   projectId: string;
   originalPositions: Record<string, { x: number; y: number } | null>;
@@ -30,6 +35,8 @@ interface PlannerGraphBuildSliceOptions {
 
 export class PlannerGraphBuildSlice {
   private pendingGraphNodePositionCommit: PendingGraphNodePositionCommit | null = null;
+  private readonly pendingGraphNodePositionPreview =
+    signal<PendingGraphNodePositionPreview | null>(null);
   private activeGraphNodePositionDrag: ActiveGraphNodePositionDrag | null = null;
 
   public readonly selectedGraphNodeId = signal<string | null>(null);
@@ -133,7 +140,22 @@ export class PlannerGraphBuildSlice {
   }
 
   public activeLayout(): GraphLayoutState {
-    return this.options.activeProject()?.graphLayout ?? defaultGraphLayout();
+    const project = this.options.activeProject();
+    if (!project) {
+      return defaultGraphLayout();
+    }
+
+    const preview = this.pendingGraphNodePositionPreview();
+    if (preview?.projectId !== project.id) {
+      return project.graphLayout;
+    }
+
+    return {
+      nodePositions: {
+        ...project.graphLayout.nodePositions,
+        ...preview.positions,
+      },
+    };
   }
 
   public flushPendingGraphNodePositions(): void {
@@ -145,6 +167,7 @@ export class PlannerGraphBuildSlice {
       clearTimeout(pending.timeout);
     }
     this.pendingGraphNodePositionCommit = null;
+    this.pendingGraphNodePositionPreview.set(null);
     this.options.updateProjectById(pending.projectId, (project) =>
       mutatePlanGraph(project, { type: 'set-node-positions', positions: pending.positions }),
     );
@@ -156,6 +179,7 @@ export class PlannerGraphBuildSlice {
       clearTimeout(pending.timeout);
     }
     this.pendingGraphNodePositionCommit = null;
+    this.pendingGraphNodePositionPreview.set(null);
     this.activeGraphNodePositionDrag = null;
   }
 
@@ -187,6 +211,10 @@ export class PlannerGraphBuildSlice {
 
     pending.positions[nodeId] = position;
     this.pendingGraphNodePositionCommit = pending;
+    this.pendingGraphNodePositionPreview.set({
+      projectId: pending.projectId,
+      positions: { ...pending.positions },
+    });
     this.schedulePendingGraphNodePositionCommit(pending);
   }
 

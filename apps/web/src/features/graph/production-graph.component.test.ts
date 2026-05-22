@@ -198,7 +198,7 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
-  it('cancels active node movement on window blur without committing move end', () => {
+  it('commits active node movement on window blur without selecting', () => {
     const { component, nodeMoveCanceled, nodeMoveEnded, nodeMoved, nodeSelectionToggled } =
       createComponentHarness();
 
@@ -208,8 +208,8 @@ describe('ProductionGraphComponent', () => {
     component.handleNodePointerUp('recipe:iron-plate', pointerEvent(13, 21));
 
     expect(nodeMoved).toEqual([{ nodeId: 'recipe:iron-plate', position: { x: 100, y: 200 } }]);
-    expect(nodeMoveCanceled).toHaveLength(1);
-    expect(nodeMoveEnded).toEqual([]);
+    expect(nodeMoveCanceled).toEqual([]);
+    expect(nodeMoveEnded).toHaveLength(1);
     expect(nodeSelectionToggled).toEqual([]);
 
     component.ngOnDestroy();

@@ -6,6 +6,7 @@ import {
   type IFConnectionBuilderRequest,
   type IFConnectionBuilderResponse,
 } from '@foblex/flow';
+import { DEFAULT_GRAPH_NODE_SIZE } from '@beltwise/planner-core';
 
 export const FOBLEX_STRAIGHT_EDGE_CONNECTION_TYPE = EFConnectionType.STRAIGHT;
 export const FOBLEX_CURVED_EDGE_CONNECTION_TYPE = 'beltwise-perpendicular-curve';
@@ -33,6 +34,8 @@ const CURVED_EDGE_HANDLE_MIN_PX = 36;
 const CURVED_EDGE_HANDLE_MAX_PX = 130;
 const CURVED_EDGE_HANDLE_LENGTH_RATIO = 0.32;
 const CURVED_EDGE_SAMPLE_COUNT = 12;
+const CURVED_EDGE_ASSUMED_NODE_WIDTH_PX = DEFAULT_GRAPH_NODE_SIZE.width;
+const CURVED_EDGE_ASSUMED_NODE_HEIGHT_PX = DEFAULT_GRAPH_NODE_SIZE.height;
 
 class BeltwiseReciprocalArcConnectionBuilder implements IFConnectionBuilder {
   public handle(request: IFConnectionBuilderRequest): IFConnectionBuilderResponse {
@@ -127,8 +130,16 @@ class BeltwisePerpendicularCurveConnectionBuilder implements IFConnectionBuilder
       CURVED_EDGE_HANDLE_MIN_PX,
       CURVED_EDGE_HANDLE_MAX_PX,
     );
-    const sourceDirection = sideDirection(request.sourceSide, request.source, request.target);
-    const targetDirection = sideDirection(request.targetSide, request.target, request.source);
+    const sourceDirection = curvedEdgeDirection(
+      request.sourceSide,
+      request.source,
+      request.target,
+    );
+    const targetDirection = curvedEdgeDirection(
+      request.targetSide,
+      request.target,
+      request.source,
+    );
     const segments = curvedEdgeSegments(request, sourceDirection, targetDirection, handleLength);
     const points = segments.flatMap((segment, index) => {
       const samples = sampleCubicBezier(
@@ -368,10 +379,34 @@ function sideDirection(
   }
 }
 
+function curvedEdgeDirection(
+  side: EFConnectableSide,
+  from: ConnectionPoint,
+  to: ConnectionPoint,
+): ConnectionPoint {
+  const aspectDirection = nodeAspectDirection(from, to);
+  const direction = sideDirection(side, from, to);
+  if (isHorizontalDirection(direction) !== isHorizontalDirection(aspectDirection)) {
+    return aspectDirection;
+  }
+  return direction;
+}
+
 function dominantAxisDirection(from: ConnectionPoint, to: ConnectionPoint): ConnectionPoint {
   const deltaX = to.x - from.x;
   const deltaY = to.y - from.y;
   if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+    return { x: Math.sign(deltaX || 1), y: 0 };
+  }
+  return { x: 0, y: Math.sign(deltaY || 1) };
+}
+
+function nodeAspectDirection(from: ConnectionPoint, to: ConnectionPoint): ConnectionPoint {
+  const deltaX = to.x - from.x;
+  const deltaY = to.y - from.y;
+  const horizontalProgress = Math.abs(deltaX) / CURVED_EDGE_ASSUMED_NODE_WIDTH_PX;
+  const verticalProgress = Math.abs(deltaY) / CURVED_EDGE_ASSUMED_NODE_HEIGHT_PX;
+  if (horizontalProgress >= verticalProgress) {
     return { x: Math.sign(deltaX || 1), y: 0 };
   }
   return { x: 0, y: Math.sign(deltaY || 1) };

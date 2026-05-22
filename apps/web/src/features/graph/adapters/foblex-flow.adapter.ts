@@ -112,12 +112,7 @@ function toFoblexFlowEdges(
     const isReciprocal = edgeKeys.has(edgeKey(edge.targetNodeId, edge.sourceNodeId));
     const { transport, labelLines } = buildEdgeTransportDisplay(edge, options);
     const connectionType = edgeConnectionType(options.displaySettings.edgeStyle, isReciprocal);
-    const sides = edgeConnectionSides(
-      edge,
-      nodesById,
-      options.displaySettings.edgeStyle,
-      isReciprocal,
-    );
+    const sides = edgeConnectionSides(options.displaySettings.edgeStyle, isReciprocal);
 
     return {
       ...edge,
@@ -190,8 +185,6 @@ function edgeConnectionType(
 }
 
 function edgeConnectionSides(
-  edge: GraphRendererEdge,
-  nodesById: ReadonlyMap<string, GraphRendererNode>,
   edgeStyle: GraphEdgeStyle,
   isReciprocal: boolean,
 ): EdgeConnectionSides {
@@ -199,15 +192,9 @@ function edgeConnectionSides(
     return defaultEdgeConnectionSides();
   }
 
-  const sourceNode = nodesById.get(edge.sourceNodeId);
-  const targetNode = nodesById.get(edge.targetNodeId);
-  if (!sourceNode || !targetNode) {
-    return defaultEdgeConnectionSides();
-  }
-
   return {
-    outputSide: rectExitSide(sourceNode, targetNode),
-    inputSide: rectExitSide(targetNode, sourceNode),
+    outputSide: EFConnectionConnectableSide.CALCULATE,
+    inputSide: EFConnectionConnectableSide.CALCULATE,
   };
 }
 
@@ -216,38 +203,6 @@ function defaultEdgeConnectionSides(): EdgeConnectionSides {
     outputSide: EFConnectionConnectableSide.DEFAULT,
     inputSide: EFConnectionConnectableSide.DEFAULT,
   };
-}
-
-function rectExitSide(
-  fromNode: GraphRendererNode,
-  toNode: GraphRendererNode,
-): EFConnectionConnectableSide {
-  const fromSize = fromNode.size ?? { width: 0, height: 0 };
-  const toSize = toNode.size ?? { width: 0, height: 0 };
-  const fromCenter = {
-    x: fromNode.position.x + fromSize.width / 2,
-    y: fromNode.position.y + fromSize.height / 2,
-  };
-  const toCenter = {
-    x: toNode.position.x + toSize.width / 2,
-    y: toNode.position.y + toSize.height / 2,
-  };
-  const deltaX = toCenter.x - fromCenter.x;
-  const deltaY = toCenter.y - fromCenter.y;
-
-  if (deltaX === 0 && deltaY === 0) {
-    return EFConnectionConnectableSide.DEFAULT;
-  }
-
-  const halfWidth = fromSize.width / 2;
-  const halfHeight = fromSize.height / 2;
-  const exitScaleX = deltaX === 0 ? Number.POSITIVE_INFINITY : halfWidth / Math.abs(deltaX);
-  const exitScaleY = deltaY === 0 ? Number.POSITIVE_INFINITY : halfHeight / Math.abs(deltaY);
-
-  if (exitScaleX < exitScaleY) {
-    return deltaX >= 0 ? EFConnectionConnectableSide.RIGHT : EFConnectionConnectableSide.LEFT;
-  }
-  return deltaY >= 0 ? EFConnectionConnectableSide.BOTTOM : EFConnectionConnectableSide.TOP;
 }
 
 function rectClearGap(fromNode: GraphRendererNode, toNode: GraphRendererNode): number {

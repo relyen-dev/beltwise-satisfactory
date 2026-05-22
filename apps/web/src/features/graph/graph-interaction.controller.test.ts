@@ -115,6 +115,34 @@ describe('GraphInteractionController', () => {
     expect(harness.nodeSelectionToggled).toEqual([]);
   });
 
+  it('commits an active moved node when ending an interrupted move', () => {
+    const harness = createInteractionHarness();
+
+    harness.controller.handleNodePointerDown('recipe:iron-plate', { x: 12, y: 20 });
+    harness.controller.handleNodePosition('recipe:iron-plate', { x: 100, y: 200 });
+    harness.controller.endActiveNodeMove();
+    harness.controller.handleNodePointerUp('recipe:iron-plate', { x: 13, y: 21 });
+
+    expect(harness.nodeMoved).toEqual([
+      { nodeId: 'recipe:iron-plate', position: { x: 100, y: 200 } },
+    ]);
+    expect(harness.nodeMoveEnded).toHaveLength(1);
+    expect(harness.nodeMoveCanceled).toEqual([]);
+    expect(harness.nodeSelectionToggled).toEqual([]);
+  });
+
+  it('cancels an interrupted pointer start when ending before movement begins', () => {
+    const harness = createInteractionHarness();
+
+    harness.controller.handleNodePointerDown('recipe:iron-plate', { x: 12, y: 20 });
+    harness.controller.endActiveNodeMove();
+    harness.controller.handleNodePointerUp('recipe:iron-plate', { x: 12, y: 20 });
+
+    expect(harness.nodeMoveCanceled).toHaveLength(1);
+    expect(harness.nodeMoveEnded).toEqual([]);
+    expect(harness.nodeSelectionToggled).toEqual([]);
+  });
+
   it('clears pending delayed actions on destroy', () => {
     vi.useFakeTimers();
     const harness = createInteractionHarness();

@@ -32,7 +32,7 @@ describe('toFoblexFlowModel edge style mapping', () => {
     expect(flowModel.edges[0]?.labelPosition).toBe(FOBLEX_EDGE_LABEL_POSITION);
   });
 
-  it('maps curved edges to perpendicular curves with node-rectangle side hints', () => {
+  it('maps curved edges to perpendicular curves with live calculated side hints', () => {
     const model: GraphRendererModel = {
       nodes: [
         fixtureRendererNode('source', { x: 0, y: 220 }),
@@ -44,8 +44,8 @@ describe('toFoblexFlowModel edge style mapping', () => {
     const flowModel = toFoblexFlowModel(model, modelOptions('curved'));
 
     expect(flowModel.edges[0]?.connectionType).toBe(FOBLEX_CURVED_EDGE_CONNECTION_TYPE);
-    expect(flowModel.edges[0]?.outputSide).toBe(EFConnectionConnectableSide.TOP);
-    expect(flowModel.edges[0]?.inputSide).toBe(EFConnectionConnectableSide.BOTTOM);
+    expect(flowModel.edges[0]?.outputSide).toBe(EFConnectionConnectableSide.CALCULATE);
+    expect(flowModel.edges[0]?.inputSide).toBe(EFConnectionConnectableSide.CALCULATE);
   });
 
   it('maps reciprocal edge pairs to reciprocal arcs with reciprocal label positions', () => {
