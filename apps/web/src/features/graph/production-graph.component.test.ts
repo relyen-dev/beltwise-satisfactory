@@ -54,6 +54,41 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('masks graph identity changes for a short transition window', () => {
+    vi.useFakeTimers();
+    const { component } = createComponentHarness();
+
+    expect(component.graphTransitioning()).toBe(false);
+
+    component.setGraph(outputGraph());
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(true);
+
+    component.ngDoCheck();
+    vi.runOnlyPendingTimers();
+
+    expect(component.graphTransitioning()).toBe(false);
+
+    component.ngOnDestroy();
+  });
+
+  it('does not restart the graph transition for unchanged graph input', () => {
+    vi.useFakeTimers();
+    const { component } = createComponentHarness();
+    const graph = outputGraph();
+
+    component.setGraph(graph);
+    component.ngDoCheck();
+    vi.runOnlyPendingTimers();
+
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(false);
+
+    component.ngOnDestroy();
+  });
+
   it('zooms around the visible graph center with the explicit button step', () => {
     const { component } = createComponentHarness();
     const zoom = { setZoom: vi.fn() };
@@ -882,9 +917,13 @@ class TestResizeObserver {
 }
 
 class TestProductionGraphComponent extends ProductionGraphComponent {
+  private readonly graphValue = signal<ProductionGraph | null>(null);
   private readonly selectedNodeIdValue = signal<string | null>(null);
   private readonly interactionLockedValue = signal(false);
   private readonly targetEditingLockedValue = signal(false);
+
+  public override readonly graph: ProductionGraphComponent['graph'] =
+    this.graphValue.asReadonly() as ProductionGraphComponent['graph'];
 
   public override readonly selectedNodeId: ProductionGraphComponent['selectedNodeId'] =
     this.selectedNodeIdValue.asReadonly() as ProductionGraphComponent['selectedNodeId'];
@@ -894,6 +933,10 @@ class TestProductionGraphComponent extends ProductionGraphComponent {
 
   public override readonly targetEditingLocked: ProductionGraphComponent['targetEditingLocked'] =
     this.targetEditingLockedValue.asReadonly() as ProductionGraphComponent['targetEditingLocked'];
+
+  public setGraph(graph: ProductionGraph | null): void {
+    this.graphValue.set(graph);
+  }
 
   public setSelectedNodeId(nodeId: string | null): void {
     this.selectedNodeIdValue.set(nodeId);

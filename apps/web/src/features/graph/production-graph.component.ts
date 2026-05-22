@@ -2,11 +2,13 @@ import {
   AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
+  DoCheck,
   HostListener,
   OnDestroy,
   computed,
   input,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 
@@ -70,6 +72,7 @@ const GRAPH_ZOOM_MAXIMUM = 2.5;
 const GRAPH_ZOOM_STEP = 0.08;
 const GRAPH_BUTTON_ZOOM_STEP = 0.05;
 const GRAPH_AUTO_FIT_PADDING = { x: 72, y: 56 };
+const GRAPH_SWITCH_TRANSITION_MS = 260;
 
 type CanvasFitTarget = Pick<FCanvasComponent, 'fitToScreen'>;
 type GraphHostTarget = Pick<FFlowComponent, 'hostElement'>;
@@ -84,7 +87,7 @@ type GraphZoomTarget = Pick<FZoomDirective, 'setZoom'>;
   styleUrl: './production-graph.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProductionGraphComponent implements AfterViewChecked, OnDestroy {
+export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDestroy {
   public readonly graph = input<ProductionGraph | null>(null);
   public readonly dataset = input<GameDataset | null>(null);
   public readonly layout = input<GraphLayoutState>({ nodePositions: {} });
@@ -108,6 +111,7 @@ export class ProductionGraphComponent implements AfterViewChecked, OnDestroy {
   public readonly graphZoomStep = GRAPH_ZOOM_STEP;
   public readonly graphButtonZoomStep = GRAPH_BUTTON_ZOOM_STEP;
   public readonly disableBuiltInWheelZoom: FEventTrigger = () => false;
+  public readonly graphTransitioning = signal(false);
   private readonly flow = viewChild<FFlowComponent>(FFlowComponent);
   private readonly canvas = viewChild<FCanvasComponent>('graphCanvas');
   private readonly zoom = viewChild<FZoomDirective>(FZoomDirective);
@@ -122,6 +126,8 @@ export class ProductionGraphComponent implements AfterViewChecked, OnDestroy {
     onNodeSelectionToggled: (nodeId) => this.nodeSelectionToggled.emit(nodeId),
   });
   private autoFittedGraph: ProductionGraph | null = null;
+  private transitionGraph: ProductionGraph | null = null;
+  private graphTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private readonly defaultRendererModel = computed(() => {
     const graph = this.graph();
@@ -149,6 +155,10 @@ export class ProductionGraphComponent implements AfterViewChecked, OnDestroy {
     }
     return buildDirectFocusScope(flow, selectedNodeId);
   });
+
+  public ngDoCheck(): void {
+    this.updateGraphTransitionState();
+  }
 
   public ngAfterViewChecked(): void {
     this.fitRenderedGraphIntoCanvas(this.canvas());
@@ -392,7 +402,38 @@ export class ProductionGraphComponent implements AfterViewChecked, OnDestroy {
   }
 
   public ngOnDestroy(): void {
+    this.clearGraphTransitionTimeout();
     this.interactionController.destroy();
+  }
+
+  private updateGraphTransitionState(): void {
+    const graph = this.graph();
+    if (graph === this.transitionGraph) {
+      return;
+    }
+
+    this.transitionGraph = graph;
+    this.clearGraphTransitionTimeout();
+    if (!graph) {
+      this.graphTransitioning.set(false);
+      return;
+    }
+
+    this.graphTransitioning.set(true);
+    this.graphTransitionTimeout = setTimeout(() => {
+      if (this.graph() === graph) {
+        this.graphTransitioning.set(false);
+      }
+      this.graphTransitionTimeout = null;
+    }, GRAPH_SWITCH_TRANSITION_MS);
+  }
+
+  private clearGraphTransitionTimeout(): void {
+    if (this.graphTransitionTimeout === null) {
+      return;
+    }
+    clearTimeout(this.graphTransitionTimeout);
+    this.graphTransitionTimeout = null;
   }
 }
 
