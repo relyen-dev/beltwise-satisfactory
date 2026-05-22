@@ -10,38 +10,18 @@
         @if (workspace.activeSession(); as session) {
           <div class="session-card">
             <span class="context-label">Save session</span>
-            @if (sessionNameEditing()) {
-              <form
-                class="inline-edit-form"
-                aria-label="Rename session"
-                (submit)="$event.preventDefault(); saveSessionNameEdit()"
+            <div class="session-picker-row">
+              <select
+                class="context-select"
+                aria-label="Active save session"
+                [ngModel]="session.id"
+                (ngModelChange)="selectSession($event)"
               >
-                <input
-                  #sessionNameInput
-                  name="sessionName"
-                  aria-label="Session name"
-                  autocomplete="off"
-                  [attr.maxlength]="maxPlannerNameLength"
-                  [ngModel]="sessionNameDraft()"
-                  (ngModelChange)="sessionNameDraft.set($event)"
-                />
-                <button type="submit">Save</button>
-                <button type="button" (click)="cancelSessionNameEdit()">Cancel</button>
-              </form>
-            } @else {
-              <div class="session-picker-row">
-                <select
-                  class="context-select"
-                  aria-label="Active save session"
-                  [ngModel]="session.id"
-                  (ngModelChange)="selectSession($event)"
-                >
-                  @for (candidate of workspace.sessions(); track candidate.id) {
-                    <option [value]="candidate.id">{{ candidate.name }}</option>
-                  }
-                </select>
-              </div>
-            }
+                @for (candidate of workspace.sessions(); track candidate.id) {
+                  <option [value]="candidate.id">{{ candidate.name }}</option>
+                }
+              </select>
+            </div>
           </div>
         }
 
@@ -310,6 +290,27 @@
                   </button>
                 </div>
               </details>
+              @if (sessionNameEditing()) {
+                <form
+                  class="session-rename-popover"
+                  aria-label="Rename save session"
+                  (submit)="$event.preventDefault(); saveSessionNameEdit()"
+                >
+                  <input
+                    #sessionNameInput
+                    name="sessionName"
+                    aria-label="Session name"
+                    autocomplete="off"
+                    [attr.maxlength]="maxPlannerNameLength"
+                    [ngModel]="sessionNameDraft()"
+                    (ngModelChange)="sessionNameDraft.set($event)"
+                  />
+                  <div class="session-rename-popover__actions">
+                    <button type="submit">Save</button>
+                    <button type="button" (click)="cancelSessionNameEdit()">Cancel</button>
+                  </div>
+                </form>
+              }
               <input
                 #planImportInput
                 class="plan-file-input"
