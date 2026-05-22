@@ -11,7 +11,7 @@ import * as angularCore from '@angular/core';
 import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { createDefaultGraphDisplaySettings, type ProductionGraph } from '@beltwise/planner-core';
-import { EFZoomDirection } from '@foblex/flow';
+import { EFZoomDirection, type FCanvasComponent } from '@foblex/flow';
 import { readFile } from 'node:fs/promises';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ProductionGraphComponent } from './production-graph.component';
@@ -358,6 +358,19 @@ describe('ProductionGraphComponent template', () => {
     fixture.componentInstance.fitRenderedGraphIntoCanvas(canvas);
 
     expect(canvas.fitToScreen).toHaveBeenCalledTimes(2);
+  });
+
+  it('requests a canvas fit when the rendered graph changes', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+    const canvas = { fitToScreen: vi.fn() };
+    installGraphCanvas(fixture.componentInstance, canvas);
+
+    controls.graph.set(outputGraph());
+    fixture.componentInstance.ngAfterViewChecked();
+    fixture.componentInstance.ngAfterViewChecked();
+
+    expect(canvas.fitToScreen).toHaveBeenCalledTimes(1);
+    expect(canvas.fitToScreen).toHaveBeenCalledWith({ x: 72, y: 56 }, false);
   });
 
   it('renders imported script-looking graph labels and notes as text', async () => {
@@ -722,6 +735,17 @@ function requiredZoomControlButtons(
     throw new Error('Expected graph zoom controls to render');
   }
   return { zoomIn, zoomOut };
+}
+
+function installGraphCanvas(
+  component: ProductionGraphComponent,
+  canvas: Pick<FCanvasComponent, 'fitToScreen'>,
+): void {
+  (
+    component as unknown as {
+      canvas: () => Pick<FCanvasComponent, 'fitToScreen'>;
+    }
+  ).canvas = () => canvas;
 }
 
 function testHostElement(rect: Pick<DOMRect, 'height' | 'left' | 'top' | 'width'>): HTMLElement {

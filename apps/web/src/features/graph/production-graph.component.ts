@@ -1,4 +1,5 @@
 import {
+  AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
   HostListener,
@@ -83,7 +84,7 @@ type GraphZoomTarget = Pick<FZoomDirective, 'setZoom'>;
   styleUrl: './production-graph.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProductionGraphComponent implements OnDestroy {
+export class ProductionGraphComponent implements AfterViewChecked, OnDestroy {
   public readonly graph = input<ProductionGraph | null>(null);
   public readonly dataset = input<GameDataset | null>(null);
   public readonly layout = input<GraphLayoutState>({ nodePositions: {} });
@@ -148,6 +149,10 @@ export class ProductionGraphComponent implements OnDestroy {
     }
     return buildDirectFocusScope(flow, selectedNodeId);
   });
+
+  public ngAfterViewChecked(): void {
+    this.fitRenderedGraphIntoCanvas(this.canvas());
+  }
 
   public handleFlowRendered(): void {
     this.fitRenderedGraphIntoCanvas(this.canvas());
