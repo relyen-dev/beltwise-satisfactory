@@ -63,6 +63,10 @@ interface LoadedWorkbenchPanel {
   component: Type<unknown>;
 }
 
+interface FocusAfterRenderOptions {
+  readonly selectText?: boolean;
+}
+
 const VISIBLE_PLAN_CHIP_COUNT = 6;
 const RECENT_PLAN_MEMORY_LIMIT = 12;
 
@@ -527,7 +531,7 @@ export class PlannerPageComponent implements OnInit {
   }
 
   private focusSessionNameInput(): void {
-    focusElementAfterRender(() => this.sessionNameInput()?.nativeElement);
+    focusElementAfterRender(() => this.sessionNameInput()?.nativeElement, { selectText: true });
   }
 
   private focusPlanSelectorTrigger(): void {
@@ -642,17 +646,29 @@ function isInternalSolverDetail(message: string): boolean {
   );
 }
 
-function focusElementAfterRender(element: () => HTMLElement | undefined, attempts = 4): void {
+function focusElementAfterRender(
+  element: () => HTMLElement | undefined,
+  options: FocusAfterRenderOptions = {},
+  attempts = 4,
+): void {
   setTimeout(() => {
     const target = element();
     if (target) {
       target.focus();
+      if (options.selectText && hasSelectMethod(target)) {
+        target.select();
+      }
       return;
     }
     if (attempts > 0) {
-      focusElementAfterRender(element, attempts - 1);
+      focusElementAfterRender(element, options, attempts - 1);
     }
   });
+}
+
+function hasSelectMethod(target: HTMLElement): target is HTMLElement & { select: () => void } {
+  const candidate = target as HTMLElement & { select?: unknown };
+  return typeof candidate.select === 'function';
 }
 
 function scrollElementToTopAfterRender(element: () => HTMLElement | undefined, attempts = 4): void {

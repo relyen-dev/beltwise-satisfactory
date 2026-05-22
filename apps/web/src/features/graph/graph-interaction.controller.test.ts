@@ -87,6 +87,34 @@ describe('GraphInteractionController', () => {
     expect(harness.nodeSelectionToggled).toEqual([]);
   });
 
+  it('cancels active node movement without committing move end or click selection', () => {
+    const harness = createInteractionHarness();
+
+    harness.controller.handleNodePointerDown('recipe:iron-plate', { x: 12, y: 20 });
+    harness.controller.handleNodePosition('recipe:iron-plate', { x: 100, y: 200 });
+    harness.controller.cancelActiveNodeMove();
+    harness.controller.handleNodePointerUp('recipe:iron-plate', { x: 13, y: 21 });
+
+    expect(harness.nodeMoved).toEqual([
+      { nodeId: 'recipe:iron-plate', position: { x: 100, y: 200 } },
+    ]);
+    expect(harness.nodeMoveCanceled).toHaveLength(1);
+    expect(harness.nodeMoveEnded).toEqual([]);
+    expect(harness.nodeSelectionToggled).toEqual([]);
+  });
+
+  it('clears an interrupted pointer start when canceling before movement begins', () => {
+    const harness = createInteractionHarness();
+
+    harness.controller.handleNodePointerDown('recipe:iron-plate', { x: 12, y: 20 });
+    harness.controller.cancelActiveNodeMove();
+    harness.controller.handleNodePointerUp('recipe:iron-plate', { x: 12, y: 20 });
+
+    expect(harness.nodeMoveCanceled).toHaveLength(1);
+    expect(harness.nodeMoveEnded).toEqual([]);
+    expect(harness.nodeSelectionToggled).toEqual([]);
+  });
+
   it('clears pending delayed actions on destroy', () => {
     vi.useFakeTimers();
     const harness = createInteractionHarness();
@@ -105,6 +133,7 @@ function createInteractionHarness(): GraphInteractionHarness {
   let interactionLocked = false;
   let selectedNodeId: string | null = null;
   const nodeDoneToggled: string[] = [];
+  const nodeMoveCanceled: void[] = [];
   const nodeMoveEnded: void[] = [];
   const nodeMoved: Array<{ nodeId: string; position: { x: number; y: number } }> = [];
   const nodeSelectionSet: Array<string | null> = [];
@@ -113,6 +142,7 @@ function createInteractionHarness(): GraphInteractionHarness {
     getSelectedNodeId: () => selectedNodeId,
     isInteractionLocked: () => interactionLocked,
     onNodeDoneToggled: (nodeId) => nodeDoneToggled.push(nodeId),
+    onNodeMoveCanceled: () => nodeMoveCanceled.push(undefined),
     onNodeMoved: (move) => nodeMoved.push(move),
     onNodeMoveEnded: () => nodeMoveEnded.push(undefined),
     onNodeSelectionSet: (nodeId) => nodeSelectionSet.push(nodeId),
@@ -127,6 +157,7 @@ function createInteractionHarness(): GraphInteractionHarness {
       interactionLocked = value;
     },
     nodeDoneToggled,
+    nodeMoveCanceled,
     nodeMoveEnded,
     nodeMoved,
     nodeSelectionSet,
@@ -144,6 +175,7 @@ interface GraphInteractionHarness {
   controller: GraphInteractionController;
   interactionLocked: boolean;
   nodeDoneToggled: string[];
+  nodeMoveCanceled: void[];
   nodeMoveEnded: void[];
   nodeMoved: Array<{ nodeId: string; position: { x: number; y: number } }>;
   nodeSelectionSet: Array<string | null>;

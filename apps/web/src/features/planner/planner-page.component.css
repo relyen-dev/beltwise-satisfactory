@@ -364,7 +364,40 @@
 }
 
 .status-strip {
+  position: relative;
   justify-content: flex-end;
+}
+
+.session-rename-popover {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  gap: var(--space-2);
+  width: min(360px, calc(100vw - 28px));
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
+    color-mix(in srgb, var(--color-panel-raised) 95%, black);
+  box-shadow: var(--shadow-md);
+}
+
+.session-rename-popover input {
+  width: 100%;
+  min-width: 0;
+}
+
+.session-rename-popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.session-rename-popover__actions button {
+  flex: 0 0 auto;
 }
 
 .plan-file-input {
@@ -859,6 +892,11 @@ h2 {
   .status-strip {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .session-rename-popover {
+    right: auto;
+    left: 0;
   }
 
   .workspace-body {

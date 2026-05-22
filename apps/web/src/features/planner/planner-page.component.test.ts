@@ -185,12 +185,13 @@ describe('PlannerPageComponent', () => {
     expect(component.sessionNameEditing()).toBe(false);
   });
 
-  it('moves focus into inline rename fields after activation', () => {
+  it('moves focus into rename fields and selects the session name after activation', () => {
     const { component } = createComponentHarness();
     const projectFocus = vi.fn();
     const sessionFocus = vi.fn();
+    const sessionSelect = vi.fn();
     stubInputViewChild(component, 'projectNameInput', projectFocus);
-    stubInputViewChild(component, 'sessionNameInput', sessionFocus);
+    stubInputViewChild(component, 'sessionNameInput', sessionFocus, sessionSelect);
     vi.useFakeTimers();
 
     try {
@@ -203,6 +204,7 @@ describe('PlannerPageComponent', () => {
       vi.runOnlyPendingTimers();
 
       expect(sessionFocus).toHaveBeenCalledOnce();
+      expect(sessionSelect).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
@@ -717,6 +719,7 @@ function createComponentHarness(): {
       },
     },
     layoutCommands: {
+      cancelNodePositions: vi.fn(),
       flushNodePositions: flushGraphNodePositions,
     },
   };
@@ -885,6 +888,7 @@ interface PlannerPageGraphHarness {
     readonly clear: () => void;
   };
   readonly layoutCommands: {
+    readonly cancelNodePositions: ReturnType<typeof vi.fn>;
     readonly flushNodePositions: () => void;
   };
 }
@@ -914,9 +918,10 @@ function stubInputViewChild(
   component: PlannerPageComponent,
   property: 'projectNameInput' | 'sessionNameInput',
   focus: () => void,
+  select?: () => void,
 ): void {
   const inputRef: ElementRef<HTMLInputElement> = {
-    nativeElement: { focus } as unknown as HTMLInputElement,
+    nativeElement: { focus, select } as unknown as HTMLInputElement,
   };
   Object.defineProperty(component, property, {
     configurable: true,

@@ -76,6 +76,7 @@ export interface PlannerGraphNodeStateCommands {
 export interface PlannerGraphLayoutCommands {
   readonly setNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   readonly flushNodePositions: () => void;
+  readonly cancelNodePositions: () => void;
   readonly resetLayout: () => void;
 }
 
@@ -202,6 +203,7 @@ export class PlannerGraphStore implements OnDestroy {
   public readonly layoutCommands: PlannerGraphLayoutCommands = {
     setNodePosition: (nodeId, position) => this.graphBuild.setGraphNodePosition(nodeId, position),
     flushNodePositions: () => this.graphBuild.flushGraphNodePositions(),
+    cancelNodePositions: () => this.graphBuild.cancelGraphNodePositions(),
     resetLayout: () => this.graphBuild.resetGraphLayout(),
   };
 
@@ -211,7 +213,7 @@ export class PlannerGraphStore implements OnDestroy {
   };
 
   public readonly lifecycle: PlannerGraphLifecycleCommands = {
-    flushPendingState: () => this.graphBuild.flushPendingGraphNodePositions(),
+    flushPendingState: () => this.graphBuild.flushGraphNodePositions(),
     clearPendingState: () => this.graphBuild.clearPendingGraphNodePositions(),
   };
 
