@@ -62,7 +62,11 @@ export const FOBLEX_EDGE_CONNECTION_BEHAVIOR = EFConnectionBehavior.FLOATING;
 export const FOBLEX_EDGE_LABEL_POSITION = 0.5;
 export const FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION = 0.42;
 export const FOBLEX_EDGE_LABEL_OFFSET = -8;
-export const FOBLEX_RECIPROCAL_EDGE_LABEL_OFFSET = -8;
+export const FOBLEX_RECIPROCAL_EDGE_LABEL_MIN_OFFSET = 4;
+export const FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET = 28;
+
+const RECIPROCAL_EDGE_LABEL_CLOSE_GAP_PX = 100;
+const RECIPROCAL_EDGE_LABEL_FAR_GAP_PX = 420;
 
 export function toFoblexFlowModel(
   model: GraphRendererModel,
@@ -125,10 +129,47 @@ function toFoblexFlowEdges(
       labelPosition: isReciprocal
         ? FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION
         : FOBLEX_EDGE_LABEL_POSITION,
-      labelOffset: isReciprocal ? FOBLEX_RECIPROCAL_EDGE_LABEL_OFFSET : FOBLEX_EDGE_LABEL_OFFSET,
+      labelOffset: edgeLabelOffset(edge, nodesById, isReciprocal),
       transport,
     };
   });
+}
+
+function edgeLabelOffset(
+  edge: GraphRendererEdge,
+  nodesById: ReadonlyMap<string, GraphRendererNode>,
+  isReciprocal: boolean,
+): number {
+  if (!isReciprocal) {
+    return FOBLEX_EDGE_LABEL_OFFSET;
+  }
+
+  return reciprocalEdgeLabelOffset(edge, nodesById);
+}
+
+function reciprocalEdgeLabelOffset(
+  edge: GraphRendererEdge,
+  nodesById: ReadonlyMap<string, GraphRendererNode>,
+): number {
+  const sourceNode = nodesById.get(edge.sourceNodeId);
+  const targetNode = nodesById.get(edge.targetNodeId);
+  if (!sourceNode || !targetNode) {
+    return FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET;
+  }
+
+  const gap = rectClearGap(sourceNode, targetNode);
+  const farProgress = clamp(
+    (gap - RECIPROCAL_EDGE_LABEL_CLOSE_GAP_PX) /
+      (RECIPROCAL_EDGE_LABEL_FAR_GAP_PX - RECIPROCAL_EDGE_LABEL_CLOSE_GAP_PX),
+    0,
+    1,
+  );
+
+  return roundToTenth(
+    FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET -
+      (FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET - FOBLEX_RECIPROCAL_EDGE_LABEL_MIN_OFFSET) *
+        farProgress,
+  );
 }
 
 interface EdgeConnectionSides {
@@ -209,6 +250,46 @@ function rectExitSide(
   return deltaY >= 0 ? EFConnectionConnectableSide.BOTTOM : EFConnectionConnectableSide.TOP;
 }
 
+function rectClearGap(fromNode: GraphRendererNode, toNode: GraphRendererNode): number {
+  const fromSize = fromNode.size ?? { width: 0, height: 0 };
+  const toSize = toNode.size ?? { width: 0, height: 0 };
+  const fromCenter = nodeCenter(fromNode, fromSize);
+  const toCenter = nodeCenter(toNode, toSize);
+  const deltaX = toCenter.x - fromCenter.x;
+  const deltaY = toCenter.y - fromCenter.y;
+  const centerDistance = Math.hypot(deltaX, deltaY);
+  if (centerDistance === 0) {
+    return 0;
+  }
+
+  const directionX = deltaX / centerDistance;
+  const directionY = deltaY / centerDistance;
+  const fromProjection =
+    (Math.abs(directionX) * fromSize.width) / 2 + (Math.abs(directionY) * fromSize.height) / 2;
+  const toProjection =
+    (Math.abs(directionX) * toSize.width) / 2 + (Math.abs(directionY) * toSize.height) / 2;
+
+  return Math.max(0, centerDistance - fromProjection - toProjection);
+}
+
+function nodeCenter(
+  node: GraphRendererNode,
+  size: NonNullable<GraphRendererNode['size']>,
+): { x: number; y: number } {
+  return {
+    x: node.position.x + size.width / 2,
+    y: node.position.y + size.height / 2,
+  };
+}
+
 function edgeKey(sourceNodeId: string, targetNodeId: string): string {
   return `${sourceNodeId}\u0000${targetNodeId}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function roundToTenth(value: number): number {
+  return Math.round(value * 10) / 10;
 }

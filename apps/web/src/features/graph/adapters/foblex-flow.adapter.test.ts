@@ -11,6 +11,8 @@ import {
   FOBLEX_CURVED_EDGE_CONNECTION_TYPE,
   FOBLEX_EDGE_LABEL_POSITION,
   FOBLEX_RECIPROCAL_EDGE_CONNECTION_TYPE,
+  FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET,
+  FOBLEX_RECIPROCAL_EDGE_LABEL_MIN_OFFSET,
   FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION,
   FOBLEX_STRAIGHT_EDGE_CONNECTION_TYPE,
   toFoblexFlowModel,
@@ -66,9 +68,52 @@ describe('toFoblexFlowModel edge style mapping', () => {
       FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION,
       FOBLEX_RECIPROCAL_EDGE_LABEL_POSITION,
     ]);
+    expect(flowModel.edges.map((edge) => edge.labelOffset)).toEqual([
+      FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET,
+      FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET,
+    ]);
+    expect(flowModel.edges.every((edge) => edge.labelOffset > 0)).toBe(true);
     expect(flowModel.edges.map((edge) => edge.outputSide)).toEqual([
       EFConnectionConnectableSide.DEFAULT,
       EFConnectionConnectableSide.DEFAULT,
+    ]);
+  });
+
+  it('scales reciprocal label offsets down as node gaps get roomier', () => {
+    const closeFlowModel = toFoblexFlowModel(
+      {
+        nodes: [
+          fixtureRendererNode('source', { x: 0, y: 0 }),
+          fixtureRendererNode('target', { x: 300, y: 0 }),
+        ],
+        edges: [
+          fixtureRendererEdge('forward-edge', 'source', 'target'),
+          fixtureRendererEdge('return-edge', 'target', 'source'),
+        ],
+      },
+      modelOptions('curved'),
+    );
+    const farFlowModel = toFoblexFlowModel(
+      {
+        nodes: [
+          fixtureRendererNode('source', { x: 0, y: 0 }),
+          fixtureRendererNode('target', { x: 720, y: 0 }),
+        ],
+        edges: [
+          fixtureRendererEdge('forward-edge', 'source', 'target'),
+          fixtureRendererEdge('return-edge', 'target', 'source'),
+        ],
+      },
+      modelOptions('curved'),
+    );
+
+    expect(closeFlowModel.edges.map((edge) => edge.labelOffset)).toEqual([
+      FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET,
+      FOBLEX_RECIPROCAL_EDGE_LABEL_MAX_OFFSET,
+    ]);
+    expect(farFlowModel.edges.map((edge) => edge.labelOffset)).toEqual([
+      FOBLEX_RECIPROCAL_EDGE_LABEL_MIN_OFFSET,
+      FOBLEX_RECIPROCAL_EDGE_LABEL_MIN_OFFSET,
     ]);
   });
 });

@@ -21,10 +21,13 @@ interface ConnectionPoint {
   y: number;
 }
 
-const RECIPROCAL_EDGE_ARC_MIN_OFFSET_PX = 18;
-const RECIPROCAL_EDGE_ARC_MAX_OFFSET_PX = 34;
-const RECIPROCAL_EDGE_ARC_LENGTH_RATIO = 0.14;
-const RECIPROCAL_EDGE_ENDPOINT_OFFSET_PX = 7;
+const RECIPROCAL_EDGE_ARC_MIN_OFFSET_PX = 24;
+const RECIPROCAL_EDGE_ARC_MAX_OFFSET_PX = 44;
+const RECIPROCAL_EDGE_ARC_LENGTH_RATIO = 0.16;
+const RECIPROCAL_EDGE_ENDPOINT_HORIZONTAL_OFFSET_PX = 12;
+const RECIPROCAL_EDGE_ENDPOINT_VERTICAL_OFFSET_PX = 16;
+const RECIPROCAL_EDGE_ENDPOINT_SEPARATION_START = 0.55;
+const RECIPROCAL_EDGE_ENDPOINT_SEPARATION_END = 0.9;
 const RECIPROCAL_EDGE_ARC_SAMPLE_COUNT = 12;
 const CURVED_EDGE_HANDLE_MIN_PX = 36;
 const CURVED_EDGE_HANDLE_MAX_PX = 130;
@@ -54,18 +57,8 @@ class BeltwiseReciprocalArcConnectionBuilder implements IFConnectionBuilder {
     );
     const normalX = -deltaY / length;
     const normalY = deltaX / length;
-    const sourceOffset = endpointOffset(
-      request.sourceSide,
-      normalX,
-      normalY,
-      RECIPROCAL_EDGE_ENDPOINT_OFFSET_PX,
-    );
-    const targetOffset = endpointOffset(
-      request.targetSide,
-      normalX,
-      normalY,
-      RECIPROCAL_EDGE_ENDPOINT_OFFSET_PX,
-    );
+    const sourceOffset = reciprocalEndpointOffset(normalX, normalY, deltaX, deltaY);
+    const targetOffset = sourceOffset;
     const source = {
       x: request.source.x + sourceOffset.x,
       y: request.source.y + sourceOffset.y,
@@ -74,32 +67,41 @@ class BeltwiseReciprocalArcConnectionBuilder implements IFConnectionBuilder {
       x: request.target.x + targetOffset.x,
       y: request.target.y + targetOffset.y,
     };
-    const controlPoint1 = {
-      x: source.x + deltaX / 3 + normalX * arcOffset,
-      y: source.y + deltaY / 3 + normalY * arcOffset,
+    const offsetDeltaX = target.x - source.x;
+    const offsetDeltaY = target.y - source.y;
+    const segment = {
+      start: source,
+      controlPoint1: {
+        x: source.x + offsetDeltaX / 3 + normalX * arcOffset,
+        y: source.y + offsetDeltaY / 3 + normalY * arcOffset,
+      },
+      controlPoint2: {
+        x: source.x + (offsetDeltaX * 2) / 3 + normalX * arcOffset,
+        y: source.y + (offsetDeltaY * 2) / 3 + normalY * arcOffset,
+      },
+      end: target,
     };
-    const controlPoint2 = {
-      x: source.x + (deltaX * 2) / 3 + normalX * arcOffset,
-      y: source.y + (deltaY * 2) / 3 + normalY * arcOffset,
-    };
+    const points = sampleCubicBezier(
+      segment.start,
+      segment.controlPoint1,
+      segment.controlPoint2,
+      segment.end,
+      RECIPROCAL_EDGE_ARC_SAMPLE_COUNT,
+    );
+    const midpoint = cubicBezierAt(
+      segment.start,
+      segment.controlPoint1,
+      segment.controlPoint2,
+      segment.end,
+      0.5,
+    );
 
     return {
-      path: [
-        `M ${source.x} ${source.y}`,
-        `C ${controlPoint1.x} ${controlPoint1.y}`,
-        `${controlPoint2.x} ${controlPoint2.y}`,
-        `${target.x} ${target.y}`,
-      ].join(' '),
-      penultimatePoint: controlPoint2,
-      secondPoint: controlPoint1,
-      points: sampleCubicBezier(
-        source,
-        controlPoint1,
-        controlPoint2,
-        target,
-        RECIPROCAL_EDGE_ARC_SAMPLE_COUNT,
-      ),
-      candidates: [cubicBezierAt(source, controlPoint1, controlPoint2, target, 0.5)],
+      path: createCubicPath([segment]),
+      penultimatePoint: segment.controlPoint2,
+      secondPoint: segment.controlPoint1,
+      points,
+      candidates: [midpoint],
     };
   }
 }
@@ -388,26 +390,43 @@ export const FOBLEX_CONNECTION_BUILDERS: IConnectionBuilders = {
   [FOBLEX_RECIPROCAL_EDGE_CONNECTION_TYPE]: new BeltwiseReciprocalArcConnectionBuilder(),
 };
 
-function endpointOffset(
-  side: EFConnectableSide,
+function reciprocalEndpointOffset(
   normalX: number,
   normalY: number,
-  offset: number,
+  deltaX: number,
+  deltaY: number,
 ): ConnectionPoint {
-  switch (side) {
-    case EFConnectableSide.TOP:
-    case EFConnectableSide.BOTTOM:
-      return { x: Math.sign(normalX || 1) * offset, y: 0 };
-    case EFConnectableSide.LEFT:
-    case EFConnectableSide.RIGHT:
-      return { x: 0, y: Math.sign(normalY || 1) * offset };
-    default:
-      return { x: normalX * offset, y: normalY * offset };
+  const majorAxis = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+  if (majorAxis === 0) {
+    return { x: 0, y: RECIPROCAL_EDGE_ENDPOINT_HORIZONTAL_OFFSET_PX };
   }
+
+  const verticalProgress = Math.abs(deltaY) / majorAxis;
+  const offset =
+    RECIPROCAL_EDGE_ENDPOINT_HORIZONTAL_OFFSET_PX +
+    (RECIPROCAL_EDGE_ENDPOINT_VERTICAL_OFFSET_PX -
+      RECIPROCAL_EDGE_ENDPOINT_HORIZONTAL_OFFSET_PX) *
+      verticalProgress;
+
+  const minorAxis = Math.min(Math.abs(deltaX), Math.abs(deltaY));
+  const axisProgress = (majorAxis - minorAxis) / majorAxis;
+  const endpointProgress = smoothStep(
+    RECIPROCAL_EDGE_ENDPOINT_SEPARATION_START,
+    RECIPROCAL_EDGE_ENDPOINT_SEPARATION_END,
+    axisProgress,
+  );
+  const diagonalSafeOffset = offset * endpointProgress;
+
+  return { x: normalX * diagonalSafeOffset, y: normalY * diagonalSafeOffset };
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function smoothStep(edge0: number, edge1: number, value: number): number {
+  const progress = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return progress * progress * (3 - 2 * progress);
 }
 
 function sampleCubicBezier(
