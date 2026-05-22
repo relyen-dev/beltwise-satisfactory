@@ -24,6 +24,47 @@
   overflow: hidden;
 }
 
+.beltwise-flow f-canvas {
+  opacity: 1;
+  filter: none;
+  transition:
+    opacity 180ms ease,
+    filter 180ms ease;
+}
+
+.beltwise-flow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(81, 200, 198, 0.06), transparent),
+    color-mix(in srgb, var(--color-bg-canvas) 72%, transparent);
+  transition: opacity 180ms ease;
+}
+
+.beltwise-flow--transitioning f-canvas {
+  opacity: 0.18;
+  filter: blur(1px) saturate(0.82);
+}
+
+.beltwise-flow--transitioning::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beltwise-flow f-canvas,
+  .beltwise-flow::after {
+    transition: none;
+  }
+
+  .beltwise-flow--transitioning f-canvas {
+    filter: none;
+  }
+}
+
 .beltwise-flow:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--color-accent) 62%, white);
   outline-offset: 3px;

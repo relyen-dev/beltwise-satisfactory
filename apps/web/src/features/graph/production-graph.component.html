@@ -6,6 +6,7 @@
     role="region"
     aria-label="Production graph"
     aria-keyshortcuts="PageUp PageDown plus - ="
+    [class.beltwise-flow--transitioning]="graphTransitioning()"
     (wheel)="handleGraphWheel($event)"
     (keydown)="handleGraphKeydown($event)"
     (fFullRendered)="handleFlowRendered()"

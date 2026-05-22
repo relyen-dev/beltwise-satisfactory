@@ -11,7 +11,7 @@ import * as angularCore from '@angular/core';
 import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { createDefaultGraphDisplaySettings, type ProductionGraph } from '@beltwise/planner-core';
-import { EFZoomDirection } from '@foblex/flow';
+import { EFZoomDirection, type FCanvasComponent } from '@foblex/flow';
 import { readFile } from 'node:fs/promises';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ProductionGraphComponent } from './production-graph.component';
@@ -50,6 +50,41 @@ describe('ProductionGraphComponent', () => {
 
     expect(component.graphZoomStep).toBe(0.08);
     expect(component.graphButtonZoomStep).toBe(0.05);
+
+    component.ngOnDestroy();
+  });
+
+  it('masks graph identity changes for a short transition window', () => {
+    vi.useFakeTimers();
+    const { component } = createComponentHarness();
+
+    expect(component.graphTransitioning()).toBe(false);
+
+    component.setGraph(outputGraph());
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(true);
+
+    component.ngDoCheck();
+    vi.runOnlyPendingTimers();
+
+    expect(component.graphTransitioning()).toBe(false);
+
+    component.ngOnDestroy();
+  });
+
+  it('does not restart the graph transition for unchanged graph input', () => {
+    vi.useFakeTimers();
+    const { component } = createComponentHarness();
+    const graph = outputGraph();
+
+    component.setGraph(graph);
+    component.ngDoCheck();
+    vi.runOnlyPendingTimers();
+
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(false);
 
     component.ngOnDestroy();
   });
@@ -358,6 +393,19 @@ describe('ProductionGraphComponent template', () => {
     fixture.componentInstance.fitRenderedGraphIntoCanvas(canvas);
 
     expect(canvas.fitToScreen).toHaveBeenCalledTimes(2);
+  });
+
+  it('requests a canvas fit when the rendered graph changes', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+    const canvas = { fitToScreen: vi.fn() };
+    installGraphCanvas(fixture.componentInstance, canvas);
+
+    controls.graph.set(outputGraph());
+    fixture.componentInstance.ngAfterViewChecked();
+    fixture.componentInstance.ngAfterViewChecked();
+
+    expect(canvas.fitToScreen).toHaveBeenCalledTimes(1);
+    expect(canvas.fitToScreen).toHaveBeenCalledWith({ x: 72, y: 56 }, false);
   });
 
   it('renders imported script-looking graph labels and notes as text', async () => {
@@ -724,6 +772,17 @@ function requiredZoomControlButtons(
   return { zoomIn, zoomOut };
 }
 
+function installGraphCanvas(
+  component: ProductionGraphComponent,
+  canvas: Pick<FCanvasComponent, 'fitToScreen'>,
+): void {
+  (
+    component as unknown as {
+      canvas: () => Pick<FCanvasComponent, 'fitToScreen'>;
+    }
+  ).canvas = () => canvas;
+}
+
 function testHostElement(rect: Pick<DOMRect, 'height' | 'left' | 'top' | 'width'>): HTMLElement {
   return {
     getBoundingClientRect: () =>
@@ -858,9 +917,13 @@ class TestResizeObserver {
 }
 
 class TestProductionGraphComponent extends ProductionGraphComponent {
+  private readonly graphValue = signal<ProductionGraph | null>(null);
   private readonly selectedNodeIdValue = signal<string | null>(null);
   private readonly interactionLockedValue = signal(false);
   private readonly targetEditingLockedValue = signal(false);
+
+  public override readonly graph: ProductionGraphComponent['graph'] =
+    this.graphValue.asReadonly() as ProductionGraphComponent['graph'];
 
   public override readonly selectedNodeId: ProductionGraphComponent['selectedNodeId'] =
     this.selectedNodeIdValue.asReadonly() as ProductionGraphComponent['selectedNodeId'];
@@ -870,6 +933,10 @@ class TestProductionGraphComponent extends ProductionGraphComponent {
 
   public override readonly targetEditingLocked: ProductionGraphComponent['targetEditingLocked'] =
     this.targetEditingLockedValue.asReadonly() as ProductionGraphComponent['targetEditingLocked'];
+
+  public setGraph(graph: ProductionGraph | null): void {
+    this.graphValue.set(graph);
+  }
 
   public setSelectedNodeId(nodeId: string | null): void {
     this.selectedNodeIdValue.set(nodeId);
