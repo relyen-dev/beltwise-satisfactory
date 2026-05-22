@@ -490,6 +490,7 @@
               (nodeDoneToggled)="graph.nodeStateCommands.toggleDone($event)"
               (nodeMoved)="graph.layoutCommands.setNodePosition($event.nodeId, $event.position)"
               (nodeMoveEnded)="graph.layoutCommands.flushNodePositions()"
+              (nodeMoveCanceled)="graph.layoutCommands.cancelNodePositions()"
               (targetAmountChanged)="
                 planConfig.targetCommands.updateAmount($event.targetId, $event.amountPerMinute)
               "

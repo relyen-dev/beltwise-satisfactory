@@ -150,6 +150,47 @@ describe('PlannerGraphStore', () => {
     });
   });
 
+  it('cancels an active drag back to its drag-start manual position after debounce', () => {
+    vi.useFakeTimers();
+    const { activeProject, graph } = createGraphHarness({
+      project: {
+        ...createProject(),
+        graphLayout: {
+          nodePositions: {
+            [NODE_ID]: { x: 5, y: 6 },
+          },
+        },
+      },
+    });
+
+    graph.layoutCommands.setNodePosition(NODE_ID, { x: 40, y: 50 });
+    vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
+    expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({
+      [NODE_ID]: { x: 40, y: 50 },
+    });
+
+    graph.layoutCommands.cancelNodePositions();
+
+    expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({
+      [NODE_ID]: { x: 5, y: 6 },
+    });
+  });
+
+  it('cancels an active drag by removing positions that were not manual at drag start', () => {
+    vi.useFakeTimers();
+    const { activeProject, graph } = createGraphHarness();
+
+    graph.layoutCommands.setNodePosition(NODE_ID, { x: 40, y: 50 });
+    vi.advanceTimersByTime(GRAPH_NODE_POSITION_COMMIT_DEBOUNCE_MS);
+    expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({
+      [NODE_ID]: { x: 40, y: 50 },
+    });
+
+    graph.layoutCommands.cancelNodePositions();
+
+    expect(requiredProject(activeProject).graphLayout.nodePositions).toEqual({});
+  });
+
   it('flushes and clears pending layout state for workspace lifecycle hooks', () => {
     vi.useFakeTimers();
     const { activeProject, graph } = createGraphHarness();

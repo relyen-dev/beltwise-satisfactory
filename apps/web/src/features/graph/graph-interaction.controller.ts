@@ -11,6 +11,7 @@ export interface GraphInteractionControllerOptions {
   getSelectedNodeId: () => string | null;
   isInteractionLocked: () => boolean;
   onNodeDoneToggled: (nodeId: string) => void;
+  onNodeMoveCanceled: () => void;
   onNodeMoved: (move: { nodeId: string; position: GraphPoint }) => void;
   onNodeMoveEnded: () => void;
   onNodeSelectionSet: (nodeId: string | null) => void;
@@ -79,6 +80,18 @@ export class GraphInteractionController {
     }
     this.movedNodeIds.add(nodeId);
     this.options.onNodeMoved({ nodeId, position });
+  }
+
+  public cancelActiveNodeMove(): void {
+    const hadActiveNodePointer = this.nodePointerStarts.size > 0;
+    const hadMovedNode = this.movedNodeIds.size > 0;
+    this.nodePointerStarts.clear();
+    this.movedNodeIds.clear();
+    this.clearPendingNodeDeselection();
+    this.clearImmediateSelectionSnapshot();
+    if (hadActiveNodePointer || hadMovedNode) {
+      this.options.onNodeMoveCanceled();
+    }
   }
 
   public destroy(): void {

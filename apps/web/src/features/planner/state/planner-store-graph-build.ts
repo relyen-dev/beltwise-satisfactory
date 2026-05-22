@@ -14,6 +14,11 @@ interface PendingGraphNodePositionCommit {
   timeout: ReturnType<typeof setTimeout> | null;
 }
 
+interface ActiveGraphNodePositionDrag {
+  projectId: string;
+  originalPositions: Record<string, { x: number; y: number } | null>;
+}
+
 interface PlannerGraphBuildSliceOptions {
   readonly activeProject: Signal<PlannerProject | null>;
   readonly updateActiveProject: (mapper: (project: PlannerProject) => PlannerProject) => void;
@@ -25,6 +30,7 @@ interface PlannerGraphBuildSliceOptions {
 
 export class PlannerGraphBuildSlice {
   private pendingGraphNodePositionCommit: PendingGraphNodePositionCommit | null = null;
+  private activeGraphNodePositionDrag: ActiveGraphNodePositionDrag | null = null;
 
   public readonly selectedGraphNodeId = signal<string | null>(null);
 
@@ -32,6 +38,23 @@ export class PlannerGraphBuildSlice {
 
   public flushGraphNodePositions(): void {
     this.flushPendingGraphNodePositions();
+    this.activeGraphNodePositionDrag = null;
+  }
+
+  public cancelGraphNodePositions(): void {
+    const drag = this.activeGraphNodePositionDrag;
+    this.clearPendingGraphNodePositions();
+    this.activeGraphNodePositionDrag = null;
+    if (!drag) {
+      return;
+    }
+
+    this.options.updateProjectById(drag.projectId, (project) =>
+      mutatePlanGraph(project, {
+        type: 'restore-node-positions',
+        positions: drag.originalPositions,
+      }),
+    );
   }
 
   public setGraphNodePosition(nodeId: string, position: { x: number; y: number }): void {
@@ -42,6 +65,7 @@ export class PlannerGraphBuildSlice {
     if (!project) {
       return;
     }
+    this.rememberGraphNodePositionDragStart(project, nodeId);
     this.queueGraphNodePosition(project, nodeId, position);
   }
 
@@ -132,6 +156,7 @@ export class PlannerGraphBuildSlice {
       clearTimeout(pending.timeout);
     }
     this.pendingGraphNodePositionCommit = null;
+    this.activeGraphNodePositionDrag = null;
   }
 
   private setGraphNodeDone(nodeId: string, done: boolean): void {
@@ -176,5 +201,27 @@ export class PlannerGraphBuildSlice {
 
   private nodeLayoutLocked(): boolean {
     return this.options.activeProject()?.buildState.nodeLayoutLocked ?? false;
+  }
+
+  private rememberGraphNodePositionDragStart(project: PlannerProject, nodeId: string): void {
+    if (this.activeGraphNodePositionDrag?.projectId !== project.id) {
+      this.activeGraphNodePositionDrag = {
+        projectId: project.id,
+        originalPositions: {},
+      };
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.activeGraphNodePositionDrag.originalPositions,
+        nodeId,
+      )
+    ) {
+      return;
+    }
+
+    const currentPosition = project.graphLayout.nodePositions[nodeId];
+    this.activeGraphNodePositionDrag.originalPositions[nodeId] = currentPosition
+      ? { x: currentPosition.x, y: currentPosition.y }
+      : null;
   }
 }

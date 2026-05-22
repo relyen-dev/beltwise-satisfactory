@@ -129,6 +129,10 @@ export type PlanGraphIntent =
       readonly type: 'set-node-positions';
       readonly positions: Readonly<Record<string, PointInput>>;
     }
+  | {
+      readonly type: 'restore-node-positions';
+      readonly positions: Readonly<Record<string, PointInput | null>>;
+    }
   | { readonly type: 'reset-layout' }
   | { readonly type: 'set-plan-locked'; readonly locked: boolean }
   | { readonly type: 'set-node-layout-locked'; readonly locked: boolean }
@@ -246,6 +250,8 @@ export function mutatePlanGraph(project: PlannerProject, intent: PlanGraphIntent
       return setGraphNodePositions(project, { [intent.nodeId]: intent.position });
     case 'set-node-positions':
       return setGraphNodePositions(project, intent.positions);
+    case 'restore-node-positions':
+      return restoreGraphNodePositions(project, intent.positions);
     case 'reset-layout':
       return resetGraphLayout(project);
     case 'set-plan-locked':
@@ -563,6 +569,45 @@ export function setGraphNodePositions(
   };
 
   for (const [nodeId, position] of Object.entries(positions)) {
+    const current = project.graphLayout.nodePositions[nodeId];
+    if (current?.x === position.x && current.y === position.y) {
+      continue;
+    }
+    changed = true;
+    nodePositions[nodeId] = { x: position.x, y: position.y };
+  }
+
+  if (!changed) {
+    return project;
+  }
+
+  return {
+    ...project,
+    graphLayout: {
+      ...project.graphLayout,
+      nodePositions,
+    },
+  };
+}
+
+export function restoreGraphNodePositions(
+  project: PlannerProject,
+  positions: Readonly<Record<string, PointInput | null>>,
+): PlannerProject {
+  let changed = false;
+  const nodePositions: GraphLayoutState['nodePositions'] = {
+    ...project.graphLayout.nodePositions,
+  };
+
+  for (const [nodeId, position] of Object.entries(positions)) {
+    if (position === null) {
+      if (Object.prototype.hasOwnProperty.call(nodePositions, nodeId)) {
+        changed = true;
+        delete nodePositions[nodeId];
+      }
+      continue;
+    }
+
     const current = project.graphLayout.nodePositions[nodeId];
     if (current?.x === position.x && current.y === position.y) {
       continue;

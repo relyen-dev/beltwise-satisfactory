@@ -250,6 +250,34 @@ describe('plan intent mutations', () => {
     expect(cleanGraphNodeState({ done: false, note: '' })).toBeNull();
   });
 
+  it('restores graph node positions and removes entries missing at drag start', () => {
+    const project: PlannerProject = {
+      ...createProject(),
+      graphLayout: {
+        nodePositions: {
+          'recipe:Recipe_IronPlate_C': { x: 120, y: 240 },
+          'recipe:Recipe_IronRod_C': { x: 500, y: 600 },
+        },
+      },
+    };
+
+    const restored = mutatePlanGraph(project, {
+      type: 'restore-node-positions',
+      positions: {
+        'recipe:Recipe_IronPlate_C': { x: 10, y: 20 },
+        'recipe:Recipe_IronRod_C': null,
+      },
+    });
+
+    expect(restored.graphLayout.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 10, y: 20 },
+    });
+    expect(project.graphLayout.nodePositions).toEqual({
+      'recipe:Recipe_IronPlate_C': { x: 120, y: 240 },
+      'recipe:Recipe_IronRod_C': { x: 500, y: 600 },
+    });
+  });
+
   it('sets and clears plain-text plan notes without touching solver configuration', () => {
     const project = createProject();
 

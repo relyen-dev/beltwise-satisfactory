@@ -717,6 +717,7 @@ function createComponentHarness(): {
       },
     },
     layoutCommands: {
+      cancelNodePositions: vi.fn(),
       flushNodePositions: flushGraphNodePositions,
     },
   };
@@ -885,6 +886,7 @@ interface PlannerPageGraphHarness {
     readonly clear: () => void;
   };
   readonly layoutCommands: {
+    readonly cancelNodePositions: ReturnType<typeof vi.fn>;
     readonly flushNodePositions: () => void;
   };
 }

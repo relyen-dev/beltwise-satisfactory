@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   OnDestroy,
   computed,
   input,
@@ -94,6 +95,7 @@ export class ProductionGraphComponent implements OnDestroy {
   public readonly nodeNotes = input<Readonly<Record<string, string>>>({});
   public readonly interactionLocked = input(false);
   public readonly targetEditingLocked = input(false);
+  public readonly nodeMoveCanceled = output<void>();
   public readonly nodeMoved = output<{ nodeId: string; position: { x: number; y: number } }>();
   public readonly nodeMoveEnded = output<void>();
   public readonly nodeSelectionSet = output<string | null>();
@@ -112,6 +114,7 @@ export class ProductionGraphComponent implements OnDestroy {
     getSelectedNodeId: () => this.selectedNodeId(),
     isInteractionLocked: () => this.interactionLocked(),
     onNodeDoneToggled: (nodeId) => this.nodeDoneToggled.emit(nodeId),
+    onNodeMoveCanceled: () => this.nodeMoveCanceled.emit(),
     onNodeMoved: (move) => this.nodeMoved.emit(move),
     onNodeMoveEnded: () => this.nodeMoveEnded.emit(),
     onNodeSelectionSet: (nodeId) => this.nodeSelectionSet.emit(nodeId),
@@ -376,6 +379,13 @@ export class ProductionGraphComponent implements OnDestroy {
     this.interactionController.handleNodePosition(nodeId, position);
   }
 
+  @HostListener('window:blur')
+  public handleWindowBlur(): void {
+    cancelDocumentPointerDrag();
+    this.interactionController.cancelActiveNodeMove();
+    queueMicrotask(() => this.interactionController.cancelActiveNodeMove());
+  }
+
   public ngOnDestroy(): void {
     this.interactionController.destroy();
   }
@@ -447,4 +457,19 @@ function isKeyboardTargetElement(
   }
   const candidate = target as { isContentEditable?: unknown; tagName?: unknown };
   return typeof candidate.tagName === 'string';
+}
+
+function cancelDocumentPointerDrag(): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.dispatchEvent(createPointerCancelEvent());
+}
+
+function createPointerCancelEvent(): Event {
+  if (typeof PointerEvent === 'function') {
+    return new PointerEvent('pointercancel', { bubbles: true, cancelable: true });
+  }
+  return new Event('pointercancel', { bubbles: true, cancelable: true });
 }

@@ -198,6 +198,40 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('cancels active node movement on window blur without committing move end', () => {
+    const { component, nodeMoveCanceled, nodeMoveEnded, nodeMoved, nodeSelectionToggled } =
+      createComponentHarness();
+
+    component.handleNodePointerDown('recipe:iron-plate', pointerEvent(12, 20));
+    component.handleNodePosition('recipe:iron-plate', { x: 100, y: 200 });
+    component.handleWindowBlur();
+    component.handleNodePointerUp('recipe:iron-plate', pointerEvent(13, 21));
+
+    expect(nodeMoved).toEqual([{ nodeId: 'recipe:iron-plate', position: { x: 100, y: 200 } }]);
+    expect(nodeMoveCanceled).toHaveLength(1);
+    expect(nodeMoveEnded).toEqual([]);
+    expect(nodeSelectionToggled).toEqual([]);
+
+    component.ngOnDestroy();
+  });
+
+  it('dispatches pointercancel on window blur to release Foblex document drag listeners', () => {
+    const { component } = createComponentHarness();
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('document', { dispatchEvent });
+
+    try {
+      component.handleWindowBlur();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(dispatchEvent).toHaveBeenCalledOnce();
+    expect(dispatchEvent.mock.calls[0]?.[0]).toMatchObject({ type: 'pointercancel' });
+
+    component.ngOnDestroy();
+  });
+
   it('emits target amount changes for editable output targets', () => {
     const { component, targetAmountChanged } = createComponentHarness();
     const event = controlEvent('42.5');
@@ -437,6 +471,7 @@ function createComponentHarness(): ProductionGraphHarness {
   const injector = Injector.create({ providers: [] });
   const component = runInInjectionContext(injector, () => new TestProductionGraphComponent());
   const nodeDoneToggled: string[] = [];
+  const nodeMoveCanceled: void[] = [];
   const nodeMoveEnded: void[] = [];
   const nodeMoved: Array<{ nodeId: string; position: { x: number; y: number } }> = [];
   const nodeSelectionSet: Array<string | null> = [];
@@ -444,6 +479,7 @@ function createComponentHarness(): ProductionGraphHarness {
   const targetAmountChanged: Array<{ targetId: string; amountPerMinute: number }> = [];
 
   component.nodeDoneToggled.subscribe((nodeId) => nodeDoneToggled.push(nodeId));
+  component.nodeMoveCanceled.subscribe(() => nodeMoveCanceled.push(undefined));
   component.nodeMoveEnded.subscribe(() => nodeMoveEnded.push(undefined));
   component.nodeMoved.subscribe((move) => nodeMoved.push(move));
   component.nodeSelectionSet.subscribe((nodeId) => nodeSelectionSet.push(nodeId));
@@ -453,6 +489,7 @@ function createComponentHarness(): ProductionGraphHarness {
   return {
     component,
     nodeDoneToggled,
+    nodeMoveCanceled,
     nodeMoveEnded,
     nodeMoved,
     nodeSelectionSet,
@@ -766,6 +803,7 @@ async function loadAngularComponentResource(url: string): Promise<string> {
 interface ProductionGraphHarness {
   component: TestProductionGraphComponent;
   nodeDoneToggled: string[];
+  nodeMoveCanceled: void[];
   nodeMoveEnded: void[];
   nodeMoved: Array<{ nodeId: string; position: { x: number; y: number } }>;
   nodeSelectionSet: Array<string | null>;
