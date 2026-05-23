@@ -109,6 +109,7 @@ export class PlannerPageComponent implements OnInit {
   public readonly planSelectorOpen = this.shell.planSelectorOpen;
   public readonly actionMenuOpen = this.shell.actionMenuOpen;
   public readonly shareImportOpen = this.shell.shareImportOpen;
+  public readonly inspectorPanelOpen = this.shell.inspectorPanelOpen;
   public readonly shareCodeText = this.shell.shareCodeText;
   public readonly planTransferStatus = this.shell.planTransferStatus;
   public readonly projectNameInput = viewChild<ElementRef<HTMLInputElement>>('projectNameInput');
@@ -217,6 +218,10 @@ export class PlannerPageComponent implements OnInit {
 
     effect(
       () => {
+        if (!this.inspectorPanelOpen()) {
+          return;
+        }
+
         const panel = this.inspectorPanel()?.nativeElement;
         const context = `${this.workspace.activeProjectId() ?? 'no-project'}:${
           this.graph.readModel.selectedNodeId() ?? 'overview'
@@ -367,6 +372,14 @@ export class PlannerPageComponent implements OnInit {
 
   public closeShareImport(): void {
     this.shell.closeShareImport();
+  }
+
+  public collapseInspectorPanel(): void {
+    this.shell.collapseInspectorPanel();
+  }
+
+  public openInspectorPanel(): void {
+    this.shell.openInspectorPanel();
   }
 
   public togglePlanSelector(): void {

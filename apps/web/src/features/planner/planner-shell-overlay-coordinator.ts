@@ -31,6 +31,7 @@ export class PlannerShellOverlayCoordinator {
   public readonly planSelectorOpen = signal(false);
   public readonly actionMenuOpen = signal(false);
   public readonly shareImportOpen = signal(false);
+  public readonly inspectorPanelOpen = signal(true);
   public readonly shareCodeText = signal('');
   public readonly planTransferStatus: WritableSignal<PlanTransferStatus | null> = signal(null);
   public readonly projectNameDraft = signal('');
@@ -104,6 +105,14 @@ export class PlannerShellOverlayCoordinator {
 
   public closeShareImport(): void {
     this.shareImportOpen.set(false);
+  }
+
+  public collapseInspectorPanel(): void {
+    this.inspectorPanelOpen.set(false);
+  }
+
+  public openInspectorPanel(): void {
+    this.inspectorPanelOpen.set(true);
   }
 
   public togglePlanSelector(): PlannerShellPlanSelectorToggleResult {
