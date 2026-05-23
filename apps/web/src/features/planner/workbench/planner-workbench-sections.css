@@ -630,8 +630,7 @@
   overflow: visible;
 }
 
-.planner-shell .recipe-row:hover,
-.planner-shell .recipe-row:focus-within {
+.planner-shell .recipe-row:hover {
   z-index: 20;
 }
 
@@ -890,8 +889,7 @@
   visibility: hidden;
 }
 
-.planner-shell .recipe-row:hover .recipe-detail-tooltip,
-.planner-shell .recipe-row:focus-within .recipe-detail-tooltip {
+.planner-shell .recipe-row:hover .recipe-detail-tooltip {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;

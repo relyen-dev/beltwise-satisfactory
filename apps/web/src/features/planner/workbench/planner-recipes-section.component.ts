@@ -21,7 +21,7 @@ type RecipeWorkbenchPanel = 'base' | 'alternate';
 })
 export class PlannerRecipesSectionComponent {
   public readonly planConfig = inject(PlannerPlanConfigStore);
-  public readonly activeRecipePanel = signal<RecipeWorkbenchPanel>('base');
+  public readonly activeRecipePanel = signal<RecipeWorkbenchPanel>('alternate');
   public readonly activeBaseRecipePanel = signal<BaseRecipePanelId>('standard');
   public readonly baseRecipePanelDefinitions = BASE_RECIPE_PANEL_DEFINITIONS;
 

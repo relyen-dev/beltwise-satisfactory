@@ -89,6 +89,31 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('uses the transition key instead of graph identity when provided', () => {
+    vi.useFakeTimers();
+    const { component } = createComponentHarness();
+
+    component.setTransitionKey('project-a');
+    component.setGraph(outputGraph());
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(true);
+
+    vi.runOnlyPendingTimers();
+
+    component.setGraph(outputGraph());
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(false);
+
+    component.setTransitionKey('project-b');
+    component.ngDoCheck();
+
+    expect(component.graphTransitioning()).toBe(true);
+
+    component.ngOnDestroy();
+  });
+
   it('zooms around the visible graph center with the explicit button step', () => {
     const { component } = createComponentHarness();
     const zoom = { setZoom: vi.fn() };
@@ -918,12 +943,16 @@ class TestResizeObserver {
 
 class TestProductionGraphComponent extends ProductionGraphComponent {
   private readonly graphValue = signal<ProductionGraph | null>(null);
+  private readonly transitionKeyValue = signal<string | null | undefined>(undefined);
   private readonly selectedNodeIdValue = signal<string | null>(null);
   private readonly interactionLockedValue = signal(false);
   private readonly targetEditingLockedValue = signal(false);
 
   public override readonly graph: ProductionGraphComponent['graph'] =
     this.graphValue.asReadonly() as ProductionGraphComponent['graph'];
+
+  public override readonly transitionKey: ProductionGraphComponent['transitionKey'] =
+    this.transitionKeyValue.asReadonly() as ProductionGraphComponent['transitionKey'];
 
   public override readonly selectedNodeId: ProductionGraphComponent['selectedNodeId'] =
     this.selectedNodeIdValue.asReadonly() as ProductionGraphComponent['selectedNodeId'];
@@ -936,6 +965,10 @@ class TestProductionGraphComponent extends ProductionGraphComponent {
 
   public setGraph(graph: ProductionGraph | null): void {
     this.graphValue.set(graph);
+  }
+
+  public setTransitionKey(key: string | null | undefined): void {
+    this.transitionKeyValue.set(key);
   }
 
   public setSelectedNodeId(nodeId: string | null): void {

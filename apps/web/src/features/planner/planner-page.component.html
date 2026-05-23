@@ -537,6 +537,7 @@
               [nodeNotes]="graph.readModel.nodeNotes()"
               [interactionLocked]="graph.readModel.nodeLayoutLocked()"
               [targetEditingLocked]="graph.readModel.planLocked()"
+              [transitionKey]="workspace.activeProjectId() ?? null"
               (nodeSelectionSet)="graph.selectionCommands.set($event)"
               (nodeSelectionToggled)="graph.selectionCommands.toggle($event)"
               (nodeDoneToggled)="graph.nodeStateCommands.toggleDone($event)"
