@@ -49,6 +49,26 @@
   gap: var(--space-3);
 }
 
+.planner-shell .inspector-collapse-button {
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.planner-shell .inspector-collapse-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .planner-shell :is(.panel-heading span, .section-heading span) {
   color: var(--color-text-muted);
   font-size: 12px;

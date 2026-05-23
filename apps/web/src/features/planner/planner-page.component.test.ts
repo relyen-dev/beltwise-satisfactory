@@ -59,6 +59,18 @@ describe('PlannerPageComponent', () => {
     expect(component.workPanelOpen()).toBe(false);
   });
 
+  it('collapses and reopens the inspector panel', () => {
+    const { component } = createComponentHarness();
+
+    component.collapseInspectorPanel();
+
+    expect(component.inspectorPanelOpen()).toBe(false);
+
+    component.openInspectorPanel();
+
+    expect(component.inspectorPanelOpen()).toBe(true);
+  });
+
   it('clears graph selection from Escape when focus is not editable', () => {
     const { component, graph, clearSelectedGraphNode } = createComponentHarness();
     const event = keyboardEvent(new TestHTMLElement('div'));
