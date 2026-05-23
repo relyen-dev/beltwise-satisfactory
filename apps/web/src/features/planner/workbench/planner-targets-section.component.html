@@ -82,21 +82,23 @@
           <div class="row-tools">
             <button
               type="button"
+              class="row-icon-button row-icon-button--duplicate"
               title="Duplicate target"
               aria-label="Duplicate target"
               [disabled]="planConfig.editingLocked()"
               (click)="planConfig.targetCommands.duplicate(target)"
             >
-              Duplicate
+              <span aria-hidden="true"></span>
             </button>
             <button
               type="button"
+              class="row-icon-button row-icon-button--remove"
               title="Remove target"
               aria-label="Remove target"
               [disabled]="planConfig.editingLocked()"
               (click)="planConfig.targetCommands.remove(target.id)"
             >
-              Remove
+              <span aria-hidden="true"></span>
             </button>
           </div>
         </div>

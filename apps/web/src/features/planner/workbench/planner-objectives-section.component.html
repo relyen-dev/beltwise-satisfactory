@@ -35,125 +35,148 @@
     </div>
 
     <section class="objective-custom-panel" aria-label="Custom objective weights">
-      <div class="section-heading">
-        <div>
-          <h4>Custom weights</h4>
-          <span>Editing a value switches this plan to Custom.</span>
-        </div>
+      <div class="objective-subtabs" aria-label="Objective detail">
+        <button
+          type="button"
+          class="objective-subtab"
+          [class.objective-subtab--active]="activeObjectivePanel() === 'weights'"
+          [attr.aria-pressed]="activeObjectivePanel() === 'weights' ? 'true' : 'false'"
+          (click)="activeObjectivePanel.set('weights')"
+        >
+          <span>Weights</span>
+        </button>
+        <button
+          type="button"
+          class="objective-subtab"
+          [class.objective-subtab--active]="activeObjectivePanel() === 'resources'"
+          [attr.aria-pressed]="activeObjectivePanel() === 'resources' ? 'true' : 'false'"
+          (click)="activeObjectivePanel.set('resources')"
+        >
+          <span>Resource preferences</span>
+        </button>
       </div>
 
-      <div class="objective-weight-grid">
-        @for (control of weightControls; track control.key) {
-          <label class="display-setting-card objective-weight-card">
-            <span class="display-setting-card__label">{{ control.label }}</span>
-            <input
-              type="number"
-              min="0"
-              [step]="control.step"
-              [disabled]="planConfig.editingLocked()"
-              [ngModel]="weightValue(profile, control.key)"
-              (ngModelChange)="setObjectiveWeight(control.key, $event)"
-            />
-          </label>
-        }
-      </div>
-
-      <section
-        class="objective-resource-panel"
-        aria-label="Raw resource route preferences"
-        aria-describedby="objective-resource-cost-summary"
-      >
+      @if (activeObjectivePanel() === 'weights') {
         <div class="section-heading">
           <div>
-            <h4>Raw resource preferences</h4>
-            <span>{{ rawResourceCostFormulaLabel }}</span>
+            <h4>Custom weights</h4>
+            <span>Editing a value switches this plan to Custom.</span>
           </div>
         </div>
-        <p class="objective-resource-note" id="objective-resource-cost-summary">
-          {{ rawResourceCostHelpText }}
-        </p>
 
-        <div class="objective-resource-grid">
-          <div class="objective-resource-row objective-resource-row--head" aria-hidden="true">
-            <span>Resource</span>
-            <span class="objective-resource-formula objective-resource-formula--head">
-              <span>Built-in</span>
-              <span></span>
-              <span>Custom</span>
-              <span></span>
-              <span>Effective</span>
-            </span>
-            <span></span>
-          </div>
-
-          @for (row of planConfig.rawResourceMultiplierRows(); track row.resource.itemId) {
-            <div
-              class="objective-resource-row"
-              [class.objective-resource-row--custom]="!row.isNeutral"
-            >
-              <div class="objective-resource-copy">
-                <div class="objective-resource-title">
-                  <bw-game-icon
-                    [src]="row.iconSrc"
-                    [label]="row.resource.displayName"
-                    [size]="'sm'"
-                    [kind]="'item'"
-                    [showTitle]="true"
-                  />
-                  <span class="objective-resource-name">{{ row.resource.displayName }}</span>
-                  <span
-                    class="objective-resource-state"
-                    [class.objective-resource-state--neutral]="row.isNeutral"
-                  >
-                    {{ row.stateLabel }}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                class="objective-resource-formula"
-                role="group"
-                [attr.aria-label]="row.costFormulaAriaLabel"
-              >
-                <span class="objective-resource-factor">
-                  <strong>{{ row.builtInCostLabel }}</strong>
-                </span>
-                <span class="objective-resource-operator" aria-hidden="true">x</span>
-                <label class="objective-resource-multiplier">
-                  <span class="sr-only">{{ row.resource.displayName }} custom multiplier</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.05"
-                    [attr.aria-label]="row.resource.displayName + ' custom route multiplier'"
-                    [attr.aria-describedby]="'objective-resource-cost-' + row.resource.itemId"
-                    [disabled]="planConfig.editingLocked()"
-                    [ngModel]="row.multiplier"
-                    (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
-                  />
-                </label>
-                <span class="objective-resource-operator" aria-hidden="true">=</span>
-                <span class="objective-resource-factor objective-resource-factor--effective">
-                  <strong>{{ row.effectiveCostLabel }}</strong>
-                </span>
-                <span class="sr-only" [id]="'objective-resource-cost-' + row.resource.itemId">
-                  {{ row.builtInCostHelpText }}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                title="Reset to neutral"
-                [attr.aria-label]="'Reset ' + row.resource.displayName + ' route multiplier'"
-                [disabled]="planConfig.editingLocked() || row.isNeutral"
-                (click)="resetRawResourceMultiplier(row.resource.itemId)"
-              >
-                Reset
-              </button>
-            </div>
+        <div class="objective-weight-grid">
+          @for (control of weightControls; track control.key) {
+            <label class="display-setting-card objective-weight-card">
+              <span class="display-setting-card__label">{{ control.label }}</span>
+              <input
+                type="number"
+                min="0"
+                [step]="control.step"
+                [disabled]="planConfig.editingLocked()"
+                [ngModel]="weightValue(profile, control.key)"
+                (ngModelChange)="setObjectiveWeight(control.key, $event)"
+              />
+            </label>
           }
         </div>
-      </section>
+      } @else {
+        <section
+          class="objective-resource-panel"
+          aria-label="Raw resource route preferences"
+          aria-describedby="objective-resource-cost-summary"
+        >
+          <div class="section-heading">
+            <div>
+              <h4>Raw resource preferences</h4>
+              <span>{{ rawResourceCostFormulaLabel }}</span>
+            </div>
+          </div>
+          <p class="objective-resource-note" id="objective-resource-cost-summary">
+            {{ rawResourceCostHelpText }}
+          </p>
+
+          <div class="objective-resource-grid">
+            <div class="objective-resource-row objective-resource-row--head" aria-hidden="true">
+              <span>Resource</span>
+              <span class="objective-resource-formula objective-resource-formula--head">
+                <span>Built-in</span>
+                <span></span>
+                <span>Custom</span>
+                <span></span>
+                <span>Effective</span>
+              </span>
+              <span></span>
+            </div>
+
+            @for (row of planConfig.rawResourceMultiplierRows(); track row.resource.itemId) {
+              <div
+                class="objective-resource-row"
+                [class.objective-resource-row--custom]="!row.isNeutral"
+              >
+                <div class="objective-resource-copy">
+                  <div class="objective-resource-title">
+                    <bw-game-icon
+                      [src]="row.iconSrc"
+                      [label]="row.resource.displayName"
+                      [size]="'sm'"
+                      [kind]="'item'"
+                      [showTitle]="true"
+                    />
+                    <span class="objective-resource-name">{{ row.resource.displayName }}</span>
+                    <span
+                      class="objective-resource-state"
+                      [class.objective-resource-state--neutral]="row.isNeutral"
+                    >
+                      {{ row.stateLabel }}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  class="objective-resource-formula"
+                  role="group"
+                  [attr.aria-label]="row.costFormulaAriaLabel"
+                >
+                  <span class="objective-resource-factor">
+                    <strong>{{ row.builtInCostLabel }}</strong>
+                  </span>
+                  <span class="objective-resource-operator" aria-hidden="true">x</span>
+                  <label class="objective-resource-multiplier">
+                    <span class="sr-only">{{ row.resource.displayName }} custom multiplier</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      [attr.aria-label]="row.resource.displayName + ' custom route multiplier'"
+                      [attr.aria-describedby]="'objective-resource-cost-' + row.resource.itemId"
+                      [disabled]="planConfig.editingLocked()"
+                      [ngModel]="row.multiplier"
+                      (ngModelChange)="setRawResourceMultiplier(row.resource.itemId, $event)"
+                    />
+                  </label>
+                  <span class="objective-resource-operator" aria-hidden="true">=</span>
+                  <span class="objective-resource-factor objective-resource-factor--effective">
+                    <strong>{{ row.effectiveCostLabel }}</strong>
+                  </span>
+                  <span class="sr-only" [id]="'objective-resource-cost-' + row.resource.itemId">
+                    {{ row.builtInCostHelpText }}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  title="Reset to neutral"
+                  [attr.aria-label]="'Reset ' + row.resource.displayName + ' route multiplier'"
+                  [disabled]="planConfig.editingLocked() || row.isNeutral"
+                  (click)="resetRawResourceMultiplier(row.resource.itemId)"
+                >
+                  Reset
+                </button>
+              </div>
+            }
+          </div>
+        </section>
+      }
     </section>
   }
 </section>

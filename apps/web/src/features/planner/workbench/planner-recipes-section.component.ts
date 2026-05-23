@@ -10,6 +10,8 @@ import {
   recipeRowsForBasePanel,
 } from './planner-configuration-surface';
 
+type RecipeWorkbenchPanel = 'base' | 'alternate';
+
 @Component({
   selector: 'bw-planner-recipes-section',
   standalone: true,
@@ -19,6 +21,7 @@ import {
 })
 export class PlannerRecipesSectionComponent {
   public readonly planConfig = inject(PlannerPlanConfigStore);
+  public readonly activeRecipePanel = signal<RecipeWorkbenchPanel>('base');
   public readonly activeBaseRecipePanel = signal<BaseRecipePanelId>('standard');
   public readonly baseRecipePanelDefinitions = BASE_RECIPE_PANEL_DEFINITIONS;
 
@@ -38,6 +41,13 @@ export class PlannerRecipesSectionComponent {
       standard: standardRows,
       converterResources: converterResourceRows,
     }).length;
+  }
+
+  public totalBaseRecipeRowCount(
+    standardRows: readonly RecipeRow[],
+    converterResourceRows: readonly RecipeRow[],
+  ): number {
+    return standardRows.length + converterResourceRows.length;
   }
 
   public setRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {

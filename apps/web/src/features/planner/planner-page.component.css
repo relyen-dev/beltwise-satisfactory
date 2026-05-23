@@ -591,7 +591,7 @@
 }
 
 .workspace-body {
-  --active-work-panel-width: clamp(540px, 44vw, 660px);
+  --active-work-panel-width: clamp(680px, 50vw, 740px);
 
   position: relative;
   display: grid;
@@ -603,7 +603,7 @@
 }
 
 .workspace-body[data-active-panel='recipes'] {
-  --active-work-panel-width: clamp(680px, 58vw, 960px);
+  --active-work-panel-width: clamp(720px, 52vw, 760px);
 }
 
 .section-rail {
@@ -998,6 +998,15 @@
   padding-left: calc(var(--active-work-panel-width) + 12px);
 }
 
+.workspace-body--panel-open .graph-toolbar {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.workspace-body--panel-open .graph-toolbar__actions {
+  display: none;
+}
+
 .graph-toolbar {
   display: flex;
   align-items: center;
@@ -1130,9 +1139,9 @@
   border-radius: 0;
   background:
     linear-gradient(
-      90deg,
+      270deg,
       color-mix(in srgb, var(--work-panel-accent) 8%, transparent),
-      transparent 34%
+      transparent 32%
     ),
     linear-gradient(180deg, rgba(255, 255, 255, 0.032), transparent 20%),
     color-mix(in srgb, var(--color-panel) 96%, black);
@@ -1144,7 +1153,7 @@
 
 .work-panel::before {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0 0 0 auto;
   z-index: 2;
   width: 3px;
   background: var(--work-panel-accent);
@@ -1193,7 +1202,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 78%, black);
   background:
     linear-gradient(
-      90deg,
+      270deg,
       color-mix(in srgb, var(--work-panel-accent) 13%, transparent),
       transparent 42%
     ),
@@ -1331,13 +1340,13 @@ h2 {
   }
 
   .workspace-body {
-    --active-work-panel-width: clamp(520px, 52vw, 720px);
+    --active-work-panel-width: clamp(600px, 58vw, 720px);
 
     grid-template-columns: 132px minmax(0, 1fr);
   }
 
   .workspace-body[data-active-panel='recipes'] {
-    --active-work-panel-width: clamp(640px, 66vw, 860px);
+    --active-work-panel-width: clamp(660px, 64vw, 760px);
   }
 
   .inspector-panel {

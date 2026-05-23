@@ -17,11 +17,44 @@
     </label>
   </div>
 
-  <div class="recipe-columns">
+  @let standardBaseRows = planConfig.standardBaseRecipeRows();
+  @let converterResourceRows = planConfig.converterResourceRecipeRows();
+  @let baseRows = activeBaseRecipeRows();
+  @let alternateRows = planConfig.alternateRecipeRows();
+
+  <div class="recipe-mode-tabs" aria-label="Recipe group">
+    <button
+      type="button"
+      class="recipe-mode-tab"
+      [class.recipe-mode-tab--active]="activeRecipePanel() === 'base'"
+      [attr.aria-pressed]="activeRecipePanel() === 'base' ? 'true' : 'false'"
+      (click)="activeRecipePanel.set('base')"
+    >
+      <span>
+        <strong>Base recipes</strong>
+        <em>Standard and converter resources</em>
+      </span>
+      <span class="recipe-mode-tab__count">{{
+        totalBaseRecipeRowCount(standardBaseRows, converterResourceRows)
+      }}</span>
+    </button>
+    <button
+      type="button"
+      class="recipe-mode-tab"
+      [class.recipe-mode-tab--active]="activeRecipePanel() === 'alternate'"
+      [attr.aria-pressed]="activeRecipePanel() === 'alternate' ? 'true' : 'false'"
+      (click)="activeRecipePanel.set('alternate')"
+    >
+      <span>
+        <strong>Alternates</strong>
+        <em>Unlocked recipe variants</em>
+      </span>
+      <span class="recipe-mode-tab__count">{{ alternateRows.length }}</span>
+    </button>
+  </div>
+
+  @if (activeRecipePanel() === 'base') {
     <section class="recipe-group" aria-labelledby="base-recipes-title">
-      @let standardBaseRows = planConfig.standardBaseRecipeRows();
-      @let converterResourceRows = planConfig.converterResourceRecipeRows();
-      @let baseRows = activeBaseRecipeRows();
       <div class="recipe-group-header">
         <div>
           <h4 id="base-recipes-title">Base recipes</h4>
@@ -150,9 +183,8 @@
         }
       </div>
     </section>
-
+  } @else {
     <section class="recipe-group" aria-labelledby="alternate-recipes-title">
-      @let alternateRows = planConfig.alternateRecipeRows();
       <div class="recipe-group-header">
         <div>
           <h4 id="alternate-recipes-title">Alternate recipes</h4>
@@ -262,5 +294,5 @@
         }
       </div>
     </section>
-  </div>
+  }
 </section>

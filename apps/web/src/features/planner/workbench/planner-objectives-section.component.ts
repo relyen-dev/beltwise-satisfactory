@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { type ItemId } from '@beltwise/game-data';
 import {
@@ -23,6 +23,8 @@ import {
   RAW_RESOURCE_COST_HELP_TEXT,
 } from './planner-configuration-surface';
 
+type ObjectiveWorkbenchPanel = 'weights' | 'resources';
+
 @Component({
   selector: 'bw-planner-objectives-section',
   standalone: true,
@@ -32,6 +34,7 @@ import {
 })
 export class PlannerObjectivesSectionComponent {
   public readonly planConfig = inject(PlannerPlanConfigStore);
+  public readonly activeObjectivePanel = signal<ObjectiveWorkbenchPanel>('weights');
   public readonly presets = PLANNER_OBJECTIVE_PRESETS;
   public readonly weightControls = OBJECTIVE_WEIGHT_CONTROLS;
   public readonly rawResourceCostFormulaLabel = RAW_RESOURCE_COST_FORMULA_LABEL;
