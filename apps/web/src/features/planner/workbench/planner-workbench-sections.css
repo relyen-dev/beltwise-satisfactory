@@ -649,15 +649,15 @@
 }
 
 .planner-shell .config-toggle-row:not(.config-toggle-row--locked):hover {
-  border-color: color-mix(in srgb, var(--color-accent) 46%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-accent) 11%, var(--color-panel-raised)),
+    color-mix(in srgb, var(--color-accent) 5%, var(--color-panel-raised)),
     color-mix(in srgb, var(--color-panel-raised) 94%, black)
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 8px 18px rgba(0, 0, 0, 0.18);
+    0 6px 14px rgba(0, 0, 0, 0.16);
 }
 
 .planner-shell .config-toggle-row:focus-within {
@@ -666,19 +666,19 @@
 }
 
 .planner-shell .config-toggle-row--enabled {
-  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-accent) 17%, var(--color-panel-raised)) 0%,
-    color-mix(in srgb, var(--color-accent) 7%, var(--color-panel-raised)) 48%,
-    color-mix(in srgb, var(--color-panel-raised) 94%, black) 100%
+    color-mix(in srgb, var(--color-accent) 5%, var(--color-panel-raised)) 0%,
+    color-mix(in srgb, var(--color-accent) 2%, var(--color-panel-raised)) 42%,
+    color-mix(in srgb, var(--color-panel-raised) 93%, black) 100%
   );
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--color-accent) 8%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .planner-shell .config-toggle-row--enabled::before {
-  background: var(--color-accent);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 72%, var(--color-border));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 34%, transparent);
 }
 
 .planner-shell .config-toggle-row--disabled {
@@ -724,15 +724,15 @@
 }
 
 .planner-shell .config-toggle-row--enabled .config-toggle-row__indicator {
-  border-color: var(--color-accent-strong);
-  background: color-mix(in srgb, var(--color-accent) 26%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-accent) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-panel));
   box-shadow:
     inset 0 0 0 2px color-mix(in srgb, var(--color-panel-raised) 80%, black),
-    0 0 12px color-mix(in srgb, var(--color-accent) 42%, transparent);
+    0 0 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
 
 .planner-shell .config-toggle-row--enabled .config-toggle-row__indicator::after {
-  background: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 76%, white);
 }
 
 .planner-shell .config-toggle-row__copy {
@@ -1198,20 +1198,24 @@
 }
 
 .planner-shell .objective-summary {
+  position: relative;
   display: grid;
   gap: 4px;
   min-width: 0;
-  padding: 11px 12px;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 36%, var(--color-border));
+  padding: 11px 13px 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 84%, black);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent) 76%, var(--color-border));
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 58%),
-    color-mix(in srgb, var(--color-accent) 9%, var(--color-panel-raised));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 42%),
+    color-mix(in srgb, var(--color-panel-raised) 78%, black);
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb, var(--color-accent) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.028);
 }
 
 .planner-shell .objective-summary strong {
-  color: var(--color-accent-strong);
+  color: color-mix(in srgb, var(--color-accent) 66%, white);
   font-size: 14px;
 }
 
@@ -1248,16 +1252,24 @@
   text-align: left;
 }
 
-.planner-shell .objective-preset-card:hover:not(:disabled),
-.planner-shell .objective-preset-card--active {
-  border-color: color-mix(in srgb, var(--color-accent) 66%, var(--color-border));
+.planner-shell .objective-preset-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%),
-    color-mix(in srgb, var(--color-accent) 12%, var(--color-panel-raised));
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 64%),
+    color-mix(in srgb, var(--color-panel-raised) 86%, black);
 }
 
 .planner-shell .objective-preset-card--active {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 48%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 54%, var(--color-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 70%),
+    color-mix(in srgb, var(--color-accent) 5%, var(--color-panel-raised));
+}
+
+.planner-shell .objective-preset-card--active {
+  box-shadow:
+    inset 0 -2px 0 color-mix(in srgb, var(--color-accent) 70%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .planner-shell .objective-preset-card strong,
