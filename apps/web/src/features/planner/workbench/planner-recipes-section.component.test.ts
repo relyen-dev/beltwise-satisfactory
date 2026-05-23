@@ -27,6 +27,7 @@ describe('PlannerRecipesSectionComponent', () => {
     });
     const component = runInInjectionContext(injector, () => new PlannerRecipesSectionComponent());
 
+    expect(component.activeRecipePanel()).toBe('alternate');
     expect(component.activeBaseRecipeRows()).toEqual(standardRows);
 
     component.activeBaseRecipePanel.set('converterResources');

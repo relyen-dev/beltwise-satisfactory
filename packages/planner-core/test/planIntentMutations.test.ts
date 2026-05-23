@@ -42,6 +42,24 @@ describe('plan intent mutations', () => {
     expect(project.targets.map((target) => target.id)).toEqual(['target-a', 'target-b']);
   });
 
+  it('reorders targets and normalizes sort order', () => {
+    const project = createProject();
+
+    const reordered = mutatePlanTargets(project, {
+      type: 'reorder-targets',
+      targetIds: ['target-b', 'missing-target', 'target-a', 'target-b'],
+    });
+
+    expect(reordered.targets.map((target) => [target.id, target.sortOrder])).toEqual([
+      ['target-b', 0],
+      ['target-a', 1],
+    ]);
+    expect(project.targets.map((target) => [target.id, target.sortOrder])).toEqual([
+      ['target-a', 0],
+      ['target-b', 1],
+    ]);
+  });
+
   it('preserves target mode defaults and sanitizes fixed amounts', () => {
     const project = createProject();
 

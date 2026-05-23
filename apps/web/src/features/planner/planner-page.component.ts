@@ -128,7 +128,12 @@ export class PlannerPageComponent implements OnInit {
   public readonly sessionNameEditing = computed(() => {
     return this.shell.isSessionNameEditing(this.workspace.activeSessionId());
   });
-  public readonly workbenchPanels = PLANNER_WORKBENCH_PANELS;
+  public readonly primaryWorkbenchPanels = PLANNER_WORKBENCH_PANELS.filter(
+    (panel) => panel.navGroup === 'primary',
+  );
+  public readonly secondaryWorkbenchPanels = PLANNER_WORKBENCH_PANELS.filter(
+    (panel) => panel.navGroup === 'secondary',
+  );
   public readonly activeWorkbenchPanel = computed(() => {
     return getPlannerWorkbenchPanel(this.workbench.activePanelId());
   });

@@ -11,53 +11,82 @@
   @if (planConfig.objectiveProfile(); as profile) {
     @let activePreset = activePresetId(profile);
 
-    <div class="objective-summary">
-      <strong>{{ activePresetLabel(profile) }}</strong>
-      <span>{{ activePresetDescription(profile) }}</span>
-      <em>Fixed outputs stay fixed; objectives choose among feasible production routes.</em>
+    <div class="objective-mode-tabs" aria-label="Objective workbench pages">
+      <button
+        type="button"
+        class="objective-mode-tab"
+        [class.objective-mode-tab--active]="activeObjectivePanel() === 'solver'"
+        [attr.aria-pressed]="activeObjectivePanel() === 'solver' ? 'true' : 'false'"
+        (click)="activeObjectivePanel.set('solver')"
+      >
+        <span>
+          <strong>Solver selection</strong>
+          <em>Preset and custom tradeoffs</em>
+        </span>
+      </button>
+      <button
+        type="button"
+        class="objective-mode-tab"
+        [class.objective-mode-tab--active]="activeObjectivePanel() === 'resources'"
+        [attr.aria-pressed]="activeObjectivePanel() === 'resources' ? 'true' : 'false'"
+        (click)="activeObjectivePanel.set('resources')"
+      >
+        <span>
+          <strong>Resource preferences</strong>
+          <em>Advanced tie-breaking weights</em>
+        </span>
+      </button>
     </div>
 
-    <div class="objective-preset-grid" aria-label="Objective presets">
-      @for (preset of presets; track preset.id) {
-        <button
-          type="button"
-          class="objective-preset-card"
-          [class.objective-preset-card--active]="activePreset === preset.id"
-          [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
-          [disabled]="planConfig.editingLocked()"
-          [title]="preset.description"
-          (click)="planConfig.objectiveCommands.setPreset(preset.id)"
-        >
-          <strong>{{ preset.label }}</strong>
-          <span>{{ preset.description }}</span>
-        </button>
-      }
-    </div>
-
-    <section class="objective-custom-panel" aria-label="Custom objective weights">
-      <div class="section-heading">
-        <div>
-          <h4>Custom weights</h4>
-          <span>Editing a value switches this plan to Custom.</span>
-        </div>
+    @if (activeObjectivePanel() === 'solver') {
+      <div class="objective-summary">
+        <strong>{{ activePresetLabel(profile) }}</strong>
+        <span>{{ activePresetDescription(profile) }}</span>
+        <em>Fixed outputs stay fixed; objectives choose among feasible production routes.</em>
       </div>
 
-      <div class="objective-weight-grid">
-        @for (control of weightControls; track control.key) {
-          <label class="display-setting-card objective-weight-card">
-            <span class="display-setting-card__label">{{ control.label }}</span>
-            <input
-              type="number"
-              min="0"
-              [step]="control.step"
-              [disabled]="planConfig.editingLocked()"
-              [ngModel]="weightValue(profile, control.key)"
-              (ngModelChange)="setObjectiveWeight(control.key, $event)"
-            />
-          </label>
+      <div class="objective-preset-grid" aria-label="Objective presets">
+        @for (preset of presets; track preset.id) {
+          <button
+            type="button"
+            class="objective-preset-card"
+            [class.objective-preset-card--active]="activePreset === preset.id"
+            [attr.aria-pressed]="activePreset === preset.id ? 'true' : 'false'"
+            [disabled]="planConfig.editingLocked()"
+            [title]="preset.description"
+            (click)="planConfig.objectiveCommands.setPreset(preset.id)"
+          >
+            <strong>{{ preset.label }}</strong>
+            <span>{{ preset.description }}</span>
+          </button>
         }
       </div>
 
+      <section class="objective-custom-panel" aria-label="Custom objective weights">
+        <div class="section-heading">
+          <div>
+            <h4>Custom weights</h4>
+            <span>Editing a value switches this plan to Custom.</span>
+          </div>
+        </div>
+
+        <div class="objective-weight-grid">
+          @for (control of weightControls; track control.key) {
+            <label class="display-setting-card objective-weight-card">
+              <span class="display-setting-card__label">{{ control.label }}</span>
+              <input
+                type="number"
+                min="0"
+                [step]="control.step"
+                [disabled]="planConfig.editingLocked()"
+                [ngModel]="weightValue(profile, control.key)"
+                (ngModelChange)="setObjectiveWeight(control.key, $event)"
+              />
+            </label>
+          }
+        </div>
+      </section>
+    } @else {
       <section
         class="objective-resource-panel"
         aria-label="Raw resource route preferences"
@@ -154,6 +183,6 @@
           }
         </div>
       </section>
-    </section>
+    }
   }
 </section>

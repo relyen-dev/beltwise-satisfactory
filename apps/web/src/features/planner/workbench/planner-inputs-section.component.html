@@ -55,12 +55,13 @@
           <div class="row-tools">
             <button
               type="button"
+              class="row-icon-button row-icon-button--remove"
               title="Remove external input"
               aria-label="Remove external input"
               [disabled]="planConfig.editingLocked()"
               (click)="removeInput(row)"
             >
-              Remove
+              <span aria-hidden="true"></span>
             </button>
           </div>
         </div>

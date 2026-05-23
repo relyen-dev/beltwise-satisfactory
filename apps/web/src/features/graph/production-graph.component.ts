@@ -99,6 +99,7 @@ export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDe
   public readonly nodeNotes = input<Readonly<Record<string, string>>>({});
   public readonly interactionLocked = input(false);
   public readonly targetEditingLocked = input(false);
+  public readonly transitionKey = input<string | null | undefined>(undefined);
   public readonly nodeMoveCanceled = output<void>();
   public readonly nodeMoved = output<{ nodeId: string; position: { x: number; y: number } }>();
   public readonly nodeMoveEnded = output<void>();
@@ -126,7 +127,7 @@ export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDe
     onNodeSelectionToggled: (nodeId) => this.nodeSelectionToggled.emit(nodeId),
   });
   private autoFittedGraph: ProductionGraph | null = null;
-  private transitionGraph: ProductionGraph | null = null;
+  private transitionIdentity: ProductionGraph | string | null | undefined = undefined;
   private graphTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private readonly defaultRendererModel = computed(() => {
@@ -408,24 +409,35 @@ export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDe
 
   private updateGraphTransitionState(): void {
     const graph = this.graph();
-    if (graph === this.transitionGraph) {
+    const nextTransitionIdentity = this.nextTransitionIdentity(graph);
+    if (nextTransitionIdentity === this.transitionIdentity) {
+      if (!graph) {
+        this.clearGraphTransitionTimeout();
+        this.graphTransitioning.set(false);
+      }
       return;
     }
 
-    this.transitionGraph = graph;
+    this.transitionIdentity = nextTransitionIdentity;
     this.clearGraphTransitionTimeout();
-    if (!graph) {
+    if (!graph || nextTransitionIdentity === null) {
       this.graphTransitioning.set(false);
       return;
     }
 
     this.graphTransitioning.set(true);
+    const transitionIdentity = nextTransitionIdentity;
     this.graphTransitionTimeout = setTimeout(() => {
-      if (this.graph() === graph) {
+      if (this.nextTransitionIdentity(this.graph()) === transitionIdentity) {
         this.graphTransitioning.set(false);
       }
       this.graphTransitionTimeout = null;
     }, GRAPH_SWITCH_TRANSITION_MS);
+  }
+
+  private nextTransitionIdentity(graph: ProductionGraph | null): ProductionGraph | string | null {
+    const transitionKey = this.transitionKey();
+    return transitionKey === undefined ? graph : transitionKey;
   }
 
   private clearGraphTransitionTimeout(): void {

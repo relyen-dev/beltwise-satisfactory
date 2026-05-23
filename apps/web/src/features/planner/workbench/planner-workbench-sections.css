@@ -24,6 +24,9 @@
 }
 
 .planner-shell .work-section {
+  --color-accent: var(--work-panel-accent, #f2a51a);
+  --color-accent-strong: color-mix(in srgb, var(--color-accent) 76%, white);
+
   display: grid;
   align-content: start;
   gap: 14px;
@@ -32,7 +35,8 @@
   min-height: 0;
   padding: var(--space-4);
   background:
-    radial-gradient(circle at 8% 0%, rgba(242, 165, 26, 0.045), transparent 28%), transparent;
+    linear-gradient(270deg, color-mix(in srgb, var(--color-accent) 4%, transparent), transparent 36%),
+    transparent;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -123,7 +127,11 @@
 .planner-shell .primary-action {
   border-color: color-mix(in srgb, var(--color-accent) 65%, var(--color-border));
   background:
-    linear-gradient(180deg, rgba(255, 196, 77, 0.18), rgba(242, 165, 26, 0.08)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent) 18%, transparent),
+      color-mix(in srgb, var(--color-accent) 8%, transparent)
+    ),
     color-mix(in srgb, var(--color-accent) 15%, var(--color-panel-raised));
   color: var(--color-accent-strong);
   font-weight: 750;
@@ -139,7 +147,6 @@
 
 .planner-shell :is(.target-row, .input-row) {
   display: grid;
-  grid-template-columns: minmax(190px, 1.4fr) minmax(116px, 0.65fr) minmax(112px, 0.5fr) auto;
   gap: 8px;
   align-items: center;
   min-width: 0;
@@ -152,8 +159,31 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
+.planner-shell .target-row {
+  position: relative;
+  grid-template-columns: 28px minmax(260px, 1.45fr) minmax(112px, 0.5fr) minmax(104px, 0.42fr) auto;
+  min-height: 52px;
+  padding: 6px 8px 6px 6px;
+  border-color: color-mix(in srgb, var(--color-border) 76%, black);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 44%),
+    color-mix(in srgb, var(--color-panel-raised) 72%, black);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.planner-shell .target-row:not(.target-row--head):hover {
+  border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 44%),
+    color-mix(in srgb, var(--color-panel-raised) 80%, black);
+}
+
 .planner-shell .input-row {
-  grid-template-columns: minmax(220px, 1fr) minmax(140px, 180px) auto;
+  grid-template-columns: minmax(300px, 1fr) minmax(140px, 180px) auto;
 }
 
 .planner-shell :is(.target-row--head, .input-row--head) {
@@ -167,15 +197,103 @@
   text-transform: uppercase;
 }
 
+.planner-shell .target-row--head {
+  grid-template-columns: 28px minmax(260px, 1.45fr) minmax(112px, 0.5fr) minmax(104px, 0.42fr) auto;
+  padding: 0 8px 0 6px;
+}
+
 .planner-shell :is(.target-row select, .target-row input, .input-row select, .input-row input) {
   min-width: 0;
 }
 
 .planner-shell :is(.target-row--needs-item, .input-row--needs-item) {
-  border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
   background:
-    linear-gradient(90deg, rgba(242, 165, 26, 0.11), transparent 54%),
-    color-mix(in srgb, var(--color-accent) 6%, var(--color-panel-raised));
+    linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 54%),
+    color-mix(in srgb, var(--color-accent) 3%, var(--color-panel-raised));
+}
+
+.planner-shell .target-row--dragging {
+  opacity: 0.46;
+}
+
+.planner-shell .target-row--drop-before::before,
+.planner-shell .target-row--drop-after::after {
+  position: absolute;
+  right: 6px;
+  left: 6px;
+  z-index: 2;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 72%, white);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 34%, transparent);
+  content: '';
+}
+
+.planner-shell .target-row--drop-before::before {
+  top: -5px;
+}
+
+.planner-shell .target-row--drop-after::after {
+  bottom: -5px;
+}
+
+.planner-shell .target-drag-handle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  min-width: 28px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text-muted) 74%, black);
+  cursor: grab;
+}
+
+.planner-shell .target-drag-handle:active {
+  cursor: grabbing;
+}
+
+.planner-shell .target-drag-handle:disabled {
+  cursor: not-allowed;
+}
+
+.planner-shell .target-drag-handle span {
+  width: 12px;
+  height: 18px;
+  background-image: radial-gradient(circle, currentColor 1.2px, transparent 1.4px);
+  background-position:
+    0 0,
+    6px 0;
+  background-size: 6px 6px;
+  opacity: 0.75;
+}
+
+.planner-shell .target-drag-handle:hover:not(:disabled),
+.planner-shell .target-drag-handle:focus-visible {
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-panel-raised));
+  color: color-mix(in srgb, var(--color-accent) 70%, white);
+}
+
+.planner-shell .target-row .target-item-combobox__trigger,
+.planner-shell .target-row :is(select, input),
+.planner-shell .target-row .row-icon-button {
+  min-height: 34px;
+  border-color: color-mix(in srgb, var(--color-border) 72%, black);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 54%),
+    color-mix(in srgb, var(--color-panel) 74%, black);
+  box-shadow: none;
+}
+
+.planner-shell .target-row .target-item-combobox__trigger:hover:not(:disabled),
+.planner-shell .target-row :is(select, input):hover:not(:disabled),
+.planner-shell .target-row .row-icon-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel-raised) 72%, black);
 }
 
 .planner-shell .target-item-picker {
@@ -300,8 +418,68 @@
   flex-wrap: nowrap;
 }
 
-.planner-shell .row-tools button {
-  white-space: nowrap;
+.planner-shell .row-icon-button {
+  position: relative;
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.planner-shell .row-icon-button span,
+.planner-shell .row-icon-button span::before,
+.planner-shell .row-icon-button span::after {
+  position: absolute;
+  box-sizing: border-box;
+  content: '';
+}
+
+.planner-shell .row-icon-button span {
+  inset: 0;
+}
+
+.planner-shell .row-icon-button--duplicate span::before {
+  top: 8px;
+  left: 11px;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+}
+
+.planner-shell .row-icon-button--duplicate span::after {
+  top: 12px;
+  left: 7px;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-panel-raised) 92%, black);
+}
+
+.planner-shell .row-icon-button--remove span::before,
+.planner-shell .row-icon-button--remove span::after {
+  top: 15px;
+  left: 9px;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.planner-shell .row-icon-button--remove span::before {
+  transform: rotate(45deg);
+}
+
+.planner-shell .row-icon-button--remove span::after {
+  transform: rotate(-45deg);
+}
+
+.planner-shell .row-icon-button:hover:not(:disabled) {
+  color: var(--color-accent-strong);
 }
 
 .planner-shell .plan-notes {
@@ -352,12 +530,81 @@
   gap: var(--space-2);
 }
 
-.planner-shell .recipe-columns {
-  container: recipe-columns / inline-size;
+.planner-shell .recipe-mode-tabs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
-  gap: var(--space-3);
-  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.planner-shell .recipe-mode-tab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: stretch;
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 12px;
+  border-color: color-mix(in srgb, var(--color-border) 78%, black);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 46%),
+    color-mix(in srgb, var(--color-panel-raised) 66%, black);
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.planner-shell .recipe-mode-tab > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.planner-shell .recipe-mode-tab strong,
+.planner-shell .recipe-mode-tab em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .recipe-mode-tab strong {
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.planner-shell .recipe-mode-tab em {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.planner-shell .recipe-mode-tab__count {
+  align-self: center;
+  min-width: 34px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, black);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-panel) 64%, black);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.planner-shell .recipe-mode-tab--active {
+  border-color: color-mix(in srgb, var(--color-output) 64%, var(--color-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-output) 13%, transparent), transparent 70%),
+    color-mix(in srgb, var(--color-output) 10%, var(--color-panel-raised));
+  box-shadow:
+    inset 0 -2px 0 var(--color-output),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.planner-shell .recipe-mode-tab--active .recipe-mode-tab__count {
+  border-color: color-mix(in srgb, var(--color-output) 58%, var(--color-border));
+  color: color-mix(in srgb, var(--color-output) 76%, white);
 }
 
 .planner-shell .recipe-group {
@@ -438,20 +685,13 @@
 .planner-shell .recipe-subtab--active {
   border-color: color-mix(in srgb, var(--color-accent) 56%, var(--color-border));
   background:
-    linear-gradient(180deg, rgba(255, 196, 77, 0.12), transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent),
     color-mix(in srgb, var(--color-accent) 13%, var(--color-panel-raised));
   color: var(--color-text);
 }
 
 .planner-shell .recipe-group-align-spacer {
   display: none;
-  min-height: 32px;
-}
-
-@container recipe-columns (min-width: 1052px) {
-  .planner-shell .recipe-group-align-spacer {
-    display: block;
-  }
 }
 
 .planner-shell
@@ -500,8 +740,7 @@
   overflow: visible;
 }
 
-.planner-shell .recipe-row:hover,
-.planner-shell .recipe-row:focus-within {
+.planner-shell .recipe-row:hover {
   z-index: 20;
 }
 
@@ -519,15 +758,15 @@
 }
 
 .planner-shell .config-toggle-row:not(.config-toggle-row--locked):hover {
-  border-color: color-mix(in srgb, var(--color-accent) 46%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-accent) 11%, var(--color-panel-raised)),
+    color-mix(in srgb, var(--color-accent) 5%, var(--color-panel-raised)),
     color-mix(in srgb, var(--color-panel-raised) 94%, black)
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 8px 18px rgba(0, 0, 0, 0.18);
+    0 6px 14px rgba(0, 0, 0, 0.16);
 }
 
 .planner-shell .config-toggle-row:focus-within {
@@ -536,19 +775,19 @@
 }
 
 .planner-shell .config-toggle-row--enabled {
-  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-accent) 17%, var(--color-panel-raised)) 0%,
-    color-mix(in srgb, var(--color-accent) 7%, var(--color-panel-raised)) 48%,
-    color-mix(in srgb, var(--color-panel-raised) 94%, black) 100%
+    color-mix(in srgb, var(--color-accent) 5%, var(--color-panel-raised)) 0%,
+    color-mix(in srgb, var(--color-accent) 2%, var(--color-panel-raised)) 42%,
+    color-mix(in srgb, var(--color-panel-raised) 93%, black) 100%
   );
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--color-accent) 8%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .planner-shell .config-toggle-row--enabled::before {
-  background: var(--color-accent);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 72%, var(--color-border));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 34%, transparent);
 }
 
 .planner-shell .config-toggle-row--disabled {
@@ -594,15 +833,15 @@
 }
 
 .planner-shell .config-toggle-row--enabled .config-toggle-row__indicator {
-  border-color: var(--color-accent-strong);
-  background: color-mix(in srgb, var(--color-accent) 26%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-accent) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-panel));
   box-shadow:
     inset 0 0 0 2px color-mix(in srgb, var(--color-panel-raised) 80%, black),
-    0 0 12px color-mix(in srgb, var(--color-accent) 42%, transparent);
+    0 0 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
 
 .planner-shell .config-toggle-row--enabled .config-toggle-row__indicator::after {
-  background: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 76%, white);
 }
 
 .planner-shell .config-toggle-row__copy {
@@ -760,8 +999,7 @@
   visibility: hidden;
 }
 
-.planner-shell .recipe-row:hover .recipe-detail-tooltip,
-.planner-shell .recipe-row:focus-within .recipe-detail-tooltip {
+.planner-shell .recipe-row:hover .recipe-detail-tooltip {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
@@ -813,9 +1051,11 @@
 }
 
 .planner-shell .machine-row {
-  grid-template-columns: 18px 42px minmax(0, 1fr) minmax(116px, auto);
-  min-height: 66px;
+  grid-template-columns: 18px 40px minmax(180px, 1fr) minmax(210px, auto);
+  min-height: 58px;
   gap: 10px;
+  padding-top: 7px;
+  padding-bottom: 7px;
 }
 
 .planner-shell .machine-icon-slot {
@@ -823,12 +1063,12 @@
   align-self: center;
   justify-self: center;
   place-items: center;
-  width: 42px;
-  min-width: 42px;
+  width: 40px;
+  min-width: 40px;
 }
 
 .planner-shell .machine-icon-slot .game-icon--lg {
-  --game-icon-size: 38px;
+  --game-icon-size: 34px;
 }
 
 .planner-shell .machine-row .game-icon--machine:not(.game-icon--unavailable) {
@@ -897,8 +1137,8 @@
   display: grid;
   justify-self: end;
   gap: 2px;
-  min-width: 112px;
-  max-width: 180px;
+  min-width: 190px;
+  max-width: 260px;
   text-align: right;
 }
 
@@ -932,10 +1172,11 @@
 
 .planner-shell .resource-actions {
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .planner-shell .resource-actions button {
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 
@@ -962,7 +1203,7 @@
 .planner-shell .resource-row--custom {
   border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
   background:
-    linear-gradient(90deg, rgba(242, 165, 26, 0.1), transparent 52%),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 52%),
     color-mix(in srgb, var(--color-panel-raised) 88%, black);
 }
 
@@ -1055,7 +1296,7 @@
 }
 
 .planner-shell .config-toggle-list--machines {
-  grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .planner-shell .display-settings-grid {
@@ -1065,20 +1306,24 @@
 }
 
 .planner-shell .objective-summary {
+  position: relative;
   display: grid;
   gap: 4px;
   min-width: 0;
-  padding: 11px 12px;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 36%, var(--color-border));
+  padding: 11px 13px 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 84%, black);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent) 76%, var(--color-border));
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(90deg, rgba(242, 165, 26, 0.16), transparent 58%),
-    color-mix(in srgb, var(--color-accent) 9%, var(--color-panel-raised));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 42%),
+    color-mix(in srgb, var(--color-panel-raised) 78%, black);
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb, var(--color-accent) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.028);
 }
 
 .planner-shell .objective-summary strong {
-  color: var(--color-accent-strong);
+  color: color-mix(in srgb, var(--color-accent) 66%, white);
   font-size: 14px;
 }
 
@@ -1095,7 +1340,7 @@
 .planner-shell .objective-preset-grid,
 .planner-shell .objective-weight-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: var(--space-2);
 }
 
@@ -1115,16 +1360,24 @@
   text-align: left;
 }
 
-.planner-shell .objective-preset-card:hover:not(:disabled),
-.planner-shell .objective-preset-card--active {
-  border-color: color-mix(in srgb, var(--color-accent) 66%, var(--color-border));
+.planner-shell .objective-preset-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
   background:
-    linear-gradient(180deg, rgba(255, 196, 77, 0.14), transparent 70%),
-    color-mix(in srgb, var(--color-accent) 12%, var(--color-panel-raised));
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 64%),
+    color-mix(in srgb, var(--color-panel-raised) 86%, black);
 }
 
 .planner-shell .objective-preset-card--active {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 48%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 54%, var(--color-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 70%),
+    color-mix(in srgb, var(--color-accent) 5%, var(--color-panel-raised));
+}
+
+.planner-shell .objective-preset-card--active {
+  box-shadow:
+    inset 0 -2px 0 color-mix(in srgb, var(--color-accent) 70%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .planner-shell .objective-preset-card strong,
@@ -1148,6 +1401,62 @@
   display: grid;
   gap: var(--space-2);
   min-width: 0;
+}
+
+.planner-shell .objective-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.planner-shell .objective-mode-tab {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 12px;
+  border-color: color-mix(in srgb, var(--color-border) 78%, black);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 46%),
+    color-mix(in srgb, var(--color-panel-raised) 66%, black);
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.planner-shell .objective-mode-tab > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.planner-shell .objective-mode-tab strong,
+.planner-shell .objective-mode-tab em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .objective-mode-tab strong {
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.planner-shell .objective-mode-tab em {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.planner-shell .objective-mode-tab--active {
+  border-color: color-mix(in srgb, var(--color-accent) 62%, var(--color-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 68%),
+    color-mix(in srgb, var(--color-accent) 10%, var(--color-panel-raised));
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
 .planner-shell .objective-weight-card input {
@@ -1367,7 +1676,7 @@
   border: 1px dashed color-mix(in srgb, var(--color-border) 86%, black);
   border-radius: var(--radius-md);
   background:
-    radial-gradient(circle at 50% 22%, rgba(242, 165, 26, 0.09), transparent 35%),
+    radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 35%),
     color-mix(in srgb, var(--color-panel-raised) 58%, transparent);
   color: var(--color-text-muted);
   text-align: center;
@@ -1481,7 +1790,7 @@
   border: 1px solid color-mix(in srgb, var(--color-accent) 36%, var(--color-border));
   border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, rgba(255, 196, 77, 0.08), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 42%),
     color-mix(in srgb, var(--color-panel-raised) 82%, black);
   box-shadow: var(--shadow-sm);
 }
@@ -1873,20 +2182,32 @@
   border: 0;
 }
 
-@media (max-width: 1040px) {
-  .planner-shell .recipe-columns {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 820px) {
   .planner-shell .work-section {
     height: auto;
     overflow: visible;
   }
 
+  .planner-shell :is(.recipe-mode-tabs, .objective-mode-tabs) {
+    grid-template-columns: 1fr;
+  }
+
   .planner-shell :is(.target-row, .input-row) {
     grid-template-columns: 1fr;
+  }
+
+  .planner-shell .target-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .planner-shell .target-drag-handle {
+    grid-row: 1 / span 4;
+    align-self: stretch;
+    height: auto;
+  }
+
+  .planner-shell .target-row :is(.target-item-picker, label, .row-tools) {
+    grid-column: 2;
   }
 
   .planner-shell :is(.target-row--head, .input-row--head, .recipe-row--head) {
