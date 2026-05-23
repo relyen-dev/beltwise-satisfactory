@@ -49,6 +49,7 @@ export type PlanTargetIntent =
       readonly targetId: string;
     }
   | { readonly type: 'remove-target'; readonly targetId: string }
+  | { readonly type: 'reorder-targets'; readonly targetIds: readonly string[] }
   | { readonly type: 'set-target-item'; readonly targetId: string; readonly itemId: ItemId }
   | {
       readonly type: 'set-target-mode';
@@ -171,6 +172,8 @@ export function mutatePlanTargets(
       return duplicateTarget(project, intent.target, intent.targetId);
     case 'remove-target':
       return removeTarget(project, intent.targetId);
+    case 'reorder-targets':
+      return reorderTargets(project, intent.targetIds);
     case 'set-target-item':
       return setTargetItem(project, intent.targetId, intent.itemId);
     case 'set-target-mode':
@@ -317,6 +320,35 @@ export function removeTarget(project: PlannerProject, targetId: string): Planner
     targets: project.targets
       .filter((target) => target.id !== targetId)
       .map((target, index) => ({ ...target, sortOrder: index })),
+  };
+}
+
+export function reorderTargets(
+  project: PlannerProject,
+  targetIds: readonly string[],
+): PlannerProject {
+  const targetById = new Map(project.targets.map((target) => [target.id, target] as const));
+  const addedTargetIds = new Set<string>();
+  const reorderedTargets: ProductTarget[] = [];
+
+  for (const targetId of targetIds) {
+    const target = targetById.get(targetId);
+    if (!target || addedTargetIds.has(targetId)) {
+      continue;
+    }
+    addedTargetIds.add(targetId);
+    reorderedTargets.push(target);
+  }
+
+  for (const target of project.targets.toSorted((left, right) => left.sortOrder - right.sortOrder)) {
+    if (!addedTargetIds.has(target.id)) {
+      reorderedTargets.push(target);
+    }
+  }
+
+  return {
+    ...project,
+    targets: reorderedTargets.map((target, index) => ({ ...target, sortOrder: index })),
   };
 }
 

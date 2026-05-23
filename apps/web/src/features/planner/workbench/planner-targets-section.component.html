@@ -34,6 +34,7 @@
   } @else {
     <div class="target-table" role="table" aria-label="Production target rows">
       <div class="target-row target-row--head" role="row">
+        <span aria-hidden="true"></span>
         <span>Item</span>
         <span>Mode</span>
         <span>Rate / min</span>
@@ -44,8 +45,31 @@
         <div
           class="target-row"
           [class.target-row--needs-item]="target.itemId.length === 0"
+          [class.target-row--dragging]="draggedTargetId() === target.id"
+          [class.target-row--drop-before]="
+            targetDropHint()?.targetId === target.id && targetDropHint()?.position === 'before'
+          "
+          [class.target-row--drop-after]="
+            targetDropHint()?.targetId === target.id && targetDropHint()?.position === 'after'
+          "
           role="row"
+          (dragover)="handleTargetDragOver(target.id, $event)"
+          (drop)="dropTarget(target.id, $event)"
         >
+          <button
+            type="button"
+            class="target-drag-handle"
+            title="Drag to reorder target"
+            aria-label="Drag to reorder target"
+            [disabled]="planConfig.editingLocked()"
+            [attr.draggable]="planConfig.editingLocked() ? null : 'true'"
+            (dragstart)="startTargetDrag(target.id, $event)"
+            (dragend)="finishTargetDrag()"
+            (keydown)="handleTargetDragKeydown(target.id, $event)"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+
           <div class="target-item-picker">
             <bw-target-item-picker
               [items]="planConfig.itemOptions()"

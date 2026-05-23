@@ -67,6 +67,15 @@ export class PlannerPlanCommandSlice {
     );
   }
 
+  public reorderTargets(targetIds: readonly string[]): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanTargets(project, { type: 'reorder-targets', targetIds }),
+    );
+  }
+
   public updateTargetItem(targetId: string, itemId: ItemId): void {
     if (this.options.planLocked()) {
       return;

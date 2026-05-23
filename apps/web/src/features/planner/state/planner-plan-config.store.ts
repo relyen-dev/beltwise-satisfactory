@@ -51,6 +51,7 @@ export interface PlannerPlanTargetCommands {
   readonly add: () => void;
   readonly duplicate: (target: ProductTarget) => void;
   readonly remove: (targetId: string) => void;
+  readonly reorder: (targetIds: readonly string[]) => void;
   readonly updateItem: (targetId: string, itemId: ItemId) => void;
   readonly updateMode: (targetId: string, mode: ProductTarget['mode']) => void;
   readonly updateAmount: (targetId: string, amountPerMinute: number) => void;
@@ -227,6 +228,7 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
     add: () => this.planCommands.addTarget(),
     duplicate: (target) => this.planCommands.duplicateTarget(target),
     remove: (targetId) => this.planCommands.removeTarget(targetId),
+    reorder: (targetIds) => this.planCommands.reorderTargets(targetIds),
     updateItem: (targetId, itemId) => this.planCommands.updateTargetItem(targetId, itemId),
     updateMode: (targetId, mode) => this.planCommands.updateTargetMode(targetId, mode),
     updateAmount: (targetId, amountPerMinute) =>
