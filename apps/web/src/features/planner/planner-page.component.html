@@ -377,7 +377,11 @@
   } @else if (!datasetService.dataset()) {
     <section class="loading-panel">Loading generated planner data...</section>
   } @else if (workspace.activeProject(); as project) {
-    <main class="workspace-body" [class.workspace-body--panel-open]="workPanelOpen()">
+    <main
+      class="workspace-body"
+      [class.workspace-body--panel-open]="workPanelOpen()"
+      [attr.data-active-panel]="workPanelOpen() ? activeWorkbenchPanel().id : 'graph'"
+    >
       <nav class="section-rail" aria-label="Planner workspace sections">
         <div class="section-rail__group" aria-label="Planning workflow">
           @for (panel of primaryWorkbenchPanels; track panel.id) {
@@ -547,6 +551,7 @@
         <section
           class="work-panel"
           [ngClass]="activeWorkbenchPanel().panelClass"
+          [attr.data-panel]="activeWorkbenchPanel().id"
           [attr.aria-label]="activeSectionLabel() + ' work panel'"
         >
           <div class="work-panel-header">
