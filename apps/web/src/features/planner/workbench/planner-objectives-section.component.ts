@@ -23,7 +23,7 @@ import {
   RAW_RESOURCE_COST_HELP_TEXT,
 } from './planner-configuration-surface';
 
-type ObjectiveWorkbenchPanel = 'weights' | 'resources';
+type ObjectiveWorkbenchPanel = 'solver' | 'resources';
 
 @Component({
   selector: 'bw-planner-objectives-section',
@@ -34,7 +34,7 @@ type ObjectiveWorkbenchPanel = 'weights' | 'resources';
 })
 export class PlannerObjectivesSectionComponent {
   public readonly planConfig = inject(PlannerPlanConfigStore);
-  public readonly activeObjectivePanel = signal<ObjectiveWorkbenchPanel>('weights');
+  public readonly activeObjectivePanel = signal<ObjectiveWorkbenchPanel>('solver');
   public readonly presets = PLANNER_OBJECTIVE_PRESETS;
   public readonly weightControls = OBJECTIVE_WEIGHT_CONTROLS;
   public readonly rawResourceCostFormulaLabel = RAW_RESOURCE_COST_FORMULA_LABEL;

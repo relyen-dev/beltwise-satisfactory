@@ -1,4 +1,8 @@
-<div class="planner-shell">
+<div
+  class="planner-shell"
+  [class.planner-shell--panel-open]="workPanelOpen()"
+  [attr.data-active-panel]="workPanelOpen() ? activeWorkbenchPanel().id : 'graph'"
+>
   <header class="app-bar">
     <div class="brand-block">
       <div class="wordmark">Beltwise</div>
