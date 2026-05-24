@@ -1,4 +1,4 @@
-import type { GameDataset, ItemId, RecipeId } from '@beltwise/game-data';
+import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import type { ProductTarget, RateDecimalPlaces, SinkRule } from './plan';
 import { isSinkableItem, sinkPointsPerMinute, surplusSinkRuleForItem } from './sinkRules';
 
@@ -26,11 +26,25 @@ export interface MachineUsage {
   powerMw: number;
 }
 
+export interface PowerGeneratorUsage {
+  optionId: string;
+  generatorId: MachineId;
+  generatorDisplayName: string;
+  fuelItemId: ItemId;
+  fuelItemDisplayName: string;
+  generatorCount: number;
+  powerMw: number;
+  fuelConsumedPerMinute: number;
+  supplementalInputs: { itemId: ItemId; amountPerMinute: number }[];
+  byproducts: { itemId: ItemId; amountPerMinute: number }[];
+}
+
 export interface PlanWarning {
   code: string;
   message: string;
   itemId?: ItemId;
   recipeId?: RecipeId;
+  powerTargetId?: string;
 }
 
 export interface ProductionPlanResult {
@@ -43,7 +57,9 @@ export interface ProductionPlanResult {
   outputs: Record<ItemId, number>;
   surplus: Record<ItemId, number>;
   machineUsage: MachineUsage[];
+  powerGeneratorUsage?: PowerGeneratorUsage[];
   powerMw: number;
+  generatedPowerMw?: number;
   warnings: PlanWarning[];
 }
 

@@ -26,6 +26,9 @@ function solutionModel(): ProductionLpModel {
       assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
+      powerGeneratorVariableByTargetId: {},
+      activePowerTargetById: {},
+      powerTargetWarnings: [],
     },
   };
 }

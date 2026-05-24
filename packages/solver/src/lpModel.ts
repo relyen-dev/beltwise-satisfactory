@@ -1,11 +1,17 @@
-import type { GameDataset, ItemId, Recipe, RecipeId } from '@beltwise/game-data';
-import type { ObjectiveStageId, PlannerProject, ProductTarget } from '@beltwise/planner-core';
+import type { GameDataset, ItemId, MachineId, Recipe, RecipeId } from '@beltwise/game-data';
+import type {
+  ObjectiveStageId,
+  PlannerProject,
+  PlanWarning,
+  ProductTarget,
+} from '@beltwise/planner-core';
 import {
   assumedInputDefinitions,
   buildResourceCapsPerMinute,
   type BaselineResourceLimits,
 } from '@beltwise/planner-core';
 import { machineCountPerRecipeRate, machinePowerMw, selectRecipeMachine } from './machineLogic';
+import { analyzePowerTargets, type ActivePowerTarget } from './powerTargets';
 import { rawResourceCost } from './rawResourceCost';
 
 export type LpObjectiveDirection = 'minimize' | 'maximize';
@@ -42,6 +48,13 @@ export interface ProductionObjectiveStage {
   objective: LpObjective;
 }
 
+export interface ActivePowerTargetMetadata {
+  targetId: string;
+  optionId: string;
+  generatorId: MachineId;
+  fuelItemId: ItemId;
+}
+
 export interface ProductionLpModel {
   variables: LpVariable[];
   constraints: LpConstraint[];
@@ -54,6 +67,9 @@ export interface ProductionLpModel {
     assumedInputVariableByItemId: Record<ItemId, string>;
     surplusVariableByItemId: Record<ItemId, string>;
     maximizeVariableByTargetId: Record<string, string>;
+    powerGeneratorVariableByTargetId: Record<string, string>;
+    activePowerTargetById: Record<string, ActivePowerTargetMetadata>;
+    powerTargetWarnings: PlanWarning[];
   };
 }
 
@@ -77,7 +93,13 @@ const DEFAULT_OBJECTIVE_STAGE_ORDER: readonly ObjectiveStageId[] = [
 
 export function buildProductionLpModel(input: ProductionPlanInput): ProductionLpModel {
   const enabledRecipes = getEnabledRecipes(input.dataset, input.project);
-  const itemIds = getRelevantItemIds(input.dataset, input.project, enabledRecipes);
+  const powerTargetAnalysis = analyzePowerTargets(input.dataset, input.project);
+  const itemIds = getRelevantItemIds(
+    input.dataset,
+    input.project,
+    enabledRecipes,
+    powerTargetAnalysis.activeTargets,
+  );
   const resourceCaps = buildResourceCapsPerMinute(
     input.dataset,
     input.project,
@@ -106,6 +128,9 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     assumedInputVariableByItemId: createStringRecord(),
     surplusVariableByItemId: createStringRecord(),
     maximizeVariableByTargetId: createStringRecord(),
+    powerGeneratorVariableByTargetId: createStringRecord(),
+    activePowerTargetById: createActivePowerTargetMetadataRecord(),
+    powerTargetWarnings: [...powerTargetAnalysis.warnings],
   };
 
   for (const recipe of enabledRecipes) {
@@ -188,6 +213,48 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
     itemIds.add(target.itemId);
   }
 
+  for (const target of powerTargetAnalysis.activeTargets) {
+    const variableName = powerGeneratorVariable(target.targetId);
+    metadata.powerGeneratorVariableByTargetId[target.targetId] = variableName;
+    metadata.activePowerTargetById[target.targetId] = {
+      targetId: target.targetId,
+      optionId: target.option.id,
+      generatorId: target.option.generatorId,
+      fuelItemId: target.option.fuelItemId,
+    };
+    variables.push({ name: variableName, lowerBound: 0 });
+    initializeObjectiveCoefficients(variableName, objectiveCoefficientSets);
+    recipeActivityCoefficients[variableName] =
+      Math.max(0, input.project.objectiveProfile.machineCountWeight) +
+      RECIPE_ACTIVITY_TIEBREAKER_COST;
+  }
+
+  for (const target of powerTargetAnalysis.activeTargets) {
+    const variableName = metadata.powerGeneratorVariableByTargetId[target.targetId];
+    if (!variableName) {
+      continue;
+    }
+
+    if (target.requiredGeneratorCount !== undefined) {
+      constraints.push({
+        name: `power-target-generators:${target.targetId}`,
+        coefficients: { [variableName]: 1 },
+        sense: 'eq',
+        rhs: target.requiredGeneratorCount,
+      });
+      continue;
+    }
+
+    if (target.requiredPowerMw !== undefined) {
+      constraints.push({
+        name: `power-target-mw:${target.targetId}`,
+        coefficients: { [variableName]: target.option.powerMw },
+        sense: 'gte',
+        rhs: target.requiredPowerMw,
+      });
+    }
+  }
+
   for (const itemId of itemIds) {
     const coefficients = createNumberRecord();
 
@@ -230,6 +297,17 @@ export function buildProductionLpModel(input: ProductionPlanInput): ProductionLp
         if (targetVar) {
           coefficients[targetVar] = -1;
         }
+      }
+    }
+
+    for (const target of powerTargetAnalysis.activeTargets) {
+      const targetVar = metadata.powerGeneratorVariableByTargetId[target.targetId];
+      if (!targetVar) {
+        continue;
+      }
+      const coefficient = powerGeneratorItemBalanceCoefficient(target, itemId);
+      if (coefficient !== 0) {
+        coefficients[targetVar] = coefficient;
       }
     }
 
@@ -297,6 +375,10 @@ export function maximizeVariable(targetId: string): string {
   return `maximizeTarget:${targetId}`;
 }
 
+export function powerGeneratorVariable(powerTargetId: string): string {
+  return `powerGenerator:${powerTargetId}`;
+}
+
 function getEnabledRecipes(dataset: GameDataset, project: PlannerProject): Recipe[] {
   return Object.values(dataset.recipes).filter((recipe) => {
     if (recipe.isHandCraftOnly) {
@@ -319,6 +401,7 @@ function getRelevantItemIds(
   dataset: GameDataset,
   project: PlannerProject,
   enabledRecipes: Recipe[],
+  activePowerTargets: readonly ActivePowerTarget[],
 ): Set<ItemId> {
   const itemIds = new Set<ItemId>();
   for (const target of project.targets) {
@@ -334,6 +417,15 @@ function getRelevantItemIds(
   }
   for (const itemId of Object.keys(dataset.resources)) {
     itemIds.add(itemId);
+  }
+  for (const target of activePowerTargets) {
+    itemIds.add(target.option.fuelItemId);
+    for (const input of target.option.supplementalInputs) {
+      itemIds.add(input.itemId);
+    }
+    for (const byproduct of target.option.byproducts) {
+      itemIds.add(byproduct.itemId);
+    }
   }
   return itemIds;
 }
@@ -431,6 +523,32 @@ function createNumberRecord<Key extends string = string>(): Record<Key, number> 
 
 function createStringRecord<Key extends string = string>(): Record<Key, string> {
   return Object.create(null) as Record<Key, string>;
+}
+
+function createActivePowerTargetMetadataRecord(): Record<string, ActivePowerTargetMetadata> {
+  return Object.create(null) as Record<string, ActivePowerTargetMetadata>;
+}
+
+function powerGeneratorItemBalanceCoefficient(
+  target: ActivePowerTarget,
+  itemId: ItemId,
+): number {
+  let coefficient = 0;
+  if (target.option.fuelItemId === itemId) {
+    coefficient -= target.option.fuelConsumedPerMinute;
+  }
+  coefficient -= sumItemRates(target.option.supplementalInputs, itemId);
+  coefficient += sumItemRates(target.option.byproducts, itemId);
+  return coefficient;
+}
+
+function sumItemRates(
+  rates: ReadonlyArray<{ itemId: ItemId; amountPerMinute: number }>,
+  itemId: ItemId,
+): number {
+  return rates
+    .filter((rate) => rate.itemId === itemId)
+    .reduce((total, rate) => total + rate.amountPerMinute, 0);
 }
 
 function recipeActivityUnitCost(

@@ -35,6 +35,9 @@ function serializationModel(): ProductionLpModel {
       assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
+      powerGeneratorVariableByTargetId: {},
+      activePowerTargetById: {},
+      powerTargetWarnings: [],
     },
   };
 }

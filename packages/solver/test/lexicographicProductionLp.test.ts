@@ -63,6 +63,9 @@ function lexicographicFixtureModel(): ProductionLpModel {
       assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
+      powerGeneratorVariableByTargetId: {},
+      activePowerTargetById: {},
+      powerTargetWarnings: [],
     },
   };
 }
@@ -260,6 +263,9 @@ describe('solveLexicographicProductionLp', () => {
         maximizeVariableByTargetId: {
           'target-plate': 'maximizeTarget:plate',
         },
+        powerGeneratorVariableByTargetId: {},
+        activePowerTargetById: {},
+        powerTargetWarnings: [],
       },
     };
     const responses: LinearSolverResult[] = [

@@ -5,6 +5,7 @@ import type {
   MachineUsage,
   PlanWarning,
   ProductTarget,
+  PowerGeneratorUsage,
   ProductionPlanResult,
 } from '@beltwise/planner-core';
 import type { LinearSolverResult } from './SolverAdapter';
@@ -22,6 +23,7 @@ interface SolvedProductionValues {
   surplus: Record<ItemId, number>;
   outputs: Record<ItemId, number>;
   maximizeOutputsByTargetId: Record<string, number>;
+  powerGeneratorCountsByTargetId: Record<string, number>;
 }
 
 interface ItemSource {
@@ -45,6 +47,7 @@ export function buildProductionPlanResultFromSolution(
 ): ProductionPlanResult {
   if (linearResult.status !== 'optimal') {
     return emptyResult(linearResult.status, [
+      ...model.metadata.powerTargetWarnings,
       {
         code: `solver-${linearResult.status}`,
         message:
@@ -55,6 +58,20 @@ export function buildProductionPlanResultFromSolution(
 
   const solvedValues = collectSolvedValues(input, model, linearResult.variables);
   const machineUsage = buildMachineUsage(input.dataset, input.project, solvedValues.recipeRates);
+  const powerGeneratorUsage = buildPowerGeneratorUsage(
+    input.dataset,
+    model,
+    solvedValues.powerGeneratorCountsByTargetId,
+  );
+  const powerGeneratorFields =
+    powerGeneratorUsage.length > 0
+      ? {
+          powerGeneratorUsage,
+          generatedPowerMw: cleanNumber(
+            powerGeneratorUsage.reduce((total, usage) => total + usage.powerMw, 0),
+          ),
+        }
+      : {};
 
   return {
     status: 'optimal',
@@ -66,8 +83,9 @@ export function buildProductionPlanResultFromSolution(
     outputs: solvedValues.outputs,
     surplus: solvedValues.surplus,
     machineUsage,
+    ...powerGeneratorFields,
     powerMw: cleanNumber(machineUsage.reduce((total, usage) => total + usage.powerMw, 0)),
-    warnings: [],
+    warnings: [...model.metadata.powerTargetWarnings],
   };
 }
 
@@ -148,6 +166,13 @@ function collectSolvedValues(
     maximizeOutputsByTargetId[targetId] = variableValue(variables, variableName);
   }
 
+  const powerGeneratorCountsByTargetId: Record<string, number> = {};
+  for (const [targetId, variableName] of Object.entries(
+    model.metadata.powerGeneratorVariableByTargetId,
+  )) {
+    powerGeneratorCountsByTargetId[targetId] = variableValue(variables, variableName);
+  }
+
   return {
     recipeRates: cleanPositiveRecord(recipeRates, relativeNoiseThreshold(recipeRates)),
     rawInputs: cleanPositiveRecord(rawInputs, relativeNoiseThreshold(rawInputs)),
@@ -156,7 +181,50 @@ function collectSolvedValues(
     surplus: cleanPositiveRecord(surplus, relativeNoiseThreshold(surplus)),
     outputs: buildOutputs(input.project.targets, maximizeOutputsByTargetId),
     maximizeOutputsByTargetId: cleanPositiveRecord(maximizeOutputsByTargetId),
+    powerGeneratorCountsByTargetId: cleanPositiveRecord(powerGeneratorCountsByTargetId),
   };
+}
+
+function buildPowerGeneratorUsage(
+  dataset: GameDataset,
+  model: ProductionLpModel,
+  generatorCountsByTargetId: Record<string, number>,
+): PowerGeneratorUsage[] {
+  return Object.entries(generatorCountsByTargetId)
+    .filter(([, generatorCount]) => generatorCount > EPSILON)
+    .map(([targetId, generatorCount]) => {
+      const metadata = model.metadata.activePowerTargetById[targetId];
+      const option = metadata ? dataset.generatorFuelOptions[metadata.optionId] : undefined;
+      if (!metadata || !option) {
+        return undefined;
+      }
+      return {
+        optionId: option.id,
+        generatorId: option.generatorId,
+        generatorDisplayName:
+          dataset.machines[option.generatorId]?.displayName ?? option.generatorId,
+        fuelItemId: option.fuelItemId,
+        fuelItemDisplayName: dataset.items[option.fuelItemId]?.displayName ?? option.fuelItemId,
+        generatorCount: cleanNumber(generatorCount),
+        powerMw: cleanNumber(generatorCount * option.powerMw),
+        fuelConsumedPerMinute: cleanNumber(generatorCount * option.fuelConsumedPerMinute),
+        supplementalInputs: scaleItemRates(option.supplementalInputs, generatorCount),
+        byproducts: scaleItemRates(option.byproducts, generatorCount),
+      } satisfies PowerGeneratorUsage;
+    })
+    .filter((usage): usage is PowerGeneratorUsage => usage !== undefined);
+}
+
+function scaleItemRates(
+  rates: ReadonlyArray<{ itemId: ItemId; amountPerMinute: number }>,
+  multiplier: number,
+): { itemId: ItemId; amountPerMinute: number }[] {
+  return rates
+    .map((rate) => ({
+      itemId: rate.itemId,
+      amountPerMinute: cleanNumber(rate.amountPerMinute * multiplier),
+    }))
+    .filter((rate) => rate.amountPerMinute > EPSILON);
 }
 
 function buildOutputs(

@@ -38,6 +38,9 @@ function smokeModel(): ProductionLpModel {
       assumedInputVariableByItemId: {},
       surplusVariableByItemId: {},
       maximizeVariableByTargetId: {},
+      powerGeneratorVariableByTargetId: {},
+      activePowerTargetById: {},
+      powerTargetWarnings: [],
     },
   };
 }
@@ -82,6 +85,9 @@ describe('HighsLinearSolverAdapter', () => {
         assumedInputVariableByItemId: {},
         surplusVariableByItemId: {},
         maximizeVariableByTargetId: {},
+        powerGeneratorVariableByTargetId: {},
+        activePowerTargetById: {},
+        powerTargetWarnings: [],
       },
     });
 
