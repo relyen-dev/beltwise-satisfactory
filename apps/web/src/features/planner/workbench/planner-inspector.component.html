@@ -7,6 +7,17 @@
         <h2>Inspector</h2>
         <span>Context follows graph selection</span>
       </div>
+      <button
+        type="button"
+        class="inspector-collapse-button"
+        title="Collapse inspector"
+        aria-label="Collapse inspector"
+        (click)="collapseRequested.emit()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M8 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
 
     @if (solver.solveError()) {

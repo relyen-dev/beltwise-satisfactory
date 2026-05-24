@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
 import { PlannerGraphStore } from '../state/planner-graph.store';
 import { PlannerSolverService } from '../solving/planner-solver.service';
@@ -22,6 +22,7 @@ type InspectorOverviewSectionId =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerInspectorComponent {
+  public readonly collapseRequested = output<void>();
   public readonly graph = inject(PlannerGraphStore);
   public readonly solver = inject(PlannerSolverService);
   private readonly collapsedOverviewSections = signal<

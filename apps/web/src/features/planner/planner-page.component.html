@@ -384,6 +384,7 @@
     <main
       class="workspace-body"
       [class.workspace-body--panel-open]="workPanelOpen()"
+      [class.workspace-body--inspector-collapsed]="!inspectorPanelOpen()"
       [attr.data-active-panel]="workPanelOpen() ? activeWorkbenchPanel().id : 'graph'"
     >
       <nav class="section-rail" aria-label="Planner workspace sections">
@@ -580,9 +581,33 @@
         </section>
       }
 
-      <aside #inspectorPanel class="inspector-panel" aria-label="Plan inspector">
-        <bw-planner-inspector />
+      <aside
+        #inspectorPanel
+        id="planner-inspector-panel"
+        class="inspector-panel"
+        aria-label="Plan inspector"
+        [hidden]="!inspectorPanelOpen()"
+        [attr.inert]="inspectorPanelOpen() ? null : ''"
+      >
+        <bw-planner-inspector (collapseRequested)="collapseInspectorPanel()" />
       </aside>
+
+      @if (!inspectorPanelOpen()) {
+        <button
+          type="button"
+          class="inspector-reopen-tab"
+          title="Open inspector"
+          aria-label="Open plan inspector"
+          aria-controls="planner-inspector-panel"
+          aria-expanded="false"
+          (click)="openInspectorPanel()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+          <span>Inspector</span>
+        </button>
+      }
     </main>
   }
 

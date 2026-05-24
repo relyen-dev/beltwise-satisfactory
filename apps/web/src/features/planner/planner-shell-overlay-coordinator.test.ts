@@ -43,6 +43,24 @@ describe('PlannerShellOverlayCoordinator', () => {
     expect(shell.actionMenuOpen()).toBe(false);
   });
 
+  it('collapses and reopens the inspector independently from transient navigation state', () => {
+    const shell = new PlannerShellOverlayCoordinator();
+    shell.openPlanSelector();
+    shell.syncActionMenuOpen(true);
+
+    shell.collapseInspectorPanel();
+
+    expect(shell.inspectorPanelOpen()).toBe(false);
+
+    shell.clearTransientNavigationState();
+
+    expect(shell.inspectorPanelOpen()).toBe(false);
+
+    shell.openInspectorPanel();
+
+    expect(shell.inspectorPanelOpen()).toBe(true);
+  });
+
   it('clears only transient navigation state for active-changing commands', () => {
     const shell = new PlannerShellOverlayCoordinator();
     shell.startProjectNameEdit('project-a', 'Draft factory');
