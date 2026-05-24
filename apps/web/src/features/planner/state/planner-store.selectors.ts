@@ -12,6 +12,7 @@ import {
   buildMachinePanelReport,
   defaultRawResourceOpinionMultiplier,
   type GraphNodeBuildState,
+  isSinkableItem,
   NEUTRAL_RAW_RESOURCE_MULTIPLIER,
   type ObjectiveProfile,
   normalizePlainTextNote,
@@ -22,6 +23,8 @@ import {
   type ProductionPlanResult,
   type ProductTarget,
   type RateDecimalPlaces,
+  type SinkRule,
+  sinkPointsPerMinute,
   rawResourceMultiplierCanAffectRouteCost,
   sanitizeRawResourceMultiplier,
   solveReadyProject,
@@ -65,6 +68,15 @@ export interface RawResourceMultiplierRow {
 export interface ExternalInputRow {
   item: Item;
   amountPerMinute: number;
+}
+
+export interface SinkRuleRow {
+  rule: SinkRule;
+  itemId: ItemId;
+  displayName: string;
+  iconSrc: string;
+  amountPerMinute: number;
+  sinkPointsPerMinute: number | null;
 }
 
 export interface MachineRow {
@@ -135,6 +147,7 @@ export interface ProductionGraphInput {
   dataset: GameDataset;
   result: ProductionPlanResult;
   targets: ProductTarget[];
+  sinkRules: SinkRule[];
   rateDecimalPlaces: RateDecimalPlaces;
 }
 
@@ -144,6 +157,7 @@ type RecipeOverrideSource = Pick<PlannerProject, 'recipeOverrides'>;
 
 const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const MAX_RECIPE_PRODUCT_ICONS = 1;
+const MIN_AVAILABLE_SURPLUS_RATE = 0.000001;
 
 export function selectItemOptions(dataset: GameDataset | null): Item[] {
   return dataset
@@ -253,6 +267,51 @@ export function selectExternalInputRows(
     .toSorted((left, right) => left.item.displayName.localeCompare(right.item.displayName));
 }
 
+export function selectSinkRuleRows(
+  dataset: GameDataset,
+  project: PlannerProject,
+  result: ProductionPlanResult | null = null,
+): SinkRuleRow[] {
+  return project.sinkRules
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((rule) => {
+      const amountPerMinute = result?.surplus[rule.itemId] ?? 0;
+      return {
+        rule,
+        itemId: rule.itemId,
+        displayName: dataset.items[rule.itemId]?.displayName ?? rule.itemId,
+        iconSrc: gameIconPathForItemId(rule.itemId),
+        amountPerMinute,
+        sinkPointsPerMinute: sinkPointsPerMinute(dataset, rule.itemId, amountPerMinute),
+      };
+    });
+}
+
+export function selectAvailableSurplusSinkItems(
+  dataset: GameDataset,
+  project: PlannerProject,
+  result: ProductionPlanResult | null = null,
+): Item[] {
+  if (!result) {
+    return [];
+  }
+
+  const configuredSurplusItemIds = new Set(
+    project.sinkRules
+      .filter((rule) => rule.mode === 'surplus')
+      .map((rule) => rule.itemId),
+  );
+
+  return Object.values(dataset.items)
+    .filter(
+      (item) =>
+        (result.surplus[item.id] ?? 0) > MIN_AVAILABLE_SURPLUS_RATE &&
+        isSinkableItem(dataset, item.id) &&
+        !configuredSurplusItemIds.has(item.id),
+    )
+    .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
+}
+
 export function selectMachineRows(
   dataset: GameDataset,
   source: MachineOverrideSource,
@@ -343,6 +402,7 @@ export function selectProductionGraphInput(
         dataset,
         result,
         targets: solveReadyProject(project, dataset).targets,
+        sinkRules: project.sinkRules,
         rateDecimalPlaces: project.graphDisplay.rateDecimalPlaces,
       }
     : null;
@@ -351,6 +411,7 @@ export function selectProductionGraphInput(
 export function buildProductionGraphFromInput(input: ProductionGraphInput): ProductionGraph {
   return buildProductionGraph(input.dataset, input.targets, input.result, {
     rateDecimalPlaces: input.rateDecimalPlaces,
+    sinkRules: input.sinkRules,
   });
 }
 
@@ -368,7 +429,8 @@ export function equalProductionGraphInputs(
     left.dataset === right.dataset &&
     left.result === right.result &&
     left.rateDecimalPlaces === right.rateDecimalPlaces &&
-    equalProductionGraphTargets(left.targets, right.targets)
+    equalProductionGraphTargets(left.targets, right.targets) &&
+    equalSinkRules(left.sinkRules, right.sinkRules)
   );
 }
 
@@ -599,6 +661,22 @@ function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget
       target.mode === other.mode &&
       target.amountPerMinute === other.amountPerMinute &&
       target.sortOrder === other.sortOrder
+    );
+  });
+}
+
+function equalSinkRules(left: SinkRule[], right: SinkRule[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((rule, index) => {
+    const other = right[index];
+    return (
+      other !== undefined &&
+      rule.id === other.id &&
+      rule.itemId === other.itemId &&
+      rule.mode === other.mode &&
+      rule.sortOrder === other.sortOrder
     );
   });
 }

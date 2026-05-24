@@ -60,6 +60,18 @@ export const PLANNER_WORKBENCH_PANELS = [
     panelClass: null,
   },
   {
+    id: 'sinks',
+    label: 'Sinks',
+    navHint: 'Surplus',
+    navGroup: 'primary',
+    loadComponent: async () => {
+      const { PlannerSinksSectionComponent } = await import('./planner-sinks-section.component');
+      return PlannerSinksSectionComponent;
+    },
+    width: 'standard',
+    panelClass: null,
+  },
+  {
     id: 'machines',
     label: 'Machines',
     navHint: 'Build',

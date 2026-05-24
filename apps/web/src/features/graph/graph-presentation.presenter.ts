@@ -85,6 +85,8 @@ export function formatGraphNodeKindDisplayValue(kind: ProductionGraphNode['kind'
       return 'output';
     case 'byproduct':
       return 'byproduct';
+    case 'sink':
+      return 'sink';
   }
 }
 

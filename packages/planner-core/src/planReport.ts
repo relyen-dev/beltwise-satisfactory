@@ -13,6 +13,7 @@ import {
   type ProductTarget,
   resolveObjectivePresetId,
 } from './plan';
+import { routeSurplusFlowsToSink, shouldRouteSurplusToSink } from './graphModel';
 import type {
   ItemFlow,
   ItemFlowEndpoint,
@@ -23,6 +24,7 @@ import type {
   ProductionPlanResult,
   ProductionPlanStatus,
 } from './graphModel';
+import { sinkPointsPerMinute } from './sinkRules';
 
 export type PlanReportIconRef =
   | { readonly kind: 'item'; readonly id: ItemId; readonly label: string }
@@ -39,6 +41,7 @@ export type PlanReportItemRateRole =
   | 'maximized-output'
   | 'requested-output'
   | 'unused-surplus'
+  | 'sink-consumption'
   | 'nuclear-byproduct';
 
 export type OutputFuelPowerNoteKind =
@@ -74,6 +77,14 @@ export interface PlanReportTargetSummary {
   readonly itemDisplayName: string | null;
   readonly mode: ProductTarget['mode'];
   readonly amountPerMinute: number;
+}
+
+export interface PlanReportSinkSummary {
+  readonly sinkRuleId: string;
+  readonly itemId: ItemId;
+  readonly itemDisplayName: string;
+  readonly amountPerMinute: number;
+  readonly sinkPointsPerMinute: number;
 }
 
 export interface PlanReportMachineSummary {
@@ -117,6 +128,7 @@ export interface PlanOverviewReport {
   readonly objective: PlanReportObjectiveSummary;
   readonly notes: PlanReportNotesSummary;
   readonly targets: readonly PlanReportTargetSummary[];
+  readonly sinks: readonly PlanReportSinkSummary[];
   readonly rawInputs: readonly PlanReportItemRate[];
   readonly externalInputs: readonly PlanReportItemRate[];
   readonly assumedInputs: readonly PlanReportItemRate[];
@@ -131,7 +143,8 @@ export type SelectedNodeReportDetails =
   | ExternalInputNodeReportDetails
   | AssumedInputNodeReportDetails
   | OutputNodeReportDetails
-  | ByproductNodeReportDetails;
+  | ByproductNodeReportDetails
+  | SinkNodeReportDetails;
 
 export interface RecipeNodeReportDetails {
   readonly kind: 'recipe';
@@ -188,6 +201,13 @@ export interface ByproductNodeReportDetails {
   readonly kind: 'byproduct';
   readonly item: PlanReportItemRate;
   readonly sinkPointsPerMinute: number | null;
+}
+
+export interface SinkNodeReportDetails {
+  readonly kind: 'sink';
+  readonly item: PlanReportItemRate;
+  readonly sinkRuleId: string | null;
+  readonly sinkPointsPerMinute: number;
 }
 
 export interface SelectedNodeReport {
@@ -264,10 +284,11 @@ export function buildPlanOverviewReport(
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
       .map((target) => targetSummary(dataset, result, target)),
+    sinks: sinkSummaries(dataset, project, result),
     rawInputs,
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
     assumedInputs: itemRateRows(dataset, result?.assumedInputs ?? {}, 'assumed-input-supply'),
-    surplus: itemRateRows(dataset, result?.surplus ?? {}),
+    surplus: itemRateRows(dataset, unusedSurplus(dataset, project, result)),
     machineSummary,
     warnings: warningRows(result?.warnings ?? []),
   };
@@ -423,6 +444,8 @@ function selectedNodeDetails(
       return outputNodeDetails(dataset, project, result, selectedNode, incomingFlows);
     case 'byproduct':
       return byproductNodeDetails(dataset, result, selectedNode, incomingFlows);
+    case 'sink':
+      return sinkNodeDetails(dataset, selectedNode, incomingFlows);
   }
 }
 
@@ -596,7 +619,6 @@ function byproductNodeDetails(
   incomingFlows: readonly PlanReportFlow[],
 ): ByproductNodeReportDetails {
   const itemId = selectedNode.itemId ?? '';
-  const item = itemId ? dataset.items[itemId] : undefined;
   const surplusAmountPerMinute =
     selectedNode.amountPerMinute ??
     (itemId ? result?.surplus[itemId] : undefined) ??
@@ -605,8 +627,25 @@ function byproductNodeDetails(
   return {
     kind: 'byproduct',
     item: itemRateRow(dataset, itemId, surplusAmountPerMinute, 'unused-surplus'),
-    sinkPointsPerMinute:
-      item?.sinkPoints === undefined ? null : item.sinkPoints * surplusAmountPerMinute,
+    sinkPointsPerMinute: sinkPointsPerMinute(dataset, itemId, surplusAmountPerMinute),
+  };
+}
+
+function sinkNodeDetails(
+  dataset: GameDataset,
+  selectedNode: ProductionGraphNode,
+  incomingFlows: readonly PlanReportFlow[],
+): SinkNodeReportDetails {
+  const itemId = selectedNode.itemId ?? '';
+  const amountPerMinute = selectedNode.amountPerMinute ?? sumAmounts(incomingFlows);
+  const pointsPerMinute =
+    selectedNode.sinkPointsPerMinute ?? sinkPointsPerMinute(dataset, itemId, amountPerMinute) ?? 0;
+
+  return {
+    kind: 'sink',
+    item: itemRateRow(dataset, itemId, amountPerMinute, 'sink-consumption'),
+    sinkRuleId: selectedNode.sinkRuleId ?? null,
+    sinkPointsPerMinute: pointsPerMinute,
   };
 }
 
@@ -683,7 +722,8 @@ function flowRows(
   selectedNode: ProductionGraphNode,
   direction: 'incoming' | 'outgoing',
 ): PlanReportFlow[] {
-  return (result?.itemFlows ?? [])
+  const routedFlows = result ? routeSurplusFlowsToSink(dataset, project.sinkRules, result) : [];
+  return routedFlows
     .filter((flow) =>
       endpointMatchesNode(direction === 'incoming' ? flow.target : flow.source, selectedNode),
     )
@@ -758,6 +798,8 @@ function endpointMatchesNode(
       return endpoint.kind === 'output' && endpoint.id === selectedNode.targetId;
     case 'byproduct':
       return endpoint.kind === 'byproduct' && endpoint.id === selectedNode.itemId;
+    case 'sink':
+      return endpoint.kind === 'sink' && endpoint.id === selectedNode.itemId;
   }
 }
 
@@ -772,6 +814,8 @@ function endpointDisplayName(
     case 'assumedInput':
     case 'byproduct':
       return dataset.items[endpoint.id]?.displayName ?? endpoint.id;
+    case 'sink':
+      return 'Awesome Sink';
     case 'recipe':
       return dataset.recipes[endpoint.id]?.displayName ?? endpoint.id;
     case 'output': {
@@ -839,6 +883,54 @@ function itemRateRow(
     amountPerMinute,
     role,
   };
+}
+
+function sinkSummaries(
+  dataset: GameDataset,
+  project: PlannerProject,
+  result: ProductionPlanResult | null,
+): PlanReportSinkSummary[] {
+  if (!result) {
+    return [];
+  }
+
+  return project.sinkRules
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .flatMap((rule) => {
+      if (!shouldRouteSurplusToSink(dataset, project.sinkRules, result, rule.itemId)) {
+        return [];
+      }
+      const amountPerMinute = result.surplus[rule.itemId] ?? 0;
+      const pointsPerMinute = sinkPointsPerMinute(dataset, rule.itemId, amountPerMinute);
+      if (pointsPerMinute === null) {
+        return [];
+      }
+      return [
+        {
+          sinkRuleId: rule.id,
+          itemId: rule.itemId,
+          itemDisplayName: dataset.items[rule.itemId]?.displayName ?? rule.itemId,
+          amountPerMinute,
+          sinkPointsPerMinute: pointsPerMinute,
+        },
+      ];
+    });
+}
+
+function unusedSurplus(
+  dataset: GameDataset,
+  project: PlannerProject,
+  result: ProductionPlanResult | null,
+): Record<ItemId, number> {
+  if (!result) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(result.surplus).filter(
+      ([itemId]) => !shouldRouteSurplusToSink(dataset, project.sinkRules, result, itemId),
+    ),
+  );
 }
 
 function resourceCapSource(

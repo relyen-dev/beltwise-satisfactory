@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
 import { PlannerGraphStore } from '../state/planner-graph.store';
+import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 
 @Component({
   selector: 'bw-selected-node-inspector',
@@ -12,4 +13,5 @@ import { PlannerGraphStore } from '../state/planner-graph.store';
 })
 export class SelectedNodeInspectorComponent {
   public readonly graph = inject(PlannerGraphStore);
+  public readonly planConfig = inject(PlannerPlanConfigStore);
 }

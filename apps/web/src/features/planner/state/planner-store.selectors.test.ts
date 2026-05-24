@@ -6,6 +6,7 @@ import {
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import {
+  selectAvailableSurplusSinkItems,
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
   selectGraphNodeNotes,
@@ -16,6 +17,7 @@ import {
   selectRecipeRows,
   selectRawResourceMultiplierRows,
   selectResourceRows,
+  selectSinkRuleRows,
 } from './planner-store.selectors';
 
 const NOW = '2026-05-12T00:00:00.000Z';
@@ -208,6 +210,109 @@ describe('planner store selectors', () => {
       { item: tinySatisfactoryDataset.items['Desc_IngotIron_C'], amountPerMinute: 5 },
       { item: tinySatisfactoryDataset.items['Desc_Wire_C'], amountPerMinute: 12 },
     ]);
+  });
+
+  it('builds sink rule rows with solved rates and sink points', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const project: PlannerProject = {
+      ...createProject(),
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    };
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {
+        Desc_Screw_C: 12,
+      },
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+
+    expect(selectSinkRuleRows(dataset, project, result)).toMatchObject([
+      {
+        rule: project.sinkRules[0],
+        itemId: 'Desc_Screw_C',
+        displayName: 'Screw',
+        iconSrc: '/game-icons/Desc_Screw_C.png',
+        amountPerMinute: 12,
+        sinkPointsPerMinute: 24,
+      },
+    ]);
+  });
+
+  it('lists only currently available sinkable surplus without an existing surplus sink rule', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+        Desc_Wire_C: {
+          ...tinySatisfactoryDataset.items['Desc_Wire_C']!,
+          sinkPoints: 1,
+        },
+        Desc_IronRod_C: {
+          ...tinySatisfactoryDataset.items['Desc_IronRod_C']!,
+          sinkPoints: 4,
+        },
+      },
+    };
+    const project: PlannerProject = {
+      ...createProject(),
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    };
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {
+        Desc_Screw_C: 12,
+        Desc_Wire_C: 3,
+        Desc_IronRod_C: 0.0000001,
+        Desc_IngotIron_C: 6,
+      },
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+
+    expect(selectAvailableSurplusSinkItems(dataset, project).map((item) => item.id)).toEqual([]);
+    expect(selectAvailableSurplusSinkItems(dataset, project, result).map((item) => item.id)).toEqual(
+      ['Desc_Wire_C'],
+    );
   });
 
   it('keeps machine rows to solve-relevant automated machines', () => {

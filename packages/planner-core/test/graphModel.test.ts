@@ -186,6 +186,83 @@ describe('production graph conversion', () => {
     ).toBe('3x Smelter');
   });
 
+  it('routes configured sinkable surplus to an Awesome Sink node', () => {
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_Screw_C: 3,
+      },
+      rawInputs: {},
+      outputs: {},
+      surplus: {
+        Desc_Screw_C: 12,
+      },
+      powerMw: 10,
+      warnings: [],
+      machineUsage: [
+        {
+          recipeId: 'Recipe_Screw_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Screw',
+          recipeRatePerMinute: 3,
+          machineCount: 0.3,
+          powerMw: 10,
+        },
+      ],
+      itemFlows: [
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 12,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'byproduct', id: 'Desc_Screw_C' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(dataset, [], result, {
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    expect(graph.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'sink:Desc_Screw_C',
+        kind: 'sink',
+        label: 'Awesome Sink',
+        itemId: 'Desc_Screw_C',
+        sinkRuleId: 'sink-screw',
+        amountPerMinute: 12,
+        sinkPointsPerMinute: 24,
+      }),
+    );
+    expect(graph.nodes.some((node) => node.id === 'byproduct:Desc_Screw_C')).toBe(false);
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'recipe:Recipe_Screw_C',
+        targetNodeId: 'sink:Desc_Screw_C',
+        itemId: 'Desc_Screw_C',
+        amountPerMinute: 12,
+      }),
+    );
+  });
+
   it('builds renderer-neutral graph presentation data with supplied positions', () => {
     const graph: ProductionGraph = {
       nodes: [

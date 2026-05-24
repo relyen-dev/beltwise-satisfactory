@@ -698,7 +698,72 @@ describe('planner inspector selectors', () => {
       amountPerMinuteLabel: '12/min',
     });
     expect(selection.details.sinkPointsPerMinuteLabel).toBe('24/min');
-    expect(selection.details.surplusNote).toBe('Unused surplus. Sink routing is not modeled yet.');
+    expect(selection.details.surplusNote).toBe('Unused surplus.');
+    expect(selection.details.surplusSinkAction).toEqual({
+      itemId: 'Desc_Screw_C',
+      active: false,
+      label: 'Sink surplus',
+      title: 'Send solved surplus to an Awesome Sink',
+    });
+  });
+
+  it('builds sink node details and marks the sink action active', () => {
+    const context = createInspectorContext();
+    const project: PlannerProject = {
+      ...context.project,
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    };
+    const graph = buildProductionGraph(context.dataset, project.targets, context.result, {
+      sinkRules: project.sinkRules,
+    });
+    const sinkContext: InspectorTestContext = {
+      ...context,
+      project,
+      graph,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(sinkContext, nodeById(sinkContext, 'sink:Desc_Screw_C'));
+
+    expect(selection.kindLabel).toBe('Sink');
+    expect(selection.metrics).toEqual([
+      { label: 'Sinking', value: '12/min', detail: null },
+      { label: 'Sink points', value: '24/min', detail: null },
+    ]);
+    if (selection.details.kind !== 'sink') {
+      throw new Error('Expected sink details');
+    }
+    expect(selection.details).toMatchObject({
+      item: {
+        itemId: 'Desc_Screw_C',
+        displayName: 'Screw',
+        amountPerMinuteLabel: '12/min',
+        detail: 'surplus sent to sink',
+      },
+      sinkPointsPerMinuteLabel: '24/min',
+      surplusSinkAction: {
+        itemId: 'Desc_Screw_C',
+        active: true,
+        label: 'Remove sink',
+      },
+    });
+  });
+
+  it('does not expose surplus sink actions for unsinkable output items', () => {
+    const context = createInspectorContext();
+    const selection = selectSelection(context, nodeById(context, 'output:target-wire'));
+
+    if (selection.details.kind !== 'output') {
+      throw new Error('Expected output details');
+    }
+    expect(selection.details.surplusSinkAction).toBeNull();
   });
 });
 

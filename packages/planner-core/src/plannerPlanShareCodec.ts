@@ -16,6 +16,7 @@ import {
   type PlannerProject,
   type ProductTarget,
   resolveObjectivePresetId,
+  type SinkRule,
 } from './plan';
 import {
   datasetImportWarnings,
@@ -73,6 +74,7 @@ export interface CompactPlannerProjectV1 {
   n: string;
   no?: string;
   t?: CompactProductTargetV1[];
+  sk?: CompactSinkRuleV1[];
   r?: CompactBooleanOverrideV1[];
   m?: CompactBooleanOverrideV1[];
   rc?: CompactResourceOverrideV1[];
@@ -88,6 +90,13 @@ export interface CompactProductTargetV1 {
   i: ItemId;
   m: 'f' | 'x';
   a?: number;
+  s: number;
+}
+
+export interface CompactSinkRuleV1 {
+  id: string;
+  i: ItemId;
+  m: 's';
   s: number;
 }
 
@@ -239,6 +248,9 @@ function encodeCompactPlannerProject(
   if (project.targets.length > 0) {
     compact.t = project.targets.map(encodeTarget);
   }
+  if (project.sinkRules.length > 0) {
+    compact.sk = project.sinkRules.map(encodeSinkRule);
+  }
 
   const recipeOverrides = encodeBooleanOverrides(canonicalRecipeOverrideEntries(project, dataset));
   if (recipeOverrides.length > 0) {
@@ -292,6 +304,7 @@ function applyCompactProjectToCanonicalDefaults(
     {
       notes: normalizePlanTransferNote(compact.no ?? ''),
       targets: decodeTargets(compact.t),
+      sinkRules: decodeSinkRules(compact.sk),
       recipeOverrides: decodeBooleanOverrides(compact.r),
       machineOverrides: decodeBooleanOverrides(compact.m),
       resourceOverrides: decodeResourceOverrides(compact.rc),
@@ -320,6 +333,15 @@ function encodeTarget(target: ProductTarget): CompactProductTargetV1 {
   };
 }
 
+function encodeSinkRule(rule: SinkRule): CompactSinkRuleV1 {
+  return {
+    id: rule.id,
+    i: rule.itemId,
+    m: 's',
+    s: rule.sortOrder,
+  };
+}
+
 function decodeTargets(value: CompactProductTargetV1[] | undefined): ProductTarget[] {
   if (!value) {
     return [];
@@ -341,6 +363,30 @@ function decodeTargets(value: CompactProductTargetV1[] | undefined): ProductTarg
           sortOrder: target.s,
         },
   );
+}
+
+function decodeSinkRules(value: CompactSinkRuleV1[] | undefined): SinkRule[] {
+  if (!value) {
+    return [];
+  }
+
+  const seenItemIds = new Set<ItemId>();
+  return value
+    .filter((rule) => {
+      if (seenItemIds.has(rule.i)) {
+        return false;
+      }
+      seenItemIds.add(rule.i);
+      return true;
+    })
+    .map((rule) => ({
+      id: rule.id,
+      itemId: rule.i,
+      mode: 'surplus' as const,
+      sortOrder: rule.s,
+    }))
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((rule, index) => ({ ...rule, sortOrder: index }));
 }
 
 function encodeBooleanOverrides(
@@ -616,6 +662,14 @@ function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | nu
     compact.t = targets;
   }
 
+  const sinkRules = readArray(value['sk'], readCompactSinkRule);
+  if (sinkRules === null) {
+    return null;
+  }
+  if (sinkRules.length > 0) {
+    compact.sk = sinkRules;
+  }
+
   const recipeOverrides = readArray(value['r'], readCompactBooleanOverride);
   const machineOverrides = readArray(value['m'], readCompactBooleanOverride);
   const resourceOverrides = readArray(value['rc'], readCompactResourceOverride);
@@ -691,6 +745,25 @@ function readCompactProductTarget(value: unknown): CompactProductTargetV1 | null
     i: itemId,
     m: mode,
     ...(mode === 'f' ? { a: amountPerMinute ?? 0 } : {}),
+    s: sortOrder,
+  };
+}
+
+function readCompactSinkRule(value: unknown): CompactSinkRuleV1 | null {
+  if (!isPlanTransferRecord(value)) {
+    return null;
+  }
+  const id = readSafePlanTransferRecordKey(value['id']);
+  const itemId = readSafePlanTransferRecordKey(value['i']);
+  const mode = value['m'];
+  const sortOrder = readTransferFiniteNumber(value['s']);
+  if (id === undefined || itemId === undefined || mode !== 's' || sortOrder === undefined) {
+    return null;
+  }
+  return {
+    id,
+    i: itemId,
+    m: mode,
     s: sortOrder,
   };
 }

@@ -34,6 +34,7 @@ The first supporting layer is now in place: stronger panels, icons, defaults, pl
 
 - [Workbench UX Polish](./workbench-ux-polish.md) covers existing recipe/resource panel polish notes.
 - [Resource Providers, Save Imports, And Randomized Nodes](./resource-providers.md) covers save-file import and randomized-node research.
+- [Sinks, Disposal, And Power Targets](./sinks-disposal-and-power-targets.md) captures follow-up work for direct sinks, target-output sinks, conversion-to-sink, nuclear waste, and power-generator planning.
 - [Plugin-Shaped Extension Seams](./plugin-extension-seams.md) captures when expanded features should become optional extension seams instead of built-in planner behavior.
 - [Product Spec](../product-spec.md) remains the north star for current scope and MVP boundaries.
 - [Architecture](../architecture.md) defines current package boundaries and renderer isolation.
@@ -75,7 +76,8 @@ These are plausible next steps before the larger save/logistics systems. Some ar
 4. Add drill-in graph views for special production loops.
 5. Design the linked-plan contract model before implementing logistics.
 6. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
-7. Keep doing small technical refactors only where a capability or workbench slice has become hard to test or review; avoid recreating a broad planner facade.
+7. Continue sink/disposal planning from direct surplus sinks toward explicit target-output sinks, conversion-to-sink, nuclear waste handling, and power targets.
+8. Keep doing small technical refactors only where a capability or workbench slice has become hard to test or review; avoid recreating a broad planner facade.
 
 ## Future Systems
 
@@ -91,6 +93,7 @@ These are high-value ideas, but they need more data-model work and research befo
 8. Wiki/knowledge integration.
 9. Top-down factory layout generation.
 10. First-party extension seams for optional reports, graph overlays, layout strategies, export formats, or data packs.
+11. Power-generator targets with fuel selection, maximize-power planning, and explicit byproduct or waste handling.
 
 ## Idea Index
 

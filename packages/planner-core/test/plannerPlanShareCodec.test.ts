@@ -42,6 +42,14 @@ describe('Beltwise compact plan share payloads', () => {
             s: 1,
           },
         ],
+        sk: [
+          {
+            id: 'sink-screw',
+            i: 'Desc_Screw_C',
+            m: 's',
+            s: 0,
+          },
+        ],
         r: [['Recipe_IronWire_C', true]],
         m: [['Build_ConstructorMk1_C', false]],
         rc: [{ i: 'Desc_OreIron_C', e: false, m: 120 }],
@@ -103,6 +111,7 @@ describe('Beltwise compact plan share payloads', () => {
       createdAt: '2026-05-14T00:00:00.000Z',
       updatedAt: '2026-05-14T00:00:00.000Z',
       targets: sourceProject.targets,
+      sinkRules: sourceProject.sinkRules,
       notes: sourceProject.notes,
       recipeOverrides: sourceProject.recipeOverrides,
       machineOverrides: sourceProject.machineOverrides,
@@ -318,6 +327,20 @@ describe('Beltwise compact plan share payloads', () => {
         t: [{ id: 'target-safe', i: 'hasOwnProperty', m: 'f', a: 10, s: 0 }],
       },
     });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        sk: [{ id: 'sink-safe', i: '__proto__', m: 's', s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        sk: [{ id: 'toString', i: 'Desc_Screw_C', m: 's', s: 0 }],
+      },
+    });
   });
 
   it('imports script-looking notes and names as inert plain text', () => {
@@ -448,6 +471,14 @@ function createSharedPlannerProject(): PlannerProject {
         itemId: 'Desc_Wire_C',
         mode: 'maximize',
         sortOrder: 1,
+      },
+    ],
+    sinkRules: [
+      {
+        id: 'sink-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 0,
       },
     ],
     recipeOverrides: {

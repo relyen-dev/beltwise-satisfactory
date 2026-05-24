@@ -16,6 +16,7 @@ import {
   type PlannerUserDefaults,
   type ProductTarget,
   type RateDecimalPlaces,
+  type SinkRule,
 } from './plan';
 import { uniqueStrings } from './internal/uniqueStrings';
 import {
@@ -88,6 +89,7 @@ export interface StoredPlannerProjectV1 {
   createdAt: string;
   updatedAt: string;
   targets: StoredProductTargetV1[];
+  sinkRules?: StoredSinkRuleV1[];
   recipeOverrides: Record<RecipeId, StoredRecipeOverrideV1>;
   machineOverrides: Record<MachineId, StoredMachineOverrideV1>;
   resourceOverrides: Record<ItemId, StoredResourceOverrideV1>;
@@ -111,6 +113,13 @@ export interface StoredProductTargetV1 {
   itemId: ItemId;
   mode: ProductTarget['mode'];
   amountPerMinute?: number;
+  sortOrder: number;
+}
+
+export interface StoredSinkRuleV1 {
+  id: string;
+  itemId: ItemId;
+  mode: SinkRule['mode'];
   sortOrder: number;
 }
 
@@ -663,6 +672,7 @@ function toStoredPlannerProjectV1(project: PlannerProject): StoredPlannerProject
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     targets: intent.targets,
+    sinkRules: intent.sinkRules,
     recipeOverrides: intent.recipeOverrides,
     machineOverrides: intent.machineOverrides,
     resourceOverrides: intent.resourceOverrides,

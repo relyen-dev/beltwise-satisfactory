@@ -341,6 +341,61 @@ describe('plan report module', () => {
     });
   });
 
+  it('reports configured surplus sinks separately from unused surplus', () => {
+    const context = createReportContext();
+    const project: PlannerProject = {
+      ...context.project,
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    };
+    const graph = buildProductionGraph(context.dataset, project.targets, context.result, {
+      sinkRules: project.sinkRules,
+    });
+
+    const overview = buildPlanOverviewReport(context.dataset, project, context.result, graph);
+    const selected = buildSelectedNodeReport(
+      context.dataset,
+      project,
+      context.result,
+      graph.nodes.find((node) => node.id === 'sink:Desc_Screw_C')!,
+    );
+
+    expect(overview.surplus).toEqual([]);
+    expect(overview.sinks).toEqual([
+      {
+        sinkRuleId: 'sink-screw',
+        itemId: 'Desc_Screw_C',
+        itemDisplayName: 'Screw',
+        amountPerMinute: 12,
+        sinkPointsPerMinute: 24,
+      },
+    ]);
+    expect(selected.details).toMatchObject({
+      kind: 'sink',
+      item: {
+        itemId: 'Desc_Screw_C',
+        displayName: 'Screw',
+        amountPerMinute: 12,
+        role: 'sink-consumption',
+      },
+      sinkRuleId: 'sink-screw',
+      sinkPointsPerMinute: 24,
+    });
+    expect(selected.incomingFlows).toMatchObject([
+      {
+        flowKey: 'incoming:Desc_Screw_C:recipe:Recipe_Screw_C:sink:Desc_Screw_C',
+        endpointKind: 'recipe',
+        endpointLabel: 'Screw',
+      },
+    ]);
+  });
+
   it('adds fuel power estimates and nuclear waste rates to output reports', () => {
     const dataset = datasetWithPowerItems();
     const targets: ProductTarget[] = [
@@ -588,6 +643,10 @@ function datasetWithPowerItems(): GameDataset {
     ...tinySatisfactoryDataset,
     items: {
       ...tinySatisfactoryDataset.items,
+      Desc_Screw_C: {
+        ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+        sinkPoints: 2,
+      },
       Desc_NuclearFuelRod_C: {
         id: 'Desc_NuclearFuelRod_C',
         className: 'Desc_NuclearFuelRod_C',

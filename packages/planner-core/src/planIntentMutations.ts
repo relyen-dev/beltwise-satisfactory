@@ -15,6 +15,7 @@ import {
   type PlannerProject,
   type ProductTarget,
   type RateDecimalPlaces,
+  type SinkRule,
 } from './plan';
 import {
   defaultResourceCapPerMinute,
@@ -74,6 +75,15 @@ export type PlanItemInputIntent =
       readonly nextItemId: ItemId;
     }
   | { readonly type: 'remove-item-input'; readonly itemId: ItemId };
+
+export type PlanSinkIntent =
+  | {
+      readonly type: 'add-surplus-sink';
+      readonly sinkRuleId: string;
+      readonly itemId: ItemId;
+    }
+  | { readonly type: 'remove-sink-rule'; readonly sinkRuleId: string }
+  | { readonly type: 'remove-surplus-sink-for-item'; readonly itemId: ItemId };
 
 export type PlanOverrideIntent =
   | { readonly type: 'set-recipe-enabled'; readonly recipeId: RecipeId; readonly enabled: boolean }
@@ -194,6 +204,20 @@ export function mutatePlanItemInputs(
       return moveItemInput(project, intent.previousItemId, intent.nextItemId);
     case 'remove-item-input':
       return removeItemInput(project, intent.itemId);
+  }
+}
+
+export function mutatePlanSinkRules(
+  project: PlannerProject,
+  intent: PlanSinkIntent,
+): PlannerProject {
+  switch (intent.type) {
+    case 'add-surplus-sink':
+      return addSurplusSinkRule(project, intent.sinkRuleId, intent.itemId);
+    case 'remove-sink-rule':
+      return removeSinkRule(project, intent.sinkRuleId);
+    case 'remove-surplus-sink-for-item':
+      return removeSurplusSinkRuleForItem(project, intent.itemId);
   }
 }
 
@@ -450,6 +474,50 @@ export function removeItemInput(project: PlannerProject, itemId: ItemId): Planne
   return {
     ...project,
     itemInputs,
+  };
+}
+
+export function addSurplusSinkRule(
+  project: PlannerProject,
+  sinkRuleId: string,
+  itemId: ItemId,
+): PlannerProject {
+  if (project.sinkRules.some((rule) => rule.mode === 'surplus' && rule.itemId === itemId)) {
+    return project;
+  }
+
+  return {
+    ...project,
+    sinkRules: [
+      ...project.sinkRules,
+      {
+        id: sinkRuleId,
+        itemId,
+        mode: 'surplus',
+        sortOrder: project.sinkRules.length,
+      },
+    ],
+  };
+}
+
+export function removeSinkRule(project: PlannerProject, sinkRuleId: string): PlannerProject {
+  return {
+    ...project,
+    sinkRules: normalizeSinkRuleSortOrder(
+      project.sinkRules.filter((rule) => rule.id !== sinkRuleId),
+    ),
+  };
+}
+
+export function removeSurplusSinkRuleForItem(
+  project: PlannerProject,
+  itemId: ItemId,
+): PlannerProject {
+  return {
+    ...project,
+    sinkRules: normalizeSinkRuleSortOrder(
+      project.sinkRules.filter((rule) => rule.mode !== 'surplus' || rule.itemId !== itemId),
+    ),
   };
 }
 
@@ -783,6 +851,12 @@ function updateTarget(
     ...project,
     targets: project.targets.map((target) => (target.id === targetId ? mapper(target) : target)),
   };
+}
+
+function normalizeSinkRuleSortOrder(rules: readonly SinkRule[]): SinkRule[] {
+  return rules
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((rule, index) => ({ ...rule, sortOrder: index }));
 }
 
 function updateGraphNodeState(

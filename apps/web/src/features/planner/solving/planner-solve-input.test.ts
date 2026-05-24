@@ -40,6 +40,14 @@ describe('selectPlannerSolveInput', () => {
           },
         },
       },
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
     };
 
     expect(solveKey(changedProject)).toBe(solveKey(project));

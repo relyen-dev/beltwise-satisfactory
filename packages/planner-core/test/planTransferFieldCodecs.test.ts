@@ -3,6 +3,7 @@ import {
   booleanOverrideEntriesForTransfer,
   copyGraphNodeBuildStatesForTransfer,
   copyProductTargetForTransfer,
+  copySinkRulesForTransfer,
   createDefaultGraphDisplaySettings,
   readBooleanOverridesForTransfer,
   readBuildStateForTransfer,
@@ -12,6 +13,7 @@ import {
   readNumberRecordForTransfer,
   readProductTargetsForTransfer,
   readResourceOverridesForTransfer,
+  readSinkRulesForTransfer,
   readTransferObjectiveStageOrder,
   resourceOverrideEntriesForTransfer,
 } from '@beltwise/planner-core';
@@ -103,6 +105,78 @@ describe('plan transfer field codecs', () => {
       mode: 'maximize',
       sortOrder: 4,
     });
+  });
+
+  it('reads surplus sink rules permissively and normalizes duplicate items', () => {
+    let nextId = 0;
+    const sinkRules = readSinkRulesForTransfer(
+      [
+        {
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 3,
+        },
+        {
+          id: 'sink-wire',
+          itemId: 'Desc_Wire_C',
+          mode: 'surplus',
+          sortOrder: 1,
+        },
+        {
+          id: 'sink-duplicate',
+          itemId: 'Desc_Wire_C',
+          mode: 'surplus',
+          sortOrder: 2,
+        },
+        {
+          id: '__proto__',
+          itemId: 'Desc_IronPlate_C',
+          mode: 'surplus',
+          sortOrder: 4,
+        },
+        {
+          id: 'bad-mode',
+          itemId: 'Desc_IronRod_C',
+          mode: 'fixed',
+          sortOrder: 5,
+        },
+        {
+          id: 'unsafe-item',
+          itemId: 'hasOwnProperty',
+          mode: 'surplus',
+          sortOrder: 6,
+        },
+        {
+          id: 'draft-item',
+          itemId: '',
+          mode: 'surplus',
+          sortOrder: 7,
+        },
+      ],
+      () => `sink-generated-${++nextId}`,
+    );
+
+    expect(sinkRules).toEqual([
+      {
+        id: 'sink-wire',
+        itemId: 'Desc_Wire_C',
+        mode: 'surplus',
+        sortOrder: 0,
+      },
+      {
+        id: 'sink-generated-1',
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 1,
+      },
+      {
+        id: 'sink-generated-2',
+        itemId: 'Desc_IronPlate_C',
+        mode: 'surplus',
+        sortOrder: 2,
+      },
+    ]);
+    expect(copySinkRulesForTransfer(sinkRules)).toEqual(sinkRules);
   });
 
   it('normalizes override fields for record and compact transfer shapes', () => {

@@ -14,9 +14,11 @@ import {
   mutatePlanMetadata,
   mutatePlanObjective,
   mutatePlanOverrides,
+  mutatePlanSinkRules,
   mutatePlanTargets,
   type ConveyorBeltTier,
   type GraphEdgeStyle,
+  isSinkableItem,
   type ObjectivePresetId,
   type ObjectiveWeightKey,
   type PipelineTier,
@@ -180,6 +182,49 @@ export class PlannerPlanCommandSlice {
     this.options.updateActiveProject((project) =>
       mutatePlanItemInputs(project, { type: 'remove-item-input', itemId }),
     );
+  }
+
+  public addSurplusSink(itemId: ItemId): void {
+    if (this.options.planLocked() || !this.canSinkItem(itemId)) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanSinkRules(project, {
+        type: 'add-surplus-sink',
+        sinkRuleId: createStableSinkRuleId(),
+        itemId,
+      }),
+    );
+  }
+
+  public removeSinkRule(sinkRuleId: string): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanSinkRules(project, { type: 'remove-sink-rule', sinkRuleId }),
+    );
+  }
+
+  public removeSurplusSinkForItem(itemId: ItemId): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanSinkRules(project, { type: 'remove-surplus-sink-for-item', itemId }),
+    );
+  }
+
+  public toggleSurplusSink(itemId: ItemId): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    const project = this.options.activeProject();
+    if (project?.sinkRules.some((rule) => rule.mode === 'surplus' && rule.itemId === itemId)) {
+      this.removeSurplusSinkForItem(itemId);
+      return;
+    }
+    this.addSurplusSink(itemId);
   }
 
   public setResourceCap(itemId: ItemId, maxPerMinute: number): void {
@@ -353,8 +398,17 @@ export class PlannerPlanCommandSlice {
       mutatePlanMetadata(project, { type: 'set-notes', notes }),
     );
   }
+
+  private canSinkItem(itemId: ItemId): boolean {
+    const dataset = this.options.dataset();
+    return dataset !== null && isSinkableItem(dataset, itemId);
+  }
 }
 
 function createStableTargetId(): string {
   return createStableId('target');
+}
+
+function createStableSinkRuleId(): string {
+  return createStableId('sink');
 }
