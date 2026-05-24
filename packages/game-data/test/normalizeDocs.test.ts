@@ -463,4 +463,153 @@ describe('normalizeDocs', () => {
     expect(normalized.items['Desc_ZeroSink_C']?.sinkPoints).toBeUndefined();
     expect(normalized.items['Desc_NoSink_C']?.sinkPoints).toBeUndefined();
   });
+
+  it('normalizes generator fuel options with per-minute fuel, supplemental inputs, and waste outputs', () => {
+    const rawDocs = [
+      {
+        NativeClass: '/Script/FactoryGame.FGItemDescriptor',
+        Classes: [
+          {
+            ClassName: 'Desc_NuclearFuelRod_C',
+            mDisplayName: 'Uranium Fuel Rod',
+            mForm: 'RF_SOLID',
+            mEnergyValue: '750000'
+          },
+          {
+            ClassName: 'Desc_NuclearWaste_C',
+            mDisplayName: 'Uranium Waste',
+            mForm: 'RF_SOLID'
+          },
+          {
+            ClassName: 'Desc_LiquidFuel_C',
+            mDisplayName: 'Fuel',
+            mForm: 'RF_LIQUID',
+            mEnergyValue: '0.75'
+          },
+          {
+            ClassName: 'Desc_ZeroFuel_C',
+            mDisplayName: 'Zero Fuel',
+            mForm: 'RF_SOLID',
+            mEnergyValue: '0'
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGResourceDescriptor',
+        Classes: [
+          {
+            ClassName: 'Desc_Coal_C',
+            mDisplayName: 'Coal',
+            mForm: 'RF_SOLID',
+            mEnergyValue: '300'
+          },
+          {
+            ClassName: 'Desc_Water_C',
+            mDisplayName: 'Water',
+            mForm: 'RF_LIQUID'
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGBuildableGeneratorFuel',
+        Classes: [
+          {
+            ClassName: 'Build_GeneratorCoal_C',
+            mDisplayName: 'Coal-Powered Generator',
+            mPowerProduction: '75',
+            mPowerConsumption: '0',
+            mSupplementalToPowerRatio: '10',
+            mFuel: [
+              {
+                mFuelClass: 'Desc_Coal_C',
+                mSupplementalResourceClass: 'Desc_Water_C',
+                mByproduct: '',
+                mByproductAmount: ''
+              },
+              {
+                mFuelClass: 'Desc_ZeroFuel_C',
+                mSupplementalResourceClass: 'Desc_Water_C',
+                mByproduct: '',
+                mByproductAmount: ''
+              },
+              {
+                mFuelClass: 'Desc_MissingFuel_C',
+                mSupplementalResourceClass: 'Desc_Water_C',
+                mByproduct: '',
+                mByproductAmount: ''
+              }
+            ]
+          },
+          {
+            ClassName: 'Build_GeneratorFuel_C',
+            mDisplayName: 'Fuel-Powered Generator',
+            mPowerProduction: '250',
+            mPowerConsumption: '0',
+            mFuel: [
+              {
+                mFuelClass: 'Desc_LiquidFuel_C',
+                mSupplementalResourceClass: '',
+                mByproduct: '',
+                mByproductAmount: ''
+              }
+            ]
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGBuildableGeneratorNuclear',
+        Classes: [
+          {
+            ClassName: 'Build_GeneratorNuclear_C',
+            mDisplayName: 'Nuclear Power Plant',
+            mPowerProduction: '2500',
+            mPowerConsumption: '0',
+            mSupplementalToPowerRatio: '1.6',
+            mFuel: [
+              {
+                mFuelClass: 'Desc_NuclearFuelRod_C',
+                mSupplementalResourceClass: 'Desc_Water_C',
+                mByproduct: 'Desc_NuclearWaste_C',
+                mByproductAmount: '50'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const normalized = normalizeDocs(rawDocs, JSON.stringify(rawDocs), {
+      docsFileName: 'en-US.json',
+      generatedAt: '2026-05-12T00:00:00.000Z'
+    });
+
+    expect(normalized.generatorFuelOptions['Build_GeneratorCoal_C:Desc_Coal_C']).toEqual({
+      id: 'Build_GeneratorCoal_C:Desc_Coal_C',
+      generatorId: 'Build_GeneratorCoal_C',
+      fuelItemId: 'Desc_Coal_C',
+      powerMw: 75,
+      fuelConsumedPerMinute: 15,
+      supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 45 }],
+      byproducts: []
+    });
+    expect(normalized.generatorFuelOptions['Build_GeneratorFuel_C:Desc_LiquidFuel_C']).toMatchObject({
+      powerMw: 250,
+      fuelConsumedPerMinute: 20,
+      supplementalInputs: [],
+      byproducts: []
+    });
+    expect(
+      normalized.generatorFuelOptions['Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C'],
+    ).toEqual({
+      id: 'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C',
+      generatorId: 'Build_GeneratorNuclear_C',
+      fuelItemId: 'Desc_NuclearFuelRod_C',
+      powerMw: 2500,
+      fuelConsumedPerMinute: 0.2,
+      supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 240 }],
+      byproducts: [{ itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 }]
+    });
+    expect(normalized.generatorFuelOptions['Build_GeneratorCoal_C:Desc_ZeroFuel_C']).toBeUndefined();
+    expect(normalized.generatorFuelOptions['Build_GeneratorCoal_C:Desc_MissingFuel_C']).toBeUndefined();
+  });
 });

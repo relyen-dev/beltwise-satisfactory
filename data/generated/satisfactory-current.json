@@ -1,7 +1,202 @@
 {
   "game": "satisfactory",
   "gameVersionLabel": "unknown",
-  "generatedAt": "2026-05-24T04:01:47.045Z",
+  "generatedAt": "2026-05-24T22:21:48.187Z",
+  "generatorFuelOptions": {
+    "Build_GeneratorBiomass_Automated_C:Desc_Biofuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 4,
+      "fuelItemId": "Desc_Biofuel_C",
+      "generatorId": "Build_GeneratorBiomass_Automated_C",
+      "id": "Build_GeneratorBiomass_Automated_C:Desc_Biofuel_C",
+      "powerMw": 30,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorBiomass_Automated_C:Desc_GenericBiomass_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 10,
+      "fuelItemId": "Desc_GenericBiomass_C",
+      "generatorId": "Build_GeneratorBiomass_Automated_C",
+      "id": "Build_GeneratorBiomass_Automated_C:Desc_GenericBiomass_C",
+      "powerMw": 30,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorBiomass_Automated_C:Desc_Leaves_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 120,
+      "fuelItemId": "Desc_Leaves_C",
+      "generatorId": "Build_GeneratorBiomass_Automated_C",
+      "id": "Build_GeneratorBiomass_Automated_C:Desc_Leaves_C",
+      "powerMw": 30,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorBiomass_Automated_C:Desc_Mycelia_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 90,
+      "fuelItemId": "Desc_Mycelia_C",
+      "generatorId": "Build_GeneratorBiomass_Automated_C",
+      "id": "Build_GeneratorBiomass_Automated_C:Desc_Mycelia_C",
+      "powerMw": 30,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorBiomass_Automated_C:Desc_PackagedBiofuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 2.4,
+      "fuelItemId": "Desc_PackagedBiofuel_C",
+      "generatorId": "Build_GeneratorBiomass_Automated_C",
+      "id": "Build_GeneratorBiomass_Automated_C:Desc_PackagedBiofuel_C",
+      "powerMw": 30,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorBiomass_Automated_C:Desc_Wood_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 18,
+      "fuelItemId": "Desc_Wood_C",
+      "generatorId": "Build_GeneratorBiomass_Automated_C",
+      "id": "Build_GeneratorBiomass_Automated_C:Desc_Wood_C",
+      "powerMw": 30,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorCoal_C:Desc_Coal_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 15,
+      "fuelItemId": "Desc_Coal_C",
+      "generatorId": "Build_GeneratorCoal_C",
+      "id": "Build_GeneratorCoal_C:Desc_Coal_C",
+      "powerMw": 75,
+      "supplementalInputs": [
+        {
+          "amountPerMinute": 45,
+          "itemId": "Desc_Water_C"
+        }
+      ]
+    },
+    "Build_GeneratorCoal_C:Desc_CompactedCoal_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 7.142857142857143,
+      "fuelItemId": "Desc_CompactedCoal_C",
+      "generatorId": "Build_GeneratorCoal_C",
+      "id": "Build_GeneratorCoal_C:Desc_CompactedCoal_C",
+      "powerMw": 75,
+      "supplementalInputs": [
+        {
+          "amountPerMinute": 45,
+          "itemId": "Desc_Water_C"
+        }
+      ]
+    },
+    "Build_GeneratorCoal_C:Desc_PetroleumCoke_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 25,
+      "fuelItemId": "Desc_PetroleumCoke_C",
+      "generatorId": "Build_GeneratorCoal_C",
+      "id": "Build_GeneratorCoal_C:Desc_PetroleumCoke_C",
+      "powerMw": 75,
+      "supplementalInputs": [
+        {
+          "amountPerMinute": 45,
+          "itemId": "Desc_Water_C"
+        }
+      ]
+    },
+    "Build_GeneratorFuel_C:Desc_IonizedFuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 3,
+      "fuelItemId": "Desc_IonizedFuel_C",
+      "generatorId": "Build_GeneratorFuel_C",
+      "id": "Build_GeneratorFuel_C:Desc_IonizedFuel_C",
+      "powerMw": 250,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorFuel_C:Desc_LiquidBiofuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 20,
+      "fuelItemId": "Desc_LiquidBiofuel_C",
+      "generatorId": "Build_GeneratorFuel_C",
+      "id": "Build_GeneratorFuel_C:Desc_LiquidBiofuel_C",
+      "powerMw": 250,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorFuel_C:Desc_LiquidFuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 20,
+      "fuelItemId": "Desc_LiquidFuel_C",
+      "generatorId": "Build_GeneratorFuel_C",
+      "id": "Build_GeneratorFuel_C:Desc_LiquidFuel_C",
+      "powerMw": 250,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorFuel_C:Desc_LiquidTurboFuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 7.5,
+      "fuelItemId": "Desc_LiquidTurboFuel_C",
+      "generatorId": "Build_GeneratorFuel_C",
+      "id": "Build_GeneratorFuel_C:Desc_LiquidTurboFuel_C",
+      "powerMw": 250,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorFuel_C:Desc_RocketFuel_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 4.166666666666667,
+      "fuelItemId": "Desc_RocketFuel_C",
+      "generatorId": "Build_GeneratorFuel_C",
+      "id": "Build_GeneratorFuel_C:Desc_RocketFuel_C",
+      "powerMw": 250,
+      "supplementalInputs": []
+    },
+    "Build_GeneratorNuclear_C:Desc_FicsoniumFuelRod_C": {
+      "byproducts": [],
+      "fuelConsumedPerMinute": 1,
+      "fuelItemId": "Desc_FicsoniumFuelRod_C",
+      "generatorId": "Build_GeneratorNuclear_C",
+      "id": "Build_GeneratorNuclear_C:Desc_FicsoniumFuelRod_C",
+      "powerMw": 2500,
+      "supplementalInputs": [
+        {
+          "amountPerMinute": 240,
+          "itemId": "Desc_Water_C"
+        }
+      ]
+    },
+    "Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C": {
+      "byproducts": [
+        {
+          "amountPerMinute": 10,
+          "itemId": "Desc_NuclearWaste_C"
+        }
+      ],
+      "fuelConsumedPerMinute": 0.2,
+      "fuelItemId": "Desc_NuclearFuelRod_C",
+      "generatorId": "Build_GeneratorNuclear_C",
+      "id": "Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C",
+      "powerMw": 2500,
+      "supplementalInputs": [
+        {
+          "amountPerMinute": 240,
+          "itemId": "Desc_Water_C"
+        }
+      ]
+    },
+    "Build_GeneratorNuclear_C:Desc_PlutoniumFuelRod_C": {
+      "byproducts": [
+        {
+          "amountPerMinute": 1,
+          "itemId": "Desc_PlutoniumWaste_C"
+        }
+      ],
+      "fuelConsumedPerMinute": 0.1,
+      "fuelItemId": "Desc_PlutoniumFuelRod_C",
+      "generatorId": "Build_GeneratorNuclear_C",
+      "id": "Build_GeneratorNuclear_C:Desc_PlutoniumFuelRod_C",
+      "powerMw": 2500,
+      "supplementalInputs": [
+        {
+          "amountPerMinute": 240,
+          "itemId": "Desc_Water_C"
+        }
+      ]
+    }
+  },
   "id": "satisfactory-current",
   "items": {
     "BP_ItemDescriptorPortableMiner_C": {

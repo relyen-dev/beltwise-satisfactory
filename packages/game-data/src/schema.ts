@@ -9,6 +9,11 @@ export const ingredientAmountSchema = z.object({
   amount: z.number().nonnegative()
 });
 
+export const itemRateSchema = z.object({
+  itemId: z.string().min(1),
+  amountPerMinute: z.number().positive()
+});
+
 export const itemSchema = z.object({
   id: z.string().min(1),
   className: z.string().min(1),
@@ -77,6 +82,16 @@ export const machineSchema = z.object({
   extraction: machineExtractionSchema.optional()
 });
 
+export const generatorFuelOptionSchema = z.object({
+  id: z.string().min(1),
+  generatorId: z.string().min(1),
+  fuelItemId: z.string().min(1),
+  powerMw: z.number().positive(),
+  fuelConsumedPerMinute: z.number().positive(),
+  supplementalInputs: z.array(itemRateSchema),
+  byproducts: z.array(itemRateSchema)
+});
+
 export const resourceInfoSchema = z.object({
   itemId: z.string().min(1),
   displayName: z.string().min(1),
@@ -109,15 +124,18 @@ export const gameDatasetSchema = z.object({
   items: z.record(z.string(), itemSchema),
   recipes: z.record(z.string(), recipeSchema),
   machines: z.record(z.string(), machineSchema),
+  generatorFuelOptions: z.record(z.string(), generatorFuelOptionSchema),
   resources: z.record(z.string(), resourceInfoSchema),
   schematics: z.record(z.string(), schematicSchema)
 });
 
 export type IngredientAmount = z.infer<typeof ingredientAmountSchema>;
+export type ItemRate = z.infer<typeof itemRateSchema>;
 export type Item = z.infer<typeof itemSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type MachineExtraction = z.infer<typeof machineExtractionSchema>;
 export type Machine = z.infer<typeof machineSchema>;
+export type GeneratorFuelOption = z.infer<typeof generatorFuelOptionSchema>;
 export type ResourceInfo = z.infer<typeof resourceInfoSchema>;
 export type Schematic = z.infer<typeof schematicSchema>;
 export type GameDataset = z.infer<typeof gameDatasetSchema>;
