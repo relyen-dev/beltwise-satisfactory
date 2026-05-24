@@ -9,6 +9,7 @@ export * from './plannerPlanExportCodec';
 export * from './plannerPlanShareCodec';
 export * from './planTransferFieldCodecs';
 export * from './planIntentMutations';
+export * from './powerCatalog';
 export * from './userDefaultsIntentMutations';
 export * from './planReport';
 export * from './plannerRules';
