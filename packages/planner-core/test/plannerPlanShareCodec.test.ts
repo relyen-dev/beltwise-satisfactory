@@ -42,6 +42,22 @@ describe('Beltwise compact plan share payloads', () => {
             s: 1,
           },
         ],
+        pt: [
+          {
+            id: 'power-generators',
+            m: 'g',
+            g: 'Build_GeneratorFuel_C',
+            f: 'Desc_LiquidFuel_C',
+            c: 40,
+            s: 0,
+          },
+          {
+            id: 'power-mw',
+            m: 'p',
+            w: 10_000,
+            s: 1,
+          },
+        ],
         sk: [
           {
             id: 'sink-screw',
@@ -111,6 +127,7 @@ describe('Beltwise compact plan share payloads', () => {
       createdAt: '2026-05-14T00:00:00.000Z',
       updatedAt: '2026-05-14T00:00:00.000Z',
       targets: sourceProject.targets,
+      powerTargets: sourceProject.powerTargets,
       sinkRules: sourceProject.sinkRules,
       notes: sourceProject.notes,
       recipeOverrides: sourceProject.recipeOverrides,
@@ -241,6 +258,7 @@ describe('Beltwise compact plan share payloads', () => {
     expect(decoded.project.recipeOverrides).toEqual(project.recipeOverrides);
     expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
     expect(decoded.project.graphDisplay).toEqual(project.graphDisplay);
+    expect(decoded.project.powerTargets).toEqual([]);
   });
 
   it('omits no-op resource overrides so encoded plans still round-trip', () => {
@@ -294,6 +312,13 @@ describe('Beltwise compact plan share payloads', () => {
         rc: [{ i: 'Desc_OreIron_C', m: -10 }],
       },
     });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        pt: [{ id: 'power-negative', m: 'p', w: -1, s: 0 }],
+      },
+    });
   });
 
   it('rejects unsafe compact target ids and item ids', () => {
@@ -339,6 +364,27 @@ describe('Beltwise compact plan share payloads', () => {
       p: {
         ...payload.p,
         sk: [{ id: 'toString', i: 'Desc_Screw_C', m: 's', s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        pt: [{ id: '__proto__', m: 'g', c: 10, s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        pt: [{ id: 'power-safe', m: 'g', g: 'toString', c: 10, s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        pt: [{ id: 'power-safe', m: 'g', f: 'hasOwnProperty', c: 10, s: 0 }],
       },
     });
   });
@@ -479,6 +525,22 @@ function createSharedPlannerProject(): PlannerProject {
         itemId: 'Desc_Screw_C',
         mode: 'surplus',
         sortOrder: 0,
+      },
+    ],
+    powerTargets: [
+      {
+        id: 'power-generators',
+        mode: 'generator-count',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        generatorCount: 40,
+        sortOrder: 0,
+      },
+      {
+        id: 'power-mw',
+        mode: 'power',
+        powerMw: 10_000,
+        sortOrder: 1,
       },
     ],
     recipeOverrides: {

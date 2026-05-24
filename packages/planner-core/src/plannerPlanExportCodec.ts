@@ -327,6 +327,7 @@ function isStoredPlannerProjectV1(value: unknown): value is StoredPlannerProject
     readTransferString(value['createdAt']) !== undefined &&
     readTransferString(value['updatedAt']) !== undefined &&
     Array.isArray(value['targets']) &&
+    (value['powerTargets'] === undefined || Array.isArray(value['powerTargets'])) &&
     (value['sinkRules'] === undefined || Array.isArray(value['sinkRules'])) &&
     isPlanTransferRecord(value['recipeOverrides']) &&
     isPlanTransferRecord(value['machineOverrides']) &&

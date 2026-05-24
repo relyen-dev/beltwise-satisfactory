@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   booleanOverrideEntriesForTransfer,
   copyGraphNodeBuildStatesForTransfer,
+  copyPowerTargetsForTransfer,
   copyProductTargetForTransfer,
   copySinkRulesForTransfer,
   createDefaultGraphDisplaySettings,
@@ -11,6 +12,7 @@ import {
   readGraphLayoutForTransfer,
   readItemInputsForTransfer,
   readNumberRecordForTransfer,
+  readPowerTargetsForTransfer,
   readProductTargetsForTransfer,
   readResourceOverridesForTransfer,
   readSinkRulesForTransfer,
@@ -105,6 +107,95 @@ describe('plan transfer field codecs', () => {
       mode: 'maximize',
       sortOrder: 4,
     });
+  });
+
+  it('reads power targets permissively and normalizes sort order', () => {
+    let nextId = 0;
+    const powerTargets = readPowerTargetsForTransfer(
+      [
+        {
+          mode: 'power',
+          powerMw: -5,
+          sortOrder: 3,
+        },
+        {
+          id: 'power-fuel',
+          mode: 'generator-count',
+          generatorId: 'Build_GeneratorFuel_C',
+          fuelItemId: 'Desc_LiquidFuel_C',
+          generatorCount: 16,
+          sortOrder: 1,
+        },
+        {
+          id: '__proto__',
+          mode: 'power',
+          generatorId: 'toString',
+          fuelItemId: 'hasOwnProperty',
+          powerMw: 500,
+          sortOrder: 4,
+        },
+        {
+          id: 'bad-mode',
+          mode: 'fixed',
+          generatorCount: 8,
+          sortOrder: 5,
+        },
+      ],
+      () => `power-generated-${++nextId}`,
+    );
+
+    expect(powerTargets).toEqual([
+      {
+        id: 'power-fuel',
+        mode: 'generator-count',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        generatorCount: 16,
+        sortOrder: 0,
+      },
+      {
+        id: 'power-generated-1',
+        mode: 'power',
+        powerMw: 0,
+        sortOrder: 1,
+      },
+      {
+        id: 'power-generated-2',
+        mode: 'power',
+        powerMw: 500,
+        sortOrder: 2,
+      },
+    ]);
+
+    expect(
+      copyPowerTargetsForTransfer([
+        {
+          id: 'power-target',
+          mode: 'power',
+          powerMw: Number.NaN,
+          sortOrder: 2,
+        },
+        {
+          id: 'generator-target',
+          mode: 'generator-count',
+          generatorCount: -1,
+          sortOrder: 1,
+        },
+      ]),
+    ).toEqual([
+      {
+        id: 'generator-target',
+        mode: 'generator-count',
+        generatorCount: 0,
+        sortOrder: 0,
+      },
+      {
+        id: 'power-target',
+        mode: 'power',
+        powerMw: 0,
+        sortOrder: 1,
+      },
+    ]);
   });
 
   it('reads surplus sink rules permissively and normalizes duplicate items', () => {

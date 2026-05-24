@@ -19,6 +19,7 @@ import {
   readMachineOverridesForTransfer,
   readNumberRecordForTransfer,
   readPlanTransferNote,
+  readPowerTargetsForTransfer,
   readProductTargetsForTransfer,
   readRecipeOverridesForTransfer,
   readResourceOverridesForTransfer,
@@ -64,6 +65,7 @@ export interface PlannerProject {
   createdAt: string;
   updatedAt: string;
   targets: ProductTarget[];
+  powerTargets: PowerTarget[];
   sinkRules: SinkRule[];
   recipeOverrides: Record<RecipeId, RecipeOverride>;
   machineOverrides: Record<MachineId, MachineOverride>;
@@ -89,6 +91,16 @@ export interface ProductTarget {
   itemId: ItemId;
   mode: 'fixed' | 'maximize';
   amountPerMinute?: number;
+  sortOrder: number;
+}
+
+export interface PowerTarget {
+  id: string;
+  mode: 'generator-count' | 'power';
+  generatorId?: MachineId;
+  fuelItemId?: ItemId;
+  generatorCount?: number;
+  powerMw?: number;
   sortOrder: number;
 }
 
@@ -189,6 +201,7 @@ export interface PlannerProjectCreateOptions {
   name: string;
   dataset: GameDataset;
   targets?: ProductTarget[];
+  powerTargets?: PowerTarget[];
   sinkRules?: SinkRule[];
   notes?: string;
   userDefaults?: PlannerUserDefaults;
@@ -519,6 +532,9 @@ export function createPlannerProject(options: PlannerProjectCreateOptions): Plan
     createdAt: now,
     updatedAt: now,
     targets: options.targets ?? [],
+    powerTargets: readPowerTargetsForTransfer(options.powerTargets, () =>
+      createStableId('power-target'),
+    ),
     sinkRules: copySinkRulesForTransfer(options.sinkRules ?? []),
     recipeOverrides: copyRecipeOverrides(userDefaults.recipeOverrides),
     machineOverrides: copyMachineOverrides(userDefaults.machineOverrides),
@@ -575,6 +591,9 @@ export function hydratePlannerProject(value: unknown, dataset: GameDataset): Pla
     updatedAt,
     notes: readPlanTransferNote(value['notes']),
     targets: readProductTargetsForTransfer(value['targets'], () => createStableId('target')),
+    powerTargets: readPowerTargetsForTransfer(value['powerTargets'], () =>
+      createStableId('power-target'),
+    ),
     sinkRules: readSinkRulesForTransfer(value['sinkRules'], () => createStableId('sink')),
     recipeOverrides: {
       ...createLegacyProjectHydrationRecipeOverrides(dataset),

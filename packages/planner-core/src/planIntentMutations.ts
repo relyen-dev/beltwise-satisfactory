@@ -13,10 +13,12 @@ import {
   type ObjectivePresetId,
   type PipelineTier,
   type PlannerProject,
+  type PowerTarget,
   type ProductTarget,
   type RateDecimalPlaces,
   type SinkRule,
 } from './plan';
+import { copyPowerTargetForTransfer } from './planTransferFieldCodecs';
 import {
   defaultResourceCapPerMinute,
   isUnlimitedResourceCap,
@@ -75,6 +77,44 @@ export type PlanItemInputIntent =
       readonly nextItemId: ItemId;
     }
   | { readonly type: 'remove-item-input'; readonly itemId: ItemId };
+
+export type PlanPowerTargetIntent =
+  | { readonly type: 'add-draft-power-target'; readonly powerTargetId: string }
+  | {
+      readonly type: 'duplicate-power-target';
+      readonly powerTarget: PowerTarget;
+      readonly powerTargetId: string;
+    }
+  | { readonly type: 'remove-power-target'; readonly powerTargetId: string }
+  | {
+      readonly type: 'reorder-power-targets';
+      readonly powerTargetIds: readonly string[];
+    }
+  | {
+      readonly type: 'set-power-target-mode';
+      readonly powerTargetId: string;
+      readonly mode: PowerTarget['mode'];
+    }
+  | {
+      readonly type: 'set-power-target-generator';
+      readonly powerTargetId: string;
+      readonly generatorId: MachineId | undefined;
+    }
+  | {
+      readonly type: 'set-power-target-fuel';
+      readonly powerTargetId: string;
+      readonly fuelItemId: ItemId | undefined;
+    }
+  | {
+      readonly type: 'set-power-target-generator-count';
+      readonly powerTargetId: string;
+      readonly generatorCount: number;
+    }
+  | {
+      readonly type: 'set-power-target-power-mw';
+      readonly powerTargetId: string;
+      readonly powerMw: number;
+    };
 
 export type PlanSinkIntent =
   | {
@@ -204,6 +244,32 @@ export function mutatePlanItemInputs(
       return moveItemInput(project, intent.previousItemId, intent.nextItemId);
     case 'remove-item-input':
       return removeItemInput(project, intent.itemId);
+  }
+}
+
+export function mutatePlanPowerTargets(
+  project: PlannerProject,
+  intent: PlanPowerTargetIntent,
+): PlannerProject {
+  switch (intent.type) {
+    case 'add-draft-power-target':
+      return addDraftPowerTarget(project, intent.powerTargetId);
+    case 'duplicate-power-target':
+      return duplicatePowerTarget(project, intent.powerTarget, intent.powerTargetId);
+    case 'remove-power-target':
+      return removePowerTarget(project, intent.powerTargetId);
+    case 'reorder-power-targets':
+      return reorderPowerTargets(project, intent.powerTargetIds);
+    case 'set-power-target-mode':
+      return setPowerTargetMode(project, intent.powerTargetId, intent.mode);
+    case 'set-power-target-generator':
+      return setPowerTargetGenerator(project, intent.powerTargetId, intent.generatorId);
+    case 'set-power-target-fuel':
+      return setPowerTargetFuel(project, intent.powerTargetId, intent.fuelItemId);
+    case 'set-power-target-generator-count':
+      return setPowerTargetGeneratorCount(project, intent.powerTargetId, intent.generatorCount);
+    case 'set-power-target-power-mw':
+      return setPowerTargetPowerMw(project, intent.powerTargetId, intent.powerMw);
   }
 }
 
@@ -406,6 +472,152 @@ export function setTargetAmount(
   return updateTarget(project, targetId, (target) => ({
     ...target,
     amountPerMinute: Math.max(0, Number.isFinite(amountPerMinute) ? amountPerMinute : 0),
+  }));
+}
+
+export function addDraftPowerTarget(
+  project: PlannerProject,
+  powerTargetId: string,
+): PlannerProject {
+  return {
+    ...project,
+    powerTargets: [
+      ...project.powerTargets,
+      {
+        id: powerTargetId,
+        mode: 'generator-count',
+        generatorCount: 1,
+        sortOrder: project.powerTargets.length,
+      },
+    ],
+  };
+}
+
+export function duplicatePowerTarget(
+  project: PlannerProject,
+  powerTarget: PowerTarget,
+  powerTargetId: string,
+): PlannerProject {
+  return {
+    ...project,
+    powerTargets: [
+      ...project.powerTargets,
+      {
+        ...copyPowerTargetForTransfer(powerTarget),
+        id: powerTargetId,
+        sortOrder: project.powerTargets.length,
+      },
+    ],
+  };
+}
+
+export function removePowerTarget(
+  project: PlannerProject,
+  powerTargetId: string,
+): PlannerProject {
+  return {
+    ...project,
+    powerTargets: normalizePowerTargetSortOrder(
+      project.powerTargets.filter((target) => target.id !== powerTargetId),
+    ),
+  };
+}
+
+export function reorderPowerTargets(
+  project: PlannerProject,
+  powerTargetIds: readonly string[],
+): PlannerProject {
+  const targetById = new Map(project.powerTargets.map((target) => [target.id, target] as const));
+  const addedTargetIds = new Set<string>();
+  const reorderedTargets: PowerTarget[] = [];
+
+  for (const targetId of powerTargetIds) {
+    const target = targetById.get(targetId);
+    if (!target || addedTargetIds.has(targetId)) {
+      continue;
+    }
+    addedTargetIds.add(targetId);
+    reorderedTargets.push(target);
+  }
+
+  for (const target of project.powerTargets.toSorted(
+    (left, right) => left.sortOrder - right.sortOrder,
+  )) {
+    if (!addedTargetIds.has(target.id)) {
+      reorderedTargets.push(target);
+    }
+  }
+
+  return {
+    ...project,
+    powerTargets: reorderedTargets.map((target, index) => ({ ...target, sortOrder: index })),
+  };
+}
+
+export function setPowerTargetMode(
+  project: PlannerProject,
+  powerTargetId: string,
+  mode: PowerTarget['mode'],
+): PlannerProject {
+  return updatePowerTarget(project, powerTargetId, (target) => {
+    if (mode === 'generator-count') {
+      const { powerMw: _powerMw, ...rest } = target;
+      return {
+        ...rest,
+        mode,
+        generatorCount: sanitizePowerTargetNumber(target.generatorCount ?? 1),
+      };
+    }
+    const { generatorCount: _generatorCount, ...rest } = target;
+    return {
+      ...rest,
+      mode,
+      powerMw: sanitizePowerTargetNumber(target.powerMw ?? 100),
+    };
+  });
+}
+
+export function setPowerTargetGenerator(
+  project: PlannerProject,
+  powerTargetId: string,
+  generatorId: MachineId | undefined,
+): PlannerProject {
+  return updatePowerTarget(project, powerTargetId, (target) => {
+    const { generatorId: _generatorId, ...rest } = target;
+    return generatorId === undefined ? rest : { ...rest, generatorId };
+  });
+}
+
+export function setPowerTargetFuel(
+  project: PlannerProject,
+  powerTargetId: string,
+  fuelItemId: ItemId | undefined,
+): PlannerProject {
+  return updatePowerTarget(project, powerTargetId, (target) => {
+    const { fuelItemId: _fuelItemId, ...rest } = target;
+    return fuelItemId === undefined ? rest : { ...rest, fuelItemId };
+  });
+}
+
+export function setPowerTargetGeneratorCount(
+  project: PlannerProject,
+  powerTargetId: string,
+  generatorCount: number,
+): PlannerProject {
+  return updatePowerTarget(project, powerTargetId, (target) => ({
+    ...target,
+    generatorCount: sanitizePowerTargetNumber(generatorCount),
+  }));
+}
+
+export function setPowerTargetPowerMw(
+  project: PlannerProject,
+  powerTargetId: string,
+  powerMw: number,
+): PlannerProject {
+  return updatePowerTarget(project, powerTargetId, (target) => ({
+    ...target,
+    powerMw: sanitizePowerTargetNumber(powerMw),
   }));
 }
 
@@ -851,6 +1063,29 @@ function updateTarget(
     ...project,
     targets: project.targets.map((target) => (target.id === targetId ? mapper(target) : target)),
   };
+}
+
+function updatePowerTarget(
+  project: PlannerProject,
+  powerTargetId: string,
+  mapper: (target: PowerTarget) => PowerTarget,
+): PlannerProject {
+  return {
+    ...project,
+    powerTargets: project.powerTargets.map((target) =>
+      target.id === powerTargetId ? mapper(target) : target,
+    ),
+  };
+}
+
+function normalizePowerTargetSortOrder(targets: readonly PowerTarget[]): PowerTarget[] {
+  return targets
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((target, index) => ({ ...target, sortOrder: index }));
+}
+
+function sanitizePowerTargetNumber(value: number): number {
+  return Math.max(0, Number.isFinite(value) ? value : 0);
 }
 
 function normalizeSinkRuleSortOrder(rules: readonly SinkRule[]): SinkRule[] {

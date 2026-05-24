@@ -31,6 +31,7 @@ export {
   type StoredPlannerStateV3,
   type StoredPlannerUserDefaultsV2,
   type StoredPointV1,
+  type StoredPowerTargetV1,
   type StoredProductTargetV1,
   type StoredRecipeOverrideV1,
   type StoredResourceOverrideV1,

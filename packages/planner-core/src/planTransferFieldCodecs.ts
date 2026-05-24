@@ -13,6 +13,7 @@ import type {
   ObjectiveStrategy,
   PipelineTier,
   PlanBuildState,
+  PowerTarget,
   ProductTarget,
   RateDecimalPlaces,
   RecipeOverride,
@@ -114,6 +115,34 @@ export function copySinkRulesForTransfer(rules: readonly SinkRule[]): SinkRule[]
   return rules.map(copySinkRuleForTransfer);
 }
 
+export function copyPowerTargetForTransfer(target: PowerTarget): PowerTarget {
+  const generatorId = readSafePlanTransferRecordKey(target.generatorId);
+  const fuelItemId = readSafePlanTransferRecordKey(target.fuelItemId);
+  const baseTarget = {
+    id: target.id,
+    mode: target.mode,
+    ...(generatorId !== undefined ? { generatorId } : {}),
+    ...(fuelItemId !== undefined ? { fuelItemId } : {}),
+    sortOrder: readTransferFiniteNumber(target.sortOrder) ?? 0,
+  };
+
+  return target.mode === 'generator-count'
+    ? {
+        ...baseTarget,
+        mode: target.mode,
+        generatorCount: sanitizeTransferWeight(target.generatorCount ?? 0),
+      }
+    : {
+        ...baseTarget,
+        mode: target.mode,
+        powerMw: sanitizeTransferWeight(target.powerMw ?? 0),
+      };
+}
+
+export function copyPowerTargetsForTransfer(targets: readonly PowerTarget[]): PowerTarget[] {
+  return normalizePowerTargetSortOrder(targets.map(copyPowerTargetForTransfer));
+}
+
 export function readProductTargetsForTransfer(
   value: unknown,
   createTargetId: () => string,
@@ -194,6 +223,53 @@ export function readSinkRulesForTransfer(
   return rules
     .toSorted((left, right) => left.sortOrder - right.sortOrder)
     .map((rule, index) => ({ ...rule, sortOrder: index }));
+}
+
+export function readPowerTargetsForTransfer(
+  value: unknown,
+  createTargetId: () => string,
+): PowerTarget[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const targets: PowerTarget[] = [];
+  for (const [index, target] of value.entries()) {
+    if (!isPlanTransferRecord(target)) {
+      continue;
+    }
+
+    const mode = target['mode'];
+    if (mode !== 'generator-count' && mode !== 'power') {
+      continue;
+    }
+
+    const generatorId = readSafePlanTransferRecordKey(target['generatorId']);
+    const fuelItemId = readSafePlanTransferRecordKey(target['fuelItemId']);
+    const baseTarget = {
+      id: readSafePlanTransferRecordKey(target['id']) ?? createTargetId(),
+      mode,
+      ...(generatorId !== undefined ? { generatorId } : {}),
+      ...(fuelItemId !== undefined ? { fuelItemId } : {}),
+      sortOrder: readTransferFiniteNumber(target['sortOrder']) ?? index,
+    };
+
+    if (mode === 'generator-count') {
+      targets.push({
+        ...baseTarget,
+        mode,
+        generatorCount: readTransferNonNegativeFiniteNumber(target['generatorCount']) ?? 0,
+      });
+      continue;
+    }
+
+    targets.push({
+      ...baseTarget,
+      mode,
+      powerMw: readTransferNonNegativeFiniteNumber(target['powerMw']) ?? 0,
+    });
+  }
+  return normalizePowerTargetSortOrder(targets);
 }
 
 export function copyRecipeOverridesForTransfer(
@@ -613,6 +689,12 @@ export function objectiveStageOrdersEqual(
 
 function readTransferTargetItemId(value: unknown): ItemId | undefined {
   return typeof value === 'string' && isSafePlanTransferRecordKey(value) ? value : undefined;
+}
+
+function normalizePowerTargetSortOrder(targets: readonly PowerTarget[]): PowerTarget[] {
+  return targets
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((target, index) => ({ ...target, sortOrder: index }));
 }
 
 function readPointForTransfer(value: unknown): Point | null {

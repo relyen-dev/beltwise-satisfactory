@@ -99,6 +99,7 @@ describe('createPlannerProject', () => {
 
     expect(project.notes).toBe('');
     expect(project.targets).toEqual([]);
+    expect(project.powerTargets).toEqual([]);
     expect(project.sinkRules).toEqual([]);
     expect(project.buildState).toEqual({
       planLocked: false,
@@ -107,6 +108,48 @@ describe('createPlannerProject', () => {
     });
     expect(project.graphDisplay.rateDecimalPlaces).toBe(3);
     expect(project.graphDisplay.edgeStyle).toBe('straight');
+  });
+
+  it('copies and sanitizes initial power targets for new projects', () => {
+    const project = createPlannerProject({
+      id: 'project-test',
+      name: 'Test',
+      dataset: tinySatisfactoryDataset,
+      now: '2026-05-12T00:00:00.000Z',
+      powerTargets: [
+        {
+          id: 'target-power',
+          mode: 'power',
+          generatorId: 'Build_GeneratorFuel_C',
+          fuelItemId: 'Desc_LiquidFuel_C',
+          powerMw: Number.NaN,
+          sortOrder: 2,
+        },
+        {
+          id: 'target-generators',
+          mode: 'generator-count',
+          generatorCount: 16,
+          sortOrder: 1,
+        },
+      ],
+    });
+
+    expect(project.powerTargets).toEqual([
+      {
+        id: 'target-generators',
+        mode: 'generator-count',
+        generatorCount: 16,
+        sortOrder: 0,
+      },
+      {
+        id: 'target-power',
+        mode: 'power',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        powerMw: 0,
+        sortOrder: 1,
+      },
+    ]);
   });
 
   it('enables base recipes and disables alternates for new projects', () => {
@@ -216,6 +259,7 @@ describe('createPlannerProject', () => {
     expect(project.graphDisplay.maxBeltTier).toBe(4);
     expect(project.graphDisplay.edgeStyle).toBe('curved');
     expect(project.targets).toEqual([]);
+    expect(project.powerTargets).toEqual([]);
     expect(project.notes).toBe('');
     expect(project.itemInputs).toEqual({});
     expect(project.graphLayout).toEqual({ nodePositions: {} });
@@ -349,7 +393,9 @@ describe('createPlannerProject', () => {
     );
 
     expect(olderProject?.notes).toBe('');
+    expect(olderProject?.powerTargets).toEqual([]);
     expect(whitespaceProject?.notes).toBe('');
+    expect(whitespaceProject?.powerTargets).toEqual([]);
   });
 });
 
