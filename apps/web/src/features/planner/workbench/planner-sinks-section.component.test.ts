@@ -31,7 +31,7 @@ describe('PlannerSinksSectionComponent', () => {
   it('uses compact picker labels for available and exhausted sink lists', () => {
     const { component, planConfig } = createComponentHarness();
 
-    expect(component.addPickerLabel()).toBe('No sinkable items');
+    expect(component.addPickerLabel()).toBe('No sinkable surplus');
 
     planConfig.availableSurplusSinkItems.set([screwItem]);
 

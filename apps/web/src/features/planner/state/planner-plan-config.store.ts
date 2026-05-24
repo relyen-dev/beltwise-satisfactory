@@ -196,7 +196,9 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
   public readonly availableSurplusSinkItems = computed(() => {
     const dataset = this.port.dataset();
     const project = this.port.activeProject();
-    return dataset && project ? selectAvailableSurplusSinkItems(dataset, project) : [];
+    return dataset && project
+      ? selectAvailableSurplusSinkItems(dataset, project, this.port.solveResult())
+      : [];
   });
 
   public readonly resourceRows = computed(() => {

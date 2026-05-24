@@ -32,7 +32,7 @@ export class PlannerSinksSectionComponent {
 
   public addPickerLabel(): string {
     return this.planConfig.availableSurplusSinkItems().length === 0
-      ? 'No sinkable items'
+      ? 'No sinkable surplus'
       : 'Add surplus sink';
   }
 }

@@ -261,7 +261,7 @@ describe('planner store selectors', () => {
     ]);
   });
 
-  it('lists only sinkable items without an existing surplus sink rule', () => {
+  it('lists only currently available sinkable surplus without an existing surplus sink rule', () => {
     const dataset: GameDataset = {
       ...tinySatisfactoryDataset,
       items: {
@@ -273,6 +273,10 @@ describe('planner store selectors', () => {
         Desc_Wire_C: {
           ...tinySatisfactoryDataset.items['Desc_Wire_C']!,
           sinkPoints: 1,
+        },
+        Desc_IronRod_C: {
+          ...tinySatisfactoryDataset.items['Desc_IronRod_C']!,
+          sinkPoints: 4,
         },
       },
     };
@@ -287,10 +291,28 @@ describe('planner store selectors', () => {
         },
       ],
     };
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {
+        Desc_Screw_C: 12,
+        Desc_Wire_C: 3,
+        Desc_IronRod_C: 0.0000001,
+        Desc_IngotIron_C: 6,
+      },
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
 
-    expect(selectAvailableSurplusSinkItems(dataset, project).map((item) => item.id)).toEqual([
-      'Desc_Wire_C',
-    ]);
+    expect(selectAvailableSurplusSinkItems(dataset, project).map((item) => item.id)).toEqual([]);
+    expect(selectAvailableSurplusSinkItems(dataset, project, result).map((item) => item.id)).toEqual(
+      ['Desc_Wire_C'],
+    );
   });
 
   it('keeps machine rows to solve-relevant automated machines', () => {

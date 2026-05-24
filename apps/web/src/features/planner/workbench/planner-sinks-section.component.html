@@ -14,8 +14,8 @@
       [disabled]="planConfig.editingLocked() || planConfig.availableSurplusSinkItems().length === 0"
       [allowEmptySelection]="false"
       [emptyLabel]="addPickerLabel()"
-      [searchLabel]="'Search sinkable items'"
-      [searchPlaceholder]="'Search sinkable items'"
+      [searchLabel]="'Search sinkable surplus'"
+      [searchPlaceholder]="'Search sinkable surplus'"
       (itemSelected)="addSurplusSink($event)"
     />
   </div>

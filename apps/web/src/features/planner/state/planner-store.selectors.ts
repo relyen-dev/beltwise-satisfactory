@@ -157,6 +157,7 @@ type RecipeOverrideSource = Pick<PlannerProject, 'recipeOverrides'>;
 
 const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const MAX_RECIPE_PRODUCT_ICONS = 1;
+const MIN_AVAILABLE_SURPLUS_RATE = 0.000001;
 
 export function selectItemOptions(dataset: GameDataset | null): Item[] {
   return dataset
@@ -289,7 +290,12 @@ export function selectSinkRuleRows(
 export function selectAvailableSurplusSinkItems(
   dataset: GameDataset,
   project: PlannerProject,
+  result: ProductionPlanResult | null = null,
 ): Item[] {
+  if (!result) {
+    return [];
+  }
+
   const configuredSurplusItemIds = new Set(
     project.sinkRules
       .filter((rule) => rule.mode === 'surplus')
@@ -297,7 +303,12 @@ export function selectAvailableSurplusSinkItems(
   );
 
   return Object.values(dataset.items)
-    .filter((item) => isSinkableItem(dataset, item.id) && !configuredSurplusItemIds.has(item.id))
+    .filter(
+      (item) =>
+        (result.surplus[item.id] ?? 0) > MIN_AVAILABLE_SURPLUS_RATE &&
+        isSinkableItem(dataset, item.id) &&
+        !configuredSurplusItemIds.has(item.id),
+    )
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
 }
 
