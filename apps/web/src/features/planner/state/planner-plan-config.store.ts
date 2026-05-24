@@ -25,6 +25,7 @@ import {
   type ProductTarget,
   type ProductionPlanResult,
   type RateDecimalPlaces,
+  type SinkRule,
 } from '@beltwise/planner-core';
 import { DatasetService } from '../dataset.service';
 import { PlannerSolverService } from '../solving/planner-solver.service';
@@ -37,6 +38,7 @@ import {
   selectRawResourceMultiplierRows,
   selectRecipeRows,
   selectResourceRows,
+  selectSinkRuleRows,
 } from './planner-store.selectors';
 import { PlannerWorkspaceSlice } from './planner-store.workspace';
 
@@ -62,6 +64,13 @@ export interface PlannerPlanInputCommands {
   readonly set: (itemId: ItemId, amountPerMinute: number) => void;
   readonly move: (previousItemId: ItemId, nextItemId: ItemId) => void;
   readonly remove: (itemId: ItemId) => void;
+}
+
+export interface PlannerPlanSinkCommands {
+  readonly addSurplus: (itemId: ItemId) => void;
+  readonly remove: (sinkRuleId: string) => void;
+  readonly removeSurplusForItem: (itemId: ItemId) => void;
+  readonly toggleSurplus: (itemId: ItemId) => void;
 }
 
 export interface PlannerPlanResourceCommands {
@@ -108,6 +117,8 @@ export interface PlannerPlanConfigReadModel {
   readonly hasActivePlan: Signal<boolean>;
   readonly editingLocked: Signal<boolean>;
   readonly targetRows: Signal<readonly ProductTarget[]>;
+  readonly sinkRules: Signal<readonly SinkRule[]>;
+  readonly sinkRuleRows: Signal<ReturnType<typeof selectSinkRuleRows>>;
   readonly planNotes: Signal<string>;
   readonly itemOptions: Signal<readonly Item[]>;
   readonly externalInputRows: Signal<ReturnType<typeof selectExternalInputRows>>;
@@ -128,6 +139,7 @@ export interface PlannerPlanConfigReadModel {
 export interface PlannerPlanConfigCommands {
   readonly targetCommands: PlannerPlanTargetCommands;
   readonly inputCommands: PlannerPlanInputCommands;
+  readonly sinkCommands: PlannerPlanSinkCommands;
   readonly resourceCommands: PlannerPlanResourceCommands;
   readonly recipeCommands: PlannerPlanRecipeCommands;
   readonly machineCommands: PlannerPlanMachineCommands;
@@ -156,6 +168,7 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
     () => this.port.activeProject()?.buildState.planLocked ?? false,
   );
   public readonly targetRows = computed(() => this.port.activeProject()?.targets ?? []);
+  public readonly sinkRules = computed(() => this.port.activeProject()?.sinkRules ?? []);
   public readonly planNotes = computed(() => this.port.activeProject()?.notes ?? '');
   public readonly objectiveProfile = computed(
     () => this.port.activeProject()?.objectiveProfile ?? null,
@@ -170,6 +183,12 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
     const dataset = this.port.dataset();
     const project = this.port.activeProject();
     return dataset && project ? selectExternalInputRows(dataset, project) : [];
+  });
+
+  public readonly sinkRuleRows = computed(() => {
+    const dataset = this.port.dataset();
+    const project = this.port.activeProject();
+    return dataset && project ? selectSinkRuleRows(dataset, project, this.port.solveResult()) : [];
   });
 
   public readonly resourceRows = computed(() => {
@@ -241,6 +260,13 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
     move: (previousItemId, nextItemId) =>
       this.planCommands.updateExternalInputItem(previousItemId, nextItemId),
     remove: (itemId) => this.planCommands.removeExternalInput(itemId),
+  };
+
+  public readonly sinkCommands: PlannerPlanSinkCommands = {
+    addSurplus: (itemId) => this.planCommands.addSurplusSink(itemId),
+    remove: (sinkRuleId) => this.planCommands.removeSinkRule(sinkRuleId),
+    removeSurplusForItem: (itemId) => this.planCommands.removeSurplusSinkForItem(itemId),
+    toggleSurplus: (itemId) => this.planCommands.toggleSurplusSink(itemId),
   };
 
   public readonly resourceCommands: PlannerPlanResourceCommands = {

@@ -16,6 +16,7 @@ import {
   selectRecipeRows,
   selectRawResourceMultiplierRows,
   selectResourceRows,
+  selectSinkRuleRows,
 } from './planner-store.selectors';
 
 const NOW = '2026-05-12T00:00:00.000Z';
@@ -207,6 +208,55 @@ describe('planner store selectors', () => {
     expect(selectExternalInputRows(tinySatisfactoryDataset, project)).toEqual([
       { item: tinySatisfactoryDataset.items['Desc_IngotIron_C'], amountPerMinute: 5 },
       { item: tinySatisfactoryDataset.items['Desc_Wire_C'], amountPerMinute: 12 },
+    ]);
+  });
+
+  it('builds sink rule rows with solved rates and sink points', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const project: PlannerProject = {
+      ...createProject(),
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    };
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      itemFlows: [],
+      outputs: {},
+      surplus: {
+        Desc_Screw_C: 12,
+      },
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+
+    expect(selectSinkRuleRows(dataset, project, result)).toMatchObject([
+      {
+        rule: project.sinkRules[0],
+        itemId: 'Desc_Screw_C',
+        displayName: 'Screw',
+        iconSrc: '/game-icons/Desc_Screw_C.png',
+        amountPerMinute: 12,
+        sinkPointsPerMinute: 24,
+      },
     ]);
   });
 

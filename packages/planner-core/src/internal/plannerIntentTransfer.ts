@@ -15,6 +15,7 @@ import {
   type MachineOverride,
   type ResourceOverride,
   type ItemInputOverride,
+  type SinkRule,
 } from '../plan';
 import {
   type AmountOverrideEntry,
@@ -31,6 +32,7 @@ import {
   copyPlanBuildStateForTransfer,
   copyProductTargetForTransfer,
   copyResourceOverridesForTransfer,
+  copySinkRulesForTransfer,
   graphNodePositionEntriesForTransfer,
   objectiveStageOrdersEqual,
   resourceOverrideEntriesForTransfer,
@@ -39,6 +41,7 @@ import {
 export interface PlannerProjectIntentSnapshot {
   notes: string;
   targets: ProductTarget[];
+  sinkRules: SinkRule[];
   recipeOverrides: Record<RecipeId, RecipeOverride>;
   machineOverrides: Record<MachineId, MachineOverride>;
   resourceOverrides: Record<ItemId, ResourceOverride>;
@@ -52,6 +55,7 @@ export interface PlannerProjectIntentSnapshot {
 export interface PlannerProjectIntentOverlay {
   notes?: string;
   targets?: ProductTarget[];
+  sinkRules?: SinkRule[];
   recipeOverrides?: Record<RecipeId, RecipeOverride>;
   machineOverrides?: Record<MachineId, MachineOverride>;
   resourceOverrides?: Record<ItemId, ResourceOverride>;
@@ -75,6 +79,7 @@ export function copyPlannerProjectIntentSnapshot(
   return {
     notes: project.notes,
     targets: project.targets.map(copyProductTargetForTransfer),
+    sinkRules: copySinkRulesForTransfer(project.sinkRules),
     recipeOverrides: copyBooleanOverridesForTransfer(project.recipeOverrides),
     machineOverrides: copyBooleanOverridesForTransfer(project.machineOverrides),
     resourceOverrides: copyResourceOverridesForTransfer(project.resourceOverrides),
@@ -115,6 +120,10 @@ export function applyPlannerProjectIntentToCanonicalDefaults(
     ...defaults,
     notes: overlay.notes ?? defaults.notes,
     targets: overlay.targets?.map(copyProductTargetForTransfer) ?? defaults.targets,
+    sinkRules:
+      overlay.sinkRules === undefined
+        ? defaults.sinkRules
+        : copySinkRulesForTransfer(overlay.sinkRules),
     recipeOverrides:
       overlay.recipeOverrides === undefined
         ? defaults.recipeOverrides

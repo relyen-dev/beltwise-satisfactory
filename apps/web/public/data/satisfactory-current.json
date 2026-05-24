@@ -1,7 +1,7 @@
 {
   "game": "satisfactory",
   "gameVersionLabel": "unknown",
-  "generatedAt": "2026-05-12T23:49:18.494Z",
+  "generatedAt": "2026-05-24T04:01:34.643Z",
   "id": "satisfactory-current",
   "items": {
     "BP_ItemDescriptorPortableMiner_C": {
@@ -9,6 +9,7 @@
       "displayName": "Portable Miner",
       "form": "solid",
       "id": "BP_ItemDescriptorPortableMiner_C",
+      "sinkPoints": 56,
       "stackSize": "SS_SMALL"
     },
     "Desc_AlienDNACapsule_C": {
@@ -23,6 +24,7 @@
       "displayName": "Alien Power Matrix",
       "form": "solid",
       "id": "Desc_AlienPowerFuel_C",
+      "sinkPoints": 210,
       "stackSize": "SS_SMALL"
     },
     "Desc_AlienProtein_C": {
@@ -37,6 +39,7 @@
       "displayName": "Alumina Solution",
       "form": "liquid",
       "id": "Desc_AluminaSolution_C",
+      "sinkPoints": 20,
       "stackSize": "SS_FLUID"
     },
     "Desc_AluminumCasing_C": {
@@ -44,6 +47,7 @@
       "displayName": "Aluminum Casing",
       "form": "solid",
       "id": "Desc_AluminumCasing_C",
+      "sinkPoints": 393,
       "stackSize": "SS_BIG"
     },
     "Desc_AluminumIngot_C": {
@@ -51,6 +55,7 @@
       "displayName": "Aluminum Ingot",
       "form": "solid",
       "id": "Desc_AluminumIngot_C",
+      "sinkPoints": 131,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_AluminumPlate_C": {
@@ -58,6 +63,7 @@
       "displayName": "Alclad Aluminum Sheet",
       "form": "solid",
       "id": "Desc_AluminumPlate_C",
+      "sinkPoints": 266,
       "stackSize": "SS_BIG"
     },
     "Desc_AluminumPlateReinforced_C": {
@@ -65,6 +71,7 @@
       "displayName": "Heat Sink",
       "form": "solid",
       "id": "Desc_AluminumPlateReinforced_C",
+      "sinkPoints": 2804,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_AluminumScrap_C": {
@@ -72,6 +79,7 @@
       "displayName": "Aluminum Scrap",
       "form": "solid",
       "id": "Desc_AluminumScrap_C",
+      "sinkPoints": 27,
       "stackSize": "SS_HUGE"
     },
     "Desc_Battery_C": {
@@ -80,6 +88,7 @@
       "energyValue": 6000,
       "form": "solid",
       "id": "Desc_Battery_C",
+      "sinkPoints": 465,
       "stackSize": "SS_BIG"
     },
     "Desc_Biofuel_C": {
@@ -88,6 +97,7 @@
       "energyValue": 450,
       "form": "solid",
       "id": "Desc_Biofuel_C",
+      "sinkPoints": 48,
       "stackSize": "SS_BIG"
     },
     "Desc_Cable_C": {
@@ -95,6 +105,7 @@
       "displayName": "Cable",
       "form": "solid",
       "id": "Desc_Cable_C",
+      "sinkPoints": 24,
       "stackSize": "SS_BIG"
     },
     "Desc_CartridgeChaos_C": {
@@ -102,6 +113,7 @@
       "displayName": "Turbo Rifle Ammo",
       "form": "solid",
       "id": "Desc_CartridgeChaos_C",
+      "sinkPoints": 120,
       "stackSize": "SS_HUGE"
     },
     "Desc_CartridgeSmartProjectile_C": {
@@ -109,6 +121,7 @@
       "displayName": "Homing Rifle Ammo",
       "form": "solid",
       "id": "Desc_CartridgeSmartProjectile_C",
+      "sinkPoints": 855,
       "stackSize": "SS_HUGE"
     },
     "Desc_CartridgeStandard_C": {
@@ -116,6 +129,7 @@
       "displayName": "Rifle Ammo",
       "form": "solid",
       "id": "Desc_CartridgeStandard_C",
+      "sinkPoints": 25,
       "stackSize": "SS_HUGE"
     },
     "Desc_Cement_C": {
@@ -123,6 +137,7 @@
       "displayName": "Concrete",
       "form": "solid",
       "id": "Desc_Cement_C",
+      "sinkPoints": 12,
       "stackSize": "SS_HUGE"
     },
     "Desc_CircuitBoard_C": {
@@ -130,6 +145,7 @@
       "displayName": "Circuit Board",
       "form": "solid",
       "id": "Desc_CircuitBoard_C",
+      "sinkPoints": 696,
       "stackSize": "SS_BIG"
     },
     "Desc_CircuitBoardHighSpeed_C": {
@@ -137,6 +153,7 @@
       "displayName": "AI Limiter",
       "form": "solid",
       "id": "Desc_CircuitBoardHighSpeed_C",
+      "sinkPoints": 920,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Coal_C": {
@@ -145,6 +162,7 @@
       "energyValue": 300,
       "form": "solid",
       "id": "Desc_Coal_C",
+      "sinkPoints": 3,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_CompactedCoal_C": {
@@ -153,6 +171,7 @@
       "energyValue": 630,
       "form": "solid",
       "id": "Desc_CompactedCoal_C",
+      "sinkPoints": 28,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Computer_C": {
@@ -160,6 +179,7 @@
       "displayName": "Computer",
       "form": "solid",
       "id": "Desc_Computer_C",
+      "sinkPoints": 8352,
       "stackSize": "SS_SMALL"
     },
     "Desc_ComputerSuper_C": {
@@ -167,6 +187,7 @@
       "displayName": "Supercomputer",
       "form": "solid",
       "id": "Desc_ComputerSuper_C",
+      "sinkPoints": 97352,
       "stackSize": "SS_SMALL"
     },
     "Desc_CoolingSystem_C": {
@@ -174,6 +195,7 @@
       "displayName": "Cooling System",
       "form": "solid",
       "id": "Desc_CoolingSystem_C",
+      "sinkPoints": 12006,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_CopperDust_C": {
@@ -181,6 +203,7 @@
       "displayName": "Copper Powder",
       "form": "solid",
       "id": "Desc_CopperDust_C",
+      "sinkPoints": 72,
       "stackSize": "SS_HUGE"
     },
     "Desc_CopperIngot_C": {
@@ -188,6 +211,7 @@
       "displayName": "Copper Ingot",
       "form": "solid",
       "id": "Desc_CopperIngot_C",
+      "sinkPoints": 6,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_CopperSheet_C": {
@@ -195,6 +219,7 @@
       "displayName": "Copper Sheet",
       "form": "solid",
       "id": "Desc_CopperSheet_C",
+      "sinkPoints": 24,
       "stackSize": "SS_BIG"
     },
     "Desc_Crystal_C": {
@@ -223,6 +248,7 @@
       "displayName": "Crystal Oscillator",
       "form": "solid",
       "id": "Desc_CrystalOscillator_C",
+      "sinkPoints": 3072,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_CrystalShard_C": {
@@ -237,6 +263,7 @@
       "displayName": "Dark Matter Residue",
       "form": "gas",
       "id": "Desc_DarkEnergy_C",
+      "sinkPoints": 130,
       "stackSize": "SS_FLUID"
     },
     "Desc_DarkMatter_C": {
@@ -244,6 +271,7 @@
       "displayName": "Dark Matter Crystal",
       "form": "solid",
       "id": "Desc_DarkMatter_C",
+      "sinkPoints": 1780,
       "stackSize": "SS_BIG"
     },
     "Desc_Diamond_C": {
@@ -251,6 +279,7 @@
       "displayName": "Diamonds",
       "form": "solid",
       "id": "Desc_Diamond_C",
+      "sinkPoints": 240,
       "stackSize": "SS_BIG"
     },
     "Desc_DissolvedSilica_C": {
@@ -265,6 +294,7 @@
       "displayName": "Electromagnetic Control Rod",
       "form": "solid",
       "id": "Desc_ElectromagneticControlRod_C",
+      "sinkPoints": 2560,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Fabric_C": {
@@ -272,6 +302,7 @@
       "displayName": "Fabric",
       "form": "solid",
       "id": "Desc_Fabric_C",
+      "sinkPoints": 140,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_FicsiteIngot_C": {
@@ -279,6 +310,7 @@
       "displayName": "Ficsite Ingot",
       "form": "solid",
       "id": "Desc_FicsiteIngot_C",
+      "sinkPoints": 1936,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_FicsiteMesh_C": {
@@ -286,6 +318,7 @@
       "displayName": "Ficsite Trigon",
       "form": "solid",
       "id": "Desc_FicsiteMesh_C",
+      "sinkPoints": 1291,
       "stackSize": "SS_BIG"
     },
     "Desc_Ficsonium_C": {
@@ -308,6 +341,7 @@
       "displayName": "Gas Filter",
       "form": "solid",
       "id": "Desc_Filter_C",
+      "sinkPoints": 608,
       "stackSize": "SS_SMALL"
     },
     "Desc_FluidCanister_C": {
@@ -315,6 +349,7 @@
       "displayName": "Empty Canister",
       "form": "solid",
       "id": "Desc_FluidCanister_C",
+      "sinkPoints": 60,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Fuel_C": {
@@ -323,6 +358,7 @@
       "energyValue": 750,
       "form": "solid",
       "id": "Desc_Fuel_C",
+      "sinkPoints": 270,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_GasTank_C": {
@@ -330,6 +366,7 @@
       "displayName": "Empty Fluid Tank",
       "form": "solid",
       "id": "Desc_GasTank_C",
+      "sinkPoints": 170,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_GenericBiomass_C": {
@@ -338,6 +375,7 @@
       "energyValue": 180,
       "form": "solid",
       "id": "Desc_GenericBiomass_C",
+      "sinkPoints": 12,
       "stackSize": "SS_BIG"
     },
     "Desc_GoldIngot_C": {
@@ -345,6 +383,7 @@
       "displayName": "Caterium Ingot",
       "form": "solid",
       "id": "Desc_GoldIngot_C",
+      "sinkPoints": 42,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Gunpowder_C": {
@@ -352,6 +391,7 @@
       "displayName": "Black Powder",
       "form": "solid",
       "id": "Desc_Gunpowder_C",
+      "sinkPoints": 14,
       "stackSize": "SS_BIG"
     },
     "Desc_GunpowderMK2_C": {
@@ -359,6 +399,7 @@
       "displayName": "Smokeless Powder",
       "form": "solid",
       "id": "Desc_GunpowderMK2_C",
+      "sinkPoints": 58,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_HatcherParts_C": {
@@ -373,6 +414,7 @@
       "displayName": "Iodine-Infused Filter",
       "form": "solid",
       "id": "Desc_HazmatFilter_C",
+      "sinkPoints": 2274,
       "stackSize": "SS_SMALL"
     },
     "Desc_HeavyOilResidue_C": {
@@ -381,6 +423,7 @@
       "energyValue": 0.4,
       "form": "liquid",
       "id": "Desc_HeavyOilResidue_C",
+      "sinkPoints": 30,
       "stackSize": "SS_FLUID"
     },
     "Desc_HighSpeedConnector_C": {
@@ -388,6 +431,7 @@
       "displayName": "High-Speed Connector",
       "form": "solid",
       "id": "Desc_HighSpeedConnector_C",
+      "sinkPoints": 3776,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_HighSpeedWire_C": {
@@ -395,6 +439,7 @@
       "displayName": "Quickwire",
       "form": "solid",
       "id": "Desc_HighSpeedWire_C",
+      "sinkPoints": 17,
       "stackSize": "SS_HUGE"
     },
     "Desc_HogParts_C": {
@@ -410,6 +455,7 @@
       "energyValue": 5,
       "form": "gas",
       "id": "Desc_IonizedFuel_C",
+      "sinkPoints": 2398,
       "stackSize": "SS_FLUID"
     },
     "Desc_IronIngot_C": {
@@ -417,6 +463,7 @@
       "displayName": "Iron Ingot",
       "form": "solid",
       "id": "Desc_IronIngot_C",
+      "sinkPoints": 2,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_IronPlate_C": {
@@ -424,6 +471,7 @@
       "displayName": "Iron Plate",
       "form": "solid",
       "id": "Desc_IronPlate_C",
+      "sinkPoints": 6,
       "stackSize": "SS_BIG"
     },
     "Desc_IronPlateReinforced_C": {
@@ -431,6 +479,7 @@
       "displayName": "Reinforced Iron Plate",
       "form": "solid",
       "id": "Desc_IronPlateReinforced_C",
+      "sinkPoints": 120,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_IronRod_C": {
@@ -438,6 +487,7 @@
       "displayName": "Iron Rod",
       "form": "solid",
       "id": "Desc_IronRod_C",
+      "sinkPoints": 4,
       "stackSize": "SS_BIG"
     },
     "Desc_IronScrew_C": {
@@ -445,6 +495,7 @@
       "displayName": "Screws",
       "form": "solid",
       "id": "Desc_IronScrew_C",
+      "sinkPoints": 2,
       "stackSize": "SS_HUGE"
     },
     "Desc_Leaves_C": {
@@ -453,6 +504,7 @@
       "energyValue": 15,
       "form": "solid",
       "id": "Desc_Leaves_C",
+      "sinkPoints": 3,
       "stackSize": "SS_HUGE"
     },
     "Desc_LiquidBiofuel_C": {
@@ -461,6 +513,7 @@
       "energyValue": 0.75,
       "form": "liquid",
       "id": "Desc_LiquidBiofuel_C",
+      "sinkPoints": 261,
       "stackSize": "SS_FLUID"
     },
     "Desc_LiquidFuel_C": {
@@ -469,6 +522,7 @@
       "energyValue": 0.75,
       "form": "liquid",
       "id": "Desc_LiquidFuel_C",
+      "sinkPoints": 75,
       "stackSize": "SS_FLUID"
     },
     "Desc_LiquidOil_C": {
@@ -477,6 +531,7 @@
       "energyValue": 0.32,
       "form": "liquid",
       "id": "Desc_LiquidOil_C",
+      "sinkPoints": 30,
       "stackSize": "SS_FLUID"
     },
     "Desc_LiquidTurboFuel_C": {
@@ -485,6 +540,7 @@
       "energyValue": 2,
       "form": "liquid",
       "id": "Desc_LiquidTurboFuel_C",
+      "sinkPoints": 225,
       "stackSize": "SS_FLUID"
     },
     "Desc_ModularFrame_C": {
@@ -492,6 +548,7 @@
       "displayName": "Modular Frame",
       "form": "solid",
       "id": "Desc_ModularFrame_C",
+      "sinkPoints": 408,
       "stackSize": "SS_SMALL"
     },
     "Desc_ModularFrameFused_C": {
@@ -499,6 +556,7 @@
       "displayName": "Fused Modular Frame",
       "form": "solid",
       "id": "Desc_ModularFrameFused_C",
+      "sinkPoints": 62840,
       "stackSize": "SS_SMALL"
     },
     "Desc_ModularFrameHeavy_C": {
@@ -506,6 +564,7 @@
       "displayName": "Heavy Modular Frame",
       "form": "solid",
       "id": "Desc_ModularFrameHeavy_C",
+      "sinkPoints": 10800,
       "stackSize": "SS_SMALL"
     },
     "Desc_ModularFrameLightweight_C": {
@@ -513,6 +572,7 @@
       "displayName": "Radio Control Unit",
       "form": "solid",
       "id": "Desc_ModularFrameLightweight_C",
+      "sinkPoints": 32352,
       "stackSize": "SS_SMALL"
     },
     "Desc_Motor_C": {
@@ -520,6 +580,7 @@
       "displayName": "Motor",
       "form": "solid",
       "id": "Desc_Motor_C",
+      "sinkPoints": 1520,
       "stackSize": "SS_SMALL"
     },
     "Desc_MotorLightweight_C": {
@@ -527,6 +588,7 @@
       "displayName": "Turbo Motor",
       "form": "solid",
       "id": "Desc_MotorLightweight_C",
+      "sinkPoints": 240496,
       "stackSize": "SS_SMALL"
     },
     "Desc_Mycelia_C": {
@@ -535,6 +597,7 @@
       "energyValue": 20,
       "form": "solid",
       "id": "Desc_Mycelia_C",
+      "sinkPoints": 10,
       "stackSize": "SS_BIG"
     },
     "Desc_NitricAcid_C": {
@@ -542,6 +605,7 @@
       "displayName": "Nitric Acid",
       "form": "liquid",
       "id": "Desc_NitricAcid_C",
+      "sinkPoints": 94,
       "stackSize": "SS_FLUID"
     },
     "Desc_NitrogenGas_C": {
@@ -549,6 +613,7 @@
       "displayName": "Nitrogen Gas",
       "form": "gas",
       "id": "Desc_NitrogenGas_C",
+      "sinkPoints": 10,
       "stackSize": "SS_FLUID"
     },
     "Desc_NobeliskCluster_C": {
@@ -556,6 +621,7 @@
       "displayName": "Cluster Nobelisk",
       "form": "solid",
       "id": "Desc_NobeliskCluster_C",
+      "sinkPoints": 1376,
       "stackSize": "SS_SMALL"
     },
     "Desc_NobeliskExplosive_C": {
@@ -563,6 +629,7 @@
       "displayName": "Nobelisk",
       "form": "solid",
       "id": "Desc_NobeliskExplosive_C",
+      "sinkPoints": 152,
       "stackSize": "SS_SMALL"
     },
     "Desc_NobeliskGas_C": {
@@ -570,6 +637,7 @@
       "displayName": "Gas Nobelisk",
       "form": "solid",
       "id": "Desc_NobeliskGas_C",
+      "sinkPoints": 544,
       "stackSize": "SS_SMALL"
     },
     "Desc_NobeliskNuke_C": {
@@ -577,6 +645,7 @@
       "displayName": "Nuke Nobelisk",
       "form": "solid",
       "id": "Desc_NobeliskNuke_C",
+      "sinkPoints": 19600,
       "stackSize": "SS_SMALL"
     },
     "Desc_NobeliskShockwave_C": {
@@ -584,6 +653,7 @@
       "displayName": "Pulse Nobelisk",
       "form": "solid",
       "id": "Desc_NobeliskShockwave_C",
+      "sinkPoints": 1533,
       "stackSize": "SS_SMALL"
     },
     "Desc_NonFissibleUranium_C": {
@@ -599,6 +669,7 @@
       "energyValue": 750000,
       "form": "solid",
       "id": "Desc_NuclearFuelRod_C",
+      "sinkPoints": 43468,
       "stackSize": "SS_SMALL"
     },
     "Desc_NuclearWaste_C": {
@@ -613,6 +684,7 @@
       "displayName": "Bauxite",
       "form": "solid",
       "id": "Desc_OreBauxite_C",
+      "sinkPoints": 8,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_OreCopper_C": {
@@ -620,6 +692,7 @@
       "displayName": "Copper Ore",
       "form": "solid",
       "id": "Desc_OreCopper_C",
+      "sinkPoints": 3,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_OreGold_C": {
@@ -627,6 +700,7 @@
       "displayName": "Caterium Ore",
       "form": "solid",
       "id": "Desc_OreGold_C",
+      "sinkPoints": 7,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_OreIron_C": {
@@ -634,6 +708,7 @@
       "displayName": "Iron Ore",
       "form": "solid",
       "id": "Desc_OreIron_C",
+      "sinkPoints": 1,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_OreUranium_C": {
@@ -641,6 +716,7 @@
       "displayName": "Uranium",
       "form": "solid",
       "id": "Desc_OreUranium_C",
+      "sinkPoints": 35,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedAlumina_C": {
@@ -648,6 +724,7 @@
       "displayName": "Packaged Alumina Solution",
       "form": "solid",
       "id": "Desc_PackagedAlumina_C",
+      "sinkPoints": 160,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedBiofuel_C": {
@@ -656,6 +733,7 @@
       "energyValue": 750,
       "form": "solid",
       "id": "Desc_PackagedBiofuel_C",
+      "sinkPoints": 370,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedIonizedFuel_C": {
@@ -664,6 +742,7 @@
       "energyValue": 10000,
       "form": "solid",
       "id": "Desc_PackagedIonizedFuel_C",
+      "sinkPoints": 5246,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedNitricAcid_C": {
@@ -671,6 +750,7 @@
       "displayName": "Packaged Nitric Acid",
       "form": "solid",
       "id": "Desc_PackagedNitricAcid_C",
+      "sinkPoints": 412,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedNitrogenGas_C": {
@@ -678,6 +758,7 @@
       "displayName": "Packaged Nitrogen Gas",
       "form": "solid",
       "id": "Desc_PackagedNitrogenGas_C",
+      "sinkPoints": 312,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedOil_C": {
@@ -686,6 +767,7 @@
       "energyValue": 320,
       "form": "solid",
       "id": "Desc_PackagedOil_C",
+      "sinkPoints": 180,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedOilResidue_C": {
@@ -694,6 +776,7 @@
       "energyValue": 400,
       "form": "solid",
       "id": "Desc_PackagedOilResidue_C",
+      "sinkPoints": 180,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedRocketFuel_C": {
@@ -702,6 +785,7 @@
       "energyValue": 7200,
       "form": "solid",
       "id": "Desc_PackagedRocketFuel_C",
+      "sinkPoints": 1028,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedSulfuricAcid_C": {
@@ -709,6 +793,7 @@
       "displayName": "Packaged Sulfuric Acid",
       "form": "solid",
       "id": "Desc_PackagedSulfuricAcid_C",
+      "sinkPoints": 152,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PackagedWater_C": {
@@ -716,6 +801,7 @@
       "displayName": "Packaged Water",
       "form": "solid",
       "id": "Desc_PackagedWater_C",
+      "sinkPoints": 130,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_PetroleumCoke_C": {
@@ -724,6 +810,7 @@
       "energyValue": 180,
       "form": "solid",
       "id": "Desc_PetroleumCoke_C",
+      "sinkPoints": 20,
       "stackSize": "SS_BIG"
     },
     "Desc_Plastic_C": {
@@ -731,6 +818,7 @@
       "displayName": "Plastic",
       "form": "solid",
       "id": "Desc_Plastic_C",
+      "sinkPoints": 75,
       "stackSize": "SS_BIG"
     },
     "Desc_PlutoniumCell_C": {
@@ -746,6 +834,7 @@
       "energyValue": 1500000,
       "form": "solid",
       "id": "Desc_PlutoniumFuelRod_C",
+      "sinkPoints": 153184,
       "stackSize": "SS_SMALL"
     },
     "Desc_PlutoniumPellet_C": {
@@ -767,6 +856,7 @@
       "displayName": "Polymer Resin",
       "form": "solid",
       "id": "Desc_PolymerResin_C",
+      "sinkPoints": 12,
       "stackSize": "SS_BIG"
     },
     "Desc_PressureConversionCube_C": {
@@ -774,6 +864,7 @@
       "displayName": "Pressure Conversion Cube",
       "form": "solid",
       "id": "Desc_PressureConversionCube_C",
+      "sinkPoints": 255088,
       "stackSize": "SS_SMALL"
     },
     "Desc_QuantumEnergy_C": {
@@ -781,6 +872,7 @@
       "displayName": "Excited Photonic Matter",
       "form": "gas",
       "id": "Desc_QuantumEnergy_C",
+      "sinkPoints": 100,
       "stackSize": "SS_FLUID"
     },
     "Desc_QuantumOscillator_C": {
@@ -788,6 +880,7 @@
       "displayName": "Superposition Oscillator",
       "form": "solid",
       "id": "Desc_QuantumOscillator_C",
+      "sinkPoints": 37292,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_QuartzCrystal_C": {
@@ -795,6 +888,7 @@
       "displayName": "Quartz Crystal",
       "form": "solid",
       "id": "Desc_QuartzCrystal_C",
+      "sinkPoints": 50,
       "stackSize": "SS_BIG"
     },
     "Desc_RawQuartz_C": {
@@ -802,6 +896,7 @@
       "displayName": "Raw Quartz",
       "form": "solid",
       "id": "Desc_RawQuartz_C",
+      "sinkPoints": 15,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Rebar_Explosive_C": {
@@ -809,6 +904,7 @@
       "displayName": "Explosive Rebar",
       "form": "solid",
       "id": "Desc_Rebar_Explosive_C",
+      "sinkPoints": 360,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Rebar_Spreadshot_C": {
@@ -816,6 +912,7 @@
       "displayName": "Shatter Rebar",
       "form": "solid",
       "id": "Desc_Rebar_Spreadshot_C",
+      "sinkPoints": 332,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Rebar_Stunshot_C": {
@@ -823,6 +920,7 @@
       "displayName": "Stun Rebar",
       "form": "solid",
       "id": "Desc_Rebar_Stunshot_C",
+      "sinkPoints": 186,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_RocketFuel_C": {
@@ -831,6 +929,7 @@
       "energyValue": 3.6,
       "form": "gas",
       "id": "Desc_RocketFuel_C",
+      "sinkPoints": 289,
       "stackSize": "SS_FLUID"
     },
     "Desc_Rotor_C": {
@@ -838,6 +937,7 @@
       "displayName": "Rotor",
       "form": "solid",
       "id": "Desc_Rotor_C",
+      "sinkPoints": 140,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Rubber_C": {
@@ -845,6 +945,7 @@
       "displayName": "Rubber",
       "form": "solid",
       "id": "Desc_Rubber_C",
+      "sinkPoints": 60,
       "stackSize": "SS_BIG"
     },
     "Desc_SAM_C": {
@@ -852,6 +953,7 @@
       "displayName": "SAM",
       "form": "solid",
       "id": "Desc_SAM_C",
+      "sinkPoints": 20,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_SAMFluctuator_C": {
@@ -859,6 +961,7 @@
       "displayName": "SAM Fluctuator",
       "form": "solid",
       "id": "Desc_SAMFluctuator_C",
+      "sinkPoints": 1968,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_SAMIngot_C": {
@@ -866,6 +969,7 @@
       "displayName": "Reanimated SAM",
       "form": "solid",
       "id": "Desc_SAMIngot_C",
+      "sinkPoints": 160,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Silica_C": {
@@ -873,6 +977,7 @@
       "displayName": "Silica",
       "form": "solid",
       "id": "Desc_Silica_C",
+      "sinkPoints": 20,
       "stackSize": "SS_BIG"
     },
     "Desc_SingularityCell_C": {
@@ -880,6 +985,7 @@
       "displayName": "Singularity Cell",
       "form": "solid",
       "id": "Desc_SingularityCell_C",
+      "sinkPoints": 114675,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_1_C": {
@@ -887,6 +993,7 @@
       "displayName": "Smart Plating",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_1_C",
+      "sinkPoints": 520,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_10_C": {
@@ -894,6 +1001,7 @@
       "displayName": "Biochemical Sculptor",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_10_C",
+      "sinkPoints": 301778,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_11_C": {
@@ -901,6 +1009,7 @@
       "displayName": "Ballistic Warp Drive",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_11_C",
+      "sinkPoints": 2895334,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_12_C": {
@@ -908,6 +1017,7 @@
       "displayName": "AI Expansion Server",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_12_C",
+      "sinkPoints": 597652,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_2_C": {
@@ -915,6 +1025,7 @@
       "displayName": "Versatile Framework",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_2_C",
+      "sinkPoints": 1176,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_3_C": {
@@ -922,6 +1033,7 @@
       "displayName": "Automated Wiring",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_3_C",
+      "sinkPoints": 1440,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_4_C": {
@@ -929,6 +1041,7 @@
       "displayName": "Modular Engine",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_4_C",
+      "sinkPoints": 9960,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_5_C": {
@@ -936,6 +1049,7 @@
       "displayName": "Adaptive Control Unit",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_5_C",
+      "sinkPoints": 76368,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_6_C": {
@@ -943,6 +1057,7 @@
       "displayName": "Magnetic Field Generator",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_6_C",
+      "sinkPoints": 11000,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_7_C": {
@@ -950,6 +1065,7 @@
       "displayName": "Assembly Director System",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_7_C",
+      "sinkPoints": 500176,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_8_C": {
@@ -957,6 +1073,7 @@
       "displayName": "Thermal Propulsion Rocket",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_8_C",
+      "sinkPoints": 728508,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpaceElevatorPart_9_C": {
@@ -964,6 +1081,7 @@
       "displayName": "Nuclear Pasta",
       "form": "solid",
       "id": "Desc_SpaceElevatorPart_9_C",
+      "sinkPoints": 538976,
       "stackSize": "SS_SMALL"
     },
     "Desc_SpikedRebar_C": {
@@ -971,6 +1089,7 @@
       "displayName": "Iron Rebar",
       "form": "solid",
       "id": "Desc_SpikedRebar_C",
+      "sinkPoints": 8,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_SpitterParts_C": {
@@ -985,6 +1104,7 @@
       "displayName": "Stator",
       "form": "solid",
       "id": "Desc_Stator_C",
+      "sinkPoints": 240,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_SteelIngot_C": {
@@ -992,6 +1112,7 @@
       "displayName": "Steel Ingot",
       "form": "solid",
       "id": "Desc_SteelIngot_C",
+      "sinkPoints": 8,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_SteelPipe_C": {
@@ -999,6 +1120,7 @@
       "displayName": "Steel Pipe",
       "form": "solid",
       "id": "Desc_SteelPipe_C",
+      "sinkPoints": 24,
       "stackSize": "SS_BIG"
     },
     "Desc_SteelPlate_C": {
@@ -1006,6 +1128,7 @@
       "displayName": "Steel Beam",
       "form": "solid",
       "id": "Desc_SteelPlate_C",
+      "sinkPoints": 64,
       "stackSize": "SS_BIG"
     },
     "Desc_SteelPlateReinforced_C": {
@@ -1013,6 +1136,7 @@
       "displayName": "Encased Industrial Beam",
       "form": "solid",
       "id": "Desc_SteelPlateReinforced_C",
+      "sinkPoints": 528,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_StingerParts_C": {
@@ -1027,6 +1151,7 @@
       "displayName": "Limestone",
       "form": "solid",
       "id": "Desc_Stone_C",
+      "sinkPoints": 2,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_Sulfur_C": {
@@ -1034,6 +1159,7 @@
       "displayName": "Sulfur",
       "form": "solid",
       "id": "Desc_Sulfur_C",
+      "sinkPoints": 11,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_SulfuricAcid_C": {
@@ -1041,6 +1167,7 @@
       "displayName": "Sulfuric Acid",
       "form": "liquid",
       "id": "Desc_SulfuricAcid_C",
+      "sinkPoints": 16,
       "stackSize": "SS_FLUID"
     },
     "Desc_TemporalProcessor_C": {
@@ -1048,6 +1175,7 @@
       "displayName": "Neural-Quantum Processor",
       "form": "solid",
       "id": "Desc_TemporalProcessor_C",
+      "sinkPoints": 248034,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_TimeCrystal_C": {
@@ -1055,6 +1183,7 @@
       "displayName": "Time Crystal",
       "form": "solid",
       "id": "Desc_TimeCrystal_C",
+      "sinkPoints": 960,
       "stackSize": "SS_BIG"
     },
     "Desc_TurboFuel_C": {
@@ -1063,6 +1192,7 @@
       "energyValue": 2000,
       "form": "solid",
       "id": "Desc_TurboFuel_C",
+      "sinkPoints": 570,
       "stackSize": "SS_MEDIUM"
     },
     "Desc_UraniumCell_C": {
@@ -1070,6 +1200,7 @@
       "displayName": "Encased Uranium Cell",
       "form": "solid",
       "id": "Desc_UraniumCell_C",
+      "sinkPoints": 147,
       "stackSize": "SS_BIG"
     },
     "Desc_Water_C": {
@@ -1077,6 +1208,7 @@
       "displayName": "Water",
       "form": "liquid",
       "id": "Desc_Water_C",
+      "sinkPoints": 5,
       "stackSize": "SS_FLUID"
     },
     "Desc_Wire_C": {
@@ -1084,6 +1216,7 @@
       "displayName": "Wire",
       "form": "solid",
       "id": "Desc_Wire_C",
+      "sinkPoints": 6,
       "stackSize": "SS_HUGE"
     },
     "Desc_Wood_C": {
@@ -1092,6 +1225,7 @@
       "energyValue": 100,
       "form": "solid",
       "id": "Desc_Wood_C",
+      "sinkPoints": 30,
       "stackSize": "SS_BIG"
     }
   },
@@ -13422,7 +13556,7 @@
   },
   "source": {
     "docsFileName": "en-US.json",
-    "docsLastModified": "2026-04-29T10:51:39.326Z",
+    "docsLastModified": "2026-05-24T03:36:52.291Z",
     "fingerprint": "fnv1a32-231188a3"
   }
 }

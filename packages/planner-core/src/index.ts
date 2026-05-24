@@ -2,6 +2,7 @@ export * from './graphModel';
 export * from './graphRendererModel';
 export * from './model';
 export * from './assumedInputs';
+export * from './sinkRules';
 export * from './plan';
 export * from './plannerPersistenceCodec';
 export * from './plannerPlanExportCodec';

@@ -57,6 +57,14 @@ describe('encodePlannerPersistenceState', () => {
               sortOrder: 1,
             },
           ],
+          sinkRules: [
+            {
+              id: 'sink-screw',
+              itemId: 'Desc_Screw_C',
+              mode: 'surplus',
+              sortOrder: 0,
+            },
+          ],
           recipeOverrides: {
             Recipe_IronWire_C: { enabled: true },
           },
@@ -363,6 +371,7 @@ describe('decodePlannerPersistenceState', () => {
     const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
 
     expect(decoded?.projects[0]?.notes).toBe(project.notes);
+    expect(decoded?.projects[0]?.sinkRules).toEqual(project.sinkRules);
     expect(decoded?.projects[0]?.buildState.nodeStates).toEqual(project.buildState.nodeStates);
   });
 
@@ -608,6 +617,14 @@ function createDomainPlannerProject(): PlannerProject {
         itemId: 'Desc_Wire_C',
         mode: 'maximize',
         sortOrder: 1,
+      },
+    ],
+    sinkRules: [
+      {
+        id: 'sink-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 0,
       },
     ],
     recipeOverrides: {

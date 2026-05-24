@@ -3,6 +3,8 @@ import {
   buildPlanNotesSummary,
   buildPlanOverviewReport,
   buildSelectedNodeReport,
+  isSinkableItem,
+  surplusSinkRuleForItem,
   type GraphNodeBuildState,
   type OutputFuelPowerNoteKind,
   type PlanReportFlow,
@@ -123,7 +125,8 @@ export type SelectedNodeDetails =
   | ExternalInputNodeDetails
   | AssumedInputNodeDetails
   | OutputNodeDetails
-  | ByproductNodeDetails;
+  | ByproductNodeDetails
+  | SinkNodeDetails;
 
 export interface RecipeNodeDetails {
   kind: 'recipe';
@@ -166,6 +169,7 @@ export interface OutputNodeDetails {
   solvedAmountPerMinuteLabel: string | null;
   incomingAmountPerMinuteLabel: string;
   fuelPower: OutputFuelPowerDetails | null;
+  surplusSinkAction: InspectorSurplusSinkAction | null;
 }
 
 export interface OutputFuelPowerDetails {
@@ -183,6 +187,21 @@ export interface ByproductNodeDetails {
   item: InspectorItemRateRow;
   sinkPointsPerMinuteLabel: string | null;
   surplusNote: string;
+  surplusSinkAction: InspectorSurplusSinkAction | null;
+}
+
+export interface SinkNodeDetails {
+  kind: 'sink';
+  item: InspectorItemRateRow;
+  sinkPointsPerMinuteLabel: string;
+  surplusSinkAction: InspectorSurplusSinkAction;
+}
+
+export interface InspectorSurplusSinkAction {
+  itemId: ItemId;
+  active: boolean;
+  label: string;
+  title: string;
 }
 
 export interface InspectorSelectedNodeViewModel {
@@ -326,7 +345,7 @@ function selectSelectedNodeViewModel(
   selectedNodeState: GraphNodeBuildState,
 ): InspectorSelectedNodeViewModel {
   const report = buildSelectedNodeReport(dataset, project, result, selectedNode);
-  const details = selectedNodeDetails(report.details);
+  const details = selectedNodeDetails(report.details, dataset, project);
 
   return {
     nodeId: report.nodeId,
@@ -343,7 +362,11 @@ function selectSelectedNodeViewModel(
   };
 }
 
-function selectedNodeDetails(details: SelectedNodeReportDetails): SelectedNodeDetails {
+function selectedNodeDetails(
+  details: SelectedNodeReportDetails,
+  dataset: GameDataset,
+  project: PlannerProject,
+): SelectedNodeDetails {
   switch (details.kind) {
     case 'recipe':
       return recipeNodeDetails(details);
@@ -354,9 +377,11 @@ function selectedNodeDetails(details: SelectedNodeReportDetails): SelectedNodeDe
     case 'assumedInput':
       return assumedInputNodeDetails(details);
     case 'output':
-      return outputNodeDetails(details);
+      return outputNodeDetails(details, dataset, project);
     case 'byproduct':
-      return byproductNodeDetails(details);
+      return byproductNodeDetails(details, dataset, project);
+    case 'sink':
+      return sinkNodeDetails(details, dataset, project);
   }
 }
 
@@ -421,6 +446,8 @@ function assumedInputNodeDetails(
 
 function outputNodeDetails(
   details: Extract<SelectedNodeReportDetails, { kind: 'output' }>,
+  dataset: GameDataset,
+  project: PlannerProject,
 ): OutputNodeDetails {
   return {
     kind: 'output',
@@ -453,11 +480,14 @@ function outputNodeDetails(
             waste: details.fuelPower.waste === null ? null : itemRateRow(details.fuelPower.waste),
             note: fuelPowerNote(details.fuelPower.noteKind),
           },
+    surplusSinkAction: surplusSinkAction(dataset, project, details.item.itemId),
   };
 }
 
 function byproductNodeDetails(
   details: Extract<SelectedNodeReportDetails, { kind: 'byproduct' }>,
+  dataset: GameDataset,
+  project: PlannerProject,
 ): ByproductNodeDetails {
   return {
     kind: 'byproduct',
@@ -466,7 +496,26 @@ function byproductNodeDetails(
       details.sinkPointsPerMinute === null
         ? null
         : `${formatPlannerNumber(details.sinkPointsPerMinute)}/min`,
-    surplusNote: 'Unused surplus. Sink routing is not modeled yet.',
+    surplusNote: 'Unused surplus.',
+    surplusSinkAction: surplusSinkAction(dataset, project, details.item.itemId),
+  };
+}
+
+function sinkNodeDetails(
+  details: Extract<SelectedNodeReportDetails, { kind: 'sink' }>,
+  dataset: GameDataset,
+  project: PlannerProject,
+): SinkNodeDetails {
+  return {
+    kind: 'sink',
+    item: itemRateRow(details.item),
+    sinkPointsPerMinuteLabel: `${formatPlannerNumber(details.sinkPointsPerMinute)}/min`,
+    surplusSinkAction: surplusSinkAction(dataset, project, details.item.itemId) ?? {
+      itemId: details.item.itemId,
+      active: true,
+      label: 'Remove sink',
+      title: 'Remove surplus sink',
+    },
   };
 }
 
@@ -507,6 +556,11 @@ function selectedNodeMetrics(details: SelectedNodeDetails): InspectorMetric[] {
       return [
         metric('Surplus', details.item.amountPerMinuteLabel),
         metric('Sink points', details.sinkPointsPerMinuteLabel ?? 'Not sinkable'),
+      ];
+    case 'sink':
+      return [
+        metric('Sinking', details.item.amountPerMinuteLabel),
+        metric('Sink points', details.sinkPointsPerMinuteLabel),
       ];
   }
 }
@@ -610,6 +664,8 @@ function itemRateDetail(role: PlanReportItemRateRole | null): string | null {
       return 'requested output';
     case 'unused-surplus':
       return 'unused surplus';
+    case 'sink-consumption':
+      return 'surplus sent to sink';
     case 'nuclear-byproduct':
       return 'nuclear byproduct';
   }
@@ -674,6 +730,8 @@ function nodeKindLabel(kind: ProductionGraphNode['kind']): string {
       return 'Output';
     case 'byproduct':
       return 'Byproduct';
+    case 'sink':
+      return 'Sink';
   }
 }
 
@@ -691,7 +749,26 @@ function endpointKindLabel(kind: PlanReportFlow['endpointKind']): string {
       return 'Output';
     case 'byproduct':
       return 'Byproduct';
+    case 'sink':
+      return 'Sink';
   }
+}
+
+function surplusSinkAction(
+  dataset: GameDataset,
+  project: PlannerProject,
+  itemId: ItemId,
+): InspectorSurplusSinkAction | null {
+  if (!isSinkableItem(dataset, itemId)) {
+    return null;
+  }
+  const active = surplusSinkRuleForItem(project.sinkRules, itemId) !== undefined;
+  return {
+    itemId,
+    active,
+    label: active ? 'Remove sink' : 'Sink surplus',
+    title: active ? 'Remove surplus sink' : 'Send solved surplus to an Awesome Sink',
+  };
 }
 
 function formatStatus(status: ProductionPlanResult['status']): string {

@@ -17,6 +17,7 @@ import type {
   RateDecimalPlaces,
   RecipeOverride,
   ResourceOverride,
+  SinkRule,
 } from './plan';
 
 export type PlanTransferRecord = Record<string, unknown>;
@@ -100,6 +101,19 @@ export function copyProductTargetForTransfer(target: ProductTarget): ProductTarg
       };
 }
 
+export function copySinkRuleForTransfer(rule: SinkRule): SinkRule {
+  return {
+    id: rule.id,
+    itemId: rule.itemId,
+    mode: rule.mode,
+    sortOrder: rule.sortOrder,
+  };
+}
+
+export function copySinkRulesForTransfer(rules: readonly SinkRule[]): SinkRule[] {
+  return rules.map(copySinkRuleForTransfer);
+}
+
 export function readProductTargetsForTransfer(
   value: unknown,
   createTargetId: () => string,
@@ -142,6 +156,44 @@ export function readProductTargetsForTransfer(
     });
   }
   return targets;
+}
+
+export function readSinkRulesForTransfer(
+  value: unknown,
+  createRuleId: () => string,
+): SinkRule[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const rules: SinkRule[] = [];
+  const seenItemIds = new Set<ItemId>();
+  for (const [index, rule] of value.entries()) {
+    if (!isPlanTransferRecord(rule)) {
+      continue;
+    }
+
+    const itemId = readTransferTargetItemId(rule['itemId']);
+    if (
+      itemId === undefined ||
+      itemId.length === 0 ||
+      seenItemIds.has(itemId) ||
+      rule['mode'] !== 'surplus'
+    ) {
+      continue;
+    }
+    seenItemIds.add(itemId);
+    rules.push({
+      id: readSafePlanTransferRecordKey(rule['id']) ?? createRuleId(),
+      itemId,
+      mode: 'surplus',
+      sortOrder: readTransferFiniteNumber(rule['sortOrder']) ?? index,
+    });
+  }
+
+  return rules
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((rule, index) => ({ ...rule, sortOrder: index }));
 }
 
 export function copyRecipeOverridesForTransfer(

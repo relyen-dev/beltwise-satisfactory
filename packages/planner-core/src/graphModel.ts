@@ -1,10 +1,11 @@
 import type { GameDataset, ItemId, RecipeId } from '@beltwise/game-data';
-import type { ProductTarget, RateDecimalPlaces } from './plan';
+import type { ProductTarget, RateDecimalPlaces, SinkRule } from './plan';
+import { isSinkableItem, sinkPointsPerMinute, surplusSinkRuleForItem } from './sinkRules';
 
 export type ProductionPlanStatus = 'optimal' | 'infeasible' | 'unbounded' | 'error';
 
 export interface ItemFlowEndpoint {
-  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct';
+  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct' | 'sink';
   id: string;
 }
 
@@ -69,14 +70,16 @@ export interface ProductionGraph {
 
 export interface ProductionGraphNode {
   id: string;
-  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct';
+  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct' | 'sink';
   label: string;
   subtitle: string;
   itemId?: ItemId;
   recipeId?: RecipeId;
   targetId?: string;
+  sinkRuleId?: string;
   targetMode?: ProductTarget['mode'];
   amountPerMinute?: number;
+  sinkPointsPerMinute?: number;
   machineDisplayName?: string;
   machineCount?: number;
 }
@@ -92,6 +95,7 @@ export interface ProductionGraphEdge {
 
 export interface ProductionGraphOptions {
   rateDecimalPlaces?: RateDecimalPlaces;
+  sinkRules?: readonly SinkRule[];
 }
 
 const MIN_GRAPH_RATE = 0.000001;
@@ -106,6 +110,7 @@ export function buildProductionGraph(
   const nodes = new Map<string, ProductionGraphNode>();
   const edges: ProductionGraphEdge[] = [];
   const rateDecimalPlaces = options.rateDecimalPlaces ?? DEFAULT_RATE_DECIMAL_PLACES;
+  const itemFlows = routeSurplusFlowsToSink(dataset, options.sinkRules ?? [], result);
 
   for (const [itemId, amountPerMinute] of Object.entries(result.rawInputs)) {
     if (amountPerMinute <= MIN_GRAPH_RATE) {
@@ -194,17 +199,32 @@ export function buildProductionGraph(
       continue;
     }
     const item = dataset.items[itemId];
-    nodes.set(byproductNodeId(itemId), {
-      id: byproductNodeId(itemId),
-      kind: 'byproduct',
-      label: item?.displayName ?? itemId,
-      subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min surplus`,
-      itemId,
-      amountPerMinute,
-    });
+    const sinkRule = surplusSinkRuleForItem(options.sinkRules ?? [], itemId);
+    if (sinkRule && isSinkableItem(dataset, itemId)) {
+      const pointsPerMinute = sinkPointsPerMinute(dataset, itemId, amountPerMinute) ?? 0;
+      nodes.set(sinkNodeId(itemId), {
+        id: sinkNodeId(itemId),
+        kind: 'sink',
+        label: 'Awesome Sink',
+        subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min ${item?.displayName ?? itemId}`,
+        itemId,
+        sinkRuleId: sinkRule.id,
+        amountPerMinute,
+        sinkPointsPerMinute: pointsPerMinute,
+      });
+    } else {
+      nodes.set(byproductNodeId(itemId), {
+        id: byproductNodeId(itemId),
+        kind: 'byproduct',
+        label: item?.displayName ?? itemId,
+        subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min surplus`,
+        itemId,
+        amountPerMinute,
+      });
+    }
   }
 
-  for (const flow of result.itemFlows) {
+  for (const flow of itemFlows) {
     if (flow.amountPerMinute <= MIN_GRAPH_RATE) {
       continue;
     }
@@ -254,6 +274,47 @@ export function byproductNodeId(itemId: ItemId): string {
   return `byproduct:${itemId}`;
 }
 
+export function sinkNodeId(itemId: ItemId): string {
+  return `sink:${itemId}`;
+}
+
+export function routeSurplusFlowsToSink(
+  dataset: GameDataset,
+  sinkRules: readonly SinkRule[],
+  result: ProductionPlanResult,
+): ItemFlow[] {
+  if (sinkRules.length === 0) {
+    return result.itemFlows;
+  }
+
+  return result.itemFlows.map((flow) => {
+    if (
+      flow.target.kind !== 'byproduct' ||
+      !shouldRouteSurplusToSink(dataset, sinkRules, result, flow.itemId)
+    ) {
+      return flow;
+    }
+
+    return {
+      ...flow,
+      target: { kind: 'sink', id: flow.itemId },
+    };
+  });
+}
+
+export function shouldRouteSurplusToSink(
+  dataset: GameDataset,
+  sinkRules: readonly SinkRule[],
+  result: ProductionPlanResult,
+  itemId: ItemId,
+): boolean {
+  return (
+    (result.surplus[itemId] ?? 0) > MIN_GRAPH_RATE &&
+    surplusSinkRuleForItem(sinkRules, itemId) !== undefined &&
+    isSinkableItem(dataset, itemId)
+  );
+}
+
 function endpointNodeId(endpoint: ItemFlowEndpoint): string {
   switch (endpoint.kind) {
     case 'resource':
@@ -268,6 +329,8 @@ function endpointNodeId(endpoint: ItemFlowEndpoint): string {
       return outputNodeId(endpoint.id);
     case 'byproduct':
       return byproductNodeId(endpoint.id);
+    case 'sink':
+      return sinkNodeId(endpoint.id);
   }
 }
 

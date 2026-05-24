@@ -228,13 +228,15 @@ function getClasses(group: RawDocsGroup): RawRecord[] {
 function normalizeItem(rawClass: RawRecord): Item {
   const className = requiredString(rawClass, 'ClassName');
   const energyValue = numberField(rawClass, 'mEnergyValue');
+  const sinkPoints = positiveNumberField(rawClass, 'mResourceSinkPoints');
   return {
     id: className,
     className,
     displayName: stringField(rawClass, 'mDisplayName') ?? className,
     form: normalizeForm(stringField(rawClass, 'mForm')),
     ...(stringField(rawClass, 'mStackSize') ? { stackSize: stringField(rawClass, 'mStackSize') } : {}),
-    ...(energyValue !== undefined && energyValue > 0 ? { energyValue } : {})
+    ...(energyValue !== undefined && energyValue > 0 ? { energyValue } : {}),
+    ...(sinkPoints !== undefined ? { sinkPoints } : {})
   };
 }
 

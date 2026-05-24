@@ -3,6 +3,7 @@ export type WorkbenchPanelId =
   | 'objectives'
   | 'recipes'
   | 'inputs'
+  | 'sinks'
   | 'resources'
   | 'machines'
   | 'display';

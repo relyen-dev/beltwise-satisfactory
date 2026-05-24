@@ -8,6 +8,7 @@ import {
   mutatePlanMetadata,
   mutatePlanObjective,
   mutatePlanOverrides,
+  mutatePlanSinkRules,
   mutatePlanTargets,
   type PlannerProject,
 } from '@beltwise/planner-core';
@@ -112,6 +113,53 @@ describe('plan intent mutations', () => {
       Desc_IronPlate_C: { amountPerMinute: 13 },
     });
     expect(project.itemInputs['Desc_IngotIron_C']).toEqual({ amountPerMinute: 5 });
+  });
+
+  it('adds unique surplus sink rules and re-sorts after removal', () => {
+    const project = createProject();
+
+    const withScrewSink = mutatePlanSinkRules(project, {
+      type: 'add-surplus-sink',
+      sinkRuleId: 'sink-screw',
+      itemId: 'Desc_Screw_C',
+    });
+    const unchangedDuplicate = mutatePlanSinkRules(withScrewSink, {
+      type: 'add-surplus-sink',
+      sinkRuleId: 'sink-screw-duplicate',
+      itemId: 'Desc_Screw_C',
+    });
+    const withWireSink = mutatePlanSinkRules(unchangedDuplicate, {
+      type: 'add-surplus-sink',
+      sinkRuleId: 'sink-wire',
+      itemId: 'Desc_Wire_C',
+    });
+    const withoutScrewSink = mutatePlanSinkRules(withWireSink, {
+      type: 'remove-surplus-sink-for-item',
+      itemId: 'Desc_Screw_C',
+    });
+
+    expect(withScrewSink.sinkRules).toEqual([
+      {
+        id: 'sink-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 0,
+      },
+    ]);
+    expect(unchangedDuplicate.sinkRules).toEqual(withScrewSink.sinkRules);
+    expect(withWireSink.sinkRules.map((rule) => [rule.id, rule.sortOrder])).toEqual([
+      ['sink-screw', 0],
+      ['sink-wire', 1],
+    ]);
+    expect(withoutScrewSink.sinkRules).toEqual([
+      {
+        id: 'sink-wire',
+        itemId: 'Desc_Wire_C',
+        mode: 'surplus',
+        sortOrder: 0,
+      },
+    ]);
+    expect(project.sinkRules).toEqual([]);
   });
 
   it('normalizes resource overrides against the dataset baseline', () => {

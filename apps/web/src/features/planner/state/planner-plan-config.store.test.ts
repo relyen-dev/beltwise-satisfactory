@@ -73,6 +73,7 @@ describe('PlannerPlanConfigStore', () => {
     planConfig.recipeCommands.setEnabled('Recipe_IronPlate_C', false);
     planConfig.inputCommands.set('Desc_IngotIron_C', 25);
     planConfig.resourceCommands.setCap('Desc_OreIron_C', 120);
+    planConfig.sinkCommands.addSurplus('Desc_Screw_C');
     planConfig.machineCommands.setEnabled('Build_ConstructorMk1_C', false);
     planConfig.objectiveCommands.setPreset('low-power');
     planConfig.objectiveCommands.setWeight('powerWeight', 999);
@@ -83,6 +84,7 @@ describe('PlannerPlanConfigStore', () => {
       targets: lockedProject.targets,
       recipeOverrides: lockedProject.recipeOverrides,
       itemInputs: lockedProject.itemInputs,
+      sinkRules: lockedProject.sinkRules,
       resourceOverrides: lockedProject.resourceOverrides,
       machineOverrides: lockedProject.machineOverrides,
       objectiveProfile: lockedProject.objectiveProfile,
@@ -176,6 +178,56 @@ describe('PlannerPlanConfigStore', () => {
       maxBeltTier: 5,
       showTransportLabels: false,
     });
+  });
+
+  it('adds, reports, toggles, and removes surplus sink rules for sinkable items', () => {
+    const dataset = withSinkableScrewsDataset();
+    const { activeProject, planConfig } = createPlanConfigHarness({
+      dataset,
+      project: createProject(dataset),
+      solveResult: {
+        status: 'optimal',
+        recipeRates: {},
+        rawInputs: {},
+        externalInputs: {},
+        itemFlows: [],
+        outputs: {},
+        surplus: {
+          Desc_Screw_C: 12,
+        },
+        machineUsage: [],
+        powerMw: 0,
+        warnings: [],
+      },
+    });
+
+    planConfig.sinkCommands.addSurplus('Desc_Screw_C');
+
+    expect(requiredProject(activeProject).sinkRules).toEqual([
+      {
+        id: expect.stringMatching(/^sink-/),
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 0,
+      },
+    ]);
+    expect(planConfig.sinkRuleRows()).toMatchObject([
+      {
+        itemId: 'Desc_Screw_C',
+        displayName: 'Screw',
+        amountPerMinute: 12,
+        sinkPointsPerMinute: 24,
+      },
+    ]);
+
+    planConfig.sinkCommands.addSurplus('Desc_Screw_C');
+    expect(requiredProject(activeProject).sinkRules).toHaveLength(1);
+
+    planConfig.sinkCommands.toggleSurplus('Desc_Screw_C');
+    expect(requiredProject(activeProject).sinkRules).toEqual([]);
+
+    planConfig.sinkCommands.addSurplus('Desc_IngotIron_C');
+    expect(requiredProject(activeProject).sinkRules).toEqual([]);
   });
 
   it('applies every objective preset and preserves priority order for custom edits', () => {
@@ -306,6 +358,19 @@ function withUnlimitedWaterDataset(): GameDataset {
           allowedExtractors: ['Build_WaterPump_C'],
           baselineMaxPerMinute: Number.MAX_SAFE_INTEGER,
         },
+      },
+    },
+  };
+}
+
+function withSinkableScrewsDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Screw_C: {
+        ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+        sinkPoints: 2,
       },
     },
   };

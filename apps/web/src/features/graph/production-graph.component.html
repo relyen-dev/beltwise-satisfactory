@@ -95,6 +95,7 @@
           [class.production-node--recipe]="node.kind === 'recipe'"
           [class.production-node--output]="node.kind === 'output'"
           [class.production-node--byproduct]="node.kind === 'byproduct'"
+          [class.production-node--sink]="node.kind === 'sink'"
           [class.production-node--selected]="isNodeSelected(node.id)"
           [class.production-node--focused]="isNodeFocused(node.id)"
           [class.production-node--dimmed]="isNodeDimmed(node.id)"

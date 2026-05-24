@@ -389,4 +389,78 @@ describe('normalizeDocs', () => {
       baselineMaxPerMinute: Number.MAX_SAFE_INTEGER
     });
   });
+
+  it('maps only positive resource sink points into compact items', () => {
+    const rawDocs = [
+      {
+        NativeClass: '/Script/FactoryGame.FGItemDescriptor',
+        Classes: [
+          {
+            ClassName: 'Desc_Sinkable_C',
+            mDisplayName: 'Sinkable Part',
+            mForm: 'RF_SOLID',
+            mResourceSinkPoints: '6'
+          },
+          {
+            ClassName: 'Desc_ZeroSink_C',
+            mDisplayName: 'Zero Point Part',
+            mForm: 'RF_SOLID',
+            mResourceSinkPoints: '0'
+          },
+          {
+            ClassName: 'Desc_NoSink_C',
+            mDisplayName: 'No Point Part',
+            mForm: 'RF_SOLID'
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGResourceDescriptor',
+        Classes: [
+          {
+            ClassName: 'Desc_OreIron_C',
+            mDisplayName: 'Iron Ore',
+            mForm: 'RF_SOLID'
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGBuildableManufacturer',
+        Classes: [
+          {
+            ClassName: 'Build_ConstructorMk1_C',
+            mDisplayName: 'Constructor',
+            mPowerConsumption: '4',
+            mManufacturingSpeed: '1'
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGRecipe',
+        Classes: [
+          {
+            ClassName: 'Recipe_SinkPointParts_C',
+            mDisplayName: 'Sink Point Parts',
+            mIngredients: itemAmounts(['Desc_OreIron_C', 1]),
+            mProduct: itemAmounts(
+              ['Desc_Sinkable_C', 1],
+              ['Desc_ZeroSink_C', 1],
+              ['Desc_NoSink_C', 1],
+            ),
+            mManufactoringDuration: '6',
+            mProducedIn: producedIn('Build_ConstructorMk1_C')
+          }
+        ]
+      }
+    ];
+
+    const normalized = normalizeDocs(rawDocs, JSON.stringify(rawDocs), {
+      docsFileName: 'en-US.json',
+      generatedAt: '2026-05-12T00:00:00.000Z'
+    });
+
+    expect(normalized.items['Desc_Sinkable_C']?.sinkPoints).toBe(6);
+    expect(normalized.items['Desc_ZeroSink_C']?.sinkPoints).toBeUndefined();
+    expect(normalized.items['Desc_NoSink_C']?.sinkPoints).toBeUndefined();
+  });
 });

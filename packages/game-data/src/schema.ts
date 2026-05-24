@@ -17,7 +17,7 @@ export const itemSchema = z.object({
   form: z.enum(['solid', 'liquid', 'gas', 'invalid', 'unknown']),
   stackSize: z.string().optional(),
   energyValue: z.number().optional(),
-  sinkPoints: z.number().optional(),
+  sinkPoints: z.number().finite().positive().optional(),
   iconRef: z.string().optional(),
   category: z.string().optional()
 });

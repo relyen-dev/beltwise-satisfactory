@@ -70,6 +70,14 @@ describe('Beltwise plan export files', () => {
             sortOrder: 1,
           },
         ],
+        sinkRules: [
+          {
+            id: 'sink-screw',
+            itemId: 'Desc_Screw_C',
+            mode: 'surplus',
+            sortOrder: 0,
+          },
+        ],
         recipeOverrides: {
           Recipe_IronWire_C: { enabled: true },
         },
@@ -151,6 +159,7 @@ describe('Beltwise plan export files', () => {
     expect(decoded.project.graphLayout).toEqual(project.graphLayout);
     expect(decoded.project.buildState).toEqual(project.buildState);
     expect(decoded.project.notes).toBe(project.notes);
+    expect(decoded.project.sinkRules).toEqual(project.sinkRules);
     expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
   });
 
@@ -199,6 +208,14 @@ describe('Beltwise plan export files', () => {
     expect(prepared.targets.map((target) => target.id)).toEqual([
       'target-fixed',
       'target-maximize',
+    ]);
+    expect(prepared.sinkRules).toEqual([
+      {
+        id: 'sink-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 0,
+      },
     ]);
     expect(prepared.notes).toBe('Check belts\nBring power shards');
     expect(prepared.graphLayout.nodePositions).toEqual({
@@ -343,6 +360,14 @@ function createDomainPlannerProject(): PlannerProject {
         itemId: 'Desc_Wire_C',
         mode: 'maximize',
         sortOrder: 1,
+      },
+    ],
+    sinkRules: [
+      {
+        id: 'sink-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'surplus',
+        sortOrder: 0,
       },
     ],
     recipeOverrides: {

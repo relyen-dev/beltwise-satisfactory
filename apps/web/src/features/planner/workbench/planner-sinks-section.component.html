@@ -1,0 +1,47 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>Sink Rules</h3>
+      <span>{{ planConfig.sinkRuleRows().length }} configured surplus routes</span>
+    </div>
+  </div>
+
+  @let sinkRows = planConfig.sinkRuleRows();
+  @if (sinkRows.length === 0) {
+    <div class="empty-state">
+      <span>No surplus sink rules configured.</span>
+    </div>
+  } @else {
+    <div class="compact-list" aria-label="Configured sink rules">
+      @for (row of sinkRows; track row.rule.id) {
+        <div class="inspector-row sink-rule-row">
+          <bw-game-icon
+            [src]="row.iconSrc"
+            [label]="row.displayName"
+            [size]="'sm'"
+            [kind]="'item'"
+            [showTitle]="true"
+          />
+          <span class="inspector-row__copy">
+            <strong>{{ row.displayName }}</strong>
+            <span>Surplus sink</span>
+          </span>
+          <span class="sink-rule-row__stats">
+            <strong>{{ amountLabel(row.amountPerMinute) }}</strong>
+            <span>{{ sinkPointsLabel(row.sinkPointsPerMinute) }}</span>
+          </span>
+          <button
+            type="button"
+            class="row-icon-button row-icon-button--remove"
+            title="Remove sink rule"
+            aria-label="Remove sink rule"
+            [disabled]="planConfig.editingLocked()"
+            (click)="planConfig.sinkCommands.remove(row.rule.id)"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
+      }
+    </div>
+  }
+</section>

@@ -99,6 +99,7 @@ describe('createPlannerProject', () => {
 
     expect(project.notes).toBe('');
     expect(project.targets).toEqual([]);
+    expect(project.sinkRules).toEqual([]);
     expect(project.buildState).toEqual({
       planLocked: false,
       nodeLayoutLocked: false,
