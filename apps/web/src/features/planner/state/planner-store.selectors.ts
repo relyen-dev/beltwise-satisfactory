@@ -8,9 +8,11 @@ import {
   type ResourceInfo,
 } from '@beltwise/game-data';
 import {
+  buildGeneratorFuelCatalog,
   buildProductionGraph,
   buildMachinePanelReport,
   defaultRawResourceOpinionMultiplier,
+  type GeneratorFuelCatalogRow,
   type GraphNodeBuildState,
   isSinkableItem,
   NEUTRAL_RAW_RESOURCE_MULTIPLIER,
@@ -18,11 +20,14 @@ import {
   normalizePlainTextNote,
   plannerRelevantMachineIds,
   type PlannerProject,
+  type PowerTarget,
   type ProductionGraph,
   type ProductionGraphNode,
   type ProductionPlanResult,
   type ProductTarget,
   type RateDecimalPlaces,
+  scaleGeneratorFuelOption,
+  scaleGeneratorFuelOptionForPower,
   type SinkRule,
   sinkPointsPerMinute,
   rawResourceMultiplierCanAffectRouteCost,
@@ -68,6 +73,45 @@ export interface RawResourceMultiplierRow {
 export interface ExternalInputRow {
   item: Item;
   amountPerMinute: number;
+}
+
+export interface PowerTargetGeneratorOption {
+  generatorId: MachineId;
+  displayName: string;
+  iconSrc: string;
+}
+
+export interface PowerTargetFuelOption {
+  optionId: string;
+  fuelItemId: ItemId;
+  displayName: string;
+  iconSrc: string;
+}
+
+export type PowerTargetSummaryLineRole = 'fuel' | 'supplemental-input' | 'byproduct';
+
+export interface PowerTargetSummaryLine {
+  key: string;
+  label: string;
+  value: string;
+  iconSrc: string;
+  role: PowerTargetSummaryLineRole;
+}
+
+export interface PowerTargetSummary {
+  state: 'complete' | 'incomplete';
+  label: string;
+  lines: readonly PowerTargetSummaryLine[];
+}
+
+export interface PowerTargetRow {
+  target: PowerTarget;
+  fuelOptions: readonly PowerTargetFuelOption[];
+  amountValue: number;
+  amountStep: number;
+  amountLabel: string;
+  isComplete: boolean;
+  summary: PowerTargetSummary;
 }
 
 export interface SinkRuleRow {
@@ -267,6 +311,52 @@ export function selectExternalInputRows(
     .toSorted((left, right) => left.item.displayName.localeCompare(right.item.displayName));
 }
 
+export function selectPowerTargetGeneratorOptions(
+  dataset: GameDataset,
+): PowerTargetGeneratorOption[] {
+  const seenGeneratorIds = new Set<MachineId>();
+  const options: PowerTargetGeneratorOption[] = [];
+
+  for (const row of buildGeneratorFuelCatalog(dataset)) {
+    if (seenGeneratorIds.has(row.generatorId)) {
+      continue;
+    }
+    seenGeneratorIds.add(row.generatorId);
+    options.push({
+      generatorId: row.generatorId,
+      displayName: row.generatorDisplayName,
+      iconSrc: gameIconPathForMachineId(row.generatorId),
+    });
+  }
+
+  return options;
+}
+
+export function selectPowerTargetRows(
+  dataset: GameDataset,
+  project: PlannerProject,
+): PowerTargetRow[] {
+  const catalog = buildGeneratorFuelCatalog(dataset);
+
+  return project.powerTargets
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((target) => {
+      const catalogRow = selectedPowerTargetCatalogRow(catalog, target);
+      const amountValue = powerTargetAmountValue(target);
+      const summary = powerTargetSummary(catalogRow, target, amountValue);
+
+      return {
+        target,
+        fuelOptions: powerTargetFuelOptions(catalog, target.generatorId),
+        amountValue,
+        amountStep: target.mode === 'power' ? 10 : 1,
+        amountLabel: target.mode === 'power' ? 'Power target in MW' : 'Generator count',
+        isComplete: catalogRow !== undefined,
+        summary,
+      };
+    });
+}
+
 export function selectSinkRuleRows(
   dataset: GameDataset,
   project: PlannerProject,
@@ -297,9 +387,7 @@ export function selectAvailableSurplusSinkItems(
   }
 
   const configuredSurplusItemIds = new Set(
-    project.sinkRules
-      .filter((rule) => rule.mode === 'surplus')
-      .map((rule) => rule.itemId),
+    project.sinkRules.filter((rule) => rule.mode === 'surplus').map((rule) => rule.itemId),
   );
 
   return Object.values(dataset.items)
@@ -483,6 +571,93 @@ export function selectGraphNodeState(
 
 function isDefined<TValue>(value: TValue | undefined): value is TValue {
   return value !== undefined;
+}
+
+function powerTargetFuelOptions(
+  catalog: readonly GeneratorFuelCatalogRow[],
+  generatorId: MachineId | undefined,
+): PowerTargetFuelOption[] {
+  if (generatorId === undefined) {
+    return [];
+  }
+
+  return catalog
+    .filter((row) => row.generatorId === generatorId)
+    .map((row) => ({
+      optionId: row.optionId,
+      fuelItemId: row.fuelItemId,
+      displayName: row.fuelItemDisplayName,
+      iconSrc: gameIconPathForItemId(row.fuelItemId),
+    }));
+}
+
+function selectedPowerTargetCatalogRow(
+  catalog: readonly GeneratorFuelCatalogRow[],
+  target: PowerTarget,
+): GeneratorFuelCatalogRow | undefined {
+  if (target.generatorId === undefined || target.fuelItemId === undefined) {
+    return undefined;
+  }
+
+  return catalog.find(
+    (row) => row.generatorId === target.generatorId && row.fuelItemId === target.fuelItemId,
+  );
+}
+
+function powerTargetAmountValue(target: PowerTarget): number {
+  const value = target.mode === 'power' ? target.powerMw : target.generatorCount;
+  return value !== undefined && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function powerTargetSummary(
+  catalogRow: GeneratorFuelCatalogRow | undefined,
+  target: PowerTarget,
+  amountValue: number,
+): PowerTargetSummary {
+  if (catalogRow === undefined) {
+    return {
+      state: 'incomplete',
+      label: 'Select generator and fuel',
+      lines: [],
+    };
+  }
+
+  const scaled =
+    target.mode === 'power'
+      ? scaleGeneratorFuelOptionForPower(catalogRow, amountValue)
+      : scaleGeneratorFuelOption(catalogRow, amountValue);
+
+  return {
+    state: 'complete',
+    label: `${formatPlannerNumber(scaled.powerMw)} MW total`,
+    lines: [
+      {
+        key: `fuel:${scaled.fuelItemId}`,
+        label: `${scaled.fuelItemDisplayName} fuel`,
+        value: formatRatePerMinute(scaled.fuelConsumedPerMinute),
+        iconSrc: gameIconPathForItemId(scaled.fuelItemId),
+        role: 'fuel',
+      },
+      ...scaled.supplementalInputs.map((input) => ({
+        key: `input:${input.itemId}`,
+        label: `${input.itemDisplayName} input`,
+        value: formatRatePerMinute(input.amountPerMinute),
+        iconSrc: gameIconPathForItemId(input.itemId),
+        role: 'supplemental-input' as const,
+      })),
+      ...scaled.byproducts.map((byproduct) => ({
+        key: `byproduct:${byproduct.itemId}`,
+        label: `${byproduct.itemDisplayName} waste`,
+        value: formatRatePerMinute(byproduct.amountPerMinute),
+        iconSrc: gameIconPathForItemId(byproduct.itemId),
+        role: 'byproduct' as const,
+      })),
+    ],
+  };
+}
+
+function formatRatePerMinute(value: number): string {
+  return `${formatPlannerNumber(value)}/min`;
 }
 
 function formatMachineType(type: Machine['type']): string {

@@ -161,6 +161,17 @@
     0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
+.planner-shell .target-group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.planner-shell .target-group--power {
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 74%, black);
+}
+
 .planner-shell :is(.target-table, .input-table) {
   display: grid;
   gap: 7px;
@@ -223,8 +234,29 @@
   padding: 0 8px 0 6px;
 }
 
+.planner-shell .power-target-row {
+  grid-template-columns:
+    28px minmax(142px, 0.95fr) minmax(142px, 0.95fr) minmax(124px, 0.58fr)
+    minmax(94px, 0.42fr) minmax(220px, 1.2fr) auto;
+  min-height: 64px;
+}
+
+.planner-shell .power-target-row--head {
+  grid-template-columns:
+    28px minmax(142px, 0.95fr) minmax(142px, 0.95fr) minmax(124px, 0.58fr)
+    minmax(94px, 0.42fr) minmax(220px, 1.2fr) auto;
+}
+
 .planner-shell :is(.target-row select, .target-row input, .input-row select, .input-row input) {
   min-width: 0;
+}
+
+.planner-shell .power-target-row label {
+  min-width: 0;
+}
+
+.planner-shell .power-target-row label :is(select, input) {
+  width: 100%;
 }
 
 .planner-shell :is(.target-row--needs-item, .input-row--needs-item) {
@@ -432,6 +464,63 @@
   min-height: 42px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.planner-shell .power-target-summary {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.planner-shell .power-target-summary > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .power-target-summary--incomplete > strong {
+  color: var(--color-text-muted);
+}
+
+.planner-shell .power-target-summary__lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planner-shell .power-target-summary__line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 5px 2px 3px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, black);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-panel) 58%, black);
+}
+
+.planner-shell .power-target-summary__line > span:not(.game-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .power-target-summary__line strong {
+  flex: 0 0 auto;
+  color: var(--color-text);
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .planner-shell .row-tools {
@@ -2277,13 +2366,21 @@
     grid-template-columns: 28px minmax(0, 1fr);
   }
 
+  .planner-shell .power-target-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
   .planner-shell .target-drag-handle {
     grid-row: 1 / span 4;
     align-self: stretch;
     height: auto;
   }
 
-  .planner-shell .target-row :is(.target-item-picker, label, .row-tools) {
+  .planner-shell .power-target-row .target-drag-handle {
+    grid-row: 1 / span 6;
+  }
+
+  .planner-shell .target-row :is(.target-item-picker, label, .power-target-summary, .row-tools) {
     grid-column: 2;
   }
 

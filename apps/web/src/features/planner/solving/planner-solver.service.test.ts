@@ -5,6 +5,7 @@ import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createPlannerProject,
   type PlannerProject,
+  type PowerTarget,
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import { type ProductionPlanInput } from '@beltwise/solver';
@@ -57,7 +58,7 @@ describe('PlannerSolverService', () => {
     vi.useRealTimers();
   });
 
-  it('returns an empty solved result without calling the solver for projects without targets', () => {
+  it('returns an empty solved result without calling the solver for projects without solve targets', () => {
     const { service, solveCalls } = createSolverHarness();
 
     service.requestSolve(createSolveInput(createProject([])));
@@ -70,6 +71,78 @@ describe('PlannerSolverService', () => {
       recipeRates: {},
       outputs: {},
     });
+  });
+
+  it('returns an empty solved result without solver work for inactive productless power targets', () => {
+    const dataset = withPowerDataset();
+    const { service, solveCalls } = createSolverHarness();
+
+    service.requestSolve(
+      createSolveInput(
+        createProject([], dataset, [
+          {
+            id: 'power-draft',
+            mode: 'generator-count',
+            generatorCount: 1,
+            sortOrder: 0,
+          },
+          {
+            id: 'power-zero',
+            mode: 'generator-count',
+            generatorId: 'Build_GeneratorCoal_C',
+            fuelItemId: 'Desc_Coal_C',
+            generatorCount: 0,
+            sortOrder: 1,
+          },
+        ]),
+        dataset,
+      ),
+    );
+
+    expect(solveCalls).toEqual([]);
+    expect(service.solveStatus()).toBe('solved');
+    expect(service.solveResult()).toMatchObject({
+      status: 'optimal',
+      recipeRates: {},
+      outputs: {},
+    });
+  });
+
+  it('sends productless projects with active power targets to the solver', async () => {
+    vi.useFakeTimers();
+    const dataset = withPowerDataset();
+    const { service, solveCalls } = createSolverHarness();
+
+    service.requestSolve(
+      createSolveInput(
+        createProject([], dataset, [
+          {
+            id: 'power-coal',
+            mode: 'generator-count',
+            generatorId: 'Build_GeneratorCoal_C',
+            fuelItemId: 'Desc_Coal_C',
+            generatorCount: 4,
+            sortOrder: 0,
+          },
+        ]),
+        dataset,
+      ),
+    );
+
+    vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(solveCalls).toHaveLength(1);
+    expect(solveCalls[0]?.project.targets).toEqual([]);
+    expect(solveCalls[0]?.project.powerTargets).toMatchObject([
+      {
+        id: 'power-coal',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        generatorCount: 4,
+      },
+    ]);
+    expect(service.solveStatus()).toBe('solved');
   });
 
   it('debounces solve requests and sends the latest input to the solver', async () => {
@@ -182,12 +255,14 @@ function createSolverHarness(
 function createProject(
   targets: ReadonlyArray<{ itemId: string }>,
   dataset: GameDataset = tinySatisfactoryDataset,
+  powerTargets: PowerTarget[] = [],
 ): PlannerProject {
   return createPlannerProject({
     id: 'project-a',
     name: 'Factory',
     dataset,
     now: NOW,
+    powerTargets,
     targets: targets.map((target, index) => ({
       id: `target-${index}`,
       itemId: target.itemId,
@@ -198,8 +273,11 @@ function createProject(
   });
 }
 
-function createSolveInput(project: PlannerProject): PlannerSolveInput {
-  const input = selectPlannerSolveInput(project, tinySatisfactoryDataset);
+function createSolveInput(
+  project: PlannerProject,
+  dataset: GameDataset = tinySatisfactoryDataset,
+): PlannerSolveInput {
+  const input = selectPlannerSolveInput(project, dataset);
   if (!input) {
     throw new Error('Expected planner solve input');
   }
@@ -242,3 +320,45 @@ async function flushPromises(): Promise<void> {
 }
 
 type PlannerSolveFunction = (input: ProductionPlanInput) => Promise<ProductionPlanResult>;
+
+function withPowerDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Coal_C: {
+        id: 'Desc_Coal_C',
+        className: 'Desc_Coal_C',
+        displayName: 'Coal',
+        form: 'solid',
+      },
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_GeneratorCoal_C: {
+        id: 'Build_GeneratorCoal_C',
+        className: 'Build_GeneratorCoal_C',
+        displayName: 'Coal Generator',
+        type: 'generator',
+        powerMw: 75,
+      },
+    },
+    generatorFuelOptions: {
+      'Build_GeneratorCoal_C:Desc_Coal_C': {
+        id: 'Build_GeneratorCoal_C:Desc_Coal_C',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        powerMw: 75,
+        fuelConsumedPerMinute: 15,
+        supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 45 }],
+        byproducts: [],
+      },
+    },
+  };
+}

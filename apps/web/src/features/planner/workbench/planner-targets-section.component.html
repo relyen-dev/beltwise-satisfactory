@@ -1,25 +1,10 @@
 <section class="work-section">
-  <div class="section-heading">
-    <div>
-      <h3>Production Targets</h3>
-      <span>{{ configuredTargetCount() }} configured outputs solved together</span>
-    </div>
-    <button
-      type="button"
-      class="primary-action"
-      title="Add product target"
-      aria-label="Add product target"
-      [disabled]="planConfig.editingLocked()"
-      (click)="planConfig.targetCommands.add()"
-    >
-      Add product
-    </button>
-  </div>
-
-  @let targetRows = targets();
-  @if (targetRows.length === 0) {
-    <div class="empty-state empty-state--action">
-      <span>Add a product target to build a plan.</span>
+  <section class="target-group" aria-labelledby="production-targets-heading">
+    <div class="section-heading">
+      <div>
+        <h3 id="production-targets-heading">Production Targets</h3>
+        <span>{{ configuredTargetCount() }} configured outputs solved together</span>
+      </div>
       <button
         type="button"
         class="primary-action"
@@ -31,104 +16,303 @@
         Add product
       </button>
     </div>
-  } @else {
-    <div class="target-table" role="table" aria-label="Production target rows">
-      <div class="target-row target-row--head" role="row">
-        <span aria-hidden="true"></span>
-        <span>Item</span>
-        <span>Mode</span>
-        <span>Rate / min</span>
-        <span>Actions</span>
-      </div>
 
-      @for (target of targetRows; track target.id) {
-        <div
-          class="target-row"
-          [class.target-row--needs-item]="target.itemId.length === 0"
-          [class.target-row--dragging]="draggedTargetId() === target.id"
-          [class.target-row--drop-before]="
-            targetDropHint()?.targetId === target.id && targetDropHint()?.position === 'before'
-          "
-          [class.target-row--drop-after]="
-            targetDropHint()?.targetId === target.id && targetDropHint()?.position === 'after'
-          "
-          role="row"
-          (dragover)="handleTargetDragOver(target.id, $event)"
-          (drop)="dropTarget(target.id, $event)"
+    @let targetRows = targets();
+    @if (targetRows.length === 0) {
+      <div class="empty-state empty-state--action">
+        <span>Add a product target to build a plan.</span>
+        <button
+          type="button"
+          class="primary-action"
+          title="Add product target"
+          aria-label="Add product target"
+          [disabled]="planConfig.editingLocked()"
+          (click)="planConfig.targetCommands.add()"
         >
-          <button
-            type="button"
-            class="target-drag-handle"
-            title="Drag to reorder target"
-            aria-label="Drag to reorder target"
-            [disabled]="planConfig.editingLocked()"
-            [attr.draggable]="planConfig.editingLocked() ? null : 'true'"
-            (dragstart)="startTargetDrag(target.id, $event)"
-            (dragend)="finishTargetDrag()"
-            (keydown)="handleTargetDragKeydown(target.id, $event)"
-          >
-            <span aria-hidden="true"></span>
-          </button>
-
-          <div class="target-item-picker">
-            <bw-target-item-picker
-              [items]="planConfig.itemOptions()"
-              [selectedItemId]="target.itemId"
-              [disabled]="planConfig.editingLocked()"
-              (itemSelected)="updateTargetItem(target.id, $event)"
-            />
-          </div>
-
-          <label>
-            <span class="sr-only">Target mode</span>
-            <select
-              [ngModel]="target.mode"
-              [disabled]="planConfig.editingLocked()"
-              (ngModelChange)="planConfig.targetCommands.updateMode(target.id, $event)"
-            >
-              <option value="fixed">Fixed</option>
-              <option value="maximize">Maximize</option>
-            </select>
-          </label>
-
-          <label>
-            <span class="sr-only">Amount per minute</span>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              [disabled]="target.mode === 'maximize' || planConfig.editingLocked()"
-              [ngModel]="target.amountPerMinute ?? 0"
-              (ngModelChange)="updateTargetAmount(target.id, $event)"
-            />
-          </label>
-
-          <div class="row-tools">
-            <button
-              type="button"
-              class="row-icon-button row-icon-button--duplicate"
-              title="Duplicate target"
-              aria-label="Duplicate target"
-              [disabled]="planConfig.editingLocked()"
-              (click)="planConfig.targetCommands.duplicate(target)"
-            >
-              <span aria-hidden="true"></span>
-            </button>
-            <button
-              type="button"
-              class="row-icon-button row-icon-button--remove"
-              title="Remove target"
-              aria-label="Remove target"
-              [disabled]="planConfig.editingLocked()"
-              (click)="planConfig.targetCommands.remove(target.id)"
-            >
-              <span aria-hidden="true"></span>
-            </button>
-          </div>
+          Add product
+        </button>
+      </div>
+    } @else {
+      <div class="target-table" role="table" aria-label="Production target rows">
+        <div class="target-row target-row--head" role="row">
+          <span aria-hidden="true"></span>
+          <span>Item</span>
+          <span>Mode</span>
+          <span>Rate / min</span>
+          <span>Actions</span>
         </div>
-      }
+
+        @for (target of targetRows; track target.id) {
+          <div
+            class="target-row"
+            [class.target-row--needs-item]="target.itemId.length === 0"
+            [class.target-row--dragging]="draggedTargetId() === target.id"
+            [class.target-row--drop-before]="
+              targetDropHint()?.targetId === target.id && targetDropHint()?.position === 'before'
+            "
+            [class.target-row--drop-after]="
+              targetDropHint()?.targetId === target.id && targetDropHint()?.position === 'after'
+            "
+            role="row"
+            (dragover)="handleTargetDragOver(target.id, $event)"
+            (drop)="dropTarget(target.id, $event)"
+          >
+            <button
+              type="button"
+              class="target-drag-handle"
+              title="Drag to reorder target"
+              aria-label="Drag to reorder target"
+              [disabled]="planConfig.editingLocked()"
+              [attr.draggable]="planConfig.editingLocked() ? null : 'true'"
+              (dragstart)="startTargetDrag(target.id, $event)"
+              (dragend)="finishTargetDrag()"
+              (keydown)="handleTargetDragKeydown(target.id, $event)"
+            >
+              <span aria-hidden="true"></span>
+            </button>
+
+            <div class="target-item-picker">
+              <bw-target-item-picker
+                [items]="planConfig.itemOptions()"
+                [selectedItemId]="target.itemId"
+                [disabled]="planConfig.editingLocked()"
+                (itemSelected)="updateTargetItem(target.id, $event)"
+              />
+            </div>
+
+            <label>
+              <span class="sr-only">Target mode</span>
+              <select
+                [ngModel]="target.mode"
+                [disabled]="planConfig.editingLocked()"
+                (ngModelChange)="planConfig.targetCommands.updateMode(target.id, $event)"
+              >
+                <option value="fixed">Fixed</option>
+                <option value="maximize">Maximize</option>
+              </select>
+            </label>
+
+            <label>
+              <span class="sr-only">Amount per minute</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                [disabled]="target.mode === 'maximize' || planConfig.editingLocked()"
+                [ngModel]="target.amountPerMinute ?? 0"
+                (ngModelChange)="updateTargetAmount(target.id, $event)"
+              />
+            </label>
+
+            <div class="row-tools">
+              <button
+                type="button"
+                class="row-icon-button row-icon-button--duplicate"
+                title="Duplicate target"
+                aria-label="Duplicate target"
+                [disabled]="planConfig.editingLocked()"
+                (click)="planConfig.targetCommands.duplicate(target)"
+              >
+                <span aria-hidden="true"></span>
+              </button>
+              <button
+                type="button"
+                class="row-icon-button row-icon-button--remove"
+                title="Remove target"
+                aria-label="Remove target"
+                [disabled]="planConfig.editingLocked()"
+                (click)="planConfig.targetCommands.remove(target.id)"
+              >
+                <span aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="target-group target-group--power" aria-labelledby="power-targets-heading">
+    <div class="section-heading">
+      <div>
+        <h3 id="power-targets-heading">Power Targets</h3>
+        <span>{{ configuredPowerTargetCount() }} configured power targets solved with outputs</span>
+      </div>
+      <button
+        type="button"
+        class="primary-action"
+        title="Add power target"
+        aria-label="Add power target"
+        [disabled]="!canAddPowerTarget()"
+        (click)="planConfig.powerTargetCommands.add()"
+      >
+        Add power
+      </button>
     </div>
-  }
+
+    @let powerTargetRows = powerTargets();
+    @if (!hasPowerTargetCatalog()) {
+      <div class="empty-state">No generator fuel catalog available in this dataset.</div>
+    } @else if (powerTargetRows.length === 0) {
+      <div class="empty-state empty-state--action">
+        <span>Add a generator power target to this plan.</span>
+        <button
+          type="button"
+          class="primary-action"
+          title="Add power target"
+          aria-label="Add power target"
+          [disabled]="!canAddPowerTarget()"
+          (click)="planConfig.powerTargetCommands.add()"
+        >
+          Add power
+        </button>
+      </div>
+    } @else {
+      <div class="target-table power-target-table" role="table" aria-label="Power target rows">
+        <div class="target-row target-row--head power-target-row power-target-row--head" role="row">
+          <span aria-hidden="true"></span>
+          <span>Generator</span>
+          <span>Fuel</span>
+          <span>Mode</span>
+          <span>Amount</span>
+          <span>Summary</span>
+          <span>Actions</span>
+        </div>
+
+        @for (row of powerTargetRows; track row.target.id) {
+          <div
+            class="target-row power-target-row"
+            [class.target-row--needs-item]="!row.isComplete"
+            [class.target-row--dragging]="draggedPowerTargetId() === row.target.id"
+            [class.target-row--drop-before]="
+              powerTargetDropHint()?.targetId === row.target.id &&
+              powerTargetDropHint()?.position === 'before'
+            "
+            [class.target-row--drop-after]="
+              powerTargetDropHint()?.targetId === row.target.id &&
+              powerTargetDropHint()?.position === 'after'
+            "
+            role="row"
+            (dragover)="handlePowerTargetDragOver(row.target.id, $event)"
+            (drop)="dropPowerTarget(row.target.id, $event)"
+          >
+            <button
+              type="button"
+              class="target-drag-handle"
+              title="Drag to reorder power target"
+              aria-label="Drag to reorder power target"
+              [disabled]="planConfig.editingLocked()"
+              [attr.draggable]="planConfig.editingLocked() ? null : 'true'"
+              (dragstart)="startPowerTargetDrag(row.target.id, $event)"
+              (dragend)="finishPowerTargetDrag()"
+              (keydown)="handlePowerTargetDragKeydown(row.target.id, $event)"
+            >
+              <span aria-hidden="true"></span>
+            </button>
+
+            <label>
+              <span class="sr-only">Power target generator</span>
+              <select
+                [ngModel]="row.target.generatorId ?? ''"
+                [disabled]="planConfig.editingLocked()"
+                (ngModelChange)="updatePowerTargetGenerator(row.target.id, $event)"
+              >
+                <option value="">Generator</option>
+                @for (
+                  generator of planConfig.powerTargetGeneratorOptions();
+                  track generator.generatorId
+                ) {
+                  <option [value]="generator.generatorId">{{ generator.displayName }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span class="sr-only">Power target fuel</span>
+              <select
+                [ngModel]="row.target.fuelItemId ?? ''"
+                [disabled]="row.target.generatorId === undefined || planConfig.editingLocked()"
+                (ngModelChange)="updatePowerTargetFuel(row.target.id, $event)"
+              >
+                <option value="">Fuel</option>
+                @for (fuel of row.fuelOptions; track fuel.optionId) {
+                  <option [value]="fuel.fuelItemId">{{ fuel.displayName }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span class="sr-only">Power target mode</span>
+              <select
+                [ngModel]="row.target.mode"
+                [disabled]="planConfig.editingLocked()"
+                (ngModelChange)="updatePowerTargetMode(row.target.id, $event)"
+              >
+                <option value="generator-count">Generators</option>
+                <option value="power">MW</option>
+              </select>
+            </label>
+
+            <label>
+              <span class="sr-only">{{ row.amountLabel }}</span>
+              <input
+                type="number"
+                min="0"
+                [step]="row.amountStep"
+                [attr.aria-label]="row.amountLabel"
+                [ngModel]="row.amountValue"
+                [disabled]="planConfig.editingLocked()"
+                (ngModelChange)="updatePowerTargetAmount(row.target.id, $event)"
+              />
+            </label>
+
+            <div
+              class="power-target-summary"
+              [class.power-target-summary--incomplete]="!row.isComplete"
+            >
+              <strong>{{ row.summary.label }}</strong>
+              @if (row.summary.lines.length > 0) {
+                <div class="power-target-summary__lines">
+                  @for (line of row.summary.lines; track line.key) {
+                    <span class="power-target-summary__line">
+                      <span class="game-icon game-icon--xs" aria-hidden="true">
+                        <img [src]="line.iconSrc" [alt]="line.label" />
+                      </span>
+                      <span>{{ line.label }}</span>
+                      <strong>{{ line.value }}</strong>
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="row-tools">
+              <button
+                type="button"
+                class="row-icon-button row-icon-button--duplicate"
+                title="Duplicate power target"
+                aria-label="Duplicate power target"
+                [disabled]="planConfig.editingLocked()"
+                (click)="planConfig.powerTargetCommands.duplicate(row.target)"
+              >
+                <span aria-hidden="true"></span>
+              </button>
+              <button
+                type="button"
+                class="row-icon-button row-icon-button--remove"
+                title="Remove power target"
+                aria-label="Remove power target"
+                [disabled]="planConfig.editingLocked()"
+                (click)="planConfig.powerTargetCommands.remove(row.target.id)"
+              >
+                <span aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
 
   <div class="plan-notes">
     <div class="plan-notes__heading">

@@ -22,6 +22,7 @@ import {
   type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
+  type PowerTarget,
   type ProductTarget,
   type ProductionPlanResult,
   type RateDecimalPlaces,
@@ -36,6 +37,8 @@ import {
   selectItemOptions,
   selectMachinePanelSummary,
   selectMachineRows,
+  selectPowerTargetGeneratorOptions,
+  selectPowerTargetRows,
   selectRawResourceMultiplierRows,
   selectRecipeRows,
   selectResourceRows,
@@ -58,6 +61,17 @@ export interface PlannerPlanTargetCommands {
   readonly updateItem: (targetId: string, itemId: ItemId) => void;
   readonly updateMode: (targetId: string, mode: ProductTarget['mode']) => void;
   readonly updateAmount: (targetId: string, amountPerMinute: number) => void;
+}
+
+export interface PlannerPlanPowerTargetCommands {
+  readonly add: () => void;
+  readonly duplicate: (target: PowerTarget) => void;
+  readonly remove: (targetId: string) => void;
+  readonly reorder: (targetIds: readonly string[]) => void;
+  readonly updateMode: (targetId: string, mode: PowerTarget['mode']) => void;
+  readonly updateGenerator: (targetId: string, generatorId: MachineId | undefined) => void;
+  readonly updateFuel: (targetId: string, fuelItemId: ItemId | undefined) => void;
+  readonly updateAmount: (targetId: string, amount: number) => void;
 }
 
 export interface PlannerPlanInputCommands {
@@ -118,6 +132,10 @@ export interface PlannerPlanConfigReadModel {
   readonly hasActivePlan: Signal<boolean>;
   readonly editingLocked: Signal<boolean>;
   readonly targetRows: Signal<readonly ProductTarget[]>;
+  readonly powerTargetRows: Signal<ReturnType<typeof selectPowerTargetRows>>;
+  readonly powerTargetGeneratorOptions: Signal<
+    ReturnType<typeof selectPowerTargetGeneratorOptions>
+  >;
   readonly sinkRules: Signal<readonly SinkRule[]>;
   readonly sinkRuleRows: Signal<ReturnType<typeof selectSinkRuleRows>>;
   readonly availableSurplusSinkItems: Signal<ReturnType<typeof selectAvailableSurplusSinkItems>>;
@@ -140,6 +158,7 @@ export interface PlannerPlanConfigReadModel {
 
 export interface PlannerPlanConfigCommands {
   readonly targetCommands: PlannerPlanTargetCommands;
+  readonly powerTargetCommands: PlannerPlanPowerTargetCommands;
   readonly inputCommands: PlannerPlanInputCommands;
   readonly sinkCommands: PlannerPlanSinkCommands;
   readonly resourceCommands: PlannerPlanResourceCommands;
@@ -159,7 +178,9 @@ export const PLANNER_PLAN_CONFIG_STORE_PORT = new InjectionToken<PlannerPlanConf
 );
 
 @Injectable({ providedIn: 'root' })
-export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, PlannerPlanConfigCommands {
+export class PlannerPlanConfigStore
+  implements PlannerPlanConfigReadModel, PlannerPlanConfigCommands
+{
   private readonly port = inject(PLANNER_PLAN_CONFIG_STORE_PORT);
 
   public readonly recipeSearch = signal('');
@@ -180,6 +201,17 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
   );
 
   public readonly itemOptions = computed(() => selectItemOptions(this.port.dataset()));
+
+  public readonly powerTargetGeneratorOptions = computed(() => {
+    const dataset = this.port.dataset();
+    return dataset ? selectPowerTargetGeneratorOptions(dataset) : [];
+  });
+
+  public readonly powerTargetRows = computed(() => {
+    const dataset = this.port.dataset();
+    const project = this.port.activeProject();
+    return dataset && project ? selectPowerTargetRows(dataset, project) : [];
+  });
 
   public readonly externalInputRows = computed(() => {
     const dataset = this.port.dataset();
@@ -210,7 +242,9 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
   public readonly rawResourceMultiplierRows = computed(() => {
     const dataset = this.port.dataset();
     const project = this.port.activeProject();
-    return dataset && project ? selectRawResourceMultiplierRows(dataset, project.objectiveProfile) : [];
+    return dataset && project
+      ? selectRawResourceMultiplierRows(dataset, project.objectiveProfile)
+      : [];
   });
 
   public readonly recipeRows = computed(() => {
@@ -262,6 +296,19 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
     updateMode: (targetId, mode) => this.planCommands.updateTargetMode(targetId, mode),
     updateAmount: (targetId, amountPerMinute) =>
       this.planCommands.updateTargetAmount(targetId, amountPerMinute),
+  };
+
+  public readonly powerTargetCommands: PlannerPlanPowerTargetCommands = {
+    add: () => this.planCommands.addPowerTarget(),
+    duplicate: (target) => this.planCommands.duplicatePowerTarget(target),
+    remove: (targetId) => this.planCommands.removePowerTarget(targetId),
+    reorder: (targetIds) => this.planCommands.reorderPowerTargets(targetIds),
+    updateMode: (targetId, mode) => this.planCommands.updatePowerTargetMode(targetId, mode),
+    updateGenerator: (targetId, generatorId) =>
+      this.planCommands.updatePowerTargetGenerator(targetId, generatorId),
+    updateFuel: (targetId, fuelItemId) =>
+      this.planCommands.updatePowerTargetFuel(targetId, fuelItemId),
+    updateAmount: (targetId, amount) => this.planCommands.updatePowerTargetAmount(targetId, amount),
   };
 
   public readonly inputCommands: PlannerPlanInputCommands = {
