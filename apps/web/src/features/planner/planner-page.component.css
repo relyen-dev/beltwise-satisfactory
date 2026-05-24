@@ -35,6 +35,10 @@
   --active-shell-accent: var(--color-pipe);
 }
 
+.planner-shell[data-active-panel='sinks'] {
+  --active-shell-accent: var(--color-accent);
+}
+
 .planner-shell[data-active-panel='machines'] {
   --active-shell-accent: var(--color-machine);
 }
@@ -712,6 +716,10 @@
   --rail-accent: var(--color-pipe);
 }
 
+.rail-button[data-panel='sinks'] {
+  --rail-accent: var(--color-accent);
+}
+
 .rail-button[data-panel='machines'] {
   --rail-accent: var(--color-machine);
 }
@@ -906,6 +914,42 @@
   border-top: 2px solid currentColor;
   border-right: 2px solid currentColor;
   transform: rotate(45deg);
+}
+
+.rail-button[data-panel='sinks'] .rail-icon::before {
+  top: 7px;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+}
+
+.rail-button[data-panel='sinks'] .rail-icon::after {
+  top: 13px;
+  left: 13px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.rail-button[data-panel='sinks'] .rail-icon span::before {
+  left: 15px;
+  top: 4px;
+  width: 2px;
+  height: 24px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 62%, transparent);
+}
+
+.rail-button[data-panel='sinks'] .rail-icon span::after {
+  left: 4px;
+  top: 15px;
+  width: 24px;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 62%, transparent);
 }
 
 .rail-button[data-panel='machines'] .rail-icon::before {
@@ -1210,6 +1254,10 @@
 
 .work-panel[data-panel='inputs'] {
   --work-panel-accent: var(--color-pipe);
+}
+
+.work-panel[data-panel='sinks'] {
+  --work-panel-accent: var(--color-accent);
 }
 
 .work-panel[data-panel='machines'] {

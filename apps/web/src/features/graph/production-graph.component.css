@@ -243,6 +243,50 @@
 .production-node--sink {
   --node-accent: var(--color-accent);
   --node-border: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
+  align-items: center;
+  justify-content: center;
+  padding-inline: 18px;
+  border-top-width: 1px;
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      color-mix(in srgb, var(--node-accent) 20%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-panel-raised) 96%, white),
+      color-mix(in srgb, var(--color-panel-raised) 88%, black)
+    );
+  text-align: center;
+}
+
+.production-node--sink::after {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid color-mix(in srgb, var(--node-accent) 32%, transparent);
+  border-radius: inherit;
+  content: '';
+  pointer-events: none;
+}
+
+.production-node--sink .node-drag-surface {
+  align-items: center;
+  justify-content: center;
+}
+
+.production-node--sink .node-title {
+  font-size: 14px;
+}
+
+.production-node--sink .node-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.production-node--sink .node-tooltip {
+  text-align: left;
 }
 
 .node-kicker {

@@ -201,6 +201,10 @@ describe('PlannerPlanConfigStore', () => {
       },
     });
 
+    expect(planConfig.availableSurplusSinkItems().map((item) => item.id)).toEqual([
+      'Desc_Screw_C',
+    ]);
+
     planConfig.sinkCommands.addSurplus('Desc_Screw_C');
 
     expect(requiredProject(activeProject).sinkRules).toEqual([
@@ -211,6 +215,7 @@ describe('PlannerPlanConfigStore', () => {
         sortOrder: 0,
       },
     ]);
+    expect(planConfig.availableSurplusSinkItems()).toEqual([]);
     expect(planConfig.sinkRuleRows()).toMatchObject([
       {
         itemId: 'Desc_Screw_C',

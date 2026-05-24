@@ -31,6 +31,7 @@ import { DatasetService } from '../dataset.service';
 import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import {
+  selectAvailableSurplusSinkItems,
   selectExternalInputRows,
   selectItemOptions,
   selectMachinePanelSummary,
@@ -119,6 +120,7 @@ export interface PlannerPlanConfigReadModel {
   readonly targetRows: Signal<readonly ProductTarget[]>;
   readonly sinkRules: Signal<readonly SinkRule[]>;
   readonly sinkRuleRows: Signal<ReturnType<typeof selectSinkRuleRows>>;
+  readonly availableSurplusSinkItems: Signal<ReturnType<typeof selectAvailableSurplusSinkItems>>;
   readonly planNotes: Signal<string>;
   readonly itemOptions: Signal<readonly Item[]>;
   readonly externalInputRows: Signal<ReturnType<typeof selectExternalInputRows>>;
@@ -189,6 +191,12 @@ export class PlannerPlanConfigStore implements PlannerPlanConfigReadModel, Plann
     const dataset = this.port.dataset();
     const project = this.port.activeProject();
     return dataset && project ? selectSinkRuleRows(dataset, project, this.port.solveResult()) : [];
+  });
+
+  public readonly availableSurplusSinkItems = computed(() => {
+    const dataset = this.port.dataset();
+    const project = this.port.activeProject();
+    return dataset && project ? selectAvailableSurplusSinkItems(dataset, project) : [];
   });
 
   public readonly resourceRows = computed(() => {

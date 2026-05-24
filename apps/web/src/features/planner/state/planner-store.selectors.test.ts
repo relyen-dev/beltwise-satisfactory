@@ -6,6 +6,7 @@ import {
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import {
+  selectAvailableSurplusSinkItems,
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
   selectGraphNodeNotes,
@@ -257,6 +258,38 @@ describe('planner store selectors', () => {
         amountPerMinute: 12,
         sinkPointsPerMinute: 24,
       },
+    ]);
+  });
+
+  it('lists only sinkable items without an existing surplus sink rule', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+        Desc_Wire_C: {
+          ...tinySatisfactoryDataset.items['Desc_Wire_C']!,
+          sinkPoints: 1,
+        },
+      },
+    };
+    const project: PlannerProject = {
+      ...createProject(),
+      sinkRules: [
+        {
+          id: 'sink-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+      ],
+    };
+
+    expect(selectAvailableSurplusSinkItems(dataset, project).map((item) => item.id)).toEqual([
+      'Desc_Wire_C',
     ]);
   });
 

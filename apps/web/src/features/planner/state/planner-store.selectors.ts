@@ -12,6 +12,7 @@ import {
   buildMachinePanelReport,
   defaultRawResourceOpinionMultiplier,
   type GraphNodeBuildState,
+  isSinkableItem,
   NEUTRAL_RAW_RESOURCE_MULTIPLIER,
   type ObjectiveProfile,
   normalizePlainTextNote,
@@ -283,6 +284,21 @@ export function selectSinkRuleRows(
         sinkPointsPerMinute: sinkPointsPerMinute(dataset, rule.itemId, amountPerMinute),
       };
     });
+}
+
+export function selectAvailableSurplusSinkItems(
+  dataset: GameDataset,
+  project: PlannerProject,
+): Item[] {
+  const configuredSurplusItemIds = new Set(
+    project.sinkRules
+      .filter((rule) => rule.mode === 'surplus')
+      .map((rule) => rule.itemId),
+  );
+
+  return Object.values(dataset.items)
+    .filter((item) => isSinkableItem(dataset, item.id) && !configuredSurplusItemIds.has(item.id))
+    .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
 }
 
 export function selectMachineRows(

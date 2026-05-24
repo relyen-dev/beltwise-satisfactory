@@ -492,6 +492,35 @@ describe('ProductionGraphComponent template', () => {
     expect(assumedNode?.textContent).toContain('25/min assumed source');
   });
 
+  it('renders sink nodes with the terminal sink presentation class', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+
+    controls.graph.set({
+      nodes: [
+        {
+          id: 'sink:Desc_Screw_C',
+          kind: 'sink',
+          label: 'Awesome Sink',
+          subtitle: '12/min surplus',
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 12,
+          sinkRuleId: 'sink-screw',
+          sinkPointsPerMinute: 24,
+        },
+      ],
+      edges: [],
+    });
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const sinkNode = element.querySelector('.production-node--sink');
+
+    expect(sinkNode).not.toBeNull();
+    expect(sinkNode?.textContent).toContain('sink');
+    expect(sinkNode?.textContent).toContain('Awesome Sink');
+    expect(sinkNode?.textContent).toContain('12/min surplus');
+  });
+
   it('renders compact zoom buttons that do not bubble graph control clicks', async () => {
     const { fixture } = await createRenderedGraphHarness();
     const graphSurface = requiredGraphSurface(fixture);

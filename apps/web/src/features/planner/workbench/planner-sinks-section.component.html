@@ -6,6 +6,20 @@
     </div>
   </div>
 
+  <div class="sink-rule-add">
+    <span class="sink-rule-add__label">Add surplus</span>
+    <bw-target-item-picker
+      [items]="planConfig.availableSurplusSinkItems()"
+      [selectedItemId]="''"
+      [disabled]="planConfig.editingLocked() || planConfig.availableSurplusSinkItems().length === 0"
+      [allowEmptySelection]="false"
+      [emptyLabel]="addPickerLabel()"
+      [searchLabel]="'Search sinkable items'"
+      [searchPlaceholder]="'Search sinkable items'"
+      (itemSelected)="addSurplusSink($event)"
+    />
+  </div>
+
   @let sinkRows = planConfig.sinkRuleRows();
   @if (sinkRows.length === 0) {
     <div class="empty-state">
