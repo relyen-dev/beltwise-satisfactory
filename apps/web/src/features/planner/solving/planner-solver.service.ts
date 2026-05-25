@@ -8,7 +8,7 @@ import {
   type Signal,
 } from '@angular/core';
 import { createEmptyProductionPlanResult, type ProductionPlanResult } from '@beltwise/planner-core';
-import { hasActivePowerTargets, type PlannerSolveInput } from './planner-solve-input';
+import type { PlannerSolveInput } from './planner-solve-input';
 import { PlannerProductionSolverService } from './planner-production-solver.service';
 
 export type SolveStatus = 'idle' | 'solving' | 'solved' | 'error';
@@ -72,10 +72,7 @@ export class PlannerSolverService {
     const serial = ++this.solveSerial;
     this.solveError.set(null);
 
-    if (
-      solveInput.project.targets.length === 0 &&
-      !hasActivePowerTargets(solveInput.project, solveInput.dataset)
-    ) {
+    if (solveInput.project.targets.length === 0 && solveInput.project.powerTargets.length === 0) {
       this.solveScheduler.cancel();
       this.solveResult.set(createEmptyProductionPlanResult());
       this.solveStatus.set('solved');

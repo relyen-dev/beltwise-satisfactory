@@ -73,7 +73,8 @@ describe('PlannerSolverService', () => {
     });
   });
 
-  it('returns an empty solved result without solver work for inactive productless power targets', () => {
+  it('sends productless projects with inactive power targets to the solver for validation', async () => {
+    vi.useFakeTimers();
     const dataset = withPowerDataset();
     const { service, solveCalls } = createSolverHarness();
 
@@ -99,13 +100,53 @@ describe('PlannerSolverService', () => {
       ),
     );
 
-    expect(solveCalls).toEqual([]);
+    vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(solveCalls).toHaveLength(1);
     expect(service.solveStatus()).toBe('solved');
     expect(service.solveResult()).toMatchObject({
       status: 'optimal',
       recipeRates: {},
       outputs: {},
     });
+  });
+
+  it('preserves warnings from invalid productless power targets', async () => {
+    vi.useFakeTimers();
+    const dataset = withPowerDataset();
+    const warning = {
+      code: 'power-target-invalid-option',
+      message: 'Invalid generator/fuel option.',
+      powerTargetId: 'power-invalid',
+      itemId: 'Desc_Water_C',
+    };
+    const { service, solveCalls } = createSolverHarness({
+      solve: () => Promise.resolve(createResult({ warnings: [warning] })),
+    });
+
+    service.requestSolve(
+      createSolveInput(
+        createProject([], dataset, [
+          {
+            id: 'power-invalid',
+            mode: 'generator-count',
+            generatorId: 'Build_GeneratorCoal_C',
+            fuelItemId: 'Desc_Water_C',
+            generatorCount: 4,
+            sortOrder: 0,
+          },
+        ]),
+        dataset,
+      ),
+    );
+
+    vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(solveCalls).toHaveLength(1);
+    expect(service.solveStatus()).toBe('solved');
+    expect(service.solveResult()?.warnings).toEqual([warning]);
   });
 
   it('sends productless projects with active power targets to the solver', async () => {

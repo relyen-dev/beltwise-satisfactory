@@ -83,16 +83,6 @@ export function equalPlannerSolveInputs(
   return left?.key === right?.key;
 }
 
-export function hasActivePowerTargets(project: PlannerProject, dataset: GameDataset): boolean {
-  return project.powerTargets.some((target) => {
-    if (!isValidPowerTargetOption(target, dataset)) {
-      return false;
-    }
-    const amount = target.mode === 'power' ? target.powerMw : target.generatorCount;
-    return amount !== undefined && Number.isFinite(amount) && amount > 0.000001;
-  });
-}
-
 function cachedGameDatasetSolveKey(dataset: GameDataset): PlannerSolveKey {
   const cached = datasetSolveKeyCache.get(dataset);
   if (cached !== undefined) {
@@ -150,15 +140,4 @@ function solvePowerTargetKeyPart(
 
 function safePowerTargetAmount(value: number | undefined): number {
   return value !== undefined && Number.isFinite(value) && value >= 0 ? value : 0;
-}
-
-function isValidPowerTargetOption(target: PowerTarget, dataset: GameDataset): boolean {
-  if (target.generatorId === undefined || target.fuelItemId === undefined) {
-    return false;
-  }
-
-  return Object.values(dataset.generatorFuelOptions).some(
-    (option) =>
-      option.generatorId === target.generatorId && option.fuelItemId === target.fuelItemId,
-  );
 }
