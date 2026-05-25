@@ -220,6 +220,26 @@ describe('plan transfer field codecs', () => {
           sortOrder: 2,
         },
         {
+          id: 'sink-target-wire',
+          itemId: 'Desc_Wire_C',
+          mode: 'target-output',
+          amountPerMinute: 25,
+          sortOrder: 8,
+        },
+        {
+          id: 'sink-target-wire-duplicate',
+          itemId: 'Desc_Wire_C',
+          mode: 'target-output',
+          amountPerMinute: 5,
+          sortOrder: 9,
+        },
+        {
+          id: 'sink-target-missing-amount',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          sortOrder: 10,
+        },
+        {
           id: '__proto__',
           itemId: 'Desc_IronPlate_C',
           mode: 'surplus',
@@ -265,6 +285,13 @@ describe('plan transfer field codecs', () => {
         itemId: 'Desc_IronPlate_C',
         mode: 'surplus',
         sortOrder: 2,
+      },
+      {
+        id: 'sink-target-wire',
+        itemId: 'Desc_Wire_C',
+        mode: 'target-output',
+        amountPerMinute: 25,
+        sortOrder: 3,
       },
     ]);
     expect(copySinkRulesForTransfer(sinkRules)).toEqual(sinkRules);

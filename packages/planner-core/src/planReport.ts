@@ -12,8 +12,9 @@ import {
   type PlannerProject,
   type ProductTarget,
   resolveObjectivePresetId,
+  type SinkRule,
 } from './plan';
-import { routeSurplusFlowsToSink, shouldRouteSurplusToSink } from './graphModel';
+import { routeItemFlowsToSinks, shouldRouteSurplusToSink } from './graphModel';
 import type {
   ItemFlow,
   ItemFlowEndpoint,
@@ -25,6 +26,11 @@ import type {
   ProductionPlanStatus,
 } from './graphModel';
 import { sinkPointsPerMinute } from './sinkRules';
+import {
+  buildTargetOutputSinkAllocations,
+  targetOutputAmountForTarget,
+  targetOutputSinkAmountByTargetId,
+} from './targetOutputSinks';
 
 export type PlanReportIconRef =
   | { readonly kind: 'item'; readonly id: ItemId; readonly label: string }
@@ -83,6 +89,7 @@ export interface PlanReportSinkSummary {
   readonly sinkRuleId: string;
   readonly itemId: ItemId;
   readonly itemDisplayName: string;
+  readonly mode: SinkRule['mode'];
   readonly amountPerMinute: number;
   readonly sinkPointsPerMinute: number;
 }
@@ -220,6 +227,7 @@ export interface SinkNodeReportDetails {
   readonly kind: 'sink';
   readonly item: PlanReportItemRate;
   readonly sinkRuleId: string | null;
+  readonly sinkRuleMode: SinkRule['mode'] | 'mixed' | null;
   readonly sinkPointsPerMinute: number;
 }
 
@@ -297,7 +305,7 @@ export function buildPlanOverviewReport(
     notes: buildPlanNotesSummary(project, graph),
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
-      .map((target) => targetSummary(dataset, result, target)),
+      .map((target) => targetSummary(dataset, project, result, target)),
     sinks: sinkSummaries(dataset, project, result),
     rawInputs,
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
@@ -701,6 +709,7 @@ function sinkNodeDetails(
     kind: 'sink',
     item: itemRateRow(dataset, itemId, amountPerMinute, 'sink-consumption'),
     sinkRuleId: selectedNode.sinkRuleId ?? null,
+    sinkRuleMode: selectedNode.sinkRuleMode ?? null,
     sinkPointsPerMinute: pointsPerMinute,
   };
 }
@@ -760,14 +769,22 @@ function selectedNodeIcon(
 
 function targetSummary(
   dataset: GameDataset,
+  project: PlannerProject,
   result: ProductionPlanResult | null,
   target: ProductTarget,
 ): PlanReportTargetSummary {
   const item = dataset.items[target.itemId];
-  const amount =
-    target.mode === 'fixed'
-      ? (target.amountPerMinute ?? 0)
-      : (outputAmountForTarget(result, target.id) ?? result?.outputs[target.itemId] ?? 0);
+  const targetSinkAmountPerMinute =
+    result === null
+      ? 0
+      : (targetOutputSinkAmountByTargetId(
+          buildTargetOutputSinkAllocations(dataset, project.targets, result, project.sinkRules),
+        ).get(target.id) ?? 0);
+  const targetAmountPerMinute =
+    result === null
+      ? targetOutputAmountForTarget(target, null, project.targets)
+      : targetOutputAmountForTarget(target, result, project.targets);
+  const amount = Math.max(0, targetAmountPerMinute - targetSinkAmountPerMinute);
 
   return {
     targetId: target.id,
@@ -778,19 +795,6 @@ function targetSummary(
   };
 }
 
-function outputAmountForTarget(
-  result: ProductionPlanResult | null,
-  targetId: string | undefined,
-): number | null {
-  if (!result || !targetId) {
-    return null;
-  }
-
-  return result.itemFlows
-    .filter((flow) => flow.target.kind === 'output' && flow.target.id === targetId)
-    .reduce((total, flow) => total + flow.amountPerMinute, 0);
-}
-
 function flowRows(
   dataset: GameDataset,
   project: PlannerProject,
@@ -798,7 +802,9 @@ function flowRows(
   selectedNode: ProductionGraphNode,
   direction: 'incoming' | 'outgoing' | 'loopback',
 ): PlanReportFlow[] {
-  const routedFlows = result ? routeSurplusFlowsToSink(dataset, project.sinkRules, result) : [];
+  const routedFlows = result
+    ? routeItemFlowsToSinks(dataset, project.targets, project.sinkRules, result)
+    : [];
   return routedFlows
     .filter((flow) => flowMatchesNodeDirection(flow, selectedNode, direction))
     .map((flow) => {
@@ -995,16 +1001,27 @@ function sinkSummaries(
   if (!result) {
     return [];
   }
+  const targetOutputAllocations = new Map(
+    buildTargetOutputSinkAllocations(dataset, project.targets, result, project.sinkRules).map(
+      (allocation) => [allocation.rule.id, allocation] as const,
+    ),
+  );
 
   return project.sinkRules
     .toSorted((left, right) => left.sortOrder - right.sortOrder)
     .flatMap((rule) => {
-      if (!shouldRouteSurplusToSink(dataset, project.sinkRules, result, rule.itemId)) {
+      const amountPerMinute =
+        rule.mode === 'target-output'
+          ? (targetOutputAllocations.get(rule.id)?.amountPerMinute ?? 0)
+          : (result.surplus[rule.itemId] ?? 0);
+      if (
+        rule.mode === 'surplus' &&
+        !shouldRouteSurplusToSink(dataset, project.sinkRules, result, rule.itemId)
+      ) {
         return [];
       }
-      const amountPerMinute = result.surplus[rule.itemId] ?? 0;
       const pointsPerMinute = sinkPointsPerMinute(dataset, rule.itemId, amountPerMinute);
-      if (pointsPerMinute === null) {
+      if (pointsPerMinute === null || amountPerMinute <= MIN_DISPLAY_RATE) {
         return [];
       }
       return [
@@ -1012,6 +1029,7 @@ function sinkSummaries(
           sinkRuleId: rule.id,
           itemId: rule.itemId,
           itemDisplayName: dataset.items[rule.itemId]?.displayName ?? rule.itemId,
+          mode: rule.mode,
           amountPerMinute,
           sinkPointsPerMinute: pointsPerMinute,
         },

@@ -250,6 +250,61 @@ describe('plan intent mutations', () => {
     expect(project.sinkRules).toEqual([]);
   });
 
+  it('adds and updates item-scoped target output sink rules', () => {
+    const project = createProject();
+
+    const withTargetSink = mutatePlanSinkRules(project, {
+      type: 'add-target-output-sink',
+      sinkRuleId: 'sink-target-screw',
+      itemId: 'Desc_Screw_C',
+      amountPerMinute: 12,
+    });
+    const mergedTargetSink = mutatePlanSinkRules(withTargetSink, {
+      type: 'add-target-output-sink',
+      sinkRuleId: 'sink-target-screw-duplicate',
+      itemId: 'Desc_Screw_C',
+      amountPerMinute: 3,
+    });
+    const sanitizedTargetSink = mutatePlanSinkRules(mergedTargetSink, {
+      type: 'set-target-output-sink-amount',
+      sinkRuleId: 'sink-target-screw',
+      amountPerMinute: Number.NaN,
+    });
+    const roundedTargetSink = mutatePlanSinkRules(mergedTargetSink, {
+      type: 'set-target-output-sink-amount',
+      sinkRuleId: 'sink-target-screw',
+      amountPerMinute: 14.9999999,
+    });
+
+    expect(withTargetSink.sinkRules).toEqual([
+      {
+        id: 'sink-target-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'target-output',
+        amountPerMinute: 12,
+        sortOrder: 0,
+      },
+    ]);
+    expect(mergedTargetSink.sinkRules).toEqual([
+      {
+        id: 'sink-target-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'target-output',
+        amountPerMinute: 15,
+        sortOrder: 0,
+      },
+    ]);
+    expect(sanitizedTargetSink.sinkRules[0]).toMatchObject({
+      mode: 'target-output',
+      amountPerMinute: 0,
+    });
+    expect(roundedTargetSink.sinkRules[0]).toMatchObject({
+      mode: 'target-output',
+      amountPerMinute: 15,
+    });
+    expect(project.sinkRules).toEqual([]);
+  });
+
   it('normalizes resource overrides against the dataset baseline', () => {
     const project = createProject();
 

@@ -98,7 +98,8 @@ export interface CompactProductTargetV1 {
 export interface CompactSinkRuleV1 {
   id: string;
   i: ItemId;
-  m: 's';
+  m: 's' | 't';
+  a?: number;
   s: number;
 }
 
@@ -365,7 +366,8 @@ function encodeSinkRule(rule: SinkRule): CompactSinkRuleV1 {
   return {
     id: rule.id,
     i: rule.itemId,
-    m: 's',
+    m: rule.mode === 'target-output' ? 't' : 's',
+    ...(rule.mode === 'target-output' ? { a: rule.amountPerMinute } : {}),
     s: rule.sortOrder,
   };
 }
@@ -427,21 +429,32 @@ function decodeSinkRules(value: CompactSinkRuleV1[] | undefined): SinkRule[] {
     return [];
   }
 
-  const seenItemIds = new Set<ItemId>();
+  const seenRuleKeys = new Set<string>();
   return value
     .filter((rule) => {
-      if (seenItemIds.has(rule.i)) {
+      const key = `${rule.m}:${rule.i}`;
+      if (seenRuleKeys.has(key)) {
         return false;
       }
-      seenItemIds.add(rule.i);
+      seenRuleKeys.add(key);
       return true;
     })
-    .map((rule) => ({
-      id: rule.id,
-      itemId: rule.i,
-      mode: 'surplus' as const,
-      sortOrder: rule.s,
-    }))
+    .map((rule): SinkRule =>
+      rule.m === 't'
+        ? {
+            id: rule.id,
+            itemId: rule.i,
+            mode: 'target-output',
+            amountPerMinute: rule.a ?? 0,
+            sortOrder: rule.s,
+          }
+        : {
+            id: rule.id,
+            itemId: rule.i,
+            mode: 'surplus',
+            sortOrder: rule.s,
+          },
+    )
     .toSorted((left, right) => left.sortOrder - right.sortOrder)
     .map((rule, index) => ({ ...rule, sortOrder: index }));
 }
@@ -818,8 +831,26 @@ function readCompactSinkRule(value: unknown): CompactSinkRuleV1 | null {
   const itemId = readSafePlanTransferRecordKey(value['i']);
   const mode = value['m'];
   const sortOrder = readTransferFiniteNumber(value['s']);
-  if (id === undefined || itemId === undefined || mode !== 's' || sortOrder === undefined) {
+  if (
+    id === undefined ||
+    itemId === undefined ||
+    (mode !== 's' && mode !== 't') ||
+    sortOrder === undefined
+  ) {
     return null;
+  }
+  if (mode === 't') {
+    const amountPerMinute = readTransferNonNegativeFiniteNumber(value['a']);
+    if (amountPerMinute === undefined) {
+      return null;
+    }
+    return {
+      id,
+      i: itemId,
+      m: mode,
+      a: amountPerMinute,
+      s: sortOrder,
+    };
   }
   return {
     id,

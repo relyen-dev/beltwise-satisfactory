@@ -7,6 +7,7 @@ import {
 } from '@beltwise/planner-core';
 import {
   selectAssumedInputRows,
+  selectAvailableTargetOutputSinkOptions,
   selectAvailableSurplusSinkItems,
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
@@ -376,6 +377,10 @@ describe('planner store selectors', () => {
           ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
           sinkPoints: 2,
         },
+        Desc_Wire_C: {
+          ...tinySatisfactoryDataset.items['Desc_Wire_C']!,
+          sinkPoints: 1,
+        },
       },
     };
     const project: PlannerProject = {
@@ -387,6 +392,22 @@ describe('planner store selectors', () => {
           mode: 'surplus',
           sortOrder: 0,
         },
+        {
+          id: 'sink-target-wire',
+          itemId: 'Desc_Wire_C',
+          mode: 'target-output',
+          amountPerMinute: 8,
+          sortOrder: 1,
+        },
+      ],
+      targets: [
+        {
+          id: 'target-wire',
+          itemId: 'Desc_Wire_C',
+          mode: 'fixed',
+          amountPerMinute: 20,
+          sortOrder: 0,
+        },
       ],
     };
     const result: ProductionPlanResult = {
@@ -395,7 +416,9 @@ describe('planner store selectors', () => {
       rawInputs: {},
       externalInputs: {},
       itemFlows: [],
-      outputs: {},
+      outputs: {
+        Desc_Wire_C: 20,
+      },
       surplus: {
         Desc_Screw_C: 12,
       },
@@ -412,6 +435,17 @@ describe('planner store selectors', () => {
         iconSrc: '/game-icons/Desc_Screw_C.png',
         amountPerMinute: 12,
         sinkPointsPerMinute: 24,
+      },
+      {
+        rule: project.sinkRules[1],
+        itemId: 'Desc_Wire_C',
+        displayName: 'Wire',
+        iconSrc: '/game-icons/Desc_Wire_C.png',
+        mode: 'target-output',
+        amountPerMinute: 8,
+        configuredAmountPerMinute: 8,
+        maxAmountPerMinute: 20,
+        sinkPointsPerMinute: 8,
       },
     ]);
   });
@@ -468,6 +502,83 @@ describe('planner store selectors', () => {
     expect(
       selectAvailableSurplusSinkItems(dataset, project, result).map((item) => item.id),
     ).toEqual(['Desc_Wire_C']);
+  });
+
+  it('lists sinkable target outputs with remaining sink capacity', () => {
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+        Desc_Wire_C: {
+          ...tinySatisfactoryDataset.items['Desc_Wire_C']!,
+          sinkPoints: 1,
+        },
+        Desc_LiquidFuel_C: {
+          id: 'Desc_LiquidFuel_C',
+          className: 'Desc_LiquidFuel_C',
+          displayName: 'Fuel',
+          form: 'liquid',
+          sinkPoints: 1,
+        },
+      },
+    };
+    const project: PlannerProject = {
+      ...createProject(),
+      targets: [
+        {
+          id: 'target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'fixed',
+          amountPerMinute: 100,
+          sortOrder: 0,
+        },
+        {
+          id: 'target-wire',
+          itemId: 'Desc_Wire_C',
+          mode: 'fixed',
+          amountPerMinute: 40,
+          sortOrder: 1,
+        },
+        {
+          id: 'target-fuel',
+          itemId: 'Desc_LiquidFuel_C',
+          mode: 'fixed',
+          amountPerMinute: 10,
+          sortOrder: 2,
+        },
+      ],
+      sinkRules: [
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 100,
+          sortOrder: 0,
+        },
+        {
+          id: 'sink-target-wire',
+          itemId: 'Desc_Wire_C',
+          mode: 'target-output',
+          amountPerMinute: 10,
+          sortOrder: 1,
+        },
+      ],
+    };
+
+    expect(selectAvailableTargetOutputSinkOptions(dataset, project, null)).toMatchObject([
+      {
+        itemId: 'Desc_Wire_C',
+        displayName: 'Wire',
+        targetOutputAmountPerMinute: 40,
+        configuredAmountPerMinute: 10,
+        remainingAmountPerMinute: 30,
+        iconSrc: '/game-icons/Desc_Wire_C.png',
+      },
+    ]);
   });
 
   it('keeps machine rows to solve-relevant automated machines', () => {

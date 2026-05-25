@@ -17,6 +17,7 @@ import {
   type ProductTarget,
   type RateDecimalPlaces,
   type SinkRule,
+  type TargetOutputSinkRule,
 } from './plan';
 import { copyPowerTargetForTransfer } from './planTransferFieldCodecs';
 import {
@@ -121,6 +122,17 @@ export type PlanSinkIntent =
       readonly type: 'add-surplus-sink';
       readonly sinkRuleId: string;
       readonly itemId: ItemId;
+    }
+  | {
+      readonly type: 'add-target-output-sink';
+      readonly sinkRuleId: string;
+      readonly itemId: ItemId;
+      readonly amountPerMinute: number;
+    }
+  | {
+      readonly type: 'set-target-output-sink-amount';
+      readonly sinkRuleId: string;
+      readonly amountPerMinute: number;
     }
   | { readonly type: 'remove-sink-rule'; readonly sinkRuleId: string }
   | { readonly type: 'remove-surplus-sink-for-item'; readonly itemId: ItemId };
@@ -280,6 +292,15 @@ export function mutatePlanSinkRules(
   switch (intent.type) {
     case 'add-surplus-sink':
       return addSurplusSinkRule(project, intent.sinkRuleId, intent.itemId);
+    case 'add-target-output-sink':
+      return addTargetOutputSinkRule(
+        project,
+        intent.sinkRuleId,
+        intent.itemId,
+        intent.amountPerMinute,
+      );
+    case 'set-target-output-sink-amount':
+      return setTargetOutputSinkRuleAmount(project, intent.sinkRuleId, intent.amountPerMinute);
     case 'remove-sink-rule':
       return removeSinkRule(project, intent.sinkRuleId);
     case 'remove-surplus-sink-for-item':
@@ -712,6 +733,55 @@ export function addSurplusSinkRule(
   };
 }
 
+export function addTargetOutputSinkRule(
+  project: PlannerProject,
+  sinkRuleId: string,
+  itemId: ItemId,
+  amountPerMinute: number,
+): PlannerProject {
+  const sanitizedAmountPerMinute = sanitizeSinkRuleAmount(amountPerMinute);
+  const existingRule = project.sinkRules.find(
+    (rule): rule is TargetOutputSinkRule =>
+      rule.mode === 'target-output' && rule.itemId === itemId,
+  );
+  if (existingRule) {
+    return setTargetOutputSinkRuleAmount(
+      project,
+      existingRule.id,
+      existingRule.amountPerMinute + sanitizedAmountPerMinute,
+    );
+  }
+
+  return {
+    ...project,
+    sinkRules: [
+      ...project.sinkRules,
+      {
+        id: sinkRuleId,
+        itemId,
+        mode: 'target-output',
+        amountPerMinute: sanitizedAmountPerMinute,
+        sortOrder: project.sinkRules.length,
+      },
+    ],
+  };
+}
+
+export function setTargetOutputSinkRuleAmount(
+  project: PlannerProject,
+  sinkRuleId: string,
+  amountPerMinute: number,
+): PlannerProject {
+  return {
+    ...project,
+    sinkRules: project.sinkRules.map((rule) =>
+      rule.id === sinkRuleId && rule.mode === 'target-output'
+        ? { ...rule, amountPerMinute: sanitizeSinkRuleAmount(amountPerMinute) }
+        : rule,
+    ),
+  };
+}
+
 export function removeSinkRule(project: PlannerProject, sinkRuleId: string): PlannerProject {
   return {
     ...project,
@@ -1086,6 +1156,15 @@ function normalizePowerTargetSortOrder(targets: readonly PowerTarget[]): PowerTa
 
 function sanitizePowerTargetNumber(value: number): number {
   return Math.max(0, Number.isFinite(value) ? value : 0);
+}
+
+function sanitizeSinkRuleAmount(value: number): number {
+  return roundPlannerIntentAmount(Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function roundPlannerIntentAmount(value: number): number {
+  const rounded = Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+  return Object.is(rounded, -0) ? 0 : rounded;
 }
 
 function normalizeSinkRuleSortOrder(rules: readonly SinkRule[]): SinkRule[] {

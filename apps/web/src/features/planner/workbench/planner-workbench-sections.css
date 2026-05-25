@@ -664,6 +664,12 @@
   color: var(--color-accent-strong);
 }
 
+.planner-shell .sink-rule-add-grid {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .planner-shell .sink-rule-add {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -685,6 +691,42 @@
   font-weight: 750;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.planner-shell .sink-rule-add__amount {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: end;
+  min-width: 0;
+}
+
+.planner-shell .sink-rule-add__amount label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planner-shell .sink-rule-add__amount label span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.planner-shell .sink-rule-add__amount input {
+  width: 100%;
+  min-width: 0;
+}
+
+.planner-shell .sink-rule-add__amount button {
+  min-height: 34px;
+  padding-inline: 12px;
 }
 
 .planner-shell .sink-rule-add .target-item-combobox__trigger {
@@ -2192,6 +2234,22 @@
   grid-template-columns: auto minmax(0, 1fr) minmax(86px, auto) auto;
 }
 
+.planner-shell .sink-rule-row--target-output {
+  grid-template-columns: auto minmax(0, 1fr) minmax(82px, 112px) minmax(86px, auto) auto;
+}
+
+.planner-shell .sink-rule-row__amount {
+  min-width: 0;
+}
+
+.planner-shell .sink-rule-row__amount input {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding-block: 4px;
+  text-align: right;
+}
+
 .planner-shell .sink-rule-row__stats {
   display: grid;
   gap: 2px;
@@ -2483,6 +2541,18 @@
   .planner-shell .assumed-input-row :is(.inspector-row__value, .assumed-input-add-button) {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .planner-shell .sink-rule-row--target-output {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .planner-shell
+    .sink-rule-row--target-output
+    :is(.sink-rule-row__amount, .sink-rule-row__stats) {
+    grid-column: 2;
+    justify-self: start;
+    width: min(100%, 180px);
   }
 
   .planner-shell :is(.target-row--head, .input-row--head, .recipe-row--head) {

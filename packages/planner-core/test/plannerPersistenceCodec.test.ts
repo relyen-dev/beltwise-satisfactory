@@ -393,6 +393,31 @@ describe('decodePlannerPersistenceState', () => {
     expect(decoded?.projects[0]?.buildState.nodeStates).toEqual(project.buildState.nodeStates);
   });
 
+  it('round-trips target output sink rule amounts through persistence', () => {
+    const project: PlannerProject = {
+      ...createDomainPlannerProject(),
+      sinkRules: [
+        ...createDomainPlannerProject().sinkRules,
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 40,
+          sortOrder: 1,
+        },
+      ],
+    };
+
+    const encoded = encodePlannerPersistenceState(
+      [project],
+      project.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+    );
+    const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
+
+    expect(decoded?.projects[0]?.sinkRules).toEqual(project.sinkRules);
+  });
+
   it('hydrates old objective profiles without preset fields on the Resource Efficient order', () => {
     const state = decodePlannerPersistenceState(
       {

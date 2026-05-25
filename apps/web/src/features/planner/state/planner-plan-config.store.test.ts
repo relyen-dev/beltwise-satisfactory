@@ -456,6 +456,88 @@ describe('PlannerPlanConfigStore', () => {
     expect(requiredProject(activeProject).sinkRules).toEqual([]);
   });
 
+  it('adds and clamps target output sink rules without requiring a re-solve', () => {
+    const dataset = withSinkableScrewsDataset();
+    const { activeProject, planConfig } = createPlanConfigHarness({
+      dataset,
+      project: {
+        ...createProject(dataset),
+        targets: [
+          {
+            id: 'target-screw',
+            itemId: 'Desc_Screw_C',
+            mode: 'fixed',
+            amountPerMinute: 100,
+            sortOrder: 0,
+          },
+        ],
+      },
+      solveResult: {
+        status: 'optimal',
+        recipeRates: {},
+        rawInputs: {},
+        externalInputs: {},
+        itemFlows: [
+          {
+            itemId: 'Desc_Screw_C',
+            amountPerMinute: 100,
+            source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+            target: { kind: 'output', id: 'target-screw' },
+          },
+        ],
+        outputs: {
+          Desc_Screw_C: 100,
+        },
+        surplus: {},
+        machineUsage: [],
+        powerMw: 0,
+        warnings: [],
+      },
+    });
+
+    expect(planConfig.availableTargetOutputSinkOptions()).toMatchObject([
+      {
+        itemId: 'Desc_Screw_C',
+        remainingAmountPerMinute: 100,
+      },
+    ]);
+
+    planConfig.sinkCommands.addTargetOutput('Desc_Screw_C', 140);
+
+    const sinkRule = requiredProject(activeProject).sinkRules[0];
+    expect(sinkRule).toMatchObject({
+      id: expect.stringMatching(/^sink-/),
+      itemId: 'Desc_Screw_C',
+      mode: 'target-output',
+      amountPerMinute: 100,
+      sortOrder: 0,
+    });
+    expect(planConfig.availableTargetOutputSinkOptions()).toEqual([]);
+    expect(planConfig.sinkRuleRows()).toMatchObject([
+      {
+        itemId: 'Desc_Screw_C',
+        mode: 'target-output',
+        amountPerMinute: 100,
+        sinkPointsPerMinute: 200,
+      },
+    ]);
+
+    if (!sinkRule) {
+      throw new Error('Expected target output sink rule');
+    }
+    planConfig.sinkCommands.updateTargetOutputAmount(sinkRule.id, 39.9999999);
+    expect(requiredProject(activeProject).sinkRules[0]).toMatchObject({
+      mode: 'target-output',
+      amountPerMinute: 40,
+    });
+    expect(planConfig.availableTargetOutputSinkOptions()).toMatchObject([
+      {
+        itemId: 'Desc_Screw_C',
+        remainingAmountPerMinute: 60,
+      },
+    ]);
+  });
+
   it('applies every objective preset and preserves priority order for custom edits', () => {
     const { activeProject, planConfig } = createPlanConfigHarness();
 

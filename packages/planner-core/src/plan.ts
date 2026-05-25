@@ -110,10 +110,20 @@ export interface PowerTarget {
   sortOrder: number;
 }
 
-export interface SinkRule {
+export type SinkRule = SurplusSinkRule | TargetOutputSinkRule;
+
+export interface SurplusSinkRule {
   id: string;
   itemId: ItemId;
   mode: 'surplus';
+  sortOrder: number;
+}
+
+export interface TargetOutputSinkRule {
+  id: string;
+  itemId: ItemId;
+  mode: 'target-output';
+  amountPerMinute: number;
   sortOrder: number;
 }
 

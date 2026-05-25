@@ -412,6 +412,7 @@ describe('plan report module', () => {
         sinkRuleId: 'sink-screw',
         itemId: 'Desc_Screw_C',
         itemDisplayName: 'Screw',
+        mode: 'surplus',
         amountPerMinute: 12,
         sinkPointsPerMinute: 24,
       },
@@ -434,6 +435,104 @@ describe('plan report module', () => {
         endpointLabel: 'Screw',
       },
     ]);
+  });
+
+  it('reports target output sinks and reduced output-node details', () => {
+    const context = createReportContext();
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 100,
+        sortOrder: 0,
+      },
+    ];
+    const project: PlannerProject = {
+      ...context.project,
+      targets,
+      sinkRules: [
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 40,
+          sortOrder: 0,
+        },
+      ],
+    };
+    const result: ProductionPlanResult = {
+      ...context.result,
+      itemFlows: [
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 100,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'output', id: 'target-screw' },
+        },
+      ],
+      outputs: {
+        Desc_Screw_C: 100,
+      },
+      surplus: {},
+    };
+    const graph = buildProductionGraph(context.dataset, targets, result, {
+      sinkRules: project.sinkRules,
+    });
+
+    const overview = buildPlanOverviewReport(context.dataset, project, result, graph);
+    const selectedOutput = buildSelectedNodeReport(
+      context.dataset,
+      project,
+      result,
+      graph.nodes.find((node) => node.id === 'output:target-screw')!,
+    );
+    const selectedSink = buildSelectedNodeReport(
+      context.dataset,
+      project,
+      result,
+      graph.nodes.find((node) => node.id === 'sink:Desc_Screw_C')!,
+    );
+
+    expect(overview.sinks).toEqual([
+      {
+        sinkRuleId: 'sink-target-screw',
+        itemId: 'Desc_Screw_C',
+        itemDisplayName: 'Screw',
+        mode: 'target-output',
+        amountPerMinute: 40,
+        sinkPointsPerMinute: 80,
+      },
+    ]);
+    expect(overview.targets).toMatchObject([
+      {
+        targetId: 'target-screw',
+        amountPerMinute: 60,
+      },
+    ]);
+    expect(selectedOutput.details).toMatchObject({
+      kind: 'output',
+      item: {
+        itemId: 'Desc_Screw_C',
+        amountPerMinute: 60,
+      },
+      requestedAmountPerMinute: 100,
+      incomingAmountPerMinute: 100,
+    });
+    expect(selectedOutput.outgoingFlows).toMatchObject([
+      {
+        flowKey: 'outgoing:Desc_Screw_C:output:target-screw:sink:Desc_Screw_C',
+        endpointKind: 'sink',
+        endpointLabel: 'Awesome Sink',
+        amountPerMinute: 40,
+      },
+    ]);
+    expect(selectedSink.details).toMatchObject({
+      kind: 'sink',
+      sinkRuleId: 'sink-target-screw',
+      sinkRuleMode: 'target-output',
+      sinkPointsPerMinute: 80,
+    });
   });
 
   it('adds fuel power estimates and nuclear waste rates to output reports', () => {

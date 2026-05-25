@@ -309,6 +309,368 @@ describe('production graph conversion', () => {
     );
   });
 
+  it('routes configured target output to an Awesome Sink without adding production', () => {
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 100,
+        sortOrder: 0,
+      },
+    ];
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_Screw_C: 25,
+      },
+      rawInputs: {},
+      outputs: {
+        Desc_Screw_C: 100,
+      },
+      surplus: {},
+      powerMw: 10,
+      warnings: [],
+      machineUsage: [
+        {
+          recipeId: 'Recipe_Screw_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Screw',
+          recipeRatePerMinute: 25,
+          machineCount: 2.5,
+          powerMw: 10,
+        },
+      ],
+      itemFlows: [
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 100,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'output', id: 'target-screw' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(dataset, targets, result, {
+      sinkRules: [
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 40,
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    expect(graph.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'output:target-screw',
+        kind: 'output',
+        itemId: 'Desc_Screw_C',
+        amountPerMinute: 60,
+      }),
+    );
+    expect(graph.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'sink:Desc_Screw_C',
+        kind: 'sink',
+        itemId: 'Desc_Screw_C',
+        sinkRuleId: 'sink-target-screw',
+        sinkRuleMode: 'target-output',
+        amountPerMinute: 40,
+        sinkPointsPerMinute: 80,
+      }),
+    );
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'output:target-screw',
+        targetNodeId: 'sink:Desc_Screw_C',
+        itemId: 'Desc_Screw_C',
+        amountPerMinute: 40,
+      }),
+    );
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'recipe:Recipe_Screw_C',
+        targetNodeId: 'output:target-screw',
+        itemId: 'Desc_Screw_C',
+        amountPerMinute: 100,
+      }),
+    );
+  });
+
+  it('clamps target output sink routing to the solved target amount across duplicate targets', () => {
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-screw-a',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 30,
+        sortOrder: 0,
+      },
+      {
+        id: 'target-screw-b',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 20,
+        sortOrder: 1,
+      },
+    ];
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      outputs: {
+        Desc_Screw_C: 50,
+      },
+      surplus: {},
+      powerMw: 0,
+      warnings: [],
+      machineUsage: [],
+      itemFlows: [
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 30,
+          source: { kind: 'externalInput', id: 'Desc_Screw_C' },
+          target: { kind: 'output', id: 'target-screw-a' },
+        },
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 20,
+          source: { kind: 'externalInput', id: 'Desc_Screw_C' },
+          target: { kind: 'output', id: 'target-screw-b' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(dataset, targets, result, {
+      sinkRules: [
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 80,
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    expect(graph.nodes.find((node) => node.id === 'sink:Desc_Screw_C')).toMatchObject({
+      amountPerMinute: 50,
+      sinkPointsPerMinute: 100,
+    });
+    expect(graph.nodes.find((node) => node.id === 'output:target-screw-a')).toMatchObject({
+      amountPerMinute: 0,
+    });
+    expect(graph.nodes.find((node) => node.id === 'output:target-screw-b')).toMatchObject({
+      amountPerMinute: 0,
+    });
+    expect(
+      graph.edges
+        .filter((edge) => edge.targetNodeId === 'sink:Desc_Screw_C')
+        .map((edge) => [edge.sourceNodeId, edge.amountPerMinute]),
+    ).toEqual([
+      ['output:target-screw-a', 30],
+      ['output:target-screw-b', 20],
+    ]);
+  });
+
+  it('does not allocate aggregate same-item output to duplicate maximize targets', () => {
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-screw-fixed',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 100,
+        sortOrder: 0,
+      },
+      {
+        id: 'target-screw-max',
+        itemId: 'Desc_Screw_C',
+        mode: 'maximize',
+        sortOrder: 1,
+      },
+    ];
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_Screw_C: 25,
+      },
+      rawInputs: {},
+      outputs: {
+        Desc_Screw_C: 100,
+      },
+      surplus: {},
+      powerMw: 10,
+      warnings: [],
+      machineUsage: [],
+      itemFlows: [
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 100,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'output', id: 'target-screw-fixed' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(dataset, targets, result, {
+      sinkRules: [
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 200,
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    expect(graph.nodes.find((node) => node.id === 'sink:Desc_Screw_C')).toMatchObject({
+      amountPerMinute: 100,
+      sinkPointsPerMinute: 200,
+    });
+    expect(graph.nodes.find((node) => node.id === 'output:target-screw-fixed')).toMatchObject({
+      amountPerMinute: 0,
+    });
+    expect(graph.nodes.find((node) => node.id === 'output:target-screw-max')).toMatchObject({
+      amountPerMinute: 0,
+    });
+    expect(
+      graph.edges
+        .filter((edge) => edge.targetNodeId === 'sink:Desc_Screw_C')
+        .map((edge) => [edge.sourceNodeId, edge.amountPerMinute]),
+    ).toEqual([['output:target-screw-fixed', 100]]);
+  });
+
+  it('marks same-item surplus and target output sink nodes as mixed without a single rule id', () => {
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_Screw_C: {
+          ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
+          sinkPoints: 2,
+        },
+      },
+    };
+    const targets: ProductTarget[] = [
+      {
+        id: 'target-screw',
+        itemId: 'Desc_Screw_C',
+        mode: 'fixed',
+        amountPerMinute: 100,
+        sortOrder: 0,
+      },
+    ];
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_Screw_C: 28,
+      },
+      rawInputs: {},
+      outputs: {
+        Desc_Screw_C: 100,
+      },
+      surplus: {
+        Desc_Screw_C: 12,
+      },
+      powerMw: 10,
+      warnings: [],
+      machineUsage: [
+        {
+          recipeId: 'Recipe_Screw_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Screw',
+          recipeRatePerMinute: 28,
+          machineCount: 2.8,
+          powerMw: 10,
+        },
+      ],
+      itemFlows: [
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 100,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'output', id: 'target-screw' },
+        },
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 12,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'byproduct', id: 'Desc_Screw_C' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(dataset, targets, result, {
+      sinkRules: [
+        {
+          id: 'sink-surplus-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 40,
+          sortOrder: 1,
+        },
+      ],
+    });
+    const sinkNode = graph.nodes.find((node) => node.id === 'sink:Desc_Screw_C');
+
+    expect(sinkNode).toMatchObject({
+      amountPerMinute: 52,
+      sinkPointsPerMinute: 104,
+      sinkRuleMode: 'mixed',
+    });
+    expect(sinkNode).not.toHaveProperty('sinkRuleId');
+    expect(
+      graph.edges
+        .filter((edge) => edge.targetNodeId === 'sink:Desc_Screw_C')
+        .map((edge) => [edge.sourceNodeId, edge.amountPerMinute]),
+    ).toEqual([
+      ['recipe:Recipe_Screw_C', 12],
+      ['output:target-screw', 40],
+    ]);
+  });
+
   it('builds renderer-neutral graph presentation data with supplied positions', () => {
     const graph: ProductionGraph = {
       nodes: [

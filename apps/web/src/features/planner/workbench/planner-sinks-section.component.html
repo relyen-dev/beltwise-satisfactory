@@ -2,32 +2,74 @@
   <div class="section-heading">
     <div>
       <h3>Sink Rules</h3>
-      <span>{{ planConfig.sinkRuleRows().length }} configured surplus routes</span>
+      <span>{{ planConfig.sinkRuleRows().length }} configured routes</span>
     </div>
   </div>
 
-  <div class="sink-rule-add">
-    <span class="sink-rule-add__label">Add surplus</span>
-    <bw-target-item-picker
-      [items]="planConfig.availableSurplusSinkItems()"
-      [selectedItemId]="''"
-      [disabled]="planConfig.editingLocked() || planConfig.availableSurplusSinkItems().length === 0"
-      [allowEmptySelection]="false"
-      [emptyLabel]="addPickerLabel()"
-      [searchLabel]="'Search sinkable surplus'"
-      [searchPlaceholder]="'Search sinkable surplus'"
-      (itemSelected)="addSurplusSink($event)"
-    />
+  <div class="sink-rule-add-grid">
+    <div class="sink-rule-add">
+      <span class="sink-rule-add__label">Add surplus</span>
+      <bw-target-item-picker
+        [items]="planConfig.availableSurplusSinkItems()"
+        [selectedItemId]="''"
+        [disabled]="
+          planConfig.editingLocked() || planConfig.availableSurplusSinkItems().length === 0
+        "
+        [allowEmptySelection]="false"
+        [emptyLabel]="addPickerLabel()"
+        [searchLabel]="'Search sinkable surplus'"
+        [searchPlaceholder]="'Search sinkable surplus'"
+        (itemSelected)="addSurplusSink($event)"
+      />
+    </div>
+
+    <div class="sink-rule-add sink-rule-add--target-output">
+      <span class="sink-rule-add__label">Add target output</span>
+      <bw-target-item-picker
+        [items]="targetOutputSinkPickerItems()"
+        [selectedItemId]="targetOutputItemId"
+        [disabled]="
+          planConfig.editingLocked() || planConfig.availableTargetOutputSinkOptions().length === 0
+        "
+        [allowEmptySelection]="false"
+        [emptyLabel]="targetOutputPickerLabel()"
+        [searchLabel]="'Search target outputs'"
+        [searchPlaceholder]="'Search target outputs'"
+        (itemSelected)="selectTargetOutputSinkItem($event)"
+      />
+      <div class="sink-rule-add__amount">
+        <label>
+          <span>Amount/min</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            [disabled]="planConfig.editingLocked() || selectedTargetOutputRemainingAmount() <= 0"
+            [ngModel]="targetOutputAmountPerMinute"
+            (ngModelChange)="setTargetOutputAmountInput($event)"
+            (blur)="finishTargetOutputAmountInput()"
+          />
+        </label>
+        <button
+          type="button"
+          class="primary-action"
+          [disabled]="!canAddTargetOutputSink()"
+          (click)="addTargetOutputSink()"
+        >
+          Add
+        </button>
+      </div>
+    </div>
   </div>
 
-  @let sinkRows = planConfig.sinkRuleRows();
-  @if (sinkRows.length === 0) {
+  @let surplusRows = surplusSinkRows();
+  @let targetOutputRows = targetOutputSinkRows();
+  @if (surplusRows.length === 0 && targetOutputRows.length === 0) {
     <div class="empty-state">
-      <span>No surplus sink rules configured.</span>
+      <span>No sink rules configured.</span>
     </div>
   } @else {
     <div class="compact-list" aria-label="Configured sink rules">
-      @for (row of sinkRows; track row.rule.id) {
+      @for (row of surplusRows; track row.rule.id) {
         <div class="inspector-row sink-rule-row">
           <bw-game-icon
             [src]="row.iconSrc"
@@ -40,6 +82,46 @@
             <strong>{{ row.displayName }}</strong>
             <span>Surplus sink</span>
           </span>
+          <span class="sink-rule-row__stats">
+            <strong>{{ amountLabel(row.amountPerMinute) }}</strong>
+            <span>{{ sinkPointsLabel(row.sinkPointsPerMinute) }}</span>
+          </span>
+          <button
+            type="button"
+            class="row-icon-button row-icon-button--remove"
+            title="Remove sink rule"
+            aria-label="Remove sink rule"
+            [disabled]="planConfig.editingLocked()"
+            (click)="planConfig.sinkCommands.remove(row.rule.id)"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
+      }
+      @for (row of targetOutputRows; track row.rule.id) {
+        <div class="inspector-row sink-rule-row sink-rule-row--target-output">
+          <bw-game-icon
+            [src]="row.iconSrc"
+            [label]="row.displayName"
+            [size]="'sm'"
+            [kind]="'item'"
+            [showTitle]="true"
+          />
+          <span class="inspector-row__copy">
+            <strong>{{ row.displayName }}</strong>
+            <span>Target output sink</span>
+          </span>
+          <label class="sink-rule-row__amount">
+            <span class="sr-only">Target output sink amount for {{ row.displayName }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              [ngModel]="targetOutputSinkAmountInputValue(row)"
+              [disabled]="planConfig.editingLocked()"
+              (ngModelChange)="updateTargetOutputSinkAmount(row, $event)"
+              (blur)="finishTargetOutputSinkAmountEdit(row)"
+            />
+          </label>
           <span class="sink-rule-row__stats">
             <strong>{{ amountLabel(row.amountPerMinute) }}</strong>
             <span>{{ sinkPointsLabel(row.sinkPointsPerMinute) }}</span>

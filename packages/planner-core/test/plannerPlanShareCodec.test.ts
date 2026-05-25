@@ -168,6 +168,56 @@ describe('Beltwise compact plan share payloads', () => {
     expect(decoded.project.objectiveProfile).toEqual(sourceProject.objectiveProfile);
   });
 
+  it('round-trips target output sink rules with compact amounts', () => {
+    const sourceProject: PlannerProject = {
+      ...createPlannerProject({
+        id: 'project-target-sink',
+        name: 'Target sink',
+        dataset: tinySatisfactoryDataset,
+        now: '2026-05-12T00:00:00.000Z',
+      }),
+      targets: [
+        {
+          id: 'target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'fixed',
+          amountPerMinute: 100,
+          sortOrder: 0,
+        },
+      ],
+      sinkRules: [
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 40,
+          sortOrder: 0,
+        },
+      ],
+    };
+
+    const payload = encodeBeltwisePlanShare(sourceProject, tinySatisfactoryDataset);
+    const decoded = decodeBeltwisePlanShare(payload, tinySatisfactoryDataset, {
+      id: 'project-imported',
+      now: '2026-05-14T00:00:00.000Z',
+    });
+
+    expect(payload.p.sk).toEqual([
+      {
+        id: 'sink-target-screw',
+        i: 'Desc_Screw_C',
+        m: 't',
+        a: 40,
+        s: 0,
+      },
+    ]);
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
+    expect(decoded.project.sinkRules).toEqual(sourceProject.sinkRules);
+  });
+
   it('fails cleanly for malformed payloads and future versions', () => {
     expect(decodeBeltwisePlanShare(null, tinySatisfactoryDataset)).toMatchObject({
       ok: false,
@@ -317,6 +367,13 @@ describe('Beltwise compact plan share payloads', () => {
       p: {
         ...payload.p,
         pt: [{ id: 'power-negative', m: 'p', w: -1, s: 0 }],
+      },
+    });
+    expectInvalidProjectPayload({
+      ...payload,
+      p: {
+        ...payload.p,
+        sk: [{ id: 'sink-target-negative', i: 'Desc_Screw_C', m: 't', a: -1, s: 0 }],
       },
     });
   });
