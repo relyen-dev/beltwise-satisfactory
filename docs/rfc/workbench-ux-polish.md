@@ -11,7 +11,9 @@ Beltwise's workbench panels cover the core planning controls and now use more vi
 Current direction:
 
 - Base recipes and alternate recipes are separate sections.
-- Base recipes are enabled by default.
+- Base recipes include standard recipes, deterministic unlock recipes, and converter recipes as smaller subgroups.
+- Standard and deterministic unlock recipes are enabled by default.
+- Converter recipes are disabled by default because they intentionally convert raw resources.
 - Alternate recipes are disabled by default per project.
 - Recipe rows are clickable semantic controls with visible enabled/disabled treatment.
 - Recipe rows and tooltips can show item icons when matching files exist in `public/game-icons`.
@@ -24,8 +26,8 @@ Remaining polish ideas:
   - output chips
   - machine chip
   - duration/cycles per minute
-- Keep base and alternate recipe sections visually distinct without copying another planner's visual treatment.
-- Add saved filters/views for late-game users, such as `Unlocked only`, `All alternates`, `Base only`, and `Used in current plan`.
+- Keep standard, unlock, converter, and alternate recipe sections visually distinct without copying another planner's visual treatment.
+- Add saved filters/views for late-game users, such as `Unlocks only`, `All alternates`, `Base only`, and `Used in current plan`.
 
 ## Resource Panel Polish
 

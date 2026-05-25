@@ -34,7 +34,7 @@ The first supporting layer is now in place: stronger panels, icons, defaults, pl
 
 - [Workbench UX Polish](./workbench-ux-polish.md) covers existing recipe/resource panel polish notes.
 - [Resource Providers, Save Imports, And Randomized Nodes](./resource-providers.md) covers save-file import and randomized-node research.
-- [Sinks, Disposal, And Power Targets](./sinks-disposal-and-power-targets.md) captures follow-up work for direct sinks, target-output sinks, conversion-to-sink, nuclear waste, and power-generator planning.
+- [Sinks, Disposal, And Power Targets](./sinks-disposal-and-power-targets.md) captures the shipped first passes for direct sinks, target-output sinks, and explicit power targets, plus follow-up work for conversion-to-sink, nuclear waste, solver-selected fuels, and maximize-power planning.
 - [Plugin-Shaped Extension Seams](./plugin-extension-seams.md) captures when expanded features should become optional extension seams instead of built-in planner behavior.
 - [Product Spec](../product-spec.md) remains the north star for current scope and MVP boundaries.
 - [Architecture](../architecture.md) defines current package boundaries and renderer isolation.
@@ -65,6 +65,10 @@ The initial workspace-priority set is implemented:
 7. Objective presets, custom objective weights, and raw-resource route multipliers.
 8. Plan notes and node-note polish.
 9. Planner state capability refactor that slimmed `PlannerStoreService` into runtime composition.
+10. Direct surplus sink rules with AWESOME Sink graph nodes and sink-point summaries.
+11. Explicit generator/fuel power targets with generator-count or MW modes, generated-power graph nodes, assumed inputs, and generator byproduct/waste reporting.
+12. Deterministic unlock recipe grouping for MAM-style unlocks such as Compacted Coal and Turbofuel.
+13. Amount-based target-output sink rules that keep requested outputs visible while routing sunk allocations to sink nodes.
 
 ## Next Candidate Set
 
@@ -76,7 +80,7 @@ These are plausible next steps before the larger save/logistics systems. Some ar
 4. Add drill-in graph views for special production loops.
 5. Design the linked-plan contract model before implementing logistics.
 6. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
-7. Continue sink/disposal planning from direct surplus sinks toward explicit target-output sinks, conversion-to-sink, nuclear waste handling, and power targets.
+7. Continue sink/disposal/power planning from the shipped first passes toward conversion-to-sink, nuclear waste handling, solver-selected fuel sets, and maximize-power objectives.
 8. Keep doing small technical refactors only where a capability or workbench slice has become hard to test or review; avoid recreating a broad planner facade.
 
 ## Future Systems
@@ -93,7 +97,7 @@ These are high-value ideas, but they need more data-model work and research befo
 8. Wiki/knowledge integration.
 9. Top-down factory layout generation.
 10. First-party extension seams for optional reports, graph overlays, layout strategies, export formats, or data packs.
-11. Power-generator targets with fuel selection, maximize-power planning, and explicit byproduct or waste handling.
+11. Power optimization beyond explicit targets: solver-selected fuel sets, maximize-power planning, overclock presentation, and explicit nuclear waste policy.
 
 ## Idea Index
 
@@ -130,9 +134,9 @@ Current recipe panel direction:
 - Keep the existing list mode because it is efficient for power users.
 - Keep checkboxes semantic while making the row surface the main interaction.
 - Show enabled/disabled state with row treatment and compact status text rather than relying only on a checkbox square.
-- Keep base recipes and alternates distinct, but do not copy another planner's tab or row treatment.
+- Keep base recipes, deterministic unlocks, converter recipes, and alternates distinct, but do not copy another planner's tab or row treatment.
 - Add row metadata gradually: output items, ingredient items, machine, duration, and whether the recipe is used by the current solution.
-- Support filters such as `All`, `Enabled`, `Disabled`, `Base`, `Alternate`, `Used`, and `Unlocked` when unlock state exists.
+- Support filters such as `All`, `Enabled`, `Disabled`, `Standard`, `Unlocks`, `Converter`, `Alternate`, and `Used`.
 
 Item-centric recipe mode:
 
@@ -243,7 +247,7 @@ Import/export should give users confidence that local-first planning does not me
 Plan export first:
 
 - Export one plan as a versioned JSON file.
-- Include persisted user intent: targets, recipe overrides, machine overrides, resource overrides, external inputs, objective profile, graph display settings, manual layout, build-state node notes, and plan notes.
+- Include persisted user intent: product targets, power targets, sink rules, recipe overrides, machine overrides, resource overrides, external inputs, objective profile, graph display settings, manual layout, build-state node notes, and plan notes.
 - Include dataset identity and source fingerprint so stale or mismatched imports can be explained.
 - Do not export solver output as authoritative state.
 - Re-solve after import using the local generated dataset.
@@ -607,12 +611,13 @@ Recommended path:
 2. Add browser smoke tests around graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
 3. Add graph connection display controls and drill-in views.
 4. Write a focused RFC for linked-plan contracts: exports, imports, item pools, and how those should interact with manual external inputs.
-5. Extend the session data model only with fields needed by the linked-plan or save-import feature selected next.
-6. Add session import/export after session-scoped data exists beyond plan grouping.
-7. Prototype linked plans with manual links before logistics-backed links.
-8. Add a schematic session logistics overview once linked plans exist.
-9. Research save-derived logistics only after save import has a reliable parser boundary.
-10. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
+5. Continue power planning with solver-selected fuel sets and maximize-power objectives once manual generator/fuel targets have enough UX mileage.
+6. Extend the session data model only with fields needed by the linked-plan or save-import feature selected next.
+7. Add session import/export after session-scoped data exists beyond plan grouping.
+8. Prototype linked plans with manual links before logistics-backed links.
+9. Add a schematic session logistics overview once linked plans exist.
+10. Research save-derived logistics only after save import has a reliable parser boundary.
+11. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
 
 ## Open Questions
 

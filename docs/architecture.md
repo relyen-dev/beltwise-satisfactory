@@ -2,10 +2,10 @@
 
 Beltwise is split into framework-independent domain packages plus one Angular shell.
 
-- `packages/game-data` owns generated data schemas, tuple parsing, raw docs normalization, stable JSON output, and the fixture dataset.
-- `packages/planner-core` owns saved workspace/project state, sessions, user defaults, plan import/export/share codecs, objective presets, resource limit contracts, solver result shapes, renderer-neutral graph models, graph display settings, and layout preservation.
-- `packages/solver` owns the pure LP model builder, objective-stage construction, and solver adapters. Angular does not assemble LP coefficients.
-- `apps/web` owns UI state orchestration, local persistence, transfer services, planner controls, and the Foblex Flow adapter/component layer.
+- `packages/game-data` owns generated data schemas, tuple parsing, raw docs normalization, stable JSON output, recipe availability categories, generator fuel option extraction, and the fixture dataset.
+- `packages/planner-core` owns saved workspace/project state, sessions, user defaults, plan import/export/share codecs, objective presets, resource limit contracts, sink rules, target-output sink allocations, power generator catalog helpers, solver result shapes, renderer-neutral graph models, graph display settings, and layout preservation.
+- `packages/solver` owns the pure LP model builder, objective-stage construction, power-target constraints, and solver adapters. Angular does not assemble LP coefficients.
+- `apps/web` owns UI state orchestration, local persistence, transfer services, planner controls, Sinks/Plan workbench surfaces, and the Foblex Flow adapter/component layer.
 
 ## Application Map
 
@@ -98,7 +98,7 @@ Renderer-specific types stay in `apps/web/src/features/graph`. Persisted project
 Feature code should depend on the capability that owns the use case instead of routing through the runtime service:
 
 - `PlannerWorkspaceSlice` owns sessions, active-session plan lists, plan lifecycle commands, and global user-default application when new plans are created.
-- `PlannerPlanConfigStore` owns active-plan targets, inputs, recipe/machine/resource settings, objective settings, plan notes, and persisted graph display intent.
+- `PlannerPlanConfigStore` owns active-plan product targets, power targets, sink rules, inputs, recipe/machine/resource settings, objective settings, plan notes, and persisted graph display intent.
 - `PlannerDefaultsStore` owns global defaults for future plans, including mirrored recipe, machine, resource, objective, and display settings.
 - `PlannerGraphStore` owns renderer-neutral graph read models, selection, inspector state, build-state node flags/notes, layout locks, and node-position flushing.
 - `PlannerPlanTransferService` and `PlannerPlanTransferCapability` own browser import/export/share orchestration and the narrow ports needed to prepare imported projects.
@@ -114,6 +114,8 @@ The production solver uses a continuous LP model solved by HiGHS through `packag
 
 Default graph positions are generated from renderer-neutral graph data before the Foblex adapter maps that data into Angular/Foblex view models. The current layout implementation uses Dagre; that can be replaced without changing persisted project shape or solver output.
 
-Solver output is not persisted as authoritative state. Workspaces persist sessions, global user defaults, and standalone plans. Plans persist targets, recipe/machine/resource/input configuration, objective profile, graph display settings, plan notes, build-state node notes, and manual node positions, then rerun the solver when loaded.
+Solver output is not persisted as authoritative state. Workspaces persist sessions, global user defaults, and standalone plans. Plans persist product targets, power targets, sink rules, recipe/machine/resource/input configuration, objective profile, graph display settings, plan notes, build-state node notes, and manual node positions, then rerun the solver when loaded.
+
+The current graph model can represent raw resources, external inputs, assumed inputs, recipe groups, power generator targets, requested outputs, byproducts, and AWESOME Sink endpoints. Sink and power nodes are derived from solved flows plus persisted user intent; renderer-specific Foblex handles, positions, and visual connection details stay in the graph feature layer.
 
 HiGHS is loaded through the `highs` JavaScript/WASM package, but Beltwise patches the loaded wrapper to read raw solution output rather than the wrapper's truncated pretty output. See [ADR 0007](./adr/0007-read-raw-highs-solution-output.md).

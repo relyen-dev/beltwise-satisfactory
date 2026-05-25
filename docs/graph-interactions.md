@@ -41,6 +41,15 @@ Implementation note: Foblex listens for document-level `mousedown` and `touchsta
 - The inline field accepts numeric text and clamps invalid/non-finite values to `0`.
 - Committed changes trigger a normal re-solve; solver output is still derived state and is not persisted as authoritative project state.
 
+## Sink And Power Nodes
+
+- Sink nodes are derived from configured sink rules and the active solve result.
+- Surplus sink rules route currently available sinkable surplus to an AWESOME Sink node.
+- Target-output sink rules keep the output node visible, then route the configured sunk allocation from that output node to an AWESOME Sink node.
+- Power nodes represent configured generator/fuel power targets and show generated MW plus generator count.
+- Assumed input nodes can appear when a power target or production chain needs an item that the current plan does not solve locally.
+- Loopback badges can appear on recipe nodes when an input is supplied by the same recipe's output flow.
+
 ## Lock Behavior
 
 - `Lock plan` prevents solve-relevant configuration edits.
@@ -54,4 +63,5 @@ Implementation note: Foblex listens for document-level `mousedown` and `touchsta
 - Maximize targets are display-only on the graph because their rates are solver results rather than user-entered amounts.
 - Other node types are not editable from the graph yet.
 - Output item selection, target mode changes, target duplication, and target removal still live in the Plan workbench.
+- Power target editing and sink rule editing live in the Plan and Sinks workbench panels.
 - The selected and unselected output node layouts are not visually identical today because the selected state swaps passive rate text for an input.

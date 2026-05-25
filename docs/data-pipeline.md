@@ -55,13 +55,15 @@ Future extracted assets, such as a static map PNG or default resource-node catal
 - planner-relevant items
 - raw resource descriptors
 - automated production recipes
-- base and alternate recipe classification
+- recipe availability classification (`standard`, `unlock`, `converter`, `alternate`)
 - ingredients and products with item IDs and amounts
 - manufacturing duration
 - produced-in machine IDs
 - production machine metadata
 - machine display names
 - power metadata where available
+- generator fuel options with fuel use, supplemental inputs, byproducts, and generated MW
+- item sink-point values where available
 - extractor/resource metadata where useful
 - static resource-node catalog outputs only after the extractor provides stable IDs, locations, resource type, and purity behind schemas
 
@@ -109,7 +111,8 @@ Parser and extractor changes should include tests for:
 - tuple parsing
 - tiny docs fixtures
 - known early-game recipes
-- alternate recipe detection
+- recipe availability classification, including deterministic unlock recipes and alternates
 - produced-in machine normalization
+- generator fuel option extraction
 - stable JSON output
 - exclusion of unrelated buildables
