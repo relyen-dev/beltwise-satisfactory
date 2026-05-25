@@ -284,7 +284,7 @@ export function buildProductionGraph(
     }
     const sourceNodeId = endpointNodeId(flow.source);
     const targetNodeId = endpointNodeId(flow.target);
-    if (!nodes.has(sourceNodeId) || !nodes.has(targetNodeId)) {
+    if (sourceNodeId === targetNodeId || !nodes.has(sourceNodeId) || !nodes.has(targetNodeId)) {
       continue;
     }
     const item = dataset.items[flow.itemId];

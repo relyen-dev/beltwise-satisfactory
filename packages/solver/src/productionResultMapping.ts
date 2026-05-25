@@ -509,10 +509,13 @@ function matchItemFlows(
   demands: ItemDemand[],
   allocationContext: ItemFlowAllocationContext,
 ): ItemFlow[] {
-  const remainingSources = sources.map((source) => ({ ...source }));
+  const { sources: remainingSources, demands: remainingDemands } = netInternalEndpointFlows(
+    sources,
+    demands,
+  );
   const flows: ItemFlow[] = [];
 
-  for (const demand of demands) {
+  for (const demand of remainingDemands) {
     let remainingDemand = demand.amountPerMinute;
     while (remainingDemand > EPSILON) {
       const sourceIndex = chooseSourceIndex(remainingSources, demand.endpoint, allocationContext);
@@ -543,6 +546,35 @@ function matchItemFlows(
   return flows;
 }
 
+function netInternalEndpointFlows(
+  sources: readonly ItemSource[],
+  demands: readonly ItemDemand[],
+): { sources: ItemSource[]; demands: ItemDemand[] } {
+  const remainingSources = sources.map((source) => ({ ...source }));
+  const remainingDemands = demands.map((demand) => ({ ...demand }));
+
+  for (const demand of remainingDemands) {
+    for (const source of remainingSources) {
+      if (
+        demand.amountPerMinute <= EPSILON ||
+        source.amountPerMinute <= EPSILON ||
+        !isSameEndpoint(source.endpoint, demand.endpoint)
+      ) {
+        continue;
+      }
+
+      const internalAmount = Math.min(source.amountPerMinute, demand.amountPerMinute);
+      source.amountPerMinute = cleanNumber(source.amountPerMinute - internalAmount);
+      demand.amountPerMinute = cleanNumber(demand.amountPerMinute - internalAmount);
+    }
+  }
+
+  return {
+    sources: remainingSources.filter((source) => source.amountPerMinute > EPSILON),
+    demands: remainingDemands.filter((demand) => demand.amountPerMinute > EPSILON),
+  };
+}
+
 function chooseSourceIndex(
   sources: ItemSource[],
   targetEndpoint: ItemFlowEndpoint,
@@ -566,8 +598,7 @@ function chooseSourceIndex(
     return nonSelfIndex;
   }
 
-  const anyIndex = sources.findIndex((source) => source.amountPerMinute > EPSILON);
-  return anyIndex >= 0 ? anyIndex : undefined;
+  return undefined;
 }
 
 function isSameEndpoint(left: ItemFlowEndpoint, right: ItemFlowEndpoint): boolean {

@@ -117,6 +117,44 @@ describe('production graph conversion', () => {
     });
   });
 
+  it('does not render self-loop item flow edges', () => {
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_IronPlate_C: 25,
+      },
+      rawInputs: {},
+      outputs: {},
+      surplus: {},
+      powerMw: 0,
+      warnings: [],
+      machineUsage: [
+        {
+          recipeId: 'Recipe_IronPlate_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Iron Plate',
+          recipeRatePerMinute: 25,
+          machineCount: 2.5,
+          powerMw: 10,
+        },
+      ],
+      itemFlows: [
+        {
+          itemId: 'Desc_IronPlate_C',
+          amountPerMinute: 5,
+          source: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(tinySatisfactoryDataset, [], result);
+
+    expect(graph.nodes.some((node) => node.id === 'recipe:Recipe_IronPlate_C')).toBe(true);
+    expect(graph.edges).toEqual([]);
+  });
+
   it('formats per-minute graph rates with up to three decimals', () => {
     const targets: ProductTarget[] = [
       {
