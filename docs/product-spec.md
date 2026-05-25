@@ -9,9 +9,9 @@ Beltwise is a Satisfactory-inspired production planner, not a clone of any exist
 Build a readable, local-first factory planner that can:
 
 - Parse Satisfactory game docs into a clean internal dataset.
-- Let users request product rates, resource limits, enabled recipes, alternate recipes, and allowed machines.
+- Let users request product rates, power targets, resource limits, enabled recipes, alternate recipes, and allowed machines.
 - Solve production plans with linear optimization.
-- Explain what a plan requires through graph flows, machine counts, power totals, raw inputs, and warnings.
+- Explain what a plan requires through graph flows, machine counts, power totals, generated power, sink routes, raw inputs, assumed inputs, and warnings.
 - Render an interactive production graph with draggable nodes and preserved layout.
 - Start with static baseline map resource limits, while leaving room for save-file imports and randomized node seeds later.
 
@@ -19,16 +19,18 @@ Build a readable, local-first factory planner that can:
 
 The current app is a working local-first Angular planner:
 
-- `apps/web` is an Angular standalone app with a graph-first planner screen and workbench sections for Plan, Objectives, Recipes, Inputs, Resources, Machines, and Display.
-- `packages/game-data` parses Satisfactory `en-US.json`, normalizes it behind Zod schemas, and emits stable compact JSON for the browser.
-- `packages/planner-core` owns persisted project/workspace state, sessions, user defaults, plan transfer codecs, objective presets, resource-cap contracts, renderer-neutral graph models, graph display settings, and graph layout preservation.
-- `packages/solver` owns the continuous LP model, objective-stage construction, HiGHS adapter, and solution-to-plan mapping.
+- `apps/web` is an Angular standalone app with a graph-first planner screen and workbench sections for Plan, Objectives, Recipes, Inputs, Resources, Machines, Sinks, and Display.
+- `packages/game-data` parses Satisfactory `en-US.json`, normalizes it behind Zod schemas, and emits stable compact JSON for the browser, including generator fuel options, item sink points, and recipe availability categories.
+- `packages/planner-core` owns persisted project/workspace state, sessions, user defaults, plan transfer codecs, objective presets, resource-cap contracts, sink-rule helpers, power-generator catalog helpers, renderer-neutral graph models, graph display settings, and graph layout preservation.
+- `packages/solver` owns the continuous LP model, objective-stage construction, power-target constraints, HiGHS adapter, and solution-to-plan mapping.
 - The browser loads compact generated data from `apps/web/public/data/satisfactory-current.json`, with `data/generated/satisfactory-current.json` available as a built-asset fallback.
 - The production solver is HiGHS-backed through the `highs` JavaScript/WASM runtime, with the wrapper patched to read raw solution values instead of truncated pretty output.
 - Workspace state is saved in `localStorage` under a versioned schema and stores sessions, projects, user defaults, and user intent/configuration, not authoritative solver output.
 - Planner UI state is split across focused Angular capabilities for workspace, active-plan configuration, global defaults, graph interaction, transfer, solving, and workbench focus; `PlannerStoreService` only composes runtime wiring.
 - Foblex Flow renders the graph through an app-layer adapter. Default graph positions are currently generated with Dagre inside the renderer-neutral graph model path.
-- The current graph supports resource, external input, recipe, output, and byproduct nodes, plus selected-path focus, manual node movement, node done state, node notes, transport labels, and configurable edge style.
+- Recipe controls distinguish standard, deterministic unlock, converter, and alternate recipes. Standard and unlock recipes are enabled by default; converter and alternate recipes are disabled by default unless the user enables them.
+- The current graph supports resource, external input, assumed input, recipe, power, output, byproduct, and sink nodes, plus selected-path focus, manual node movement, node done state, node notes, transport labels, configurable edge style, and loopback badges for internal recipe self-flows.
+- Plans support product targets, power targets by generator count or MW with a selected generator/fuel pair, direct sink rules for sinkable surplus, and amount-based sink rules for sinkable target outputs.
 - Plans support plain-text plan notes and graph node notes that are stored locally, exported/imported, shared in compact plan payloads when non-empty, and surfaced in the inspector overview.
 
 Future plans in this document should be read as forward direction only when they are marked as future or not represented in the current source tree.
@@ -68,13 +70,15 @@ The first version should handle a useful early-to-mid-game slice:
 - Multiple output targets in one plan, such as `25 Iron Plate/min`, `20 Iron Rod/min`, and `60 Wire/min`.
 - Fixed output targets such as `60 Iron Plate/min`.
 - Optional maximize targets such as `maximize Screws`.
-- Recipe enable/disable controls.
-- Alternate recipe controls.
+- Recipe enable/disable controls with standard, unlock, converter, and alternate groupings.
+- Alternate recipe controls, with deterministic unlock recipes enabled by default and separate from alternate bulk toggles.
+- Power targets for generator count or MW when the user selects a generator and fuel.
+- Direct sink rules for sinkable surplus and amount-based sink rules for sinkable target outputs.
 - Raw resource availability controls.
 - External item inputs for materials supplied by another factory.
 - Continuous LP solving.
 - Machine counts as fractional/rounded display, not integer solver constraints.
-- Angular-based interactive graph with resource, external input, recipe, output, and byproduct nodes.
+- Angular-based interactive graph with resource, external input, assumed input, recipe, power, output, byproduct, and sink nodes.
 - Local browser persistence for sessions, multiple user projects/plans, user defaults, manual node positions, graph display settings, plan notes, and build-tracking node notes.
 
 Do not include save-file parsing, seed-based randomized resource detection, train/logistics planning, blueprint generation, server-backed multiplayer/collaborative sharing, or account/server features in the MVP. Nuclear and late-game recipes may be present in generated data and solver regression tests, but specialized nuclear UX remains future work.
@@ -398,6 +402,7 @@ interface GameDataset {
   items: Record<ItemId, Item>;
   recipes: Record<RecipeId, Recipe>;
   machines: Record<MachineId, Machine>;
+  generatorFuelOptions: Record<string, GeneratorFuelOption>;
   resources: Record<ItemId, ResourceInfo>;
   schematics: Record<string, Schematic>;
 }
@@ -424,6 +429,7 @@ interface Recipe {
   durationSeconds: number;
   producedIn: MachineId[];
   isAlternate: boolean;
+  availabilityCategory?: RecipeAvailabilityCategory;
   isHandCraftOnly: boolean;
   tags: string[];
   unlocks?: string[];
@@ -432,6 +438,8 @@ interface Recipe {
     factor: number;
   };
 }
+
+type RecipeAvailabilityCategory = 'standard' | 'unlock' | 'converter' | 'alternate';
 
 interface IngredientAmount {
   itemId: ItemId;
@@ -457,6 +465,21 @@ interface Machine {
   };
   manufacturingSpeed?: number;
   extraction?: MachineExtraction;
+}
+
+interface GeneratorFuelOption {
+  id: string;
+  generatorId: MachineId;
+  fuelItemId: ItemId;
+  powerMw: number;
+  fuelConsumedPerMinute: number;
+  supplementalInputs: ItemRate[];
+  byproducts: ItemRate[];
+}
+
+interface ItemRate {
+  itemId: ItemId;
+  amountPerMinute: number;
 }
 
 interface MachineExtraction {
@@ -593,6 +616,8 @@ interface PlannerProject {
   createdAt: string;
   updatedAt: string;
   targets: ProductTarget[];
+  powerTargets: PowerTarget[];
+  sinkRules: SinkRule[];
   recipeOverrides: Record<RecipeId, RecipeOverride>;
   machineOverrides: Record<MachineId, MachineOverride>;
   resourceOverrides: Record<ItemId, ResourceOverride>;
@@ -635,6 +660,33 @@ interface ProductTarget {
   itemId: ItemId;
   mode: 'fixed' | 'maximize';
   amountPerMinute?: number;
+  sortOrder: number;
+}
+
+interface PowerTarget {
+  id: string;
+  mode: 'generator-count' | 'power';
+  generatorId?: MachineId;
+  fuelItemId?: ItemId;
+  generatorCount?: number;
+  powerMw?: number;
+  sortOrder: number;
+}
+
+type SinkRule = SurplusSinkRule | TargetOutputSinkRule;
+
+interface SurplusSinkRule {
+  id: string;
+  itemId: ItemId;
+  mode: 'surplus';
+  sortOrder: number;
+}
+
+interface TargetOutputSinkRule {
+  id: string;
+  itemId: ItemId;
+  mode: 'target-output';
+  amountPerMinute: number;
   sortOrder: number;
 }
 
@@ -693,7 +745,7 @@ Persistence rules:
 - Store project configuration locally under a versioned schema.
 - Keep projects as standalone plan records; sessions reference project ids instead of embedding plans.
 - Store global user defaults separately from projects and sessions.
-- Store targets, recipe overrides, machine overrides, resource caps, item inputs, objective profile, graph display settings, plan/node locks, plan notes, node done state, node notes, and manual graph layout.
+- Store product targets, power targets, sink rules, recipe overrides, machine overrides, resource caps, item inputs, objective profile, graph display settings, plan/node locks, plan notes, node done state, node notes, and manual graph layout.
 - Do not persist full solver output, machine totals, or derived graph edges as authoritative state.
 - On project load, rerun the solver from the stored configuration and generated dataset.
 - If the solver is temporarily slow, cache the last result only as a non-authoritative convenience and invalidate it when inputs/dataset change.
@@ -714,12 +766,28 @@ interface ProductionPlanResult {
   recipeRates: Record<RecipeId, number>;
   rawInputs: Record<ItemId, number>;
   externalInputs?: Record<ItemId, number>;
+  assumedInputs?: Record<ItemId, number>;
   itemFlows: ItemFlow[];
   outputs: Record<ItemId, number>;
   surplus: Record<ItemId, number>;
   machineUsage: MachineUsage[];
+  powerGeneratorUsage?: PowerGeneratorUsage[];
   powerMw: number;
+  generatedPowerMw?: number;
   warnings: PlanWarning[];
+}
+
+interface PowerGeneratorUsage {
+  powerTargetId: string;
+  generatorId: MachineId;
+  generatorDisplayName: string;
+  fuelItemId: ItemId;
+  fuelItemDisplayName: string;
+  generatorCount: number;
+  powerMw: number;
+  fuelConsumedPerMinute: number;
+  supplementalInputs: ItemRate[];
+  byproducts: ItemRate[];
 }
 ```
 
@@ -737,7 +805,15 @@ Renderer boundary:
 ```ts
 interface GraphRendererNode {
   id: string;
-  kind: 'resource' | 'externalInput' | 'recipe' | 'output' | 'byproduct';
+  kind:
+    | 'resource'
+    | 'externalInput'
+    | 'assumedInput'
+    | 'recipe'
+    | 'power'
+    | 'output'
+    | 'byproduct'
+    | 'sink';
   position: { x: number; y: number };
   size?: { width: number; height: number };
   data: ProductionGraphNode;
@@ -764,9 +840,12 @@ Node types:
 
 - `resource`: raw resource source.
 - `externalInput`: item source supplied by another factory.
+- `assumedInput`: unresolved ingredient source assumed to be supplied elsewhere.
 - `recipe`: recipe/machine group.
-- `output`: requested output sink.
-- `byproduct`: surplus or waste sink.
+- `power`: requested generator/fuel operation.
+- `output`: requested product target.
+- `byproduct`: surplus or waste endpoint.
+- `sink`: AWESOME Sink endpoint for configured surplus or target-output sink rules.
 
 Recipe graph nodes must include:
 
@@ -776,6 +855,8 @@ Recipe graph nodes must include:
 - Recipe rate or primary item throughput.
 
 Output graph nodes must correspond to individual requested product targets. A plan can have one output target or many output targets.
+
+Power graph nodes correspond to configured power targets and show generated MW plus generator count. Sink graph nodes are derived from sink rules and active solved flows; they are not saved as authoritative graph state.
 
 Edge labels:
 
@@ -831,9 +912,13 @@ Current controls:
 - Duplicate target.
 - Toggle target mode between fixed and maximize.
 - Numeric rate input.
+- Add/remove/duplicate power target.
+- Select power generator, fuel, target mode, and generator count or MW amount.
 - Recipe search and enable/disable.
-- Base/alternate recipe grouping with enable-all/disable-all controls.
+- Base/alternate recipe grouping with Standard, Unlocks, Converter, and Alternates subgroups where applicable.
 - External input add/remove/item/rate controls.
+- Assumed input review with a move-to-inputs action.
+- Sink surplus and target-output controls with sink-point summaries.
 - Objective preset cards and custom weight controls.
 - Resource cap editor.
 - Resource enable/disable, reset all, disable all, and enable all.
@@ -1001,7 +1086,10 @@ Completed baseline:
 13. Added objective presets, custom objective weights, and raw-resource route multipliers.
 14. Added plan-level notes and node-note summaries.
 15. Split planner state into focused workspace, plan-config, defaults, graph, transfer, solving, and workbench capabilities.
-16. Added docs explaining local workflow, architecture, data model, and data regeneration.
+16. Added power target planning for explicit generator/fuel selections, generator count or MW targets, generated-power graph nodes, assumed inputs, and generator byproduct/waste reporting.
+17. Added direct sink rules for sinkable surplus and target-output sink allocations with sink graph nodes and sink-point reporting.
+18. Added deterministic unlock recipe grouping so Turbofuel and Compacted Coal are enabled by default without participating in alternate bulk toggles.
+19. Added docs explaining local workflow, architecture, data model, and data regeneration.
 
 Near-term follow-up:
 
@@ -1011,5 +1099,6 @@ Near-term follow-up:
 4. Improve graph connection display controls and selected-flow readability behind renderer-neutral display settings.
 5. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
 6. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
-7. Draft the linked-plan contract model before adding logistics-backed links or session-wide production balance.
-8. Keep save-file import, randomized node seeds, session-scale logistics/map planning, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
+7. Continue power planning from explicit generator/fuel targets toward solver-selected fuels, maximize-power objectives, and richer nuclear waste handling.
+8. Draft the linked-plan contract model before adding logistics-backed links or session-wide production balance.
+9. Keep save-file import, randomized node seeds, session-scale logistics/map planning, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
