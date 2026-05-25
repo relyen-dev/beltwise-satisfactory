@@ -69,6 +69,7 @@ export interface InspectorTargetSummary {
   iconSrc: string;
   modeLabel: string;
   amountLabel: string;
+  targetSinkAmountLabel: string | null;
 }
 
 export interface InspectorMachineSummaryRow {
@@ -181,6 +182,7 @@ export interface OutputNodeDetails {
   requestedAmountPerMinuteLabel: string | null;
   solvedAmountPerMinuteLabel: string | null;
   incomingAmountPerMinuteLabel: string;
+  targetSinkAmountPerMinuteLabel: string | null;
   fuelPower: OutputFuelPowerDetails | null;
   surplusSinkAction: InspectorSurplusSinkAction | null;
 }
@@ -512,6 +514,10 @@ function outputNodeDetails(
         ? null
         : `${formatPlannerNumber(details.solvedAmountPerMinute)}/min`,
     incomingAmountPerMinuteLabel: `${formatPlannerNumber(details.incomingAmountPerMinute)}/min`,
+    targetSinkAmountPerMinuteLabel:
+      details.targetSinkAmountPerMinute > 0
+        ? `${formatPlannerNumber(details.targetSinkAmountPerMinute)}/min`
+        : null,
     fuelPower:
       details.fuelPower === null
         ? null
@@ -655,6 +661,10 @@ function targetSummary(target: PlanReportTargetSummary): InspectorTargetSummary 
       target.mode === 'maximize'
         ? `${formatPlannerNumber(target.amountPerMinute)}/min solved`
         : `${formatPlannerNumber(target.amountPerMinute)}/min requested`,
+    targetSinkAmountLabel:
+      target.targetSinkAmountPerMinute > 0
+        ? `${formatPlannerNumber(target.targetSinkAmountPerMinute)}/min sunk`
+        : null,
   };
 }
 

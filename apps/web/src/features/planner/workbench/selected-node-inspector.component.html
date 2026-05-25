@@ -424,6 +424,12 @@
             <span>Incoming flow</span>
             <strong>{{ selectedNode.details.incomingAmountPerMinuteLabel }}</strong>
           </div>
+          @if (selectedNode.details.targetSinkAmountPerMinuteLabel) {
+            <div>
+              <span>Sunk</span>
+              <strong>{{ selectedNode.details.targetSinkAmountPerMinuteLabel }}</strong>
+            </div>
+          }
         </div>
         @if (selectedNode.details.surplusSinkAction; as sinkAction) {
           <div class="section-actions">

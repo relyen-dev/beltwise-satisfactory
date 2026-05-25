@@ -121,6 +121,7 @@ export interface ProductionGraphNode {
   sinkRuleMode?: SinkRule['mode'] | 'mixed';
   targetMode?: ProductTarget['mode'];
   amountPerMinute?: number;
+  targetSinkAmountPerMinute?: number;
   sinkPointsPerMinute?: number;
   machineDisplayName?: string;
   machineCount?: number;
@@ -247,24 +248,28 @@ export function buildProductionGraph(
     const item = dataset.items[target.itemId];
     const targetAmountPerMinute = targetOutputAmountForTarget(target, result, targets);
     const sinkAmountPerMinute = targetSinkAmountByTargetId.get(target.id) ?? 0;
-    const amountPerMinute = Math.max(0, targetAmountPerMinute - sinkAmountPerMinute);
+    const targetAmountLabel =
+      target.mode === 'maximize'
+        ? `maximize, solved ${formatRate(targetAmountPerMinute, rateDecimalPlaces)}/min`
+        : `${formatRate(targetAmountPerMinute, rateDecimalPlaces)}/min target`;
     nodes.set(outputNodeId(target.id), {
       id: outputNodeId(target.id),
       kind: 'output',
       label: item?.displayName ?? target.itemId,
       subtitle:
         sinkAmountPerMinute > MIN_GRAPH_RATE
-          ? `${formatRate(amountPerMinute, rateDecimalPlaces)}/min output, ${formatRate(
+          ? `${targetAmountLabel}, ${formatRate(
               sinkAmountPerMinute,
               rateDecimalPlaces,
             )}/min sunk`
-          : target.mode === 'maximize'
-            ? `maximize, solved ${formatRate(amountPerMinute, rateDecimalPlaces)}/min`
-            : `${formatRate(amountPerMinute, rateDecimalPlaces)}/min target`,
+          : targetAmountLabel,
       itemId: target.itemId,
       targetId: target.id,
       targetMode: target.mode,
-      amountPerMinute,
+      amountPerMinute: targetAmountPerMinute,
+      ...(sinkAmountPerMinute > MIN_GRAPH_RATE
+        ? { targetSinkAmountPerMinute: sinkAmountPerMinute }
+        : {}),
     });
   }
 

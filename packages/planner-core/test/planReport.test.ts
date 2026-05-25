@@ -135,6 +135,7 @@ describe('plan report module', () => {
         itemDisplayName: null,
         mode: 'fixed',
         amountPerMinute: 10,
+        targetSinkAmountPerMinute: 0,
       },
     ]);
   });
@@ -437,7 +438,7 @@ describe('plan report module', () => {
     ]);
   });
 
-  it('reports target output sinks and reduced output-node details', () => {
+  it('reports target output sinks without reducing requested target amounts', () => {
     const context = createReportContext();
     const targets: ProductTarget[] = [
       {
@@ -507,17 +508,19 @@ describe('plan report module', () => {
     expect(overview.targets).toMatchObject([
       {
         targetId: 'target-screw',
-        amountPerMinute: 60,
+        amountPerMinute: 100,
+        targetSinkAmountPerMinute: 40,
       },
     ]);
     expect(selectedOutput.details).toMatchObject({
       kind: 'output',
       item: {
         itemId: 'Desc_Screw_C',
-        amountPerMinute: 60,
+        amountPerMinute: 100,
       },
       requestedAmountPerMinute: 100,
       incomingAmountPerMinute: 100,
+      targetSinkAmountPerMinute: 40,
     });
     expect(selectedOutput.outgoingFlows).toMatchObject([
       {

@@ -83,6 +83,7 @@ export interface PlanReportTargetSummary {
   readonly itemDisplayName: string | null;
   readonly mode: ProductTarget['mode'];
   readonly amountPerMinute: number;
+  readonly targetSinkAmountPerMinute: number;
 }
 
 export interface PlanReportSinkSummary {
@@ -205,6 +206,7 @@ export interface OutputNodeReportDetails {
   readonly requestedAmountPerMinute: number | null;
   readonly solvedAmountPerMinute: number | null;
   readonly incomingAmountPerMinute: number;
+  readonly targetSinkAmountPerMinute: number;
   readonly fuelPower: OutputFuelPowerReport | null;
 }
 
@@ -655,6 +657,7 @@ function outputNodeDetails(
         (itemId ? result?.outputs[itemId] : undefined) ??
         incomingAmountPerMinute)
       : null;
+  const targetSinkAmountPerMinute = selectedNode.targetSinkAmountPerMinute ?? 0;
   const displayAmountPerMinute =
     targetMode === 'maximize'
       ? (maximizedOutput ?? incomingAmountPerMinute)
@@ -672,6 +675,7 @@ function outputNodeDetails(
     requestedAmountPerMinute: fixedRequest,
     solvedAmountPerMinute: maximizedOutput,
     incomingAmountPerMinute,
+    targetSinkAmountPerMinute,
     fuelPower: outputFuelPowerDetails(dataset, itemId, displayAmountPerMinute),
   };
 }
@@ -784,14 +788,14 @@ function targetSummary(
     result === null
       ? targetOutputAmountForTarget(target, null, project.targets)
       : targetOutputAmountForTarget(target, result, project.targets);
-  const amount = Math.max(0, targetAmountPerMinute - targetSinkAmountPerMinute);
 
   return {
     targetId: target.id,
     itemId: target.itemId,
     itemDisplayName: target.itemId.length > 0 ? (item?.displayName ?? target.itemId) : null,
     mode: target.mode,
-    amountPerMinute: amount,
+    amountPerMinute: targetAmountPerMinute,
+    targetSinkAmountPerMinute,
   };
 }
 

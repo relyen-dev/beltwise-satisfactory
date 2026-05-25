@@ -379,7 +379,8 @@ describe('production graph conversion', () => {
         id: 'output:target-screw',
         kind: 'output',
         itemId: 'Desc_Screw_C',
-        amountPerMinute: 60,
+        amountPerMinute: 100,
+        targetSinkAmountPerMinute: 40,
       }),
     );
     expect(graph.nodes).toContainEqual(
@@ -482,10 +483,12 @@ describe('production graph conversion', () => {
       sinkPointsPerMinute: 100,
     });
     expect(graph.nodes.find((node) => node.id === 'output:target-screw-a')).toMatchObject({
-      amountPerMinute: 0,
+      amountPerMinute: 30,
+      targetSinkAmountPerMinute: 30,
     });
     expect(graph.nodes.find((node) => node.id === 'output:target-screw-b')).toMatchObject({
-      amountPerMinute: 0,
+      amountPerMinute: 20,
+      targetSinkAmountPerMinute: 20,
     });
     expect(
       graph.edges
@@ -563,7 +566,8 @@ describe('production graph conversion', () => {
       sinkPointsPerMinute: 200,
     });
     expect(graph.nodes.find((node) => node.id === 'output:target-screw-fixed')).toMatchObject({
-      amountPerMinute: 0,
+      amountPerMinute: 100,
+      targetSinkAmountPerMinute: 100,
     });
     expect(graph.nodes.find((node) => node.id === 'output:target-screw-max')).toMatchObject({
       amountPerMinute: 0,
