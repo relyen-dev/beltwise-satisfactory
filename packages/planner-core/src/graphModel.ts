@@ -161,7 +161,10 @@ export function buildProductionGraph(
     sinkRules,
   );
   const targetSinkAmountByTargetId = targetOutputSinkAmountByTargetId(targetSinkAllocations);
-  const itemFlows = routeItemFlowsToSinks(dataset, targets, sinkRules, result);
+  const itemFlows = [
+    ...routeSurplusFlowsToSink(dataset, sinkRules, result),
+    ...targetOutputSinkFlows(targetSinkAllocations),
+  ];
   const sinkNodeInputs = new Map<ItemId, SinkNodeInput>();
 
   for (const [itemId, amountPerMinute] of Object.entries(result.rawInputs)) {

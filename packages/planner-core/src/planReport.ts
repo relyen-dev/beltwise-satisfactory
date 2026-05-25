@@ -30,6 +30,7 @@ import {
   buildTargetOutputSinkAllocations,
   targetOutputAmountForTarget,
   targetOutputSinkAmountByTargetId,
+  type TargetOutputSinkAllocation,
 } from './targetOutputSinks';
 
 export type PlanReportIconRef =
@@ -294,6 +295,13 @@ export function buildPlanOverviewReport(
   const machineUsage = result?.machineUsage ?? [];
   const machineSummary = summarizeMachinesByType(machineUsage);
   const rawInputs = itemRateRows(dataset, result?.rawInputs ?? {});
+  const targetOutputSinkAllocations =
+    result === null
+      ? []
+      : buildTargetOutputSinkAllocations(dataset, project.targets, result, project.sinkRules);
+  const targetSinkAmountByTargetId = targetOutputSinkAmountByTargetId(
+    targetOutputSinkAllocations,
+  );
 
   return {
     status: result?.status ?? null,
@@ -307,8 +315,10 @@ export function buildPlanOverviewReport(
     notes: buildPlanNotesSummary(project, graph),
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
-      .map((target) => targetSummary(dataset, project, result, target)),
-    sinks: sinkSummaries(dataset, project, result),
+      .map((target) =>
+        targetSummary(dataset, project, result, target, targetSinkAmountByTargetId),
+      ),
+    sinks: sinkSummaries(dataset, project, result, targetOutputSinkAllocations),
     rawInputs,
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
     assumedInputs: itemRateRows(dataset, result?.assumedInputs ?? {}, 'assumed-input-supply'),
@@ -776,14 +786,10 @@ function targetSummary(
   project: PlannerProject,
   result: ProductionPlanResult | null,
   target: ProductTarget,
+  targetSinkAmountByTargetId: ReadonlyMap<string, number>,
 ): PlanReportTargetSummary {
   const item = dataset.items[target.itemId];
-  const targetSinkAmountPerMinute =
-    result === null
-      ? 0
-      : (targetOutputSinkAmountByTargetId(
-          buildTargetOutputSinkAllocations(dataset, project.targets, result, project.sinkRules),
-        ).get(target.id) ?? 0);
+  const targetSinkAmountPerMinute = targetSinkAmountByTargetId.get(target.id) ?? 0;
   const targetAmountPerMinute =
     result === null
       ? targetOutputAmountForTarget(target, null, project.targets)
@@ -1001,14 +1007,13 @@ function sinkSummaries(
   dataset: GameDataset,
   project: PlannerProject,
   result: ProductionPlanResult | null,
+  targetOutputSinkAllocations: readonly TargetOutputSinkAllocation[],
 ): PlanReportSinkSummary[] {
   if (!result) {
     return [];
   }
   const targetOutputAllocations = new Map(
-    buildTargetOutputSinkAllocations(dataset, project.targets, result, project.sinkRules).map(
-      (allocation) => [allocation.rule.id, allocation] as const,
-    ),
+    targetOutputSinkAllocations.map((allocation) => [allocation.rule.id, allocation] as const),
   );
 
   return project.sinkRules
