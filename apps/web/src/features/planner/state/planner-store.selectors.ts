@@ -75,6 +75,13 @@ export interface ExternalInputRow {
   amountPerMinute: number;
 }
 
+export interface AssumedInputRow {
+  item: Item;
+  amountPerMinute: number;
+  amountPerMinuteLabel: string;
+  iconSrc: string;
+}
+
 export interface PowerTargetGeneratorOption {
   generatorId: MachineId;
   displayName: string;
@@ -307,6 +314,27 @@ export function selectExternalInputRows(
     .flatMap(([itemId, input]) => {
       const item = dataset.items[itemId];
       return item ? [{ item, amountPerMinute: input.amountPerMinute }] : [];
+    })
+    .toSorted((left, right) => left.item.displayName.localeCompare(right.item.displayName));
+}
+
+export function selectAssumedInputRows(
+  dataset: GameDataset,
+  result: ProductionPlanResult | null,
+): AssumedInputRow[] {
+  return Object.entries(result?.assumedInputs ?? {})
+    .flatMap(([itemId, amountPerMinute]) => {
+      const item = dataset.items[itemId];
+      return item && amountPerMinute > 0
+        ? [
+            {
+              item,
+              amountPerMinute,
+              amountPerMinuteLabel: formatRatePerMinute(amountPerMinute),
+              iconSrc: gameIconPathForItemId(item.id),
+            },
+          ]
+        : [];
     })
     .toSorted((left, right) => left.item.displayName.localeCompare(right.item.displayName));
 }

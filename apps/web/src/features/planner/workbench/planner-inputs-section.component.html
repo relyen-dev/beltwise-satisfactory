@@ -68,4 +68,43 @@
       }
     </div>
   }
+
+  @let assumedRows = assumedInputRows();
+  @if (assumedRows.length > 0) {
+    <section class="assumed-input-section" aria-labelledby="assumed-inputs-heading">
+      <div class="subsection-heading">
+        <h4 id="assumed-inputs-heading">Assumed Inputs</h4>
+        <span>{{ assumedRows.length }} solver assumptions</span>
+      </div>
+
+      <div class="compact-list assumed-input-list" aria-label="Assumed input rows">
+        @for (row of assumedRows; track row.item.id) {
+          <div class="inspector-row assumed-input-row">
+            <bw-game-icon
+              [src]="row.iconSrc"
+              [label]="row.item.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ row.item.displayName }}</strong>
+              <span>Assumed input</span>
+            </span>
+            <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+            <button
+              type="button"
+              class="assumed-input-add-button"
+              title="Add assumed input to external inputs"
+              [attr.aria-label]="'Add ' + row.item.displayName + ' to external inputs'"
+              [disabled]="planConfig.editingLocked()"
+              (click)="addAssumedInputToExternalInputs(row)"
+            >
+              Add to Inputs
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+  }
 </section>

@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
 import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
+import type { AssumedInputRow } from '../state/planner-store.selectors';
+import { GameIconComponent } from '../shared-ui/game-icon.component';
 import { parsePlannerNumber } from '../shared-ui/planner-ui.helpers';
 import { TargetItemPickerComponent } from '../shared-ui/target-item-picker.component';
 
@@ -27,7 +29,7 @@ let nextDraftExternalInputId = 0;
 @Component({
   selector: 'bw-planner-inputs-section',
   standalone: true,
-  imports: [FormsModule, TargetItemPickerComponent],
+  imports: [FormsModule, GameIconComponent, TargetItemPickerComponent],
   templateUrl: './planner-inputs-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -49,6 +51,8 @@ export class PlannerInputsSectionComponent {
 
     return [...savedRows, ...draftRows];
   });
+
+  public readonly assumedInputRows = computed(() => this.planConfig.assumedInputRows());
 
   public readonly canAddInput = computed(() => {
     if (this.planConfig.editingLocked() || !this.planConfig.hasActivePlan()) {
@@ -86,14 +90,22 @@ export class PlannerInputsSectionComponent {
       return;
     }
 
-    const existingAmountPerMinute =
-      this.planConfig.externalInputRows().find((inputRow) => inputRow.item.id === itemId)
-        ?.amountPerMinute ?? 0;
     this.planConfig.inputCommands.set(
       itemId,
-      existingAmountPerMinute + safeExternalInputAmount(row.amountPerMinute),
+      this.externalInputAmount(itemId) + safeExternalInputAmount(row.amountPerMinute),
     );
     this.removeDraftInput(row.id);
+  }
+
+  public addAssumedInputToExternalInputs(row: AssumedInputRow): void {
+    if (this.planConfig.editingLocked()) {
+      return;
+    }
+
+    this.planConfig.inputCommands.set(
+      row.item.id,
+      this.externalInputAmount(row.item.id) + safeExternalInputAmount(row.amountPerMinute),
+    );
   }
 
   public updateInputAmount(row: ExternalInputViewRow, value: string | number | null): void {
@@ -134,6 +146,13 @@ export class PlannerInputsSectionComponent {
 
   private removeDraftInput(rowId: string): void {
     this.draftInputRows.update((rows) => rows.filter((row) => row.id !== rowId));
+  }
+
+  private externalInputAmount(itemId: ItemId): number {
+    return (
+      this.planConfig.externalInputRows().find((inputRow) => inputRow.item.id === itemId)
+        ?.amountPerMinute ?? 0
+    );
   }
 }
 

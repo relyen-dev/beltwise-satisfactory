@@ -168,17 +168,7 @@
         </button>
       </div>
     } @else {
-      <div class="target-table power-target-table" role="table" aria-label="Power target rows">
-        <div class="target-row target-row--head power-target-row power-target-row--head" role="row">
-          <span class="power-target-cell--drag" aria-hidden="true"></span>
-          <span class="power-target-cell--generator">Generator</span>
-          <span class="power-target-cell--fuel">Fuel</span>
-          <span class="power-target-cell--mode">Mode</span>
-          <span class="power-target-cell--amount">Amount</span>
-          <span class="power-target-cell--summary">Summary</span>
-          <span class="power-target-cell--actions">Actions</span>
-        </div>
-
+      <div class="power-target-list" role="list" aria-label="Power target rows">
         @for (row of powerTargetRows; track row.target.id) {
           <div
             class="target-row power-target-row"
@@ -192,7 +182,7 @@
               powerTargetDropHint()?.targetId === row.target.id &&
               powerTargetDropHint()?.position === 'after'
             "
-            role="row"
+            role="listitem"
             (dragover)="handlePowerTargetDragOver(row.target.id, $event)"
             (drop)="dropPowerTarget(row.target.id, $event)"
           >
@@ -210,64 +200,66 @@
               <span aria-hidden="true"></span>
             </button>
 
-            <label class="power-target-cell--generator">
-              <span class="sr-only">Power target generator</span>
-              <select
-                [ngModel]="row.target.generatorId ?? ''"
-                [disabled]="planConfig.editingLocked()"
-                (ngModelChange)="updatePowerTargetGenerator(row.target.id, $event)"
-              >
-                <option value="">Generator</option>
-                @for (
-                  generator of planConfig.powerTargetGeneratorOptions();
-                  track generator.generatorId
-                ) {
-                  <option [value]="generator.generatorId">{{ generator.displayName }}</option>
-                }
-              </select>
-            </label>
+            <div class="power-target-fields">
+              <label class="power-target-field power-target-field--generator">
+                <span class="power-target-field__label">Generator</span>
+                <select
+                  [ngModel]="row.target.generatorId ?? ''"
+                  [disabled]="planConfig.editingLocked()"
+                  (ngModelChange)="updatePowerTargetGenerator(row.target.id, $event)"
+                >
+                  <option value="">Generator</option>
+                  @for (
+                    generator of planConfig.powerTargetGeneratorOptions();
+                    track generator.generatorId
+                  ) {
+                    <option [value]="generator.generatorId">{{ generator.displayName }}</option>
+                  }
+                </select>
+              </label>
 
-            <label class="power-target-cell--fuel">
-              <span class="sr-only">Power target fuel</span>
-              <select
-                [ngModel]="row.target.fuelItemId ?? ''"
-                [disabled]="row.target.generatorId === undefined || planConfig.editingLocked()"
-                (ngModelChange)="updatePowerTargetFuel(row.target.id, $event)"
-              >
-                <option value="">Choose fuel source</option>
-                @for (fuel of row.fuelOptions; track fuel.optionId) {
-                  <option [value]="fuel.fuelItemId">{{ fuel.displayName }}</option>
-                }
-              </select>
-            </label>
+              <label class="power-target-field power-target-field--fuel">
+                <span class="power-target-field__label">Fuel</span>
+                <select
+                  [ngModel]="row.target.fuelItemId ?? ''"
+                  [disabled]="row.target.generatorId === undefined || planConfig.editingLocked()"
+                  (ngModelChange)="updatePowerTargetFuel(row.target.id, $event)"
+                >
+                  <option value="">Choose fuel source</option>
+                  @for (fuel of row.fuelOptions; track fuel.optionId) {
+                    <option [value]="fuel.fuelItemId">{{ fuel.displayName }}</option>
+                  }
+                </select>
+              </label>
 
-            <label class="power-target-cell--mode">
-              <span class="sr-only">Power target mode</span>
-              <select
-                [ngModel]="row.target.mode"
-                [disabled]="planConfig.editingLocked()"
-                (ngModelChange)="updatePowerTargetMode(row.target.id, $event)"
-              >
-                <option value="generator-count">Generators</option>
-                <option value="power">MW</option>
-              </select>
-            </label>
+              <label class="power-target-field power-target-field--mode">
+                <span class="power-target-field__label">Mode</span>
+                <select
+                  [ngModel]="row.target.mode"
+                  [disabled]="planConfig.editingLocked()"
+                  (ngModelChange)="updatePowerTargetMode(row.target.id, $event)"
+                >
+                  <option value="generator-count">Generators</option>
+                  <option value="power">MW</option>
+                </select>
+              </label>
 
-            <label class="power-target-cell--amount">
-              <span class="sr-only">{{ row.amountLabel }}</span>
-              <input
-                type="number"
-                min="0"
-                [step]="row.amountStep"
-                [attr.aria-label]="row.amountLabel"
-                [ngModel]="row.amountValue"
-                [disabled]="planConfig.editingLocked()"
-                (ngModelChange)="updatePowerTargetAmount(row.target.id, $event)"
-              />
-            </label>
+              <label class="power-target-field power-target-field--amount">
+                <span class="power-target-field__label">Amount</span>
+                <input
+                  type="number"
+                  min="0"
+                  [step]="row.amountStep"
+                  [attr.aria-label]="row.amountLabel"
+                  [ngModel]="row.amountValue"
+                  [disabled]="planConfig.editingLocked()"
+                  (ngModelChange)="updatePowerTargetAmount(row.target.id, $event)"
+                />
+              </label>
+            </div>
 
             <div
-              class="power-target-summary power-target-cell--summary"
+              class="power-target-summary"
               [class.power-target-summary--incomplete]="!row.isComplete"
             >
               <strong>{{ row.summary.label }}</strong>
@@ -286,7 +278,7 @@
               }
             </div>
 
-            <div class="row-tools">
+            <div class="row-tools power-target-actions">
               <button
                 type="button"
                 class="row-icon-button row-icon-button--duplicate"

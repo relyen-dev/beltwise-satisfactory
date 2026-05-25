@@ -6,6 +6,7 @@ import {
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import {
+  selectAssumedInputRows,
   selectAvailableSurplusSinkItems,
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
@@ -212,6 +213,43 @@ describe('planner store selectors', () => {
       { item: tinySatisfactoryDataset.items['Desc_IngotIron_C'], amountPerMinute: 5 },
       { item: tinySatisfactoryDataset.items['Desc_Wire_C'], amountPerMinute: 12 },
     ]);
+  });
+
+  it('filters missing assumed input items and formats visible solved rates', () => {
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      assumedInputs: {
+        Desc_Wire_C: 12.345,
+        Desc_Missing_C: 99,
+        Desc_IngotIron_C: 5,
+        Desc_IronPlate_C: 0,
+      },
+      itemFlows: [],
+      outputs: {},
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+
+    expect(selectAssumedInputRows(tinySatisfactoryDataset, result)).toEqual([
+      {
+        item: tinySatisfactoryDataset.items['Desc_IngotIron_C'],
+        amountPerMinute: 5,
+        amountPerMinuteLabel: '5/min',
+        iconSrc: '/game-icons/Desc_IngotIron_C.png',
+      },
+      {
+        item: tinySatisfactoryDataset.items['Desc_Wire_C'],
+        amountPerMinute: 12.345,
+        amountPerMinuteLabel: '12.35/min',
+        iconSrc: '/game-icons/Desc_Wire_C.png',
+      },
+    ]);
+    expect(selectAssumedInputRows(tinySatisfactoryDataset, null)).toEqual([]);
   });
 
   it('builds power target options and summaries from the generator fuel catalog', () => {

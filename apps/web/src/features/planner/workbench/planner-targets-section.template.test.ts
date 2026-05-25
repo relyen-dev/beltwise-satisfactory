@@ -3,15 +3,19 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 describe('PlannerTargetsSectionComponent template', () => {
-  it('uses a distinct empty fuel placeholder and lets power summaries wrap wider', () => {
+  it('uses a distinct empty fuel placeholder and a form-like power target layout', () => {
     const template = readSiblingFile('planner-targets-section.component.html');
     const styles = readSiblingFile('planner-workbench-sections.css');
 
     expect(template).toContain('<option value="">Choose fuel source</option>');
     expect(template).not.toContain('<option value="">Fuel</option>');
-    expect(template).toContain('class="power-target-summary power-target-cell--summary"');
-    expect(styles).toContain("'drag generator fuel mode amount actions'");
-    expect(styles).toContain("'drag summary summary summary summary actions'");
+    expect(template).toContain('class="power-target-list" role="list"');
+    expect(template).toContain('class="power-target-fields"');
+    expect(template).toContain('class="power-target-field__label">Generator</span>');
+    expect(template).not.toContain('power-target-cell--summary');
+    expect(styles).toContain("'drag fields actions'");
+    expect(styles).toContain("'drag summary actions'");
+    expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
   });
 });
 

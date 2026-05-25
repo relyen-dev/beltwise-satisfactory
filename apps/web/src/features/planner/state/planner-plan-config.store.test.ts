@@ -44,6 +44,35 @@ describe('PlannerPlanConfigStore', () => {
     expect(planConfig.planNotes()).toBe('Bring power shards');
   });
 
+  it('exposes assumed input rows from the latest solve result', () => {
+    const { planConfig } = createPlanConfigHarness({
+      solveResult: {
+        status: 'optimal',
+        recipeRates: {},
+        rawInputs: {},
+        externalInputs: {},
+        assumedInputs: {
+          Desc_Wire_C: 4.5,
+        },
+        itemFlows: [],
+        outputs: {},
+        surplus: {},
+        machineUsage: [],
+        powerMw: 0,
+        warnings: [],
+      },
+    });
+
+    expect(planConfig.assumedInputRows()).toEqual([
+      {
+        item: tinySatisfactoryDataset.items['Desc_Wire_C'],
+        amountPerMinute: 4.5,
+        amountPerMinuteLabel: '4.5/min',
+        iconSrc: '/game-icons/Desc_Wire_C.png',
+      },
+    ]);
+  });
+
   it('exposes catalog-backed power target rows and commands', () => {
     const dataset = withPowerDataset();
     const { activeProject, planConfig } = createPlanConfigHarness({
