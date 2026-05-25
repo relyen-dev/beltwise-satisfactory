@@ -18,6 +18,7 @@
   </div>
 
   @let standardBaseRows = planConfig.standardBaseRecipeRows();
+  @let unlockRows = planConfig.unlockRecipeRows();
   @let converterResourceRows = planConfig.converterResourceRecipeRows();
   @let baseRows = activeBaseRecipeRows();
   @let alternateRows = planConfig.alternateRecipeRows();
@@ -32,10 +33,10 @@
     >
       <span>
         <strong>Base recipes</strong>
-        <em>Standard and converter resources</em>
+        <em>Standard, unlock, and converter</em>
       </span>
       <span class="recipe-mode-tab__count">{{
-        totalBaseRecipeRowCount(standardBaseRows, converterResourceRows)
+        totalBaseRecipeRowCount(standardBaseRows, unlockRows, converterResourceRows)
       }}</span>
     </button>
     <button
@@ -89,7 +90,7 @@
           >
             <span>{{ panel.label }}</span>
             <span>{{
-              baseRecipePanelRowCount(panel.id, standardBaseRows, converterResourceRows)
+              baseRecipePanelRowCount(panel.id, standardBaseRows, unlockRows, converterResourceRows)
             }}</span>
           </button>
         }
@@ -99,6 +100,8 @@
         @if (baseRows.length === 0) {
           @if (activeBaseRecipePanel() === 'converterResources') {
             <div class="recipe-empty">No converter resource recipes match the search.</div>
+          } @else if (activeBaseRecipePanel() === 'unlocks') {
+            <div class="recipe-empty">No unlock recipes match the search.</div>
           } @else {
             <div class="recipe-empty">No base recipes match the search.</div>
           }
@@ -140,7 +143,13 @@
                 }
               </span>
               <span class="config-toggle-row__badges">
-                <span class="recipe-chip">base</span>
+                <span
+                  class="recipe-chip"
+                  [class.recipe-chip--unlock]="row.availabilityCategory === 'unlock'"
+                  [class.recipe-chip--converter]="row.availabilityCategory === 'converter'"
+                >
+                  {{ row.availabilityLabel }}
+                </span>
               </span>
               <span class="recipe-detail-tooltip" role="tooltip">
                 <span class="recipe-detail-tooltip__title">{{ row.recipe.displayName }}</span>
@@ -251,7 +260,7 @@
                 }
               </span>
               <span class="config-toggle-row__badges">
-                <span class="recipe-chip recipe-chip--alt">alternate</span>
+                <span class="recipe-chip recipe-chip--alt">{{ row.availabilityLabel }}</span>
               </span>
               <span class="recipe-detail-tooltip" role="tooltip">
                 <span class="recipe-detail-tooltip__title">{{ row.recipe.displayName }}</span>

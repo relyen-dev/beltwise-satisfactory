@@ -120,8 +120,8 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.recipe-subtabs--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.recipe-subtabs.recipe-subtabs--default {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 @media (max-width: 1220px) {

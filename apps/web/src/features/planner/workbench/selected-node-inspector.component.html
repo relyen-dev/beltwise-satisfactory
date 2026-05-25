@@ -424,6 +424,12 @@
             <span>Incoming flow</span>
             <strong>{{ selectedNode.details.incomingAmountPerMinuteLabel }}</strong>
           </div>
+          @if (selectedNode.details.targetSinkAmountPerMinuteLabel) {
+            <div>
+              <span>Sunk</span>
+              <strong>{{ selectedNode.details.targetSinkAmountPerMinuteLabel }}</strong>
+            </div>
+          }
         </div>
         @if (selectedNode.details.surplusSinkAction; as sinkAction) {
           <div class="section-actions">
@@ -562,21 +568,19 @@
             <strong>{{ selectedNode.details.sinkPointsPerMinuteLabel }}</strong>
           </div>
         </div>
-        <div class="section-actions">
-          <button
-            type="button"
-            class="primary-action"
-            [title]="selectedNode.details.surplusSinkAction.title"
-            [disabled]="planConfig.editingLocked()"
-            (click)="
-              planConfig.sinkCommands.toggleSurplus(
-                selectedNode.details.surplusSinkAction.itemId
-              )
-            "
-          >
-            {{ selectedNode.details.surplusSinkAction.label }}
-          </button>
-        </div>
+        @if (selectedNode.details.sinkAction; as sinkAction) {
+          <div class="section-actions">
+            <button
+              type="button"
+              class="primary-action"
+              [title]="sinkAction.title"
+              [disabled]="planConfig.editingLocked()"
+              (click)="runSinkAction(sinkAction)"
+            >
+              {{ sinkAction.label }}
+            </button>
+          </div>
+        }
       </section>
     }
   }

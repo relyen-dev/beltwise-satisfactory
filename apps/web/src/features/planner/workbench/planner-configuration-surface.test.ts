@@ -78,28 +78,40 @@ describe('planner configuration surface', () => {
 
   it('defines and selects shared recipe panel categories', () => {
     const standardRows = ['standard-a'];
+    const unlockRows = ['unlock-a'];
     const converterRows = ['converter-a'];
     const alternateRows = ['alternate-a'];
 
     expect(BASE_RECIPE_PANEL_DEFINITIONS).toEqual([
       { id: 'standard', label: 'Standard' },
-      { id: 'converterResources', label: 'Converter resources' },
+      { id: 'unlocks', label: 'Unlocks' },
+      { id: 'converterResources', label: 'Converter' },
     ]);
     expect(DEFAULT_RECIPE_PANEL_DEFINITIONS).toEqual([
       { id: 'standard', label: 'Standard' },
-      { id: 'converterResources', label: 'Converter resources' },
+      { id: 'unlocks', label: 'Unlocks' },
+      { id: 'converterResources', label: 'Converter' },
       { id: 'alternates', label: 'Alternates' },
     ]);
 
     expect(
       recipeRowsForBasePanel('standard', {
         standard: standardRows,
+        unlocks: unlockRows,
         converterResources: converterRows,
       }),
     ).toBe(standardRows);
     expect(
+      recipeRowsForBasePanel('unlocks', {
+        standard: standardRows,
+        unlocks: unlockRows,
+        converterResources: converterRows,
+      }),
+    ).toBe(unlockRows);
+    expect(
       recipeRowsForDefaultPanel('converterResources', {
         standard: standardRows,
+        unlocks: unlockRows,
         converterResources: converterRows,
         alternates: alternateRows,
       }),
@@ -107,6 +119,7 @@ describe('planner configuration surface', () => {
     expect(
       recipeRowsForDefaultPanel('alternates', {
         standard: standardRows,
+        unlocks: unlockRows,
         converterResources: converterRows,
         alternates: alternateRows,
       }),

@@ -33,6 +33,7 @@ import { PlannerSolverService } from '../solving/planner-solver.service';
 import { PlannerPlanCommandSlice } from './planner-store-plan-commands';
 import {
   selectAssumedInputRows,
+  selectAvailableTargetOutputSinkOptions,
   selectAvailableSurplusSinkItems,
   selectExternalInputRows,
   selectItemOptions,
@@ -84,6 +85,8 @@ export interface PlannerPlanInputCommands {
 
 export interface PlannerPlanSinkCommands {
   readonly addSurplus: (itemId: ItemId) => void;
+  readonly addTargetOutput: (itemId: ItemId, amountPerMinute: number) => void;
+  readonly updateTargetOutputAmount: (sinkRuleId: string, amountPerMinute: number) => void;
   readonly remove: (sinkRuleId: string) => void;
   readonly removeSurplusForItem: (itemId: ItemId) => void;
   readonly toggleSurplus: (itemId: ItemId) => void;
@@ -140,6 +143,9 @@ export interface PlannerPlanConfigReadModel {
   readonly sinkRules: Signal<readonly SinkRule[]>;
   readonly sinkRuleRows: Signal<ReturnType<typeof selectSinkRuleRows>>;
   readonly availableSurplusSinkItems: Signal<ReturnType<typeof selectAvailableSurplusSinkItems>>;
+  readonly availableTargetOutputSinkOptions: Signal<
+    ReturnType<typeof selectAvailableTargetOutputSinkOptions>
+  >;
   readonly planNotes: Signal<string>;
   readonly itemOptions: Signal<readonly Item[]>;
   readonly externalInputRows: Signal<ReturnType<typeof selectExternalInputRows>>;
@@ -149,6 +155,7 @@ export interface PlannerPlanConfigReadModel {
   readonly recipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly baseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly standardBaseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
+  readonly unlockRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly converterResourceRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly alternateRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly machineRows: Signal<ReturnType<typeof selectMachineRows>>;
@@ -241,6 +248,14 @@ export class PlannerPlanConfigStore
       : [];
   });
 
+  public readonly availableTargetOutputSinkOptions = computed(() => {
+    const dataset = this.port.dataset();
+    const project = this.port.activeProject();
+    return dataset && project
+      ? selectAvailableTargetOutputSinkOptions(dataset, project, this.port.solveResult())
+      : [];
+  });
+
   public readonly resourceRows = computed(() => {
     const dataset = this.port.dataset();
     const project = this.port.activeProject();
@@ -262,19 +277,23 @@ export class PlannerPlanConfigStore
   });
 
   public readonly baseRecipeRows = computed(() =>
-    this.recipeRows().filter((row) => !row.recipe.isAlternate),
+    this.recipeRows().filter((row) => row.availabilityCategory !== 'alternate'),
   );
 
   public readonly standardBaseRecipeRows = computed(() =>
-    this.baseRecipeRows().filter((row) => !row.isConverterResourceRecipe),
+    this.baseRecipeRows().filter((row) => row.availabilityCategory === 'standard'),
+  );
+
+  public readonly unlockRecipeRows = computed(() =>
+    this.baseRecipeRows().filter((row) => row.availabilityCategory === 'unlock'),
   );
 
   public readonly converterResourceRecipeRows = computed(() =>
-    this.baseRecipeRows().filter((row) => row.isConverterResourceRecipe),
+    this.baseRecipeRows().filter((row) => row.availabilityCategory === 'converter'),
   );
 
   public readonly alternateRecipeRows = computed(() =>
-    this.recipeRows().filter((row) => row.recipe.isAlternate),
+    this.recipeRows().filter((row) => row.availabilityCategory === 'alternate'),
   );
 
   public readonly machineRows = computed(() => {
@@ -291,6 +310,7 @@ export class PlannerPlanConfigStore
     dataset: this.port.dataset,
     activeProject: this.port.activeProject,
     itemOptions: this.itemOptions,
+    solveResult: this.port.solveResult,
     planLocked: () => this.editingLocked(),
     updateActiveProject: this.port.updateActiveProject,
   });
@@ -329,6 +349,10 @@ export class PlannerPlanConfigStore
 
   public readonly sinkCommands: PlannerPlanSinkCommands = {
     addSurplus: (itemId) => this.planCommands.addSurplusSink(itemId),
+    addTargetOutput: (itemId, amountPerMinute) =>
+      this.planCommands.addTargetOutputSink(itemId, amountPerMinute),
+    updateTargetOutputAmount: (sinkRuleId, amountPerMinute) =>
+      this.planCommands.updateTargetOutputSinkAmount(sinkRuleId, amountPerMinute),
     remove: (sinkRuleId) => this.planCommands.removeSinkRule(sinkRuleId),
     removeSurplusForItem: (itemId) => this.planCommands.removeSurplusSinkForItem(itemId),
     toggleSurplus: (itemId) => this.planCommands.toggleSurplusSink(itemId),

@@ -5,11 +5,13 @@ import {
   type ItemId,
   type MachineId,
   type RecipeId,
+  recipeAvailabilityCategoryForDataset,
 } from '@beltwise/game-data';
 import {
   buildGeneratorFuelCatalog,
   createStableId,
   defaultResourceCapPerMinute,
+  isTargetOutputSinkableItem,
   mutatePlanGraph,
   mutatePlanItemInputs,
   mutatePlanMetadata,
@@ -26,14 +28,18 @@ import {
   type PipelineTier,
   type PlannerProject,
   type PowerTarget,
+  type ProductionPlanResult,
   type ProductTarget,
   type RateDecimalPlaces,
+  targetOutputAmountForItem,
+  targetOutputSinkConfiguredAmountForItem,
 } from '@beltwise/planner-core';
 
 interface PlannerPlanCommandSliceOptions {
   readonly dataset: Signal<GameDataset | null>;
   readonly activeProject: Signal<PlannerProject | null>;
   readonly itemOptions: Signal<readonly Item[]>;
+  readonly solveResult: Signal<ProductionPlanResult | null>;
   readonly planLocked: () => boolean;
   readonly updateActiveProject: (mapper: (project: PlannerProject) => PlannerProject) => void;
 }
@@ -263,7 +269,10 @@ export class PlannerPlanCommandSlice {
     }
 
     const recipeIds = Object.values(dataset.recipes)
-      .filter((recipe) => recipe.isAlternate === isAlternate)
+      .filter((recipe) => {
+        const category = recipeAvailabilityCategoryForDataset(dataset, recipe);
+        return isAlternate ? category === 'alternate' : category !== 'alternate';
+      })
       .map((recipe) => recipe.id);
 
     this.options.updateActiveProject((project) =>
@@ -323,6 +332,49 @@ export class PlannerPlanCommandSlice {
         type: 'add-surplus-sink',
         sinkRuleId: createStableSinkRuleId(),
         itemId,
+      }),
+    );
+  }
+
+  public addTargetOutputSink(itemId: ItemId, amountPerMinute: number): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    const clampedAmountPerMinute = this.clampAdditionalTargetOutputSinkAmount(
+      itemId,
+      amountPerMinute,
+    );
+    if (clampedAmountPerMinute <= 0) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanSinkRules(project, {
+        type: 'add-target-output-sink',
+        sinkRuleId: createStableSinkRuleId(),
+        itemId,
+        amountPerMinute: clampedAmountPerMinute,
+      }),
+    );
+  }
+
+  public updateTargetOutputSinkAmount(sinkRuleId: string, amountPerMinute: number): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    const project = this.options.activeProject();
+    const rule = project?.sinkRules.find((candidate) => candidate.id === sinkRuleId);
+    if (!project || rule?.mode !== 'target-output') {
+      return;
+    }
+    const maxAmountPerMinute = this.targetOutputSinkMaxAmount(rule.itemId, project);
+    if (maxAmountPerMinute <= 0) {
+      return;
+    }
+    this.options.updateActiveProject((currentProject) =>
+      mutatePlanSinkRules(currentProject, {
+        type: 'set-target-output-sink-amount',
+        sinkRuleId,
+        amountPerMinute: Math.min(safeSinkAmount(amountPerMinute), maxAmountPerMinute),
       }),
     );
   }
@@ -534,6 +586,32 @@ export class PlannerPlanCommandSlice {
     return dataset !== null && isSinkableItem(dataset, itemId);
   }
 
+  private canSinkTargetOutputItem(itemId: ItemId): boolean {
+    const dataset = this.options.dataset();
+    return dataset !== null && isTargetOutputSinkableItem(dataset, itemId);
+  }
+
+  private clampAdditionalTargetOutputSinkAmount(itemId: ItemId, amountPerMinute: number): number {
+    const project = this.options.activeProject();
+    if (!project || !this.canSinkTargetOutputItem(itemId)) {
+      return 0;
+    }
+    const maxAmountPerMinute = this.targetOutputSinkMaxAmount(itemId, project);
+    const configuredAmountPerMinute = Math.min(
+      targetOutputSinkConfiguredAmountForItem(project.sinkRules, itemId),
+      maxAmountPerMinute,
+    );
+    const remainingAmountPerMinute = Math.max(0, maxAmountPerMinute - configuredAmountPerMinute);
+    return Math.min(safeSinkAmount(amountPerMinute), remainingAmountPerMinute);
+  }
+
+  private targetOutputSinkMaxAmount(itemId: ItemId, project: PlannerProject): number {
+    if (!this.canSinkTargetOutputItem(itemId)) {
+      return 0;
+    }
+    return targetOutputAmountForItem(project.targets, this.options.solveResult(), itemId);
+  }
+
   private powerFuelMatchesGenerator(
     generatorId: MachineId | undefined,
     fuelItemId: ItemId,
@@ -563,4 +641,13 @@ function createStablePowerTargetId(): string {
 
 function createStableSinkRuleId(): string {
   return createStableId('sink');
+}
+
+function safeSinkAmount(value: number): number {
+  return roundSinkAmount(Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function roundSinkAmount(value: number): number {
+  const rounded = Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+  return Object.is(rounded, -0) ? 0 : rounded;
 }

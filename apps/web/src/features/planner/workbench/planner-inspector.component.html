@@ -199,7 +199,14 @@
                         <strong>{{ target.displayName }}</strong>
                         <span>{{ target.modeLabel }}</span>
                       </span>
-                      <span class="inspector-row__value">{{ target.amountLabel }}</span>
+                      <span class="inspector-row__value inspector-row__value--stack">
+                        <span>{{ target.amountLabel }}</span>
+                        @if (target.targetSinkAmountLabel) {
+                          <span class="inspector-row__allocation">
+                            {{ target.targetSinkAmountLabel }}
+                          </span>
+                        }
+                      </span>
                     </div>
                   }
                 </div>

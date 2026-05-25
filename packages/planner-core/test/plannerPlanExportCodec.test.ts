@@ -180,6 +180,37 @@ describe('Beltwise plan export files', () => {
     expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
   });
 
+  it('exports and imports target output sink rule amounts', () => {
+    const project: PlannerProject = {
+      ...createDomainPlannerProject(),
+      sinkRules: [
+        ...createDomainPlannerProject().sinkRules,
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 40,
+          sortOrder: 1,
+        },
+      ],
+    };
+
+    const decoded = parseBeltwisePlanExportJson(
+      stringifyBeltwisePlanExport(
+        encodeBeltwisePlanExport(project, {
+          dataset: tinySatisfactoryDataset,
+        }),
+      ),
+      tinySatisfactoryDataset,
+    );
+
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) {
+      throw new Error(decoded.error.message);
+    }
+    expect(decoded.project.sinkRules).toEqual(project.sinkRules);
+  });
+
   it('round-trips objective preset strategy and stage order', () => {
     const project = {
       ...createDomainPlannerProject(),

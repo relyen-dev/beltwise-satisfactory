@@ -28,6 +28,7 @@ export class PlannerRecipesSectionComponent {
   public readonly activeBaseRecipeRows = computed(() => {
     return recipeRowsForBasePanel(this.activeBaseRecipePanel(), {
       standard: this.planConfig.standardBaseRecipeRows(),
+      unlocks: this.planConfig.unlockRecipeRows(),
       converterResources: this.planConfig.converterResourceRecipeRows(),
     });
   });
@@ -35,19 +36,22 @@ export class PlannerRecipesSectionComponent {
   public baseRecipePanelRowCount(
     panelId: BaseRecipePanelId,
     standardRows: readonly RecipeRow[],
+    unlockRows: readonly RecipeRow[],
     converterResourceRows: readonly RecipeRow[],
   ): number {
     return recipeRowsForBasePanel(panelId, {
       standard: standardRows,
+      unlocks: unlockRows,
       converterResources: converterResourceRows,
     }).length;
   }
 
   public totalBaseRecipeRowCount(
     standardRows: readonly RecipeRow[],
+    unlockRows: readonly RecipeRow[],
     converterResourceRows: readonly RecipeRow[],
   ): number {
-    return standardRows.length + converterResourceRows.length;
+    return standardRows.length + unlockRows.length + converterResourceRows.length;
   }
 
   public setRowsEnabled(rows: readonly RecipeRow[], enabled: boolean): void {

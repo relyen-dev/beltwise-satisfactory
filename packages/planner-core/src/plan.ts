@@ -1,4 +1,10 @@
-import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
+import {
+  recipeAvailabilityCategoryForDataset,
+  type GameDataset,
+  type ItemId,
+  type MachineId,
+  type RecipeId,
+} from '@beltwise/game-data';
 import { uniqueStrings } from './internal/uniqueStrings';
 import { normalizeResourceOverrides } from './resourceOverrideMutations';
 import type { Point } from './model';
@@ -104,10 +110,20 @@ export interface PowerTarget {
   sortOrder: number;
 }
 
-export interface SinkRule {
+export type SinkRule = SurplusSinkRule | TargetOutputSinkRule;
+
+export interface SurplusSinkRule {
   id: string;
   itemId: ItemId;
   mode: 'surplus';
+  sortOrder: number;
+}
+
+export interface TargetOutputSinkRule {
+  id: string;
+  itemId: ItemId;
+  mode: 'target-output';
+  amountPerMinute: number;
   sortOrder: number;
 }
 
@@ -237,7 +253,6 @@ export const DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS: Readonly<Partial<Record<I
   Desc_SAM_C: 1,
   Desc_Water_C: 0,
 };
-const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const RESOURCE_EFFICIENT_RESOURCE_SCARCITY_WEIGHT = 1;
 const RESOURCE_EFFICIENT_POWER_WEIGHT = 0.15;
 const RESOURCE_EFFICIENT_MACHINE_COUNT_WEIGHT = 0.25;
@@ -488,7 +503,8 @@ export function createDefaultRecipeOverrides(
 ): Record<RecipeId, RecipeOverride> {
   return Object.values(dataset.recipes).reduce<Record<RecipeId, RecipeOverride>>(
     (overrides, recipe) => {
-      if (recipe.isAlternate || isConverterResourceRecipe(dataset, recipe)) {
+      const category = recipeAvailabilityCategoryForDataset(dataset, recipe);
+      if (category === 'alternate' || category === 'converter') {
         overrides[recipe.id] = { enabled: false };
       }
       return overrides;
@@ -682,24 +698,12 @@ function createLegacyProjectHydrationRecipeOverrides(
 ): Record<RecipeId, RecipeOverride> {
   return Object.values(dataset.recipes).reduce<Record<RecipeId, RecipeOverride>>(
     (overrides, recipe) => {
-      if (recipe.isAlternate) {
+      if (recipeAvailabilityCategoryForDataset(dataset, recipe) === 'alternate') {
         overrides[recipe.id] = { enabled: false };
       }
       return overrides;
     },
     {},
-  );
-}
-
-function isConverterResourceRecipe(
-  dataset: GameDataset,
-  recipe: GameDataset['recipes'][string],
-): boolean {
-  return (
-    !recipe.isAlternate &&
-    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
-    recipe.products.length > 0 &&
-    recipe.products.every((product) => dataset.resources[product.itemId] !== undefined)
   );
 }
 

@@ -864,6 +864,7 @@ describe('planner inspector selectors', () => {
     expect(selection.details.sinkPointsPerMinuteLabel).toBe('24/min');
     expect(selection.details.surplusNote).toBe('Unused surplus.');
     expect(selection.details.surplusSinkAction).toEqual({
+      kind: 'surplus',
       itemId: 'Desc_Screw_C',
       active: false,
       label: 'Sink surplus',
@@ -909,15 +910,82 @@ describe('planner inspector selectors', () => {
         itemId: 'Desc_Screw_C',
         displayName: 'Screw',
         amountPerMinuteLabel: '12/min',
-        detail: 'surplus sent to sink',
+        detail: 'sent to sink',
       },
       sinkPointsPerMinuteLabel: '24/min',
-      surplusSinkAction: {
+      sinkAction: {
+        kind: 'surplus',
         itemId: 'Desc_Screw_C',
         active: true,
         label: 'Remove sink',
       },
     });
+  });
+
+  it('does not expose a single remove action for mixed surplus and target-output sinks', () => {
+    const context = createInspectorContext();
+    const project: PlannerProject = {
+      ...context.project,
+      targets: [
+        ...context.project.targets,
+        {
+          id: 'target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'fixed',
+          amountPerMinute: 10,
+          sortOrder: 2,
+        },
+      ],
+      sinkRules: [
+        {
+          id: 'sink-surplus-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'surplus',
+          sortOrder: 0,
+        },
+        {
+          id: 'sink-target-screw',
+          itemId: 'Desc_Screw_C',
+          mode: 'target-output',
+          amountPerMinute: 5,
+          sortOrder: 1,
+        },
+      ],
+    };
+    const result: ProductionPlanResult = {
+      ...context.result,
+      outputs: {
+        ...context.result.outputs,
+        Desc_Screw_C: 10,
+      },
+      itemFlows: [
+        ...context.result.itemFlows,
+        {
+          itemId: 'Desc_Screw_C',
+          amountPerMinute: 10,
+          source: { kind: 'recipe', id: 'Recipe_Screw_C' },
+          target: { kind: 'output', id: 'target-screw' },
+        },
+      ],
+    };
+    const graph = buildProductionGraph(context.dataset, project.targets, result, {
+      sinkRules: project.sinkRules,
+    });
+    const sinkContext: InspectorTestContext = {
+      ...context,
+      project,
+      result,
+      graph,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(sinkContext, nodeById(sinkContext, 'sink:Desc_Screw_C'));
+
+    if (selection.details.kind !== 'sink') {
+      throw new Error('Expected sink details');
+    }
+    expect(selection.details.item.amountPerMinuteLabel).toBe('17/min');
+    expect(selection.details.sinkAction).toBeNull();
   });
 
   it('does not expose surplus sink actions for unsinkable output items', () => {

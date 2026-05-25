@@ -103,12 +103,20 @@ export function copyProductTargetForTransfer(target: ProductTarget): ProductTarg
 }
 
 export function copySinkRuleForTransfer(rule: SinkRule): SinkRule {
-  return {
-    id: rule.id,
-    itemId: rule.itemId,
-    mode: rule.mode,
-    sortOrder: rule.sortOrder,
-  };
+  return rule.mode === 'target-output'
+    ? {
+        id: rule.id,
+        itemId: rule.itemId,
+        mode: rule.mode,
+        amountPerMinute: sanitizeTransferWeight(rule.amountPerMinute),
+        sortOrder: rule.sortOrder,
+      }
+    : {
+        id: rule.id,
+        itemId: rule.itemId,
+        mode: rule.mode,
+        sortOrder: rule.sortOrder,
+      };
 }
 
 export function copySinkRulesForTransfer(rules: readonly SinkRule[]): SinkRule[] {
@@ -196,28 +204,45 @@ export function readSinkRulesForTransfer(
   }
 
   const rules: SinkRule[] = [];
-  const seenItemIds = new Set<ItemId>();
+  const seenRuleKeys = new Set<string>();
   for (const [index, rule] of value.entries()) {
     if (!isPlanTransferRecord(rule)) {
       continue;
     }
 
     const itemId = readTransferTargetItemId(rule['itemId']);
-    if (
-      itemId === undefined ||
-      itemId.length === 0 ||
-      seenItemIds.has(itemId) ||
-      rule['mode'] !== 'surplus'
-    ) {
+    const mode = rule['mode'];
+    if (itemId === undefined || itemId.length === 0) {
       continue;
     }
-    seenItemIds.add(itemId);
-    rules.push({
-      id: readSafePlanTransferRecordKey(rule['id']) ?? createRuleId(),
-      itemId,
-      mode: 'surplus',
-      sortOrder: readTransferFiniteNumber(rule['sortOrder']) ?? index,
-    });
+    const dedupeKey = `${mode}:${itemId}`;
+    if (seenRuleKeys.has(dedupeKey)) {
+      continue;
+    }
+    if (mode === 'surplus') {
+      seenRuleKeys.add(dedupeKey);
+      rules.push({
+        id: readSafePlanTransferRecordKey(rule['id']) ?? createRuleId(),
+        itemId,
+        mode,
+        sortOrder: readTransferFiniteNumber(rule['sortOrder']) ?? index,
+      });
+      continue;
+    }
+    if (mode === 'target-output') {
+      const amountPerMinute = readTransferNonNegativeFiniteNumber(rule['amountPerMinute']);
+      if (amountPerMinute === undefined) {
+        continue;
+      }
+      seenRuleKeys.add(dedupeKey);
+      rules.push({
+        id: readSafePlanTransferRecordKey(rule['id']) ?? createRuleId(),
+        itemId,
+        mode,
+        amountPerMinute,
+        sortOrder: readTransferFiniteNumber(rule['sortOrder']) ?? index,
+      });
+    }
   }
 
   return rules

@@ -1,6 +1,12 @@
 import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import type { ProductTarget, RateDecimalPlaces, SinkRule } from './plan';
 import { isSinkableItem, sinkPointsPerMinute, surplusSinkRuleForItem } from './sinkRules';
+import {
+  buildTargetOutputSinkAllocations,
+  targetOutputAmountForTarget,
+  targetOutputSinkAmountByTargetId,
+  targetOutputSinkFlows,
+} from './targetOutputSinks';
 
 export type ProductionPlanStatus = 'optimal' | 'infeasible' | 'unbounded' | 'error';
 
@@ -112,8 +118,10 @@ export interface ProductionGraphNode {
   generatorId?: MachineId;
   targetId?: string;
   sinkRuleId?: string;
+  sinkRuleMode?: SinkRule['mode'] | 'mixed';
   targetMode?: ProductTarget['mode'];
   amountPerMinute?: number;
+  targetSinkAmountPerMinute?: number;
   sinkPointsPerMinute?: number;
   machineDisplayName?: string;
   machineCount?: number;
@@ -145,7 +153,19 @@ export function buildProductionGraph(
   const nodes = new Map<string, ProductionGraphNode>();
   const edges: ProductionGraphEdge[] = [];
   const rateDecimalPlaces = options.rateDecimalPlaces ?? DEFAULT_RATE_DECIMAL_PLACES;
-  const itemFlows = routeSurplusFlowsToSink(dataset, options.sinkRules ?? [], result);
+  const sinkRules = options.sinkRules ?? [];
+  const targetSinkAllocations = buildTargetOutputSinkAllocations(
+    dataset,
+    targets,
+    result,
+    sinkRules,
+  );
+  const targetSinkAmountByTargetId = targetOutputSinkAmountByTargetId(targetSinkAllocations);
+  const itemFlows = [
+    ...routeSurplusFlowsToSink(dataset, sinkRules, result),
+    ...targetOutputSinkFlows(targetSinkAllocations),
+  ];
+  const sinkNodeInputs = new Map<ItemId, SinkNodeInput>();
 
   for (const [itemId, amountPerMinute] of Object.entries(result.rawInputs)) {
     if (amountPerMinute <= MIN_GRAPH_RATE) {
@@ -229,22 +249,30 @@ export function buildProductionGraph(
 
   for (const target of targets.toSorted((left, right) => left.sortOrder - right.sortOrder)) {
     const item = dataset.items[target.itemId];
-    const amountPerMinute =
-      target.mode === 'fixed'
-        ? (target.amountPerMinute ?? 0)
-        : (result.outputs[target.itemId] ?? 0);
+    const targetAmountPerMinute = targetOutputAmountForTarget(target, result, targets);
+    const sinkAmountPerMinute = targetSinkAmountByTargetId.get(target.id) ?? 0;
+    const targetAmountLabel =
+      target.mode === 'maximize'
+        ? `maximize, solved ${formatRate(targetAmountPerMinute, rateDecimalPlaces)}/min`
+        : `${formatRate(targetAmountPerMinute, rateDecimalPlaces)}/min target`;
     nodes.set(outputNodeId(target.id), {
       id: outputNodeId(target.id),
       kind: 'output',
       label: item?.displayName ?? target.itemId,
       subtitle:
-        target.mode === 'maximize'
-          ? `maximize, solved ${formatRate(amountPerMinute, rateDecimalPlaces)}/min`
-          : `${formatRate(amountPerMinute, rateDecimalPlaces)}/min target`,
+        sinkAmountPerMinute > MIN_GRAPH_RATE
+          ? `${targetAmountLabel}, ${formatRate(
+              sinkAmountPerMinute,
+              rateDecimalPlaces,
+            )}/min sunk`
+          : targetAmountLabel,
       itemId: target.itemId,
       targetId: target.id,
       targetMode: target.mode,
-      amountPerMinute,
+      amountPerMinute: targetAmountPerMinute,
+      ...(sinkAmountPerMinute > MIN_GRAPH_RATE
+        ? { targetSinkAmountPerMinute: sinkAmountPerMinute }
+        : {}),
     });
   }
 
@@ -255,16 +283,11 @@ export function buildProductionGraph(
     const item = dataset.items[itemId];
     const sinkRule = surplusSinkRuleForItem(options.sinkRules ?? [], itemId);
     if (sinkRule && isSinkableItem(dataset, itemId)) {
-      const pointsPerMinute = sinkPointsPerMinute(dataset, itemId, amountPerMinute) ?? 0;
-      nodes.set(sinkNodeId(itemId), {
-        id: sinkNodeId(itemId),
-        kind: 'sink',
-        label: 'Awesome Sink',
-        subtitle: `${formatRate(amountPerMinute, rateDecimalPlaces)}/min ${item?.displayName ?? itemId}`,
+      addSinkNodeInput(sinkNodeInputs, {
         itemId,
-        sinkRuleId: sinkRule.id,
         amountPerMinute,
-        sinkPointsPerMinute: pointsPerMinute,
+        sinkRuleId: sinkRule.id,
+        mode: 'surplus',
       });
     } else {
       nodes.set(byproductNodeId(itemId), {
@@ -276,6 +299,33 @@ export function buildProductionGraph(
         amountPerMinute,
       });
     }
+  }
+
+  for (const allocation of targetSinkAllocations) {
+    addSinkNodeInput(sinkNodeInputs, {
+      itemId: allocation.itemId,
+      amountPerMinute: allocation.amountPerMinute,
+      sinkRuleId: allocation.rule.id,
+      mode: 'target-output',
+    });
+  }
+
+  for (const input of sinkNodeInputs.values()) {
+    const item = dataset.items[input.itemId];
+    const pointsPerMinute = sinkPointsPerMinute(dataset, input.itemId, input.amountPerMinute) ?? 0;
+    nodes.set(sinkNodeId(input.itemId), {
+      id: sinkNodeId(input.itemId),
+      kind: 'sink',
+      label: 'Awesome Sink',
+      subtitle: `${formatRate(input.amountPerMinute, rateDecimalPlaces)}/min ${
+        item?.displayName ?? input.itemId
+      }${input.mode === 'target-output' ? ' target output' : ''}`,
+      itemId: input.itemId,
+      ...(input.sinkRuleId !== null ? { sinkRuleId: input.sinkRuleId } : {}),
+      sinkRuleMode: input.mode,
+      amountPerMinute: input.amountPerMinute,
+      sinkPointsPerMinute: pointsPerMinute,
+    });
   }
 
   for (const flow of itemFlows) {
@@ -360,6 +410,20 @@ export function routeSurplusFlowsToSink(
   });
 }
 
+export function routeItemFlowsToSinks(
+  dataset: GameDataset,
+  targets: readonly ProductTarget[],
+  sinkRules: readonly SinkRule[],
+  result: ProductionPlanResult,
+): ItemFlow[] {
+  return [
+    ...routeSurplusFlowsToSink(dataset, sinkRules, result),
+    ...targetOutputSinkFlows(
+      buildTargetOutputSinkAllocations(dataset, targets, result, sinkRules),
+    ),
+  ];
+}
+
 export function shouldRouteSurplusToSink(
   dataset: GameDataset,
   sinkRules: readonly SinkRule[],
@@ -392,6 +456,29 @@ function endpointNodeId(endpoint: ItemFlowEndpoint): string {
     case 'sink':
       return sinkNodeId(endpoint.id);
   }
+}
+
+interface SinkNodeInput {
+  itemId: ItemId;
+  amountPerMinute: number;
+  sinkRuleId: string | null;
+  mode: SinkRule['mode'] | 'mixed';
+}
+
+function addSinkNodeInput(inputs: Map<ItemId, SinkNodeInput>, input: SinkNodeInput): void {
+  const existing = inputs.get(input.itemId);
+  if (!existing) {
+    inputs.set(input.itemId, { ...input });
+    return;
+  }
+
+  const mode = existing.mode === input.mode ? existing.mode : 'mixed';
+  inputs.set(input.itemId, {
+    itemId: input.itemId,
+    amountPerMinute: existing.amountPerMinute + input.amountPerMinute,
+    sinkRuleId: mode === 'mixed' ? null : existing.sinkRuleId,
+    mode,
+  });
 }
 
 function formatRate(amountPerMinute: number, decimalPlaces: RateDecimalPlaces): string {

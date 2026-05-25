@@ -69,6 +69,7 @@ export interface InspectorTargetSummary {
   iconSrc: string;
   modeLabel: string;
   amountLabel: string;
+  targetSinkAmountLabel: string | null;
 }
 
 export interface InspectorMachineSummaryRow {
@@ -181,6 +182,7 @@ export interface OutputNodeDetails {
   requestedAmountPerMinuteLabel: string | null;
   solvedAmountPerMinuteLabel: string | null;
   incomingAmountPerMinuteLabel: string;
+  targetSinkAmountPerMinuteLabel: string | null;
   fuelPower: OutputFuelPowerDetails | null;
   surplusSinkAction: InspectorSurplusSinkAction | null;
 }
@@ -207,15 +209,25 @@ export interface SinkNodeDetails {
   kind: 'sink';
   item: InspectorItemRateRow;
   sinkPointsPerMinuteLabel: string;
-  surplusSinkAction: InspectorSurplusSinkAction;
+  sinkAction: InspectorSinkAction | null;
 }
 
 export interface InspectorSurplusSinkAction {
+  kind: 'surplus';
   itemId: ItemId;
   active: boolean;
   label: string;
   title: string;
 }
+
+export interface InspectorRemoveSinkRuleAction {
+  kind: 'remove-rule';
+  sinkRuleId: string;
+  label: string;
+  title: string;
+}
+
+export type InspectorSinkAction = InspectorSurplusSinkAction | InspectorRemoveSinkRuleAction;
 
 export interface InspectorSelectedNodeViewModel {
   nodeId: string;
@@ -502,6 +514,10 @@ function outputNodeDetails(
         ? null
         : `${formatPlannerNumber(details.solvedAmountPerMinute)}/min`,
     incomingAmountPerMinuteLabel: `${formatPlannerNumber(details.incomingAmountPerMinute)}/min`,
+    targetSinkAmountPerMinuteLabel:
+      details.targetSinkAmountPerMinute > 0
+        ? `${formatPlannerNumber(details.targetSinkAmountPerMinute)}/min`
+        : null,
     fuelPower:
       details.fuelPower === null
         ? null
@@ -550,12 +566,7 @@ function sinkNodeDetails(
     kind: 'sink',
     item: itemRateRow(details.item),
     sinkPointsPerMinuteLabel: `${formatPlannerNumber(details.sinkPointsPerMinute)}/min`,
-    surplusSinkAction: surplusSinkAction(dataset, project, details.item.itemId) ?? {
-      itemId: details.item.itemId,
-      active: true,
-      label: 'Remove sink',
-      title: 'Remove surplus sink',
-    },
+    sinkAction: sinkNodeAction(details, dataset, project),
   };
 }
 
@@ -650,6 +661,10 @@ function targetSummary(target: PlanReportTargetSummary): InspectorTargetSummary 
       target.mode === 'maximize'
         ? `${formatPlannerNumber(target.amountPerMinute)}/min solved`
         : `${formatPlannerNumber(target.amountPerMinute)}/min requested`,
+    targetSinkAmountLabel:
+      target.targetSinkAmountPerMinute > 0
+        ? `${formatPlannerNumber(target.targetSinkAmountPerMinute)}/min sunk`
+        : null,
   };
 }
 
@@ -716,7 +731,7 @@ function itemRateDetail(role: PlanReportItemRateRole | null): string | null {
     case 'unused-surplus':
       return 'unused surplus';
     case 'sink-consumption':
-      return 'surplus sent to sink';
+      return 'sent to sink';
     case 'nuclear-byproduct':
       return 'nuclear byproduct';
   }
@@ -819,11 +834,31 @@ function surplusSinkAction(
   }
   const active = surplusSinkRuleForItem(project.sinkRules, itemId) !== undefined;
   return {
+    kind: 'surplus',
     itemId,
     active,
     label: active ? 'Remove sink' : 'Sink surplus',
     title: active ? 'Remove surplus sink' : 'Send solved surplus to an Awesome Sink',
   };
+}
+
+function sinkNodeAction(
+  details: Extract<SelectedNodeReportDetails, { kind: 'sink' }>,
+  dataset: GameDataset,
+  project: PlannerProject,
+): InspectorSinkAction | null {
+  if (details.sinkRuleMode === 'mixed') {
+    return null;
+  }
+  if (details.sinkRuleMode === 'target-output' && details.sinkRuleId !== null) {
+    return {
+      kind: 'remove-rule',
+      sinkRuleId: details.sinkRuleId,
+      label: 'Remove sink',
+      title: 'Remove target output sink',
+    };
+  }
+  return surplusSinkAction(dataset, project, details.item.itemId);
 }
 
 function formatStatus(status: ProductionPlanResult['status']): string {

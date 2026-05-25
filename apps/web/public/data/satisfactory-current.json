@@ -1668,6 +1668,7 @@
   },
   "recipes": {
     "Recipe_AILimiter_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AILimiter_C",
       "displayName": "AI Limiter",
       "durationSeconds": 12,
@@ -1698,6 +1699,7 @@
       ]
     },
     "Recipe_AlienDNACapsule_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AlienDNACapsule_C",
       "displayName": "Alien DNA Capsule",
       "durationSeconds": 6,
@@ -1724,6 +1726,7 @@
       ]
     },
     "Recipe_AlienPowerFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AlienPowerFuel_C",
       "displayName": "Alien Power Matrix",
       "durationSeconds": 24,
@@ -1770,6 +1773,7 @@
       }
     },
     "Recipe_Alternate_AdheredIronPlate_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_AdheredIronPlate_C",
       "displayName": "Alternate: Adhered Iron Plate",
       "durationSeconds": 16,
@@ -1800,6 +1804,7 @@
       ]
     },
     "Recipe_Alternate_AILimiter_Plastic_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_AILimiter_Plastic_C",
       "displayName": "Alternate: Plastic AI Limiter",
       "durationSeconds": 15,
@@ -1830,6 +1835,7 @@
       ]
     },
     "Recipe_Alternate_AlcladCasing_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_AlcladCasing_C",
       "displayName": "Alternate: Alclad Casing",
       "durationSeconds": 8,
@@ -1860,6 +1866,7 @@
       ]
     },
     "Recipe_Alternate_AluminumRod_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_AluminumRod_C",
       "displayName": "Alternate: Aluminum Rod",
       "durationSeconds": 8,
@@ -1886,6 +1893,7 @@
       ]
     },
     "Recipe_Alternate_AutomatedMiner_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_AutomatedMiner_C",
       "displayName": "Alternate: Automated Miner",
       "durationSeconds": 60,
@@ -1916,6 +1924,7 @@
       ]
     },
     "Recipe_Alternate_BoltedFrame_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_BoltedFrame_C",
       "displayName": "Alternate: Bolted Frame",
       "durationSeconds": 24,
@@ -1946,6 +1955,7 @@
       ]
     },
     "Recipe_Alternate_Cable_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Cable_1_C",
       "displayName": "Alternate: Insulated Cable",
       "durationSeconds": 12,
@@ -1976,6 +1986,7 @@
       ]
     },
     "Recipe_Alternate_Cable_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Cable_2_C",
       "displayName": "Alternate: Quickwire Cable",
       "durationSeconds": 24,
@@ -2006,6 +2017,7 @@
       ]
     },
     "Recipe_Alternate_CateriumIngot_Leached_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CateriumIngot_Leached_C",
       "displayName": "Alternate: Leached Caterium Ingot",
       "durationSeconds": 10,
@@ -2036,6 +2048,7 @@
       ]
     },
     "Recipe_Alternate_CateriumIngot_Tempered_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CateriumIngot_Tempered_C",
       "displayName": "Alternate: Tempered Caterium Ingot",
       "durationSeconds": 8,
@@ -2066,6 +2079,7 @@
       ]
     },
     "Recipe_Alternate_CircuitBoard_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CircuitBoard_1_C",
       "displayName": "Alternate: Silicon Circuit Board",
       "durationSeconds": 24,
@@ -2096,6 +2110,7 @@
       ]
     },
     "Recipe_Alternate_CircuitBoard_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CircuitBoard_2_C",
       "displayName": "Alternate: Caterium Circuit Board",
       "durationSeconds": 48,
@@ -2126,6 +2141,7 @@
       ]
     },
     "Recipe_Alternate_ClassicBattery_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ClassicBattery_C",
       "displayName": "Alternate: Classic Battery",
       "durationSeconds": 8,
@@ -2164,6 +2180,7 @@
       ]
     },
     "Recipe_Alternate_Coal_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Coal_1_C",
       "displayName": "Alternate: Charcoal",
       "durationSeconds": 4,
@@ -2190,6 +2207,7 @@
       ]
     },
     "Recipe_Alternate_Coal_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Coal_2_C",
       "displayName": "Alternate: Biocoal",
       "durationSeconds": 8,
@@ -2216,6 +2234,7 @@
       ]
     },
     "Recipe_Alternate_CoatedCable_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CoatedCable_C",
       "displayName": "Alternate: Coated Cable",
       "durationSeconds": 8,
@@ -2246,6 +2265,7 @@
       ]
     },
     "Recipe_Alternate_CoatedIronCanister_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CoatedIronCanister_C",
       "displayName": "Alternate: Coated Iron Canister",
       "durationSeconds": 4,
@@ -2276,6 +2296,7 @@
       ]
     },
     "Recipe_Alternate_CoatedIronPlate_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CoatedIronPlate_C",
       "displayName": "Alternate: Coated Iron Plate",
       "durationSeconds": 8,
@@ -2306,6 +2327,7 @@
       ]
     },
     "Recipe_Alternate_CokeSteelIngot_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CokeSteelIngot_C",
       "displayName": "Alternate: Coke Steel Ingot",
       "durationSeconds": 12,
@@ -2336,6 +2358,7 @@
       ]
     },
     "Recipe_Alternate_Computer_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Computer_1_C",
       "displayName": "Alternate: Caterium Computer",
       "durationSeconds": 16,
@@ -2370,6 +2393,7 @@
       ]
     },
     "Recipe_Alternate_Computer_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Computer_2_C",
       "displayName": "Alternate: Crystal Computer",
       "durationSeconds": 36,
@@ -2400,6 +2424,7 @@
       ]
     },
     "Recipe_Alternate_Concrete_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Concrete_C",
       "displayName": "Alternate: Fine Concrete",
       "durationSeconds": 12,
@@ -2430,6 +2455,7 @@
       ]
     },
     "Recipe_Alternate_CoolingDevice_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CoolingDevice_C",
       "displayName": "Alternate: Cooling Device",
       "durationSeconds": 24,
@@ -2464,6 +2490,7 @@
       ]
     },
     "Recipe_Alternate_CopperAlloyIngot_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CopperAlloyIngot_C",
       "displayName": "Alternate: Copper Alloy Ingot",
       "durationSeconds": 6,
@@ -2494,6 +2521,7 @@
       ]
     },
     "Recipe_Alternate_CopperIngot_Leached_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CopperIngot_Leached_C",
       "displayName": "Alternate: Leached Copper Ingot",
       "durationSeconds": 12,
@@ -2524,6 +2552,7 @@
       ]
     },
     "Recipe_Alternate_CopperIngot_Tempered_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CopperIngot_Tempered_C",
       "displayName": "Alternate: Tempered Copper Ingot",
       "durationSeconds": 12,
@@ -2554,6 +2583,7 @@
       ]
     },
     "Recipe_Alternate_CopperRotor_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CopperRotor_C",
       "displayName": "Alternate: Copper Rotor",
       "durationSeconds": 16,
@@ -2584,6 +2614,7 @@
       ]
     },
     "Recipe_Alternate_CrystalOscillator_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_CrystalOscillator_C",
       "displayName": "Alternate: Insulated Crystal Oscillator",
       "durationSeconds": 32,
@@ -2618,6 +2649,7 @@
       ]
     },
     "Recipe_Alternate_DarkMatter_Crystallization_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_DarkMatter_Crystallization_C",
       "displayName": "Alternate: Dark Matter Crystallization",
       "durationSeconds": 3,
@@ -2648,6 +2680,7 @@
       }
     },
     "Recipe_Alternate_DarkMatter_Trap_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_DarkMatter_Trap_C",
       "displayName": "Alternate: Dark Matter Trap",
       "durationSeconds": 2,
@@ -2682,6 +2715,7 @@
       }
     },
     "Recipe_Alternate_Diamond_Cloudy_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Diamond_Cloudy_C",
       "displayName": "Alternate: Cloudy Diamonds",
       "durationSeconds": 3,
@@ -2716,6 +2750,7 @@
       }
     },
     "Recipe_Alternate_Diamond_OilBased_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Diamond_OilBased_C",
       "displayName": "Alternate: Oil-Based Diamonds",
       "durationSeconds": 3,
@@ -2746,6 +2781,7 @@
       }
     },
     "Recipe_Alternate_Diamond_Petroleum_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Diamond_Petroleum_C",
       "displayName": "Alternate: Petroleum Diamonds",
       "durationSeconds": 2,
@@ -2776,6 +2812,7 @@
       }
     },
     "Recipe_Alternate_Diamond_Pink_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Diamond_Pink_C",
       "displayName": "Alternate: Pink Diamonds",
       "durationSeconds": 4,
@@ -2810,6 +2847,7 @@
       }
     },
     "Recipe_Alternate_Diamond_Turbo_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Diamond_Turbo_C",
       "displayName": "Alternate: Turbo Diamonds",
       "durationSeconds": 3,
@@ -2844,6 +2882,7 @@
       }
     },
     "Recipe_Alternate_DilutedFuel_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_DilutedFuel_C",
       "displayName": "Alternate: Diluted Fuel",
       "durationSeconds": 6,
@@ -2874,6 +2913,7 @@
       ]
     },
     "Recipe_Alternate_DilutedPackagedFuel_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_DilutedPackagedFuel_C",
       "displayName": "Alternate: Diluted Packaged Fuel",
       "durationSeconds": 2,
@@ -2902,6 +2942,7 @@
       "tags": []
     },
     "Recipe_Alternate_ElectricMotor_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ElectricMotor_C",
       "displayName": "Alternate: Electric Motor",
       "durationSeconds": 16,
@@ -2932,6 +2973,7 @@
       ]
     },
     "Recipe_Alternate_ElectroAluminumScrap_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ElectroAluminumScrap_C",
       "displayName": "Alternate: Electrode Aluminum Scrap",
       "durationSeconds": 4,
@@ -2966,6 +3008,7 @@
       ]
     },
     "Recipe_Alternate_ElectrodeCircuitBoard_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ElectrodeCircuitBoard_C",
       "displayName": "Alternate: Electrode Circuit Board",
       "durationSeconds": 12,
@@ -2996,6 +3039,7 @@
       ]
     },
     "Recipe_Alternate_ElectromagneticControlRod_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ElectromagneticControlRod_1_C",
       "displayName": "Alternate: Electromagnetic Connection Rod",
       "durationSeconds": 15,
@@ -3026,6 +3070,7 @@
       ]
     },
     "Recipe_Alternate_EncasedIndustrialBeam_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_EncasedIndustrialBeam_C",
       "displayName": "Alternate: Encased Industrial Pipe",
       "durationSeconds": 15,
@@ -3056,6 +3101,7 @@
       ]
     },
     "Recipe_Alternate_EnrichedCoal_C": {
+      "availabilityCategory": "unlock",
       "className": "Recipe_Alternate_EnrichedCoal_C",
       "displayName": "Alternate: Compacted Coal",
       "durationSeconds": 12,
@@ -3086,6 +3132,7 @@
       ]
     },
     "Recipe_Alternate_FertileUranium_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_FertileUranium_C",
       "displayName": "Alternate: Fertile Uranium",
       "durationSeconds": 12,
@@ -3128,6 +3175,7 @@
       ]
     },
     "Recipe_Alternate_FlexibleFramework_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_FlexibleFramework_C",
       "displayName": "Alternate: Flexible Framework",
       "durationSeconds": 16,
@@ -3162,6 +3210,7 @@
       ]
     },
     "Recipe_Alternate_FusedWire_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_FusedWire_C",
       "displayName": "Alternate: Fused Wire",
       "durationSeconds": 20,
@@ -3192,6 +3241,7 @@
       ]
     },
     "Recipe_Alternate_Gunpowder_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Gunpowder_1_C",
       "displayName": "Alternate: Fine Black Powder",
       "durationSeconds": 8,
@@ -3222,6 +3272,7 @@
       ]
     },
     "Recipe_Alternate_HeatFusedFrame_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_HeatFusedFrame_C",
       "displayName": "Alternate: Heat-Fused Frame",
       "durationSeconds": 20,
@@ -3260,6 +3311,7 @@
       ]
     },
     "Recipe_Alternate_HeatSink_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_HeatSink_1_C",
       "displayName": "Alternate: Heat Exchanger",
       "durationSeconds": 6,
@@ -3290,6 +3342,7 @@
       ]
     },
     "Recipe_Alternate_HeavyFlexibleFrame_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_HeavyFlexibleFrame_C",
       "displayName": "Alternate: Heavy Flexible Frame",
       "durationSeconds": 16,
@@ -3328,6 +3381,7 @@
       ]
     },
     "Recipe_Alternate_HeavyOilResidue_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_HeavyOilResidue_C",
       "displayName": "Alternate: Heavy Oil Residue",
       "durationSeconds": 6,
@@ -3358,6 +3412,7 @@
       ]
     },
     "Recipe_Alternate_HighSpeedConnector_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_HighSpeedConnector_C",
       "displayName": "Alternate: Silicon High-Speed Connector",
       "durationSeconds": 40,
@@ -3392,6 +3447,7 @@
       ]
     },
     "Recipe_Alternate_HighSpeedWiring_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_HighSpeedWiring_C",
       "displayName": "Alternate: Automated Speed Wiring",
       "durationSeconds": 32,
@@ -3426,6 +3482,7 @@
       ]
     },
     "Recipe_Alternate_IngotIron_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_IngotIron_C",
       "displayName": "Alternate: Iron Alloy Ingot",
       "durationSeconds": 12,
@@ -3456,6 +3513,7 @@
       ]
     },
     "Recipe_Alternate_IngotSteel_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_IngotSteel_1_C",
       "displayName": "Alternate: Solid Steel Ingot",
       "durationSeconds": 3,
@@ -3486,6 +3544,7 @@
       ]
     },
     "Recipe_Alternate_IngotSteel_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_IngotSteel_2_C",
       "displayName": "Alternate: Compacted Steel Ingot",
       "durationSeconds": 24,
@@ -3516,6 +3575,7 @@
       ]
     },
     "Recipe_Alternate_InstantPlutoniumCell_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_InstantPlutoniumCell_C",
       "displayName": "Alternate: Instant Plutonium Cell",
       "durationSeconds": 120,
@@ -3550,6 +3610,7 @@
       }
     },
     "Recipe_Alternate_InstantScrap_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_InstantScrap_C",
       "displayName": "Alternate: Instant Scrap",
       "durationSeconds": 6,
@@ -3592,6 +3653,7 @@
       ]
     },
     "Recipe_Alternate_IonizedFuel_Dark_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_IonizedFuel_Dark_C",
       "displayName": "Alternate: Dark-Ion Fuel",
       "durationSeconds": 3,
@@ -3630,6 +3692,7 @@
       }
     },
     "Recipe_Alternate_IronIngot_Basic_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_IronIngot_Basic_C",
       "displayName": "Alternate: Basic Iron Ingot",
       "durationSeconds": 12,
@@ -3660,6 +3723,7 @@
       ]
     },
     "Recipe_Alternate_IronIngot_Leached_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_IronIngot_Leached_C",
       "displayName": "Alternate: Leached Iron Ingot",
       "durationSeconds": 6,
@@ -3690,6 +3754,7 @@
       ]
     },
     "Recipe_Alternate_ModularFrame_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ModularFrame_C",
       "displayName": "Alternate: Steeled Frame",
       "durationSeconds": 60,
@@ -3720,6 +3785,7 @@
       ]
     },
     "Recipe_Alternate_ModularFrameHeavy_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ModularFrameHeavy_C",
       "displayName": "Alternate: Heavy Encased Frame",
       "durationSeconds": 64,
@@ -3758,6 +3824,7 @@
       ]
     },
     "Recipe_Alternate_Motor_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Motor_1_C",
       "displayName": "Alternate: Rigor Motor",
       "durationSeconds": 48,
@@ -3792,6 +3859,7 @@
       ]
     },
     "Recipe_Alternate_NuclearFuelRod_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_NuclearFuelRod_1_C",
       "displayName": "Alternate: Uranium Fuel Unit",
       "durationSeconds": 300,
@@ -3830,6 +3898,7 @@
       ]
     },
     "Recipe_Alternate_OCSupercomputer_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_OCSupercomputer_C",
       "displayName": "Alternate: OC Supercomputer",
       "durationSeconds": 20,
@@ -3860,6 +3929,7 @@
       ]
     },
     "Recipe_Alternate_Plastic_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Plastic_1_C",
       "displayName": "Alternate: Recycled Plastic",
       "durationSeconds": 12,
@@ -3890,6 +3960,7 @@
       ]
     },
     "Recipe_Alternate_PlasticSmartPlating_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PlasticSmartPlating_C",
       "displayName": "Alternate: Plastic Smart Plating",
       "durationSeconds": 24,
@@ -3924,6 +3995,7 @@
       ]
     },
     "Recipe_Alternate_PlutoniumFuelUnit_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PlutoniumFuelUnit_C",
       "displayName": "Alternate: Plutonium Fuel Unit",
       "durationSeconds": 120,
@@ -3954,6 +4026,7 @@
       ]
     },
     "Recipe_Alternate_PolyesterFabric_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PolyesterFabric_C",
       "displayName": "Alternate: Polyester Fabric",
       "durationSeconds": 2,
@@ -3984,6 +4057,7 @@
       ]
     },
     "Recipe_Alternate_PolymerResin_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PolymerResin_C",
       "displayName": "Alternate: Polymer Resin",
       "durationSeconds": 6,
@@ -4014,6 +4088,7 @@
       ]
     },
     "Recipe_Alternate_PureCateriumIngot_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PureCateriumIngot_C",
       "displayName": "Alternate: Pure Caterium Ingot",
       "durationSeconds": 5,
@@ -4044,6 +4119,7 @@
       ]
     },
     "Recipe_Alternate_PureCopperIngot_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PureCopperIngot_C",
       "displayName": "Alternate: Pure Copper Ingot",
       "durationSeconds": 24,
@@ -4074,6 +4150,7 @@
       ]
     },
     "Recipe_Alternate_PureIronIngot_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PureIronIngot_C",
       "displayName": "Alternate: Pure Iron Ingot",
       "durationSeconds": 12,
@@ -4104,6 +4181,7 @@
       ]
     },
     "Recipe_Alternate_PureQuartzCrystal_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_PureQuartzCrystal_C",
       "displayName": "Alternate: Pure Quartz Crystal",
       "durationSeconds": 8,
@@ -4134,6 +4212,7 @@
       ]
     },
     "Recipe_Alternate_Quartz_Fused_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Quartz_Fused_C",
       "displayName": "Alternate: Fused Quartz Crystal",
       "durationSeconds": 20,
@@ -4164,6 +4243,7 @@
       ]
     },
     "Recipe_Alternate_Quartz_Purified_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Quartz_Purified_C",
       "displayName": "Alternate: Quartz Purification",
       "durationSeconds": 12,
@@ -4198,6 +4278,7 @@
       ]
     },
     "Recipe_Alternate_Quickwire_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Quickwire_C",
       "displayName": "Alternate: Fused Quickwire",
       "durationSeconds": 8,
@@ -4228,6 +4309,7 @@
       ]
     },
     "Recipe_Alternate_RadioControlSystem_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_RadioControlSystem_C",
       "displayName": "Alternate: Radio Control System",
       "durationSeconds": 40,
@@ -4266,6 +4348,7 @@
       ]
     },
     "Recipe_Alternate_RadioControlUnit_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_RadioControlUnit_1_C",
       "displayName": "Alternate: Radio Connection Unit",
       "durationSeconds": 16,
@@ -4300,6 +4383,7 @@
       ]
     },
     "Recipe_Alternate_RecycledRubber_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_RecycledRubber_C",
       "displayName": "Alternate: Recycled Rubber",
       "durationSeconds": 12,
@@ -4330,6 +4414,7 @@
       ]
     },
     "Recipe_Alternate_ReinforcedIronPlate_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ReinforcedIronPlate_1_C",
       "displayName": "Alternate: Bolted Iron Plate",
       "durationSeconds": 12,
@@ -4360,6 +4445,7 @@
       ]
     },
     "Recipe_Alternate_ReinforcedIronPlate_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_ReinforcedIronPlate_2_C",
       "displayName": "Alternate: Stitched Iron Plate",
       "durationSeconds": 32,
@@ -4390,6 +4476,7 @@
       ]
     },
     "Recipe_Alternate_RocketFuel_Nitro_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_RocketFuel_Nitro_C",
       "displayName": "Alternate: Nitro Rocket Fuel",
       "durationSeconds": 2.4,
@@ -4432,6 +4519,7 @@
       ]
     },
     "Recipe_Alternate_Rotor_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Rotor_C",
       "displayName": "Alternate: Steel Rotor",
       "durationSeconds": 12,
@@ -4462,6 +4550,7 @@
       ]
     },
     "Recipe_Alternate_RubberConcrete_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_RubberConcrete_C",
       "displayName": "Alternate: Rubber Concrete",
       "durationSeconds": 6,
@@ -4492,6 +4581,7 @@
       ]
     },
     "Recipe_Alternate_Screw_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Screw_2_C",
       "displayName": "Alternate: Steel Screws",
       "durationSeconds": 12,
@@ -4518,6 +4608,7 @@
       ]
     },
     "Recipe_Alternate_Screw_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Screw_C",
       "displayName": "Alternate: Cast Screws",
       "durationSeconds": 24,
@@ -4544,6 +4635,7 @@
       ]
     },
     "Recipe_Alternate_Silica_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Silica_C",
       "displayName": "Alternate: Cheap Silica",
       "durationSeconds": 8,
@@ -4574,6 +4666,7 @@
       ]
     },
     "Recipe_Alternate_Silica_Distilled_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Silica_Distilled_C",
       "displayName": "Alternate: Distilled Silica",
       "durationSeconds": 6,
@@ -4612,6 +4705,7 @@
       ]
     },
     "Recipe_Alternate_SloppyAlumina_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SloppyAlumina_C",
       "displayName": "Alternate: Sloppy Alumina",
       "durationSeconds": 3,
@@ -4642,6 +4736,7 @@
       ]
     },
     "Recipe_Alternate_Stator_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Stator_C",
       "displayName": "Alternate: Quickwire Stator",
       "durationSeconds": 15,
@@ -4672,6 +4767,7 @@
       ]
     },
     "Recipe_Alternate_SteamedCopperSheet_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteamedCopperSheet_C",
       "displayName": "Alternate: Steamed Copper Sheet",
       "durationSeconds": 8,
@@ -4702,6 +4798,7 @@
       ]
     },
     "Recipe_Alternate_SteelBeam_Aluminum_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelBeam_Aluminum_C",
       "displayName": "Alternate: Aluminum Beam",
       "durationSeconds": 8,
@@ -4728,6 +4825,7 @@
       ]
     },
     "Recipe_Alternate_SteelBeam_Molded_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelBeam_Molded_C",
       "displayName": "Alternate: Molded Beam",
       "durationSeconds": 12,
@@ -4758,6 +4856,7 @@
       ]
     },
     "Recipe_Alternate_SteelCanister_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelCanister_C",
       "displayName": "Alternate: Steel Canister",
       "durationSeconds": 6,
@@ -4784,6 +4883,7 @@
       ]
     },
     "Recipe_Alternate_SteelCastedPlate_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelCastedPlate_C",
       "displayName": "Alternate: Steel Cast Plate",
       "durationSeconds": 4,
@@ -4814,6 +4914,7 @@
       ]
     },
     "Recipe_Alternate_SteelPipe_Iron_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelPipe_Iron_C",
       "displayName": "Alternate: Iron Pipe",
       "durationSeconds": 12,
@@ -4840,6 +4941,7 @@
       ]
     },
     "Recipe_Alternate_SteelPipe_Molded_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelPipe_Molded_C",
       "displayName": "Alternate: Molded Steel Pipe",
       "durationSeconds": 6,
@@ -4870,6 +4972,7 @@
       ]
     },
     "Recipe_Alternate_SteelRod_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SteelRod_C",
       "displayName": "Alternate: Steel Rod",
       "durationSeconds": 5,
@@ -4896,6 +4999,7 @@
       ]
     },
     "Recipe_Alternate_SuperStateComputer_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_SuperStateComputer_C",
       "displayName": "Alternate: Super-State Computer",
       "durationSeconds": 25,
@@ -4934,6 +5038,7 @@
       ]
     },
     "Recipe_Alternate_TurboBlendFuel_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_TurboBlendFuel_C",
       "displayName": "Alternate: Turbo Blend Fuel",
       "durationSeconds": 8,
@@ -4972,6 +5077,7 @@
       ]
     },
     "Recipe_Alternate_Turbofuel_C": {
+      "availabilityCategory": "unlock",
       "className": "Recipe_Alternate_Turbofuel_C",
       "displayName": "Turbofuel",
       "durationSeconds": 16,
@@ -5002,6 +5108,7 @@
       ]
     },
     "Recipe_Alternate_TurboHeavyFuel_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_TurboHeavyFuel_C",
       "displayName": "Alternate: Turbo Heavy Fuel",
       "durationSeconds": 8,
@@ -5032,6 +5139,7 @@
       ]
     },
     "Recipe_Alternate_TurboMotor_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_TurboMotor_1_C",
       "displayName": "Alternate: Turbo Electric Motor",
       "durationSeconds": 64,
@@ -5070,6 +5178,7 @@
       ]
     },
     "Recipe_Alternate_TurboPressureMotor_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_TurboPressureMotor_C",
       "displayName": "Alternate: Turbo Pressure Motor",
       "durationSeconds": 32,
@@ -5108,6 +5217,7 @@
       ]
     },
     "Recipe_Alternate_UraniumCell_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_UraniumCell_1_C",
       "displayName": "Alternate: Infused Uranium Cell",
       "durationSeconds": 12,
@@ -5146,6 +5256,7 @@
       ]
     },
     "Recipe_Alternate_WetConcrete_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_WetConcrete_C",
       "displayName": "Alternate: Wet Concrete",
       "durationSeconds": 3,
@@ -5176,6 +5287,7 @@
       ]
     },
     "Recipe_Alternate_Wire_1_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Wire_1_C",
       "displayName": "Alternate: Iron Wire",
       "durationSeconds": 24,
@@ -5202,6 +5314,7 @@
       ]
     },
     "Recipe_Alternate_Wire_2_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_Alternate_Wire_2_C",
       "displayName": "Alternate: Caterium Wire",
       "durationSeconds": 4,
@@ -5228,6 +5341,7 @@
       ]
     },
     "Recipe_AluminaSolution_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AluminaSolution_C",
       "displayName": "Alumina Solution",
       "durationSeconds": 6,
@@ -5262,6 +5376,7 @@
       ]
     },
     "Recipe_AluminumCasing_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AluminumCasing_C",
       "displayName": "Aluminum Casing",
       "durationSeconds": 2,
@@ -5288,6 +5403,7 @@
       ]
     },
     "Recipe_AluminumScrap_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AluminumScrap_C",
       "displayName": "Aluminum Scrap",
       "durationSeconds": 1,
@@ -5322,6 +5438,7 @@
       ]
     },
     "Recipe_AluminumSheet_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_AluminumSheet_C",
       "displayName": "Alclad Aluminum Sheet",
       "durationSeconds": 6,
@@ -5352,6 +5469,7 @@
       ]
     },
     "Recipe_Battery_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Battery_C",
       "displayName": "Battery",
       "durationSeconds": 3,
@@ -5390,6 +5508,7 @@
       ]
     },
     "Recipe_Bauxite_Caterium_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Bauxite_Caterium_C",
       "displayName": "Bauxite (Caterium)",
       "durationSeconds": 6,
@@ -5424,6 +5543,7 @@
       }
     },
     "Recipe_Bauxite_Copper_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Bauxite_Copper_C",
       "displayName": "Bauxite (Copper)",
       "durationSeconds": 6,
@@ -5458,6 +5578,7 @@
       }
     },
     "Recipe_Biofuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Biofuel_C",
       "displayName": "Solid Biofuel",
       "durationSeconds": 4,
@@ -5484,6 +5605,7 @@
       ]
     },
     "Recipe_Biomass_AlienProtein_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Biomass_AlienProtein_C",
       "displayName": "Biomass (Alien Protein)",
       "durationSeconds": 4,
@@ -5510,6 +5632,7 @@
       ]
     },
     "Recipe_Biomass_Leaves_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Biomass_Leaves_C",
       "displayName": "Biomass (Leaves)",
       "durationSeconds": 5,
@@ -5536,6 +5659,7 @@
       ]
     },
     "Recipe_Biomass_Mycelia_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Biomass_Mycelia_C",
       "displayName": "Biomass (Mycelia)",
       "durationSeconds": 4,
@@ -5562,6 +5686,7 @@
       ]
     },
     "Recipe_Biomass_Wood_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Biomass_Wood_C",
       "displayName": "Biomass (Wood)",
       "durationSeconds": 4,
@@ -5588,6 +5713,7 @@
       ]
     },
     "Recipe_Cable_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Cable_C",
       "displayName": "Cable",
       "durationSeconds": 2,
@@ -5614,6 +5740,7 @@
       ]
     },
     "Recipe_Cartridge_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Cartridge_C",
       "displayName": "Rifle Ammo",
       "durationSeconds": 12,
@@ -5644,6 +5771,7 @@
       ]
     },
     "Recipe_CartridgeChaos_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CartridgeChaos_C",
       "displayName": "Turbo Rifle Ammo",
       "durationSeconds": 12,
@@ -5678,6 +5806,7 @@
       ]
     },
     "Recipe_CartridgeChaos_Packaged_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CartridgeChaos_Packaged_C",
       "displayName": "Turbo Rifle Ammo",
       "durationSeconds": 12,
@@ -5712,6 +5841,7 @@
       ]
     },
     "Recipe_CartridgeSmart_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CartridgeSmart_C",
       "displayName": "Homing Rifle Ammo",
       "durationSeconds": 24,
@@ -5742,6 +5872,7 @@
       ]
     },
     "Recipe_Caterium_Copper_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Caterium_Copper_C",
       "displayName": "Caterium Ore (Copper)",
       "durationSeconds": 6,
@@ -5776,6 +5907,7 @@
       }
     },
     "Recipe_Caterium_Quartz_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Caterium_Quartz_C",
       "displayName": "Caterium Ore (Quartz)",
       "durationSeconds": 6,
@@ -5810,6 +5942,7 @@
       }
     },
     "Recipe_CircuitBoard_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CircuitBoard_C",
       "displayName": "Circuit Board",
       "durationSeconds": 8,
@@ -5840,6 +5973,7 @@
       ]
     },
     "Recipe_Coal_Iron_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Coal_Iron_C",
       "displayName": "Coal (Iron)",
       "durationSeconds": 6,
@@ -5874,6 +6008,7 @@
       }
     },
     "Recipe_Coal_Limestone_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Coal_Limestone_C",
       "displayName": "Coal (Limestone)",
       "durationSeconds": 6,
@@ -5908,6 +6043,7 @@
       }
     },
     "Recipe_Computer_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Computer_C",
       "displayName": "Computer",
       "durationSeconds": 24,
@@ -5942,6 +6078,7 @@
       ]
     },
     "Recipe_ComputerSuper_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ComputerSuper_C",
       "displayName": "Supercomputer",
       "durationSeconds": 32,
@@ -5980,6 +6117,7 @@
       ]
     },
     "Recipe_Concrete_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Concrete_C",
       "displayName": "Concrete",
       "durationSeconds": 4,
@@ -6006,6 +6144,7 @@
       ]
     },
     "Recipe_CoolingSystem_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CoolingSystem_C",
       "displayName": "Cooling System",
       "durationSeconds": 10,
@@ -6044,6 +6183,7 @@
       ]
     },
     "Recipe_Copper_Quartz_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Copper_Quartz_C",
       "displayName": "Copper Ore (Quartz)",
       "durationSeconds": 6,
@@ -6078,6 +6218,7 @@
       }
     },
     "Recipe_Copper_Sulfur_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Copper_Sulfur_C",
       "displayName": "Copper Ore (Sulfur)",
       "durationSeconds": 6,
@@ -6112,6 +6253,7 @@
       }
     },
     "Recipe_CopperDust_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CopperDust_C",
       "displayName": "Copper Powder",
       "durationSeconds": 6,
@@ -6138,6 +6280,7 @@
       ]
     },
     "Recipe_CopperSheet_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CopperSheet_C",
       "displayName": "Copper Sheet",
       "durationSeconds": 6,
@@ -6164,6 +6307,7 @@
       ]
     },
     "Recipe_CrystalOscillator_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_CrystalOscillator_C",
       "displayName": "Crystal Oscillator",
       "durationSeconds": 120,
@@ -6198,6 +6342,7 @@
       ]
     },
     "Recipe_DarkEnergy_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_DarkEnergy_C",
       "displayName": "Dark Matter Residue",
       "durationSeconds": 6,
@@ -6228,6 +6373,7 @@
       }
     },
     "Recipe_DarkMatter_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_DarkMatter_C",
       "displayName": "Dark Matter Crystal",
       "durationSeconds": 2,
@@ -6262,6 +6408,7 @@
       }
     },
     "Recipe_Diamond_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Diamond_C",
       "displayName": "Diamonds",
       "durationSeconds": 2,
@@ -6292,6 +6439,7 @@
       }
     },
     "Recipe_ElectromagneticControlRod_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ElectromagneticControlRod_C",
       "displayName": "Electromagnetic Control Rod",
       "durationSeconds": 30,
@@ -6322,6 +6470,7 @@
       ]
     },
     "Recipe_EncasedIndustrialBeam_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_EncasedIndustrialBeam_C",
       "displayName": "Encased Industrial Beam",
       "durationSeconds": 10,
@@ -6352,6 +6501,7 @@
       ]
     },
     "Recipe_Fabric_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Fabric_C",
       "displayName": "Fabric",
       "durationSeconds": 4,
@@ -6382,6 +6532,7 @@
       ]
     },
     "Recipe_FicsiteIngot_AL_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FicsiteIngot_AL_C",
       "displayName": "Ficsite Ingot (Aluminum)",
       "durationSeconds": 2,
@@ -6416,6 +6567,7 @@
       }
     },
     "Recipe_FicsiteIngot_CAT_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FicsiteIngot_CAT_C",
       "displayName": "Ficsite Ingot (Caterium)",
       "durationSeconds": 4,
@@ -6450,6 +6602,7 @@
       }
     },
     "Recipe_FicsiteIngot_Iron_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FicsiteIngot_Iron_C",
       "displayName": "Ficsite Ingot (Iron)",
       "durationSeconds": 6,
@@ -6484,6 +6637,7 @@
       }
     },
     "Recipe_FicsiteMesh_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FicsiteMesh_C",
       "displayName": "Ficsite Trigon",
       "durationSeconds": 6,
@@ -6510,6 +6664,7 @@
       ]
     },
     "Recipe_Ficsonium_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Ficsonium_C",
       "displayName": "Ficsonium",
       "durationSeconds": 6,
@@ -6548,6 +6703,7 @@
       }
     },
     "Recipe_FicsoniumFuelRod_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FicsoniumFuelRod_C",
       "displayName": "Ficsonium Fuel Rod",
       "durationSeconds": 24,
@@ -6594,6 +6750,7 @@
       }
     },
     "Recipe_FilterGasMask_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FilterGasMask_C",
       "displayName": "Gas Filter",
       "durationSeconds": 8,
@@ -6628,6 +6785,7 @@
       ]
     },
     "Recipe_FilterHazmat_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FilterHazmat_C",
       "displayName": "Iodine-Infused Filter",
       "durationSeconds": 16,
@@ -6662,6 +6820,7 @@
       ]
     },
     "Recipe_FluidCanister_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FluidCanister_C",
       "displayName": "Empty Canister",
       "durationSeconds": 4,
@@ -6688,6 +6847,7 @@
       ]
     },
     "Recipe_Fuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Fuel_C",
       "displayName": "Packaged Fuel",
       "durationSeconds": 3,
@@ -6716,6 +6876,7 @@
       "tags": []
     },
     "Recipe_FusedModularFrame_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_FusedModularFrame_C",
       "displayName": "Fused Modular Frame",
       "durationSeconds": 40,
@@ -6750,6 +6911,7 @@
       ]
     },
     "Recipe_GasTank_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_GasTank_C",
       "displayName": "Empty Fluid Tank",
       "durationSeconds": 1,
@@ -6776,6 +6938,7 @@
       ]
     },
     "Recipe_Gunpowder_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Gunpowder_C",
       "displayName": "Black Powder",
       "durationSeconds": 4,
@@ -6806,6 +6969,7 @@
       ]
     },
     "Recipe_GunpowderMK2_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_GunpowderMK2_C",
       "displayName": "Smokeless Powder",
       "durationSeconds": 6,
@@ -6836,6 +7000,7 @@
       ]
     },
     "Recipe_HeatSink_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_HeatSink_C",
       "displayName": "Heat Sink",
       "durationSeconds": 8,
@@ -6866,6 +7031,7 @@
       ]
     },
     "Recipe_HighSpeedConnector_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_HighSpeedConnector_C",
       "displayName": "High-Speed Connector",
       "durationSeconds": 16,
@@ -6900,6 +7066,7 @@
       ]
     },
     "Recipe_IngotAluminum_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IngotAluminum_C",
       "displayName": "Aluminum Ingot",
       "durationSeconds": 4,
@@ -6930,6 +7097,7 @@
       ]
     },
     "Recipe_IngotCaterium_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IngotCaterium_C",
       "displayName": "Caterium Ingot",
       "durationSeconds": 4,
@@ -6956,6 +7124,7 @@
       ]
     },
     "Recipe_IngotCopper_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IngotCopper_C",
       "displayName": "Copper Ingot",
       "durationSeconds": 2,
@@ -6982,6 +7151,7 @@
       ]
     },
     "Recipe_IngotIron_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IngotIron_C",
       "displayName": "Iron Ingot",
       "durationSeconds": 2,
@@ -7008,6 +7178,7 @@
       ]
     },
     "Recipe_IngotSAM_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IngotSAM_C",
       "displayName": "Reanimated SAM",
       "durationSeconds": 2,
@@ -7034,6 +7205,7 @@
       ]
     },
     "Recipe_IngotSteel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IngotSteel_C",
       "displayName": "Steel Ingot",
       "durationSeconds": 4,
@@ -7064,6 +7236,7 @@
       ]
     },
     "Recipe_IonizedFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IonizedFuel_C",
       "displayName": "Ionized Fuel",
       "durationSeconds": 24,
@@ -7098,6 +7271,7 @@
       ]
     },
     "Recipe_Iron_Limestone_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Iron_Limestone_C",
       "displayName": "Iron Ore (Limestone)",
       "durationSeconds": 6,
@@ -7132,6 +7306,7 @@
       }
     },
     "Recipe_IronPlate_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IronPlate_C",
       "displayName": "Iron Plate",
       "durationSeconds": 6,
@@ -7158,6 +7333,7 @@
       ]
     },
     "Recipe_IronPlateReinforced_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IronPlateReinforced_C",
       "displayName": "Reinforced Iron Plate",
       "durationSeconds": 12,
@@ -7188,6 +7364,7 @@
       ]
     },
     "Recipe_IronRod_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_IronRod_C",
       "displayName": "Iron Rod",
       "durationSeconds": 4,
@@ -7214,6 +7391,7 @@
       ]
     },
     "Recipe_Limestone_Sulfur_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Limestone_Sulfur_C",
       "displayName": "Limestone (Sulfur)",
       "durationSeconds": 6,
@@ -7248,6 +7426,7 @@
       }
     },
     "Recipe_LiquidBiofuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_LiquidBiofuel_C",
       "displayName": "Liquid Biofuel",
       "durationSeconds": 4,
@@ -7278,6 +7457,7 @@
       ]
     },
     "Recipe_LiquidFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_LiquidFuel_C",
       "displayName": "Fuel",
       "durationSeconds": 6,
@@ -7308,6 +7488,7 @@
       ]
     },
     "Recipe_ModularFrame_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ModularFrame_C",
       "displayName": "Modular Frame",
       "durationSeconds": 60,
@@ -7338,6 +7519,7 @@
       ]
     },
     "Recipe_ModularFrameHeavy_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ModularFrameHeavy_C",
       "displayName": "Heavy Modular Frame",
       "durationSeconds": 30,
@@ -7376,6 +7558,7 @@
       ]
     },
     "Recipe_Motor_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Motor_C",
       "displayName": "Motor",
       "durationSeconds": 12,
@@ -7406,6 +7589,7 @@
       ]
     },
     "Recipe_MotorTurbo_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_MotorTurbo_C",
       "displayName": "Turbo Motor",
       "durationSeconds": 32,
@@ -7444,6 +7628,7 @@
       ]
     },
     "Recipe_NitricAcid_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NitricAcid_C",
       "displayName": "Nitric Acid",
       "durationSeconds": 6,
@@ -7478,6 +7663,7 @@
       ]
     },
     "Recipe_Nitrogen_Bauxite_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Nitrogen_Bauxite_C",
       "displayName": "Nitrogen Gas (Bauxite)",
       "durationSeconds": 6,
@@ -7512,6 +7698,7 @@
       }
     },
     "Recipe_Nitrogen_Caterium_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Nitrogen_Caterium_C",
       "displayName": "Nitrogen Gas (Caterium)",
       "durationSeconds": 6,
@@ -7546,6 +7733,7 @@
       }
     },
     "Recipe_Nobelisk_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Nobelisk_C",
       "displayName": "Nobelisk",
       "durationSeconds": 6,
@@ -7576,6 +7764,7 @@
       ]
     },
     "Recipe_NobeliskCluster_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NobeliskCluster_C",
       "displayName": "Cluster Nobelisk",
       "durationSeconds": 24,
@@ -7606,6 +7795,7 @@
       ]
     },
     "Recipe_NobeliskGas_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NobeliskGas_C",
       "displayName": "Gas Nobelisk",
       "durationSeconds": 12,
@@ -7636,6 +7826,7 @@
       ]
     },
     "Recipe_NobeliskNuke_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NobeliskNuke_C",
       "displayName": "Nuke Nobelisk",
       "durationSeconds": 120,
@@ -7674,6 +7865,7 @@
       ]
     },
     "Recipe_NobeliskShockwave_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NobeliskShockwave_C",
       "displayName": "Pulse Nobelisk",
       "durationSeconds": 60,
@@ -7704,6 +7896,7 @@
       ]
     },
     "Recipe_NonFissileUranium_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NonFissileUranium_C",
       "displayName": "Non-Fissile Uranium",
       "durationSeconds": 24,
@@ -7746,6 +7939,7 @@
       ]
     },
     "Recipe_NuclearFuelRod_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_NuclearFuelRod_C",
       "displayName": "Uranium Fuel Rod",
       "durationSeconds": 150,
@@ -7780,6 +7974,7 @@
       ]
     },
     "Recipe_PackagedAlumina_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedAlumina_C",
       "displayName": "Packaged Alumina Solution",
       "durationSeconds": 1,
@@ -7808,6 +8003,7 @@
       "tags": []
     },
     "Recipe_PackagedBiofuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedBiofuel_C",
       "displayName": "Packaged Liquid Biofuel",
       "durationSeconds": 3,
@@ -7836,6 +8032,7 @@
       "tags": []
     },
     "Recipe_PackagedCrudeOil_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedCrudeOil_C",
       "displayName": "Packaged Oil",
       "durationSeconds": 4,
@@ -7864,6 +8061,7 @@
       "tags": []
     },
     "Recipe_PackagedIonizedFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedIonizedFuel_C",
       "displayName": "Packaged Ionized Fuel",
       "durationSeconds": 3,
@@ -7892,6 +8090,7 @@
       "tags": []
     },
     "Recipe_PackagedNitricAcid_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedNitricAcid_C",
       "displayName": "Packaged Nitric Acid",
       "durationSeconds": 2,
@@ -7920,6 +8119,7 @@
       "tags": []
     },
     "Recipe_PackagedNitrogen_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedNitrogen_C",
       "displayName": "Packaged Nitrogen Gas",
       "durationSeconds": 1,
@@ -7948,6 +8148,7 @@
       "tags": []
     },
     "Recipe_PackagedOilResidue_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedOilResidue_C",
       "displayName": "Packaged Heavy Oil Residue",
       "durationSeconds": 4,
@@ -7976,6 +8177,7 @@
       "tags": []
     },
     "Recipe_PackagedRocketFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedRocketFuel_C",
       "displayName": "Packaged Rocket Fuel",
       "durationSeconds": 1,
@@ -8004,6 +8206,7 @@
       "tags": []
     },
     "Recipe_PackagedSulfuricAcid_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedSulfuricAcid_C",
       "displayName": "Packaged Sulfuric Acid",
       "durationSeconds": 3,
@@ -8032,6 +8235,7 @@
       "tags": []
     },
     "Recipe_PackagedTurboFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedTurboFuel_C",
       "displayName": "Packaged Turbofuel",
       "durationSeconds": 6,
@@ -8060,6 +8264,7 @@
       "tags": []
     },
     "Recipe_PackagedWater_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PackagedWater_C",
       "displayName": "Packaged Water",
       "durationSeconds": 2,
@@ -8088,6 +8293,7 @@
       "tags": []
     },
     "Recipe_PetroleumCoke_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PetroleumCoke_C",
       "displayName": "Petroleum Coke",
       "durationSeconds": 6,
@@ -8114,6 +8320,7 @@
       ]
     },
     "Recipe_Plastic_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Plastic_C",
       "displayName": "Plastic",
       "durationSeconds": 6,
@@ -8144,6 +8351,7 @@
       ]
     },
     "Recipe_Plutonium_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Plutonium_C",
       "displayName": "Plutonium Pellet",
       "durationSeconds": 60,
@@ -8178,6 +8386,7 @@
       }
     },
     "Recipe_PlutoniumCell_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PlutoniumCell_C",
       "displayName": "Encased Plutonium Cell",
       "durationSeconds": 12,
@@ -8208,6 +8417,7 @@
       ]
     },
     "Recipe_PlutoniumFuelRod_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PlutoniumFuelRod_C",
       "displayName": "Plutonium Fuel Rod",
       "durationSeconds": 240,
@@ -8246,6 +8456,7 @@
       ]
     },
     "Recipe_PowerCrystalShard_1_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PowerCrystalShard_1_C",
       "displayName": "Power Shard (1)",
       "durationSeconds": 8,
@@ -8272,6 +8483,7 @@
       ]
     },
     "Recipe_PowerCrystalShard_2_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PowerCrystalShard_2_C",
       "displayName": "Power Shard (2)",
       "durationSeconds": 12,
@@ -8298,6 +8510,7 @@
       ]
     },
     "Recipe_PowerCrystalShard_3_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PowerCrystalShard_3_C",
       "displayName": "Power Shard (5)",
       "durationSeconds": 24,
@@ -8324,6 +8537,7 @@
       ]
     },
     "Recipe_PressureConversionCube_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_PressureConversionCube_C",
       "displayName": "Pressure Conversion Cube",
       "durationSeconds": 60,
@@ -8354,6 +8568,7 @@
       ]
     },
     "Recipe_Protein_Crab_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Protein_Crab_C",
       "displayName": "Hatcher Protein",
       "durationSeconds": 3,
@@ -8380,6 +8595,7 @@
       ]
     },
     "Recipe_Protein_Hog_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Protein_Hog_C",
       "displayName": "Hog Protein",
       "durationSeconds": 3,
@@ -8406,6 +8622,7 @@
       ]
     },
     "Recipe_Protein_Spitter_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Protein_Spitter_C",
       "displayName": "Spitter Protein",
       "durationSeconds": 3,
@@ -8432,6 +8649,7 @@
       ]
     },
     "Recipe_Protein_Stinger_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Protein_Stinger_C",
       "displayName": "Stinger Protein",
       "durationSeconds": 3,
@@ -8458,6 +8676,7 @@
       ]
     },
     "Recipe_PureAluminumIngot_C": {
+      "availabilityCategory": "alternate",
       "className": "Recipe_PureAluminumIngot_C",
       "displayName": "Alternate: Pure Aluminum Ingot",
       "durationSeconds": 2,
@@ -8484,6 +8703,7 @@
       ]
     },
     "Recipe_QuantumEnergy_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_QuantumEnergy_C",
       "displayName": "Excited Photonic Matter",
       "durationSeconds": 3,
@@ -8509,6 +8729,7 @@
       }
     },
     "Recipe_Quartz_Bauxite_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Quartz_Bauxite_C",
       "displayName": "Raw Quartz (Bauxite)",
       "durationSeconds": 6,
@@ -8543,6 +8764,7 @@
       }
     },
     "Recipe_Quartz_Coal_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Quartz_Coal_C",
       "displayName": "Raw Quartz (Coal)",
       "durationSeconds": 6,
@@ -8577,6 +8799,7 @@
       }
     },
     "Recipe_QuartzCrystal_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_QuartzCrystal_C",
       "displayName": "Quartz Crystal",
       "durationSeconds": 8,
@@ -8603,6 +8826,7 @@
       ]
     },
     "Recipe_Quickwire_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Quickwire_C",
       "displayName": "Quickwire",
       "durationSeconds": 5,
@@ -8629,6 +8853,7 @@
       ]
     },
     "Recipe_RadioControlUnit_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_RadioControlUnit_C",
       "displayName": "Radio Control Unit",
       "durationSeconds": 48,
@@ -8663,6 +8888,7 @@
       ]
     },
     "Recipe_Rebar_Explosive_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Rebar_Explosive_C",
       "displayName": "Explosive Rebar",
       "durationSeconds": 12,
@@ -8697,6 +8923,7 @@
       ]
     },
     "Recipe_Rebar_Spreadshot_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Rebar_Spreadshot_C",
       "displayName": "Shatter Rebar",
       "durationSeconds": 12,
@@ -8727,6 +8954,7 @@
       ]
     },
     "Recipe_Rebar_Stunshot_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Rebar_Stunshot_C",
       "displayName": "Stun Rebar",
       "durationSeconds": 6,
@@ -8757,6 +8985,7 @@
       ]
     },
     "Recipe_ResidualFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ResidualFuel_C",
       "displayName": "Residual Fuel",
       "durationSeconds": 6,
@@ -8783,6 +9012,7 @@
       ]
     },
     "Recipe_ResidualPlastic_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ResidualPlastic_C",
       "displayName": "Residual Plastic",
       "durationSeconds": 6,
@@ -8813,6 +9043,7 @@
       ]
     },
     "Recipe_ResidualRubber_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_ResidualRubber_C",
       "displayName": "Residual Rubber",
       "durationSeconds": 6,
@@ -8843,6 +9074,7 @@
       ]
     },
     "Recipe_RocketFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_RocketFuel_C",
       "displayName": "Rocket Fuel",
       "durationSeconds": 6,
@@ -8877,6 +9109,7 @@
       ]
     },
     "Recipe_Rotor_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Rotor_C",
       "displayName": "Rotor",
       "durationSeconds": 15,
@@ -8907,6 +9140,7 @@
       ]
     },
     "Recipe_Rubber_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Rubber_C",
       "displayName": "Rubber",
       "durationSeconds": 6,
@@ -8937,6 +9171,7 @@
       ]
     },
     "Recipe_SAMFluctuator_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SAMFluctuator_C",
       "displayName": "SAM Fluctuator",
       "durationSeconds": 6,
@@ -8971,6 +9206,7 @@
       ]
     },
     "Recipe_Screw_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Screw_C",
       "displayName": "Screws",
       "durationSeconds": 6,
@@ -8997,6 +9233,7 @@
       ]
     },
     "Recipe_Silica_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Silica_C",
       "displayName": "Silica",
       "durationSeconds": 8,
@@ -9023,6 +9260,7 @@
       ]
     },
     "Recipe_SingularityCell_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SingularityCell_C",
       "displayName": "Singularity Cell",
       "durationSeconds": 60,
@@ -9065,6 +9303,7 @@
       }
     },
     "Recipe_SpaceElevatorPart_1_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_1_C",
       "displayName": "Smart Plating",
       "durationSeconds": 30,
@@ -9096,6 +9335,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_10_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_10_C",
       "displayName": "Biochemical Sculptor",
       "durationSeconds": 120,
@@ -9135,6 +9375,7 @@
       }
     },
     "Recipe_SpaceElevatorPart_11_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_11_C",
       "displayName": "Ballistic Warp Drive",
       "durationSeconds": 60,
@@ -9178,6 +9419,7 @@
       }
     },
     "Recipe_SpaceElevatorPart_12_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_12_C",
       "displayName": "AI Expansion Server",
       "durationSeconds": 15,
@@ -9225,6 +9467,7 @@
       }
     },
     "Recipe_SpaceElevatorPart_2_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_2_C",
       "displayName": "Versatile Framework",
       "durationSeconds": 24,
@@ -9256,6 +9499,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_3_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_3_C",
       "displayName": "Automated Wiring",
       "durationSeconds": 24,
@@ -9287,6 +9531,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_4_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_4_C",
       "displayName": "Modular Engine",
       "durationSeconds": 60,
@@ -9322,6 +9567,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_5_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_5_C",
       "displayName": "Adaptive Control Unit",
       "durationSeconds": 60,
@@ -9361,6 +9607,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_6_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_6_C",
       "displayName": "Magnetic Field Generator",
       "durationSeconds": 120,
@@ -9392,6 +9639,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_7_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_7_C",
       "displayName": "Assembly Director System",
       "durationSeconds": 80,
@@ -9423,6 +9671,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_8_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_8_C",
       "displayName": "Thermal Propulsion Rocket",
       "durationSeconds": 120,
@@ -9462,6 +9711,7 @@
       ]
     },
     "Recipe_SpaceElevatorPart_9_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpaceElevatorPart_9_C",
       "displayName": "Nuclear Pasta",
       "durationSeconds": 120,
@@ -9497,6 +9747,7 @@
       }
     },
     "Recipe_SpikedRebar_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SpikedRebar_C",
       "displayName": "Iron Rebar",
       "durationSeconds": 4,
@@ -9523,6 +9774,7 @@
       ]
     },
     "Recipe_Stator_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Stator_C",
       "displayName": "Stator",
       "durationSeconds": 12,
@@ -9553,6 +9805,7 @@
       ]
     },
     "Recipe_SteelBeam_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SteelBeam_C",
       "displayName": "Steel Beam",
       "durationSeconds": 4,
@@ -9579,6 +9832,7 @@
       ]
     },
     "Recipe_SteelPipe_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SteelPipe_C",
       "displayName": "Steel Pipe",
       "durationSeconds": 6,
@@ -9605,6 +9859,7 @@
       ]
     },
     "Recipe_Sulfur_Coal_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Sulfur_Coal_C",
       "displayName": "Sulfur (Coal)",
       "durationSeconds": 6,
@@ -9639,6 +9894,7 @@
       }
     },
     "Recipe_Sulfur_Iron_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Sulfur_Iron_C",
       "displayName": "Sulfur (Iron)",
       "durationSeconds": 6,
@@ -9673,6 +9929,7 @@
       }
     },
     "Recipe_SulfuricAcid_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SulfuricAcid_C",
       "displayName": "Sulfuric Acid",
       "durationSeconds": 6,
@@ -9703,6 +9960,7 @@
       ]
     },
     "Recipe_SuperpositionOscillator_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SuperpositionOscillator_C",
       "displayName": "Superposition Oscillator",
       "durationSeconds": 12,
@@ -9749,6 +10007,7 @@
       }
     },
     "Recipe_SyntheticPowerShard_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_SyntheticPowerShard_C",
       "displayName": "Synthetic Power Shard",
       "durationSeconds": 12,
@@ -9795,6 +10054,7 @@
       }
     },
     "Recipe_TemporalProcessor_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_TemporalProcessor_C",
       "displayName": "Neural-Quantum Processor",
       "durationSeconds": 20,
@@ -9841,6 +10101,7 @@
       }
     },
     "Recipe_TimeCrystal_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_TimeCrystal_C",
       "displayName": "Time Crystal",
       "durationSeconds": 10,
@@ -9871,6 +10132,7 @@
       }
     },
     "Recipe_UnpackageAlumina_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageAlumina_C",
       "displayName": "Unpackage Alumina Solution",
       "durationSeconds": 1,
@@ -9899,6 +10161,7 @@
       "tags": []
     },
     "Recipe_UnpackageBioFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageBioFuel_C",
       "displayName": "Unpackage Liquid Biofuel",
       "durationSeconds": 2,
@@ -9927,6 +10190,7 @@
       "tags": []
     },
     "Recipe_UnpackageFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageFuel_C",
       "displayName": "Unpackage Fuel",
       "durationSeconds": 2,
@@ -9955,6 +10219,7 @@
       "tags": []
     },
     "Recipe_UnpackageIonizedFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageIonizedFuel_C",
       "displayName": "Unpackage Ionized Fuel",
       "durationSeconds": 3,
@@ -9983,6 +10248,7 @@
       "tags": []
     },
     "Recipe_UnpackageNitricAcid_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageNitricAcid_C",
       "displayName": "Unpackage Nitric Acid",
       "durationSeconds": 3,
@@ -10011,6 +10277,7 @@
       "tags": []
     },
     "Recipe_UnpackageNitrogen_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageNitrogen_C",
       "displayName": "Unpackage Nitrogen Gas",
       "durationSeconds": 1,
@@ -10039,6 +10306,7 @@
       "tags": []
     },
     "Recipe_UnpackageOil_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageOil_C",
       "displayName": "Unpackage Oil",
       "durationSeconds": 2,
@@ -10067,6 +10335,7 @@
       "tags": []
     },
     "Recipe_UnpackageOilResidue_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageOilResidue_C",
       "displayName": "Unpackage Heavy Oil Residue",
       "durationSeconds": 6,
@@ -10095,6 +10364,7 @@
       "tags": []
     },
     "Recipe_UnpackageRocketFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageRocketFuel_C",
       "displayName": "Unpackage Rocket Fuel",
       "durationSeconds": 1,
@@ -10123,6 +10393,7 @@
       "tags": []
     },
     "Recipe_UnpackageSulfuricAcid_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageSulfuricAcid_C",
       "displayName": "Unpackage Sulfuric Acid",
       "durationSeconds": 1,
@@ -10151,6 +10422,7 @@
       "tags": []
     },
     "Recipe_UnpackageTurboFuel_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageTurboFuel_C",
       "displayName": "Unpackage Turbofuel",
       "durationSeconds": 6,
@@ -10179,6 +10451,7 @@
       "tags": []
     },
     "Recipe_UnpackageWater_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UnpackageWater_C",
       "displayName": "Unpackage Water",
       "durationSeconds": 1,
@@ -10207,6 +10480,7 @@
       "tags": []
     },
     "Recipe_Uranium_Bauxite_C": {
+      "availabilityCategory": "converter",
       "className": "Recipe_Uranium_Bauxite_C",
       "displayName": "Uranium Ore (Bauxite)",
       "durationSeconds": 6,
@@ -10241,6 +10515,7 @@
       }
     },
     "Recipe_UraniumCell_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_UraniumCell_C",
       "displayName": "Encased Uranium Cell",
       "durationSeconds": 12,
@@ -10279,6 +10554,7 @@
       ]
     },
     "Recipe_Wire_C": {
+      "availabilityCategory": "standard",
       "className": "Recipe_Wire_C",
       "displayName": "Wire",
       "durationSeconds": 4,

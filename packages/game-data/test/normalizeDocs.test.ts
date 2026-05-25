@@ -100,6 +100,121 @@ describe('normalizeDocs', () => {
     expect(normalized.recipes['Recipe_HandOnly_C']).toBeUndefined();
   });
 
+  it('classifies recipe availability categories for standard, unlock, converter, and alternate recipes', () => {
+    const rawDocs = [
+      {
+        NativeClass: '/Script/FactoryGame.FGItemDescriptor',
+        Classes: [
+          { ClassName: 'Desc_CompactedCoal_C', mDisplayName: 'Compacted Coal', mForm: 'RF_SOLID' },
+          { ClassName: 'Desc_LiquidFuel_C', mDisplayName: 'Fuel', mForm: 'RF_LIQUID' },
+          { ClassName: 'Desc_LiquidTurboFuel_C', mDisplayName: 'Turbofuel', mForm: 'RF_LIQUID' },
+          { ClassName: 'Desc_Part_C', mDisplayName: 'Part', mForm: 'RF_SOLID' },
+          { ClassName: 'Desc_Wire_C', mDisplayName: 'Wire', mForm: 'RF_SOLID' }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGResourceDescriptor',
+        Classes: [
+          { ClassName: 'Desc_Coal_C', mDisplayName: 'Coal', mForm: 'RF_SOLID' },
+          { ClassName: 'Desc_OreCopper_C', mDisplayName: 'Copper Ore', mForm: 'RF_SOLID' },
+          { ClassName: 'Desc_OreIron_C', mDisplayName: 'Iron Ore', mForm: 'RF_SOLID' },
+          { ClassName: 'Desc_Sulfur_C', mDisplayName: 'Sulfur', mForm: 'RF_SOLID' }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGBuildableManufacturer',
+        Classes: [
+          {
+            ClassName: 'Build_AssemblerMk1_C',
+            mDisplayName: 'Assembler',
+            mPowerConsumption: '15',
+            mManufacturingSpeed: '1'
+          },
+          {
+            ClassName: 'Build_ConstructorMk1_C',
+            mDisplayName: 'Constructor',
+            mPowerConsumption: '4',
+            mManufacturingSpeed: '1'
+          },
+          {
+            ClassName: 'Build_Converter_C',
+            mDisplayName: 'Converter',
+            mPowerConsumption: '100',
+            mManufacturingSpeed: '1'
+          },
+          {
+            ClassName: 'Build_OilRefinery_C',
+            mDisplayName: 'Refinery',
+            mPowerConsumption: '30',
+            mManufacturingSpeed: '1'
+          }
+        ]
+      },
+      {
+        NativeClass: '/Script/FactoryGame.FGRecipe',
+        Classes: [
+          {
+            ClassName: 'Recipe_StandardPart_C',
+            mDisplayName: 'Part',
+            mIngredients: itemAmounts(['Desc_OreIron_C', 1]),
+            mProduct: itemAmounts(['Desc_Part_C', 1]),
+            mManufactoringDuration: '4',
+            mProducedIn: producedIn('Build_ConstructorMk1_C')
+          },
+          {
+            ClassName: 'Recipe_Alternate_Wire_C',
+            mDisplayName: 'Alternate: Wire',
+            mIngredients: itemAmounts(['Desc_OreIron_C', 1]),
+            mProduct: itemAmounts(['Desc_Wire_C', 1]),
+            mManufactoringDuration: '4',
+            mProducedIn: producedIn('Build_ConstructorMk1_C')
+          },
+          {
+            ClassName: 'Recipe_Alternate_EnrichedCoal_C',
+            mDisplayName: 'Alternate: Compacted Coal',
+            mIngredients: itemAmounts(['Desc_Coal_C', 5], ['Desc_Sulfur_C', 5]),
+            mProduct: itemAmounts(['Desc_CompactedCoal_C', 5]),
+            mManufactoringDuration: '12',
+            mProducedIn: producedIn('Build_AssemblerMk1_C')
+          },
+          {
+            ClassName: 'Recipe_Alternate_Turbofuel_C',
+            mDisplayName: 'Turbofuel',
+            mIngredients: itemAmounts(['Desc_LiquidFuel_C', 6000], ['Desc_CompactedCoal_C', 4]),
+            mProduct: itemAmounts(['Desc_LiquidTurboFuel_C', 5000]),
+            mManufactoringDuration: '16',
+            mProducedIn: producedIn('Build_OilRefinery_C')
+          },
+          {
+            ClassName: 'Recipe_ConverterIronOre_C',
+            mDisplayName: 'Iron Ore (Copper)',
+            mIngredients: itemAmounts(['Desc_OreCopper_C', 12]),
+            mProduct: itemAmounts(['Desc_OreIron_C', 12]),
+            mManufactoringDuration: '6',
+            mProducedIn: producedIn('Build_Converter_C')
+          }
+        ]
+      }
+    ];
+
+    const normalized = normalizeDocs(rawDocs, JSON.stringify(rawDocs), {
+      docsFileName: 'en-US.json',
+      generatedAt: '2026-05-12T00:00:00.000Z'
+    });
+
+    expect(normalized.recipes['Recipe_StandardPart_C']?.availabilityCategory).toBe('standard');
+    expect(normalized.recipes['Recipe_Alternate_Wire_C']?.availabilityCategory).toBe('alternate');
+    expect(normalized.recipes['Recipe_Alternate_EnrichedCoal_C']).toMatchObject({
+      isAlternate: true,
+      availabilityCategory: 'unlock'
+    });
+    expect(normalized.recipes['Recipe_Alternate_Turbofuel_C']).toMatchObject({
+      isAlternate: true,
+      availabilityCategory: 'unlock'
+    });
+    expect(normalized.recipes['Recipe_ConverterIronOre_C']?.availabilityCategory).toBe('converter');
+  });
+
   it('parses known early automated production recipes from raw docs tuples', () => {
     const rawDocs = [
       {

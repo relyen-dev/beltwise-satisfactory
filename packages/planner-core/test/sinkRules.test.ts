@@ -1,6 +1,11 @@
 import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import { describe, expect, it } from 'vitest';
-import { isSinkableItem, itemSinkPoints, sinkPointsPerMinute } from '@beltwise/planner-core';
+import {
+  isSinkableItem,
+  isTargetOutputSinkableItem,
+  itemSinkPoints,
+  sinkPointsPerMinute,
+} from '@beltwise/planner-core';
 
 describe('sink rule helpers', () => {
   it('treats only positive finite sink points as sinkable', () => {
@@ -16,6 +21,13 @@ describe('sink rule helpers', () => {
           ...tinySatisfactoryDataset.items['Desc_Wire_C']!,
           sinkPoints: 0,
         },
+        Desc_LiquidFuel_C: {
+          id: 'Desc_LiquidFuel_C',
+          className: 'Desc_LiquidFuel_C',
+          displayName: 'Fuel',
+          form: 'liquid',
+          sinkPoints: 1,
+        },
       },
     };
 
@@ -30,5 +42,9 @@ describe('sink rule helpers', () => {
     expect(itemSinkPoints(dataset, 'Desc_IngotIron_C')).toBeNull();
     expect(isSinkableItem(dataset, 'Desc_IngotIron_C')).toBe(false);
     expect(sinkPointsPerMinute(dataset, 'Desc_IngotIron_C', 12)).toBeNull();
+    expect(isTargetOutputSinkableItem(dataset, 'Desc_Screw_C')).toBe(true);
+    expect(isTargetOutputSinkableItem(dataset, 'Desc_Wire_C')).toBe(false);
+    expect(isSinkableItem(dataset, 'Desc_LiquidFuel_C')).toBe(true);
+    expect(isTargetOutputSinkableItem(dataset, 'Desc_LiquidFuel_C')).toBe(false);
   });
 });

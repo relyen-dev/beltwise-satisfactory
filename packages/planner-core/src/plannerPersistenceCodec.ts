@@ -132,6 +132,7 @@ export interface StoredSinkRuleV1 {
   id: string;
   itemId: ItemId;
   mode: SinkRule['mode'];
+  amountPerMinute?: number;
   sortOrder: number;
 }
 

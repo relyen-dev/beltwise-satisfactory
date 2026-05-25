@@ -5,7 +5,9 @@ import {
   type Machine,
   type MachineId,
   type Recipe,
+  type RecipeAvailabilityCategory,
   type ResourceInfo,
+  recipeAvailabilityCategoryForDataset,
 } from '@beltwise/game-data';
 import {
   buildGeneratorFuelCatalog,
@@ -15,6 +17,7 @@ import {
   type GeneratorFuelCatalogRow,
   type GraphNodeBuildState,
   isSinkableItem,
+  isTargetOutputSinkableItem,
   NEUTRAL_RAW_RESOURCE_MULTIPLIER,
   type ObjectiveProfile,
   normalizePlainTextNote,
@@ -30,6 +33,9 @@ import {
   scaleGeneratorFuelOptionForPower,
   type SinkRule,
   sinkPointsPerMinute,
+  selectTargetOutputSinkOptions as selectDomainTargetOutputSinkOptions,
+  targetOutputAmountForItem,
+  targetOutputSinkAmountForItem,
   rawResourceMultiplierCanAffectRouteCost,
   sanitizeRawResourceMultiplier,
   solveReadyProject,
@@ -126,8 +132,21 @@ export interface SinkRuleRow {
   itemId: ItemId;
   displayName: string;
   iconSrc: string;
+  mode: SinkRule['mode'];
   amountPerMinute: number;
+  configuredAmountPerMinute: number;
+  maxAmountPerMinute: number | null;
   sinkPointsPerMinute: number | null;
+}
+
+export interface TargetOutputSinkOption {
+  item: Item;
+  itemId: ItemId;
+  displayName: string;
+  iconSrc: string;
+  targetOutputAmountPerMinute: number;
+  configuredAmountPerMinute: number;
+  remainingAmountPerMinute: number;
 }
 
 export interface MachineRow {
@@ -186,6 +205,8 @@ export interface MachineUsageRow {
 export interface RecipeRow {
   recipe: Recipe;
   enabled: boolean;
+  availabilityCategory: RecipeAvailabilityCategory;
+  availabilityLabel: string;
   machineName: string;
   productIcons: RecipeItemIcon[];
   hiddenProductIconCount: number;
@@ -206,7 +227,6 @@ type ResourceOverrideSource = Pick<PlannerProject, 'resourceOverrides'>;
 type MachineOverrideSource = Pick<PlannerProject, 'machineOverrides'>;
 type RecipeOverrideSource = Pick<PlannerProject, 'recipeOverrides'>;
 
-const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const MAX_RECIPE_PRODUCT_ICONS = 1;
 const MIN_AVAILABLE_SURPLUS_RATE = 0.000001;
 
@@ -393,13 +413,24 @@ export function selectSinkRuleRows(
   return project.sinkRules
     .toSorted((left, right) => left.sortOrder - right.sortOrder)
     .map((rule) => {
-      const amountPerMinute = result?.surplus[rule.itemId] ?? 0;
+      const maxAmountPerMinute =
+        rule.mode === 'target-output'
+          ? targetOutputAmountForItem(project.targets, result, rule.itemId)
+          : null;
+      const amountPerMinute =
+        rule.mode === 'target-output'
+          ? targetOutputSinkAmountForItem(dataset, project.targets, result, [rule], rule.itemId)
+          : (result?.surplus[rule.itemId] ?? 0);
       return {
         rule,
         itemId: rule.itemId,
         displayName: dataset.items[rule.itemId]?.displayName ?? rule.itemId,
         iconSrc: gameIconPathForItemId(rule.itemId),
+        mode: rule.mode,
         amountPerMinute,
+        configuredAmountPerMinute:
+          rule.mode === 'target-output' ? rule.amountPerMinute : amountPerMinute,
+        maxAmountPerMinute,
         sinkPointsPerMinute: sinkPointsPerMinute(dataset, rule.itemId, amountPerMinute),
       };
     });
@@ -426,6 +457,19 @@ export function selectAvailableSurplusSinkItems(
         !configuredSurplusItemIds.has(item.id),
     )
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
+}
+
+export function selectAvailableTargetOutputSinkOptions(
+  dataset: GameDataset,
+  project: PlannerProject,
+  result: ProductionPlanResult | null = null,
+): TargetOutputSinkOption[] {
+  return selectDomainTargetOutputSinkOptions(dataset, project.targets, result, project.sinkRules)
+    .filter((option) => isTargetOutputSinkableItem(dataset, option.itemId))
+    .map((option) => ({
+      ...option,
+      iconSrc: gameIconPathForItemId(option.itemId),
+    }));
 }
 
 export function selectMachineRows(
@@ -478,12 +522,15 @@ export function selectRecipeRows(
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
     .map((recipe) => {
       const enabled = source.recipeOverrides[recipe.id]?.enabled !== false;
+      const availabilityCategory = recipeAvailabilityCategoryForDataset(dataset, recipe);
       return {
         recipe,
         enabled,
+        availabilityCategory,
+        availabilityLabel: formatRecipeAvailabilityCategory(availabilityCategory),
         machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
         ...selectRecipeIconFields(dataset, recipe),
-        isConverterResourceRecipe: isConverterResourceRecipe(dataset, recipe),
+        isConverterResourceRecipe: availabilityCategory === 'converter',
         details: selectRecipeDetails(dataset, recipe),
         toggleLabel: `${recipe.displayName} recipe availability`,
       };
@@ -842,15 +889,6 @@ function formatRecipeDetailValue(value: number): string {
     .replace(/\.$/, '');
 }
 
-function isConverterResourceRecipe(dataset: GameDataset, recipe: Recipe): boolean {
-  return (
-    !recipe.isAlternate &&
-    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
-    recipe.products.length > 0 &&
-    recipe.products.every((product) => dataset.resources[product.itemId] !== undefined)
-  );
-}
-
 function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -868,6 +906,19 @@ function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget
   });
 }
 
+function formatRecipeAvailabilityCategory(category: RecipeAvailabilityCategory): string {
+  switch (category) {
+    case 'standard':
+      return 'standard';
+    case 'unlock':
+      return 'unlock';
+    case 'converter':
+      return 'converter';
+    case 'alternate':
+      return 'alternate';
+  }
+}
+
 function equalSinkRules(left: SinkRule[], right: SinkRule[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -879,6 +930,8 @@ function equalSinkRules(left: SinkRule[], right: SinkRule[]): boolean {
       rule.id === other.id &&
       rule.itemId === other.itemId &&
       rule.mode === other.mode &&
+      (rule.mode !== 'target-output' ||
+        (other.mode === 'target-output' && rule.amountPerMinute === other.amountPerMinute)) &&
       rule.sortOrder === other.sortOrder
     );
   });

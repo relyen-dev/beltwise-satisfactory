@@ -102,6 +102,7 @@ export interface PlannerDefaultsReadModel {
   readonly recipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly baseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly standardBaseRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
+  readonly unlockRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly converterResourceRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly alternateRecipeRows: Signal<ReturnType<typeof selectRecipeRows>>;
   readonly objectiveProfile: Signal<ObjectiveProfile | null>;
@@ -170,19 +171,23 @@ export class PlannerDefaultsStore implements PlannerDefaultsReadModel, PlannerDe
   });
 
   public readonly baseRecipeRows = computed(() =>
-    this.recipeRows().filter((row) => !row.recipe.isAlternate),
+    this.recipeRows().filter((row) => row.availabilityCategory !== 'alternate'),
   );
 
   public readonly standardBaseRecipeRows = computed(() =>
-    this.baseRecipeRows().filter((row) => !row.isConverterResourceRecipe),
+    this.baseRecipeRows().filter((row) => row.availabilityCategory === 'standard'),
+  );
+
+  public readonly unlockRecipeRows = computed(() =>
+    this.baseRecipeRows().filter((row) => row.availabilityCategory === 'unlock'),
   );
 
   public readonly converterResourceRecipeRows = computed(() =>
-    this.baseRecipeRows().filter((row) => row.isConverterResourceRecipe),
+    this.baseRecipeRows().filter((row) => row.availabilityCategory === 'converter'),
   );
 
   public readonly alternateRecipeRows = computed(() =>
-    this.recipeRows().filter((row) => row.recipe.isAlternate),
+    this.recipeRows().filter((row) => row.availabilityCategory === 'alternate'),
   );
 
   public readonly recipeCommands: PlannerDefaultsRecipeCommands = {

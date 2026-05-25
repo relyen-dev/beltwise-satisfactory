@@ -61,6 +61,7 @@
           <div class="recipe-columns defaults-recipe-columns">
             <section class="recipe-group" aria-labelledby="default-recipes-title">
               @let standardBaseRows = defaults.standardBaseRecipeRows();
+              @let unlockRows = defaults.unlockRecipeRows();
               @let converterResourceRows = defaults.converterResourceRecipeRows();
               @let alternateRows = defaults.alternateRecipeRows();
               @let recipeRows = activeRecipeRows();
@@ -80,7 +81,7 @@
               </div>
 
               <div
-                class="recipe-subtabs recipe-subtabs--three"
+                class="recipe-subtabs recipe-subtabs--default"
                 aria-label="Default recipe category"
               >
                 @for (panel of recipePanelDefinitions; track panel.id) {
@@ -96,6 +97,7 @@
                       recipePanelRowCount(
                         panel.id,
                         standardBaseRows,
+                        unlockRows,
                         converterResourceRows,
                         alternateRows
                       )
@@ -143,8 +145,13 @@
                         }
                       </span>
                       <span class="config-toggle-row__badges">
-                        <span class="recipe-chip" [class.recipe-chip--alt]="row.recipe.isAlternate">
-                          {{ row.recipe.isAlternate ? 'alternate' : 'base' }}
+                        <span
+                          class="recipe-chip"
+                          [class.recipe-chip--alt]="row.availabilityCategory === 'alternate'"
+                          [class.recipe-chip--unlock]="row.availabilityCategory === 'unlock'"
+                          [class.recipe-chip--converter]="row.availabilityCategory === 'converter'"
+                        >
+                          {{ row.availabilityLabel }}
                         </span>
                         <span
                           class="config-toggle-row__state"
