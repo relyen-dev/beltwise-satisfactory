@@ -12,7 +12,7 @@ import {
 } from '@beltwise/planner-core';
 
 export type PlannerConfigurationScope = 'plan' | 'defaults';
-export type BaseRecipePanelId = 'standard' | 'converterResources';
+export type BaseRecipePanelId = 'standard' | 'unlocks' | 'converterResources';
 export type DefaultRecipePanelId = BaseRecipePanelId | 'alternates';
 
 export interface ThroughputTierOption<TValue extends ConveyorBeltTier | PipelineTier> {
@@ -39,6 +39,7 @@ export interface RecipePanelDefinition<TPanelId extends string> {
 
 export interface BaseRecipePanelRows<TRow> {
   readonly standard: readonly TRow[];
+  readonly unlocks: readonly TRow[];
   readonly converterResources: readonly TRow[];
 }
 
@@ -88,7 +89,8 @@ export const OBJECTIVE_WEIGHT_CONTROLS = [
 
 export const BASE_RECIPE_PANEL_DEFINITIONS = [
   { id: 'standard', label: 'Standard' },
-  { id: 'converterResources', label: 'Converter resources' },
+  { id: 'unlocks', label: 'Unlocks' },
+  { id: 'converterResources', label: 'Converter' },
 ] as const satisfies readonly RecipePanelDefinition<BaseRecipePanelId>[];
 
 export const DEFAULT_RECIPE_PANEL_DEFINITIONS = [
@@ -117,6 +119,8 @@ export function recipeRowsForBasePanel<TRow>(
   rows: BaseRecipePanelRows<TRow>,
 ): readonly TRow[] {
   switch (panelId) {
+    case 'unlocks':
+      return rows.unlocks;
     case 'converterResources':
       return rows.converterResources;
     case 'standard':
@@ -129,6 +133,8 @@ export function recipeRowsForDefaultPanel<TRow>(
   rows: DefaultRecipePanelRows<TRow>,
 ): readonly TRow[] {
   switch (panelId) {
+    case 'unlocks':
+      return rows.unlocks;
     case 'converterResources':
       return rows.converterResources;
     case 'alternates':

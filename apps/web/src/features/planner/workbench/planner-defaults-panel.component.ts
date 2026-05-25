@@ -69,6 +69,7 @@ export class PlannerDefaultsPanelComponent {
   public readonly activeRecipeRows = computed(() => {
     return recipeRowsForDefaultPanel(this.activeRecipePanel(), {
       standard: this.defaults.standardBaseRecipeRows(),
+      unlocks: this.defaults.unlockRecipeRows(),
       converterResources: this.defaults.converterResourceRecipeRows(),
       alternates: this.defaults.alternateRecipeRows(),
     });
@@ -86,11 +87,13 @@ export class PlannerDefaultsPanelComponent {
   public recipePanelRowCount(
     panelId: DefaultRecipePanelId,
     standardRows: readonly RecipeRow[],
+    unlockRows: readonly RecipeRow[],
     converterResourceRows: readonly RecipeRow[],
     alternateRows: readonly RecipeRow[],
   ): number {
     return recipeRowsForDefaultPanel(panelId, {
       standard: standardRows,
+      unlocks: unlockRows,
       converterResources: converterResourceRows,
       alternates: alternateRows,
     }).length;

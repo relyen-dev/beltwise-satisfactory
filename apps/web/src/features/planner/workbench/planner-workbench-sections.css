@@ -867,7 +867,7 @@
 
 .planner-shell .recipe-subtabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
   padding: 0 10px 2px;
@@ -1187,6 +1187,16 @@
 .planner-shell .recipe-chip--alt {
   border-color: color-mix(in srgb, var(--color-power) 55%, var(--color-border));
   color: var(--color-power);
+}
+
+.planner-shell .recipe-chip--unlock {
+  border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
+  color: var(--color-accent-strong);
+}
+
+.planner-shell .recipe-chip--converter {
+  border-color: color-mix(in srgb, var(--color-resource) 58%, var(--color-border));
+  color: var(--color-resource);
 }
 
 .planner-shell .recipe-detail-tooltip {

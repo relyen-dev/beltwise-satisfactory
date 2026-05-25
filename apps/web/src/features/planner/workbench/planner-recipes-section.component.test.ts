@@ -9,6 +9,7 @@ import { type RecipeRow } from '../state/planner-store.selectors';
 describe('PlannerRecipesSectionComponent', () => {
   it('bulk toggles the currently selected base recipe subtab rows', () => {
     const standardRows = [recipeRow('Recipe_IronPlate_C', 'Iron Plate', false)];
+    const unlockRows = [recipeRow('Recipe_Alternate_UnlockWire_C', 'Unlock Wire', false, 'unlock')];
     const converterRows = [recipeRow('Recipe_ConverterIronOre_C', 'Iron Ore (Copper)', true)];
     const setRecipesEnabled = vi.fn();
     const injector = Injector.create({
@@ -21,6 +22,7 @@ describe('PlannerRecipesSectionComponent', () => {
             },
             converterResourceRecipeRows: signal(converterRows),
             standardBaseRecipeRows: signal(standardRows),
+            unlockRecipeRows: signal(unlockRows),
           },
         },
       ],
@@ -37,6 +39,10 @@ describe('PlannerRecipesSectionComponent', () => {
     component.setRowsEnabled(component.activeBaseRecipeRows(), false);
 
     expect(setRecipesEnabled).toHaveBeenCalledWith(['Recipe_ConverterIronOre_C'], false);
+
+    component.activeBaseRecipePanel.set('unlocks');
+
+    expect(component.activeBaseRecipeRows()).toEqual(unlockRows);
   });
 });
 
@@ -44,6 +50,7 @@ function recipeRow(
   recipeId: RecipeId,
   displayName: string,
   isConverterResourceRecipe: boolean,
+  availabilityCategory: RecipeRow['availabilityCategory'] = 'standard',
 ): RecipeRow {
   return {
     recipe: {
@@ -59,6 +66,8 @@ function recipeRow(
       tags: [],
     },
     enabled: true,
+    availabilityCategory,
+    availabilityLabel: availabilityCategory,
     machineName: 'Constructor',
     productIcons: [],
     hiddenProductIconCount: 0,

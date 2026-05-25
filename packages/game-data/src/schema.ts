@@ -4,6 +4,13 @@ export type ItemId = string;
 export type RecipeId = string;
 export type MachineId = string;
 
+export const recipeAvailabilityCategorySchema = z.enum([
+  'standard',
+  'unlock',
+  'converter',
+  'alternate'
+]);
+
 export const ingredientAmountSchema = z.object({
   itemId: z.string().min(1),
   amount: z.number().nonnegative()
@@ -36,6 +43,7 @@ export const recipeSchema = z.object({
   durationSeconds: z.number().positive(),
   producedIn: z.array(z.string().min(1)),
   isAlternate: z.boolean(),
+  availabilityCategory: recipeAvailabilityCategorySchema.optional(),
   isHandCraftOnly: z.boolean(),
   tags: z.array(z.string()),
   unlocks: z.array(z.string()).optional(),
@@ -132,6 +140,7 @@ export const gameDatasetSchema = z.object({
 export type IngredientAmount = z.infer<typeof ingredientAmountSchema>;
 export type ItemRate = z.infer<typeof itemRateSchema>;
 export type Item = z.infer<typeof itemSchema>;
+export type RecipeAvailabilityCategory = z.infer<typeof recipeAvailabilityCategorySchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type MachineExtraction = z.infer<typeof machineExtractionSchema>;
 export type Machine = z.infer<typeof machineSchema>;
@@ -147,4 +156,49 @@ export interface GeneratedDatasetOptions {
   docsLastModified?: string;
   sourceFingerprint?: string;
   generatedAt?: string;
+}
+
+const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
+const DETERMINISTIC_UNLOCK_RECIPE_ID_SET = new Set<RecipeId>([
+  'Recipe_Alternate_EnrichedCoal_C',
+  'Recipe_Alternate_Turbofuel_C'
+]);
+
+export function isDeterministicUnlockRecipeId(recipeId: RecipeId): boolean {
+  return DETERMINISTIC_UNLOCK_RECIPE_ID_SET.has(recipeId);
+}
+
+export function recipeAvailabilityCategoryForDataset(
+  dataset: Pick<GameDataset, 'resources'>,
+  recipe: Recipe,
+): RecipeAvailabilityCategory {
+  return recipe.availabilityCategory ?? inferLegacyRecipeAvailabilityCategory(dataset, recipe);
+}
+
+function inferLegacyRecipeAvailabilityCategory(
+  dataset: Pick<GameDataset, 'resources'>,
+  recipe: Pick<Recipe, 'id' | 'className' | 'isAlternate' | 'producedIn' | 'products'>,
+): RecipeAvailabilityCategory {
+  if (
+    isDeterministicUnlockRecipeId(recipe.id) ||
+    isDeterministicUnlockRecipeId(recipe.className)
+  ) {
+    return 'unlock';
+  }
+
+  if (recipe.isAlternate) {
+    return 'alternate';
+  }
+
+  if (
+    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
+    recipe.products.length > 0 &&
+    recipe.products.every((product) =>
+      Object.prototype.hasOwnProperty.call(dataset.resources, product.itemId),
+    )
+  ) {
+    return 'converter';
+  }
+
+  return 'standard';
 }

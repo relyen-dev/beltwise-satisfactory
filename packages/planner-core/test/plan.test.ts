@@ -175,6 +175,21 @@ describe('createPlannerProject', () => {
     expect(project.recipeOverrides[alternateRecipe.id]).toEqual({ enabled: false });
   });
 
+  it('enables deterministic unlock recipes by default even when the source recipe looks alternate', () => {
+    const dataset = datasetWithUnlockRecipe();
+
+    const project = createPlannerProject({
+      id: 'project-test',
+      name: 'Test',
+      dataset,
+      now: '2026-05-12T00:00:00.000Z',
+    });
+
+    expect(project.recipeOverrides['Recipe_Alternate_EnrichedCoal_C']).toBeUndefined();
+    expect(project.recipeOverrides['Recipe_Alternate_Turbofuel_C']).toBeUndefined();
+    expect(project.recipeOverrides['Recipe_IronWire_C']).toEqual({ enabled: false });
+  });
+
   it('disables converter resource recipes in built-in defaults for new projects', () => {
     const dataset = datasetWithConverterResourceRecipe();
 
@@ -220,6 +235,21 @@ describe('createPlannerProject', () => {
     );
 
     expect(project?.recipeOverrides['Recipe_ConverterIronOre_C']).toBeUndefined();
+  });
+
+  it('keeps missing unlock overrides enabled when hydrating existing projects', () => {
+    const project = hydratePlannerProject(
+      {
+        id: 'project-test',
+        name: 'Test',
+        recipeOverrides: {},
+      },
+      datasetWithUnlockRecipe(),
+    );
+
+    expect(project?.recipeOverrides['Recipe_Alternate_EnrichedCoal_C']).toBeUndefined();
+    expect(project?.recipeOverrides['Recipe_Alternate_Turbofuel_C']).toBeUndefined();
+    expect(project?.recipeOverrides['Recipe_IronWire_C']).toEqual({ enabled: false });
   });
 
   it('merges user defaults over built-in defaults for new projects', () => {
@@ -424,6 +454,7 @@ function datasetWithConverterResourceRecipe(): GameDataset {
         durationSeconds: 6,
         producedIn: ['Build_Converter_C'],
         isAlternate: false,
+        availabilityCategory: 'converter',
         isHandCraftOnly: false,
         tags: [],
       },
@@ -436,8 +467,35 @@ function datasetWithConverterResourceRecipe(): GameDataset {
         durationSeconds: 6,
         producedIn: ['Build_Converter_C'],
         isAlternate: false,
+        availabilityCategory: 'standard',
         isHandCraftOnly: false,
         tags: [],
+      },
+    },
+  };
+}
+
+function datasetWithUnlockRecipe(): GameDataset {
+  const alternateWire = tinySatisfactoryDataset.recipes['Recipe_IronWire_C'];
+  if (!alternateWire) {
+    throw new Error('Tiny dataset must contain alternate wire.');
+  }
+
+  return {
+    ...tinySatisfactoryDataset,
+    recipes: {
+      ...tinySatisfactoryDataset.recipes,
+      Recipe_Alternate_EnrichedCoal_C: {
+        ...alternateWire,
+        id: 'Recipe_Alternate_EnrichedCoal_C',
+        className: 'Recipe_Alternate_EnrichedCoal_C',
+        displayName: 'Alternate: Compacted Coal',
+      },
+      Recipe_Alternate_Turbofuel_C: {
+        ...alternateWire,
+        id: 'Recipe_Alternate_Turbofuel_C',
+        className: 'Recipe_Alternate_Turbofuel_C',
+        displayName: 'Turbofuel',
       },
     },
   };

@@ -5,6 +5,7 @@ import {
   type ItemId,
   type MachineId,
   type RecipeId,
+  recipeAvailabilityCategoryForDataset,
 } from '@beltwise/game-data';
 import {
   buildGeneratorFuelCatalog,
@@ -263,7 +264,10 @@ export class PlannerPlanCommandSlice {
     }
 
     const recipeIds = Object.values(dataset.recipes)
-      .filter((recipe) => recipe.isAlternate === isAlternate)
+      .filter((recipe) => {
+        const category = recipeAvailabilityCategoryForDataset(dataset, recipe);
+        return isAlternate ? category === 'alternate' : category !== 'alternate';
+      })
       .map((recipe) => recipe.id);
 
     this.options.updateActiveProject((project) =>

@@ -611,6 +611,8 @@ describe('planner store selectors', () => {
     ]);
     expect(rows.find((row) => row.recipe.id === 'Recipe_IronPlate_C')).toMatchObject({
       enabled: false,
+      availabilityCategory: 'standard',
+      availabilityLabel: 'standard',
       machineName: 'Constructor',
       toggleLabel: 'Iron Plate recipe availability',
       productIcons: [
@@ -703,6 +705,8 @@ describe('planner store selectors', () => {
 
     expect(rows.find((row) => row.recipe.id === 'Recipe_ConverterIronOre_C')).toMatchObject({
       machineName: 'Converter',
+      availabilityCategory: 'converter',
+      availabilityLabel: 'converter',
       isConverterResourceRecipe: true,
       productIcons: [
         {
@@ -713,7 +717,36 @@ describe('planner store selectors', () => {
       ],
     });
     expect(rows.find((row) => row.recipe.id === 'Recipe_ConverterIronIngot_C')).toMatchObject({
+      availabilityCategory: 'standard',
       isConverterResourceRecipe: false,
+    });
+  });
+
+  it('surfaces deterministic unlock recipe availability from legacy fallback ids', () => {
+    const alternateWire = tinySatisfactoryDataset.recipes['Recipe_IronWire_C'];
+    if (!alternateWire) {
+      throw new Error('Tiny dataset must contain alternate wire.');
+    }
+    const dataset: GameDataset = {
+      ...tinySatisfactoryDataset,
+      recipes: {
+        ...tinySatisfactoryDataset.recipes,
+        Recipe_Alternate_Turbofuel_C: {
+          ...alternateWire,
+          id: 'Recipe_Alternate_Turbofuel_C',
+          className: 'Recipe_Alternate_Turbofuel_C',
+          displayName: 'Turbofuel',
+        },
+      },
+    };
+
+    const rows = selectRecipeRows(dataset, createProject(dataset), 'turbofuel');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      availabilityCategory: 'unlock',
+      availabilityLabel: 'unlock',
+      enabled: true,
     });
   });
 

@@ -5,7 +5,9 @@ import {
   type Machine,
   type MachineId,
   type Recipe,
+  type RecipeAvailabilityCategory,
   type ResourceInfo,
+  recipeAvailabilityCategoryForDataset,
 } from '@beltwise/game-data';
 import {
   buildGeneratorFuelCatalog,
@@ -186,6 +188,8 @@ export interface MachineUsageRow {
 export interface RecipeRow {
   recipe: Recipe;
   enabled: boolean;
+  availabilityCategory: RecipeAvailabilityCategory;
+  availabilityLabel: string;
   machineName: string;
   productIcons: RecipeItemIcon[];
   hiddenProductIconCount: number;
@@ -206,7 +210,6 @@ type ResourceOverrideSource = Pick<PlannerProject, 'resourceOverrides'>;
 type MachineOverrideSource = Pick<PlannerProject, 'machineOverrides'>;
 type RecipeOverrideSource = Pick<PlannerProject, 'recipeOverrides'>;
 
-const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 const MAX_RECIPE_PRODUCT_ICONS = 1;
 const MIN_AVAILABLE_SURPLUS_RATE = 0.000001;
 
@@ -478,12 +481,15 @@ export function selectRecipeRows(
     .toSorted((left, right) => left.displayName.localeCompare(right.displayName))
     .map((recipe) => {
       const enabled = source.recipeOverrides[recipe.id]?.enabled !== false;
+      const availabilityCategory = recipeAvailabilityCategoryForDataset(dataset, recipe);
       return {
         recipe,
         enabled,
+        availabilityCategory,
+        availabilityLabel: formatRecipeAvailabilityCategory(availabilityCategory),
         machineName: dataset.machines[recipe.producedIn[0] ?? '']?.displayName ?? 'Unknown machine',
         ...selectRecipeIconFields(dataset, recipe),
-        isConverterResourceRecipe: isConverterResourceRecipe(dataset, recipe),
+        isConverterResourceRecipe: availabilityCategory === 'converter',
         details: selectRecipeDetails(dataset, recipe),
         toggleLabel: `${recipe.displayName} recipe availability`,
       };
@@ -842,15 +848,6 @@ function formatRecipeDetailValue(value: number): string {
     .replace(/\.$/, '');
 }
 
-function isConverterResourceRecipe(dataset: GameDataset, recipe: Recipe): boolean {
-  return (
-    !recipe.isAlternate &&
-    recipe.producedIn.includes(CONVERTER_MACHINE_ID) &&
-    recipe.products.length > 0 &&
-    recipe.products.every((product) => dataset.resources[product.itemId] !== undefined)
-  );
-}
-
 function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -866,6 +863,19 @@ function equalProductionGraphTargets(left: ProductTarget[], right: ProductTarget
       target.sortOrder === other.sortOrder
     );
   });
+}
+
+function formatRecipeAvailabilityCategory(category: RecipeAvailabilityCategory): string {
+  switch (category) {
+    case 'standard':
+      return 'standard';
+    case 'unlock':
+      return 'unlock';
+    case 'converter':
+      return 'converter';
+    case 'alternate':
+      return 'alternate';
+  }
 }
 
 function equalSinkRules(left: SinkRule[], right: SinkRule[]): boolean {

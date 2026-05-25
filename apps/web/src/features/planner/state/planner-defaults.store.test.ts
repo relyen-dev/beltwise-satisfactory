@@ -47,6 +47,7 @@ describe('PlannerDefaultsStore', () => {
 
     const recipeRows = defaults.recipeRows();
     const standardBaseRows = defaults.standardBaseRecipeRows();
+    const unlockRows = defaults.unlockRecipeRows();
     const converterResourceRows = defaults.converterResourceRecipeRows();
     const alternateRows = defaults.alternateRecipeRows();
     const ironPlateRow = recipeRows.find((row) => row.recipe.id === 'Recipe_IronPlate_C');
@@ -62,7 +63,7 @@ describe('PlannerDefaultsStore', () => {
       true,
     );
     expect(recipeRows.length).toBe(
-      standardBaseRows.length + converterResourceRows.length + alternateRows.length,
+      standardBaseRows.length + unlockRows.length + converterResourceRows.length + alternateRows.length,
     );
     expect(ironPlateRow?.enabled).toBe(false);
     expect(constructorRow?.enabled).toBe(false);

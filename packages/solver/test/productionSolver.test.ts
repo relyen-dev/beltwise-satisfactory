@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { gameDatasetSchema, tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
+import {
+  gameDatasetSchema,
+  recipeAvailabilityCategoryForDataset,
+  tinySatisfactoryDataset,
+  type GameDataset,
+} from '@beltwise/game-data';
 import {
   buildProductionGraph,
   createObjectiveProfileFromPreset,
@@ -429,7 +434,7 @@ function fullDataset(): GameDataset {
 
 function enableAllAlternateRecipes(project: PlannerProject, dataset: GameDataset): void {
   for (const recipe of Object.values(dataset.recipes)) {
-    if (recipe.isAlternate) {
+    if (recipeAvailabilityCategoryForDataset(dataset, recipe) === 'alternate') {
       project.recipeOverrides[recipe.id] = { enabled: true };
     }
   }
@@ -564,6 +569,45 @@ describe('solveProductionPlan real LP solver', () => {
     expect(
       flowAmount(result, 'Desc_LiquidFuel_C', 'Recipe_FuelFromOil_C', 'power-fuel'),
     ).toBeCloseTo(800, 6);
+  });
+
+  it('solves full-data Turbofuel generator targets with deterministic unlock recipes enabled by default', async () => {
+    const dataset = fullDataset();
+    const powerTarget: PowerTarget = {
+      id: 'power-turbofuel',
+      mode: 'generator-count',
+      generatorId: 'Build_GeneratorFuel_C',
+      fuelItemId: 'Desc_LiquidTurboFuel_C',
+      generatorCount: 1,
+      sortOrder: 0,
+    };
+    const project = setPowerTargets(fixtureProject([], dataset), [powerTarget]);
+
+    expect(project.recipeOverrides['Recipe_Alternate_EnrichedCoal_C']).toBeUndefined();
+    expect(project.recipeOverrides['Recipe_Alternate_Turbofuel_C']).toBeUndefined();
+    expect(project.recipeOverrides['Recipe_Alternate_TurboBlendFuel_C']).toEqual({
+      enabled: false,
+    });
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.generatedPowerMw).toBeCloseTo(250, 6);
+    expect(result.recipeRates['Recipe_Alternate_EnrichedCoal_C']).toBeGreaterThan(0);
+    expect(result.recipeRates['Recipe_Alternate_Turbofuel_C']).toBeGreaterThan(0);
+
+    const disabledUnlockProject = setPowerTargets(fixtureProject([], dataset), [powerTarget]);
+    disabledUnlockProject.recipeOverrides['Recipe_Alternate_Turbofuel_C'] = { enabled: false };
+
+    const disabledUnlockResult = await solveProductionPlan({
+      dataset,
+      project: disabledUnlockProject,
+    });
+
+    expect(disabledUnlockResult.status).toBe('infeasible');
   });
 
   it('reports nuclear generator waste as surplus byproduct', async () => {
@@ -1083,11 +1127,7 @@ describe('solveProductionPlan real LP solver', () => {
       dataset,
     );
     project.recipeOverrides['Recipe_CrystalOscillator_C'] = { enabled: false };
-    for (const recipe of Object.values(dataset.recipes)) {
-      if (recipe.isAlternate) {
-        project.recipeOverrides[recipe.id] = { enabled: true };
-      }
-    }
+    enableAllAlternateRecipes(project, dataset);
 
     const result = await solveProductionPlan({
       dataset,
@@ -1108,11 +1148,7 @@ describe('solveProductionPlan real LP solver', () => {
       [fixedTarget('target-uranium-fuel-rod', 'Desc_NuclearFuelRod_C', 10)],
       dataset,
     );
-    for (const recipe of Object.values(dataset.recipes)) {
-      if (recipe.isAlternate) {
-        project.recipeOverrides[recipe.id] = { enabled: true };
-      }
-    }
+    enableAllAlternateRecipes(project, dataset);
 
     const result = await solveProductionPlan({
       dataset,
@@ -1184,11 +1220,7 @@ describe('solveProductionPlan real LP solver', () => {
       [fixedTarget('target-uranium-fuel-rod', 'Desc_NuclearFuelRod_C', 10)],
       dataset,
     );
-    for (const recipe of Object.values(dataset.recipes)) {
-      if (recipe.isAlternate) {
-        project.recipeOverrides[recipe.id] = { enabled: true };
-      }
-    }
+    enableAllAlternateRecipes(project, dataset);
     project.machineOverrides['Build_Converter_C'] = { enabled: false };
 
     const result = await solveProductionPlan({

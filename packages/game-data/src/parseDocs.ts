@@ -10,9 +10,11 @@ import {
   type MachineExtraction,
   type MachineId,
   type Recipe,
+  type RecipeAvailabilityCategory,
   type ResourceInfo,
   type Schematic,
-  gameDatasetSchema
+  gameDatasetSchema,
+  isDeterministicUnlockRecipeId
 } from './schema';
 import { fingerprintText, sortRecord } from './stableJson';
 import {
@@ -48,6 +50,8 @@ const AUTOMATED_MACHINE_MARKERS = [
 const PRODUCED_IN_MACHINE_ID_ALIASES: Readonly<Record<MachineId, MachineId>> = {
   Build_Refinery_C: 'Build_OilRefinery_C'
 };
+
+const CONVERTER_MACHINE_ID: MachineId = 'Build_Converter_C';
 
 const ITEM_NATIVE_CLASS_MARKERS = [
   'Descriptor',
@@ -114,6 +118,7 @@ export function normalizeDocs(rawDocs: unknown, rawText: string, options: Genera
   const seasonalItemIds = itemIdsFromRecords(
     itemGroups.flatMap((group) => getClasses(group).filter(isSeasonalEventRecord)),
   );
+  const rawResourceItemIds = new Set(Object.keys(rawResourceItems));
 
   const machines = sortRecord(
     Object.fromEntries(
@@ -141,7 +146,7 @@ export function normalizeDocs(rawDocs: unknown, rawText: string, options: Genera
       recipeGroups.flatMap((group) =>
         getClasses(group)
           .filter((rawClass) => !isSeasonalEventRecord(rawClass))
-          .map((rawClass) => normalizeRecipe(rawClass, machines, allItems))
+          .map((rawClass) => normalizeRecipe(rawClass, machines, allItems, rawResourceItemIds))
           .filter((recipe) => !isResourceExtractionRecipe(recipe, machines))
           .filter((recipe) => !recipe.isHandCraftOnly)
           .filter((recipe) => recipeReferencesKnownItems(recipe, allItems))
@@ -261,6 +266,7 @@ function normalizeRecipe(
   rawClass: RawRecord,
   machines: Record<MachineId, Machine>,
   items: Record<ItemId, Item>,
+  resourceItemIds: ReadonlySet<ItemId>,
 ): Recipe {
   const className = requiredString(rawClass, 'ClassName');
   const producedIn = uniqueInOrder(
@@ -271,9 +277,12 @@ function normalizeRecipe(
   const displayName = stringField(rawClass, 'mDisplayName') ?? className;
   const durationSeconds =
     numberField(rawClass, 'mManufactoringDuration') ?? numberField(rawClass, 'mManufacturingDuration') ?? 1;
+  const ingredients = parseIngredientAmounts(stringField(rawClass, 'mIngredients'), items);
+  const products = parseIngredientAmounts(stringField(rawClass, 'mProduct'), items);
   const tags = parseTagList(stringField(rawClass, 'mGameplayTags'));
   const variableConstant = numberField(rawClass, 'mVariablePowerConsumptionConstant');
   const variableFactor = numberField(rawClass, 'mVariablePowerConsumptionFactor');
+  const isAlternate = isAlternateRecipe(className, displayName);
   const hasVariablePower =
     variableConstant !== undefined &&
     variableFactor !== undefined &&
@@ -283,11 +292,18 @@ function normalizeRecipe(
     id: className,
     className,
     displayName,
-    ingredients: parseIngredientAmounts(stringField(rawClass, 'mIngredients'), items),
-    products: parseIngredientAmounts(stringField(rawClass, 'mProduct'), items),
+    ingredients,
+    products,
     durationSeconds,
     producedIn,
-    isAlternate: isAlternateRecipe(className, displayName),
+    isAlternate,
+    availabilityCategory: recipeAvailabilityCategory({
+      className,
+      isAlternate,
+      producedIn,
+      products,
+      resourceItemIds
+    }),
     isHandCraftOnly: producedIn.length === 0 || !producedIn.some(isAutomatedMachineId),
     tags,
     ...(hasVariablePower
@@ -504,6 +520,29 @@ function normalizeRecipeAmount(amount: number, item: Item | undefined): number {
 
 function isAlternateRecipe(className: string, displayName: string): boolean {
   return className.includes('Alternate') || displayName.toLowerCase().startsWith('alternate:');
+}
+
+function recipeAvailabilityCategory(input: {
+  readonly className: string;
+  readonly isAlternate: boolean;
+  readonly producedIn: readonly MachineId[];
+  readonly products: readonly IngredientAmount[];
+  readonly resourceItemIds: ReadonlySet<ItemId>;
+}): RecipeAvailabilityCategory {
+  if (isDeterministicUnlockRecipeId(input.className)) {
+    return 'unlock';
+  }
+  if (input.isAlternate) {
+    return 'alternate';
+  }
+  if (
+    input.producedIn.includes(CONVERTER_MACHINE_ID) &&
+    input.products.length > 0 &&
+    input.products.every((product) => input.resourceItemIds.has(product.itemId))
+  ) {
+    return 'converter';
+  }
+  return 'standard';
 }
 
 function isAutomatedMachineId(machineId: string): boolean {
