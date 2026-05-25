@@ -119,6 +119,38 @@ describe('toFoblexFlowModel edge style mapping', () => {
 });
 
 describe('toFoblexFlowModel adapter composition', () => {
+  it('exposes self-loop flows as node loopbacks instead of Foblex connections', () => {
+    const flowModel = toFoblexFlowModel(
+      {
+        nodes: [fixtureMachineNode('recipe:plate')],
+        edges: [fixtureRendererEdge('self-edge', 'recipe:plate', 'recipe:plate', 40)],
+      },
+      {
+        dataset: transportDataset(),
+        displaySettings: {
+          maxBeltTier: 1,
+          maxPipeTier: 2,
+          rateDecimalPlaces: 2,
+          edgeStyle: 'straight',
+          showTransportLabels: true,
+          animateFlowLines: true,
+        },
+      },
+    );
+
+    expect(flowModel.edges).toEqual([]);
+    expect(flowModel.nodes[0]?.loopbacks).toEqual([
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '40/min',
+        transportLines: '1x Mk.1 belt',
+      },
+    ]);
+    expect(flowModel.nodes[0]?.tooltip?.inputs).toEqual([]);
+    expect(flowModel.nodes[0]?.tooltip?.outputs).toEqual([]);
+    expect(flowModel.nodes[0]?.tooltip?.loopbacks).toEqual(flowModel.nodes[0]?.loopbacks);
+  });
+
   it('wires transport labels into node tooltip output split lines', () => {
     const flowModel = toFoblexFlowModel(
       {

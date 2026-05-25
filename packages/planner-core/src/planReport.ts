@@ -232,6 +232,7 @@ export interface SelectedNodeReport {
   readonly warnings: readonly PlanReportWarning[];
   readonly incomingFlows: readonly PlanReportFlow[];
   readonly outgoingFlows: readonly PlanReportFlow[];
+  readonly loopbackFlows: readonly PlanReportFlow[];
   readonly details: SelectedNodeReportDetails;
 }
 
@@ -349,6 +350,7 @@ export function buildSelectedNodeReport(
 ): SelectedNodeReport {
   const incomingFlows = flowRows(dataset, project, result, selectedNode, 'incoming');
   const outgoingFlows = flowRows(dataset, project, result, selectedNode, 'outgoing');
+  const loopbackFlows = flowRows(dataset, project, result, selectedNode, 'loopback');
   const details = selectedNodeDetails(dataset, project, result, selectedNode, incomingFlows);
 
   return {
@@ -360,6 +362,7 @@ export function buildSelectedNodeReport(
     warnings: relatedWarnings(result, selectedNode),
     incomingFlows,
     outgoingFlows,
+    loopbackFlows,
     details,
   };
 }
@@ -793,13 +796,11 @@ function flowRows(
   project: PlannerProject,
   result: ProductionPlanResult | null,
   selectedNode: ProductionGraphNode,
-  direction: 'incoming' | 'outgoing',
+  direction: 'incoming' | 'outgoing' | 'loopback',
 ): PlanReportFlow[] {
   const routedFlows = result ? routeSurplusFlowsToSink(dataset, project.sinkRules, result) : [];
   return routedFlows
-    .filter((flow) =>
-      endpointMatchesNode(direction === 'incoming' ? flow.target : flow.source, selectedNode),
-    )
+    .filter((flow) => flowMatchesNodeDirection(flow, selectedNode, direction))
     .map((flow) => {
       const endpoint = direction === 'incoming' ? flow.source : flow.target;
       return {
@@ -812,7 +813,23 @@ function flowRows(
     .toSorted((left, right) => right.amountPerMinute - left.amountPerMinute);
 }
 
-function flowRowKey(flow: ItemFlow, direction: 'incoming' | 'outgoing'): string {
+function flowMatchesNodeDirection(
+  flow: ItemFlow,
+  selectedNode: ProductionGraphNode,
+  direction: 'incoming' | 'outgoing' | 'loopback',
+): boolean {
+  const sourceMatches = endpointMatchesNode(flow.source, selectedNode);
+  const targetMatches = endpointMatchesNode(flow.target, selectedNode);
+  if (direction === 'loopback') {
+    return sourceMatches && targetMatches;
+  }
+  if (sourceMatches && targetMatches) {
+    return false;
+  }
+  return direction === 'incoming' ? targetMatches : sourceMatches;
+}
+
+function flowRowKey(flow: ItemFlow, direction: 'incoming' | 'outgoing' | 'loopback'): string {
   return [
     direction,
     flow.itemId,

@@ -117,7 +117,7 @@ describe('production graph conversion', () => {
     });
   });
 
-  it('does not render self-loop item flow edges', () => {
+  it('preserves self-loop item flow edges for recipe loopback display', () => {
     const result: ProductionPlanResult = {
       status: 'optimal',
       recipeRates: {
@@ -152,7 +152,14 @@ describe('production graph conversion', () => {
     const graph = buildProductionGraph(tinySatisfactoryDataset, [], result);
 
     expect(graph.nodes.some((node) => node.id === 'recipe:Recipe_IronPlate_C')).toBe(true);
-    expect(graph.edges).toEqual([]);
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'recipe:Recipe_IronPlate_C',
+        targetNodeId: 'recipe:Recipe_IronPlate_C',
+        itemId: 'Desc_IronPlate_C',
+        amountPerMinute: 5,
+      }),
+    );
   });
 
   it('formats per-minute graph rates with up to three decimals', () => {

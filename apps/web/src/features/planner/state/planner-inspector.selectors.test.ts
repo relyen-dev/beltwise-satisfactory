@@ -319,6 +319,51 @@ describe('planner inspector selectors', () => {
     ]);
   });
 
+  it('groups selected node self-loop flows separately from incoming and outgoing flows', () => {
+    const context = createInspectorContext();
+    const result: ProductionPlanResult = {
+      ...context.result,
+      itemFlows: [
+        ...context.result.itemFlows,
+        {
+          itemId: 'Desc_IronPlate_C',
+          amountPerMinute: 5,
+          source: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+        },
+      ],
+    };
+    const graph = buildProductionGraph(context.dataset, context.project.targets, result);
+    const loopbackContext: InspectorTestContext = {
+      ...context,
+      result,
+      graph,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(
+      loopbackContext,
+      nodeById(loopbackContext, 'recipe:Recipe_IronPlate_C'),
+    );
+
+    expect(selection.incomingFlows.map((flow) => flow.flowKey)).not.toContain(
+      'incoming:Desc_IronPlate_C:recipe:Recipe_IronPlate_C:recipe:Recipe_IronPlate_C',
+    );
+    expect(selection.outgoingFlows.map((flow) => flow.flowKey)).not.toContain(
+      'outgoing:Desc_IronPlate_C:recipe:Recipe_IronPlate_C:recipe:Recipe_IronPlate_C',
+    );
+    expect(selection.loopbackFlows).toMatchObject([
+      {
+        flowKey: 'loopback:Desc_IronPlate_C:recipe:Recipe_IronPlate_C:recipe:Recipe_IronPlate_C',
+        itemId: 'Desc_IronPlate_C',
+        displayName: 'Iron Plate',
+        endpointKindLabel: 'Recipe',
+        endpointLabel: 'Iron Plate',
+        amountPerMinuteLabel: '5/min',
+      },
+    ]);
+  });
+
   it('builds resource node details with usage, cap source, and remaining headroom', () => {
     const context = createInspectorContext();
     const node = nodeById(context, 'resource:Desc_OreIron_C');

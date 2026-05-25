@@ -57,6 +57,54 @@ describe('graph tooltip presenter', () => {
       },
     ]);
   });
+
+  it('keeps loopbacks out of split output machine-count allocation', () => {
+    const tooltip = buildNodeTooltip(
+      fixtureRendererNode('recipe:plate', 4),
+      [
+        tooltipEdge('recipe:plate', 'left-target', 'Desc_IronPlate_C', 30),
+        tooltipEdge('recipe:plate', 'right-target', 'Desc_IronPlate_C', 90),
+        tooltipEdge('recipe:plate', 'recipe:plate', 'Desc_IronPlate_C', 12),
+      ],
+      { rateDecimalPlaces: 2 },
+    );
+
+    expect(tooltip?.outputs).toEqual([
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '30/min',
+        machineCount: '1',
+      },
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '90/min',
+        machineCount: '3',
+      },
+    ]);
+    expect(tooltip?.loopbacks).toEqual([
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '12/min',
+      },
+    ]);
+  });
+
+  it('groups same-node flows as loopbacks instead of inputs or outputs', () => {
+    const tooltip = buildNodeTooltip(
+      fixtureRendererNode('recipe:plate', 4),
+      [tooltipEdge('recipe:plate', 'recipe:plate', 'Desc_IronPlate_C', 5)],
+      { rateDecimalPlaces: 2 },
+    );
+
+    expect(tooltip?.inputs).toEqual([]);
+    expect(tooltip?.outputs).toEqual([]);
+    expect(tooltip?.loopbacks).toEqual([
+      {
+        itemName: 'Iron Plate',
+        amountPerMinute: '5/min',
+      },
+    ]);
+  });
 });
 
 function fixtureRendererNode(id: string, machineCount: number): GraphRendererNode {

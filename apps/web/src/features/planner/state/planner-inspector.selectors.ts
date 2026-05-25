@@ -228,6 +228,7 @@ export interface InspectorSelectedNodeViewModel {
   warnings: InspectorWarningViewModel[];
   incomingFlows: InspectorFlowRow[];
   outgoingFlows: InspectorFlowRow[];
+  loopbackFlows: InspectorFlowRow[];
   details: SelectedNodeDetails;
 }
 
@@ -371,6 +372,7 @@ function selectSelectedNodeViewModel(
     warnings: report.warnings.map(warningRow),
     incomingFlows: report.incomingFlows.map(flowRow),
     outgoingFlows: report.outgoingFlows.map(flowRow),
+    loopbackFlows: report.loopbackFlows.map(flowRow),
     details,
   };
 }

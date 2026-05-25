@@ -879,7 +879,7 @@ describe('solveProductionPlan real LP solver', () => {
     expect(graph.nodes.some((node) => node.id === 'recipe:Recipe_Rubber_C')).toBe(false);
   });
 
-  it('nets recipe-internal recycled fluids out of item flows', async () => {
+  it('keeps recipe-internal recycled fluids as self-loop item flows', async () => {
     const dataset = fullDataset();
     const project = fixtureProject([fixedTarget('target-cell', 'Desc_UraniumCell_C', 5)], dataset);
 
@@ -898,7 +898,7 @@ describe('solveProductionPlan real LP solver', () => {
         'Recipe_UraniumCell_C',
         'Recipe_UraniumCell_C',
       ),
-    ).toBeUndefined();
+    ).toBeCloseTo(2, 6);
     expect(
       flowAmount(
         result,
@@ -907,8 +907,22 @@ describe('solveProductionPlan real LP solver', () => {
         'Recipe_UraniumCell_C',
       ),
     ).toBeCloseTo(6, 6);
-    expect(result.itemFlows.some((flow) => flow.source.id === flow.target.id)).toBe(false);
-    expect(graph.edges.some((edge) => edge.sourceNodeId === edge.targetNodeId)).toBe(false);
+    expect(result.itemFlows).toContainEqual(
+      expect.objectContaining({
+        itemId: 'Desc_SulfuricAcid_C',
+        amountPerMinute: 2,
+        source: { kind: 'recipe', id: 'Recipe_UraniumCell_C' },
+        target: { kind: 'recipe', id: 'Recipe_UraniumCell_C' },
+      }),
+    );
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'recipe:Recipe_UraniumCell_C',
+        targetNodeId: 'recipe:Recipe_UraniumCell_C',
+        itemId: 'Desc_SulfuricAcid_C',
+        amountPerMinute: 2,
+      }),
+    );
   });
 
   it('routes byproduct rubber into recycled plastic before assigning rubber to output', async () => {

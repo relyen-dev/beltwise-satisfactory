@@ -102,6 +102,7 @@
           [class.production-node--dimmed]="isNodeDimmed(node.id)"
           [class.production-node--done]="isNodeDone(node.id)"
           [class.production-node--noted]="nodeNote(node.id).length > 0"
+          [class.production-node--has-loopbacks]="node.loopbacks.length > 0"
           [attr.aria-pressed]="isNodeSelected(node.id)"
           (fNodePositionChange)="handleNodePosition(node.id, $event)"
         >
@@ -167,6 +168,20 @@
               <span class="node-target-rate__unit">/min target</span>
             </label>
           }
+          @if (node.loopbacks.length > 0) {
+            <div class="node-loopbacks" aria-label="Loopback flows">
+              @for (
+                loopback of node.loopbacks;
+                track tooltipFlowKey(loopback, 'loopback', $index)
+              ) {
+                <div class="node-loopback">
+                  <span class="node-loopback__kind">Loopback</span>
+                  <span class="node-loopback__item">{{ loopback.itemName }}</span>
+                  <strong>{{ loopback.amountPerMinute }}</strong>
+                </div>
+              }
+            </div>
+          }
           @if (node.tooltip) {
             <div class="node-tooltip" role="tooltip">
               <div class="node-tooltip__title">{{ node.tooltip.title }}</div>
@@ -196,6 +211,18 @@
                         <em>({{ output.machineCount }}x)</em>
                       }
                     </strong>
+                  </div>
+                }
+              }
+              @if (node.tooltip.loopbacks.length > 0) {
+                <div class="node-tooltip__section">Loopbacks</div>
+                @for (
+                  loopback of node.tooltip.loopbacks;
+                  track tooltipFlowKey(loopback, 'loopback', $index)
+                ) {
+                  <div class="node-tooltip__flow">
+                    <span>{{ loopback.itemName }}</span>
+                    <strong>{{ loopback.amountPerMinute }}</strong>
                   </div>
                 }
               }

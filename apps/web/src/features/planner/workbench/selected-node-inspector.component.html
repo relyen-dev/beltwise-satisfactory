@@ -635,6 +635,33 @@
     </section>
   }
 
+  @if (selectedNode.loopbackFlows.length > 0) {
+    <section class="inspector-section" aria-labelledby="selected-loopback-heading">
+      <div class="inspector-section-heading">
+        <h3 id="selected-loopback-heading">Loopback Flow</h3>
+        <span>{{ selectedNode.loopbackFlows.length }}</span>
+      </div>
+      <div class="inspector-list">
+        @for (flow of selectedNode.loopbackFlows; track flow.flowKey) {
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="flow.iconSrc"
+              [label]="flow.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ flow.displayName }}</strong>
+              <span>recycled inside this node</span>
+            </span>
+            <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
   @if (selectedNode.warnings.length > 0) {
     <section class="inspector-section" aria-labelledby="selected-warnings-heading">
       <div class="inspector-section-heading">

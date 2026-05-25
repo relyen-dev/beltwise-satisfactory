@@ -12,7 +12,7 @@ export interface GraphTooltipFlowLine {
   machineCount?: string;
 }
 
-export type GraphTooltipFlowSection = 'input' | 'output';
+export type GraphTooltipFlowSection = 'input' | 'output' | 'loopback';
 
 export function isGraphNodeSelected(nodeId: string, selectedNodeId: string | null): boolean {
   return selectedNodeId === nodeId;

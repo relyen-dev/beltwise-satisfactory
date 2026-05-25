@@ -7,6 +7,7 @@ export interface BeltwiseFoblexNodeTooltip {
   stats: string[];
   inputs: BeltwiseFoblexEdgeLabelLines[];
   outputs: BeltwiseFoblexEdgeLabelLines[];
+  loopbacks: BeltwiseFoblexEdgeLabelLines[];
 }
 
 interface GraphTooltipEdge {
@@ -25,15 +26,25 @@ export function buildNodeTooltip(
   displaySettings: Pick<GraphDisplaySettings, 'rateDecimalPlaces'>,
 ): BeltwiseFoblexNodeTooltip | null {
   const inputs = edges
-    .filter((edge) => edge.targetNodeId === node.id)
+    .filter((edge) => edge.targetNodeId === node.id && edge.sourceNodeId !== node.id)
     .map((edge) => edge.labelLines);
-  const outgoingEdges = edges.filter((edge) => edge.sourceNodeId === node.id);
+  const outgoingEdges = edges.filter(
+    (edge) => edge.sourceNodeId === node.id && edge.targetNodeId !== node.id,
+  );
   const outputs = outgoingEdges.map((edge) =>
     outputTooltipLine(edge, outgoingEdges, node.data.machineCount, displaySettings),
   );
+  const loopbacks = edges
+    .filter((edge) => edge.sourceNodeId === node.id && edge.targetNodeId === node.id)
+    .map((edge) => edge.labelLines);
   const stats = nodeTooltipStats(node, displaySettings);
 
-  if (stats.length === 0 && inputs.length === 0 && outputs.length === 0) {
+  if (
+    stats.length === 0 &&
+    inputs.length === 0 &&
+    outputs.length === 0 &&
+    loopbacks.length === 0
+  ) {
     return null;
   }
 
@@ -42,6 +53,7 @@ export function buildNodeTooltip(
     stats,
     inputs,
     outputs,
+    loopbacks,
   };
 }
 

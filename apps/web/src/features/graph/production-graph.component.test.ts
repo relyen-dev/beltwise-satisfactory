@@ -10,6 +10,7 @@ import {
 import * as angularCore from '@angular/core';
 import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import { createDefaultGraphDisplaySettings, type ProductionGraph } from '@beltwise/planner-core';
 import { EFZoomDirection, type FCanvasComponent } from '@foblex/flow';
 import { readFile } from 'node:fs/promises';
@@ -521,6 +522,24 @@ describe('ProductionGraphComponent template', () => {
     expect(sinkNode?.textContent).toContain('12/min surplus');
   });
 
+  it('renders recipe loopback flows as node badges without Foblex connections', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+
+    controls.dataset.set(tinySatisfactoryDataset);
+    controls.graph.set(loopbackGraph());
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const loopback = element.querySelector('.node-loopback');
+
+    expect(fixture.componentInstance.flowModel()?.edges).toEqual([]);
+    expect(loopback).not.toBeNull();
+    expect(loopback?.textContent).toContain('Loopback');
+    expect(loopback?.textContent).toContain('Iron Plate');
+    expect(loopback?.textContent).toContain('5/min');
+    expect(element.querySelector('f-connection')).toBeNull();
+  });
+
   it('renders compact zoom buttons that do not bubble graph control clicks', async () => {
     const { fixture } = await createRenderedGraphHarness();
     const graphSurface = requiredGraphSurface(fixture);
@@ -716,6 +735,7 @@ function outputNode(data: Partial<BeltwiseFoblexFlowNode['data']> = {}): Beltwis
       amountPerMinute: 25,
       ...data,
     },
+    loopbacks: [],
     tooltip: null,
   };
 }
@@ -784,6 +804,34 @@ function outputGraph(): ProductionGraph {
       },
     ],
     edges: [],
+  };
+}
+
+function loopbackGraph(): ProductionGraph {
+  return {
+    nodes: [
+      {
+        id: 'recipe:Recipe_IronPlate_C',
+        kind: 'recipe',
+        label: 'Iron Plate',
+        subtitle: '2.5x Constructor',
+        recipeId: 'Recipe_IronPlate_C',
+        machineId: 'Build_ConstructorMk1_C',
+        machineDisplayName: 'Constructor',
+        machineCount: 2.5,
+        amountPerMinute: 25,
+      },
+    ],
+    edges: [
+      {
+        id: 'recipe:Recipe_IronPlate_C->recipe:Recipe_IronPlate_C:Desc_IronPlate_C',
+        sourceNodeId: 'recipe:Recipe_IronPlate_C',
+        targetNodeId: 'recipe:Recipe_IronPlate_C',
+        itemId: 'Desc_IronPlate_C',
+        label: 'Iron Plate 5/min',
+        amountPerMinute: 5,
+      },
+    ],
   };
 }
 
