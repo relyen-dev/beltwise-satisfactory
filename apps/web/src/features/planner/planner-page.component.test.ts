@@ -13,6 +13,7 @@ import {
   type PlannerSession,
   type ProductionPlanStatus,
 } from '@beltwise/planner-core';
+import { ApplicationUpdateNoticeService } from '../../app/application-update-notice.service';
 import { PlannerPageComponent } from './planner-page.component';
 import { PlannerPlanTransferService } from './transfer/planner-plan-transfer.service';
 import {
@@ -806,6 +807,10 @@ function createComponentHarness(): {
       },
       { provide: PlannerGraphStore, useValue: graph },
       { provide: PlannerPlanConfigStore, useValue: planConfig },
+      {
+        provide: ApplicationUpdateNoticeService,
+        useValue: { notifyIfApplicationUpdateError: vi.fn(() => false) },
+      },
       { provide: PLANNER_CLIPBOARD_ADAPTER, useValue: clipboardAdapter },
       { provide: PLANNER_PLAN_DOWNLOAD_ADAPTER, useValue: downloadAdapter },
       { provide: PLANNER_SHARE_LOCATION_ADAPTER, useValue: shareLocationAdapter },
