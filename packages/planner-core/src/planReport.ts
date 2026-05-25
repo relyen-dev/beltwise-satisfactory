@@ -142,6 +142,7 @@ export type SelectedNodeReportDetails =
   | ResourceNodeReportDetails
   | ExternalInputNodeReportDetails
   | AssumedInputNodeReportDetails
+  | PowerNodeReportDetails
   | OutputNodeReportDetails
   | ByproductNodeReportDetails
   | SinkNodeReportDetails;
@@ -176,6 +177,18 @@ export interface AssumedInputNodeReportDetails {
   readonly kind: 'assumedInput';
   readonly item: PlanReportItemRate;
   readonly sourceNote: string;
+}
+
+export interface PowerNodeReportDetails {
+  readonly kind: 'power';
+  readonly generatorId: MachineId | null;
+  readonly generatorName: string;
+  readonly generatorCount: number;
+  readonly physicalGeneratorCount: number;
+  readonly generatedPowerMw: number;
+  readonly fuel: PlanReportItemRate | null;
+  readonly supplementalInputs: readonly PlanReportItemRate[];
+  readonly byproducts: readonly PlanReportItemRate[];
 }
 
 export interface OutputNodeReportDetails {
@@ -440,6 +453,8 @@ function selectedNodeDetails(
       return externalInputNodeDetails(dataset, project, result, selectedNode);
     case 'assumedInput':
       return assumedInputNodeDetails(dataset, result, selectedNode);
+    case 'power':
+      return powerNodeDetails(dataset, result, selectedNode);
     case 'output':
       return outputNodeDetails(dataset, project, result, selectedNode, incomingFlows);
     case 'byproduct':
@@ -565,6 +580,44 @@ function assumedInputNodeDetails(
   };
 }
 
+function powerNodeDetails(
+  dataset: GameDataset,
+  result: ProductionPlanResult | null,
+  selectedNode: ProductionGraphNode,
+): PowerNodeReportDetails {
+  const usage = selectedNode.powerTargetId
+    ? result?.powerGeneratorUsage?.find(
+        (candidate) => candidate.powerTargetId === selectedNode.powerTargetId,
+      )
+    : undefined;
+  const generatorId = usage?.generatorId ?? selectedNode.generatorId ?? null;
+  const generatorName =
+    usage?.generatorDisplayName ??
+    (generatorId ? dataset.machines[generatorId]?.displayName : undefined) ??
+    selectedNode.label;
+  const generatorCount = usage?.generatorCount ?? selectedNode.machineCount ?? 0;
+
+  return {
+    kind: 'power',
+    generatorId,
+    generatorName,
+    generatorCount,
+    physicalGeneratorCount: physicalMachineCountForEffective(generatorCount),
+    generatedPowerMw: usage?.powerMw ?? selectedNode.amountPerMinute ?? 0,
+    fuel: usage
+      ? itemRateRow(dataset, usage.fuelItemId, usage.fuelConsumedPerMinute, 'required-input')
+      : null,
+    supplementalInputs:
+      usage?.supplementalInputs.map((input) =>
+        itemRateRow(dataset, input.itemId, input.amountPerMinute, 'required-input'),
+      ) ?? [],
+    byproducts:
+      usage?.byproducts.map((byproduct) =>
+        itemRateRow(dataset, byproduct.itemId, byproduct.amountPerMinute, 'nuclear-byproduct'),
+      ) ?? [],
+  };
+}
+
 function outputNodeDetails(
   dataset: GameDataset,
   project: PlannerProject,
@@ -671,6 +724,26 @@ function selectedNodeIcon(
     };
   }
 
+  if (selectedNode.kind === 'power') {
+    const usage = selectedNode.powerTargetId
+      ? result?.powerGeneratorUsage?.find(
+          (candidate) => candidate.powerTargetId === selectedNode.powerTargetId,
+        )
+      : undefined;
+    const generatorId = usage?.generatorId ?? selectedNode.generatorId;
+    if (!generatorId) {
+      return null;
+    }
+    return {
+      kind: 'machine',
+      id: generatorId,
+      label:
+        usage?.generatorDisplayName ??
+        dataset.machines[generatorId]?.displayName ??
+        selectedNode.label,
+    };
+  }
+
   if (!selectedNode.itemId) {
     return null;
   }
@@ -733,7 +806,7 @@ function flowRows(
         ...itemRateRow(dataset, flow.itemId, flow.amountPerMinute, null),
         flowKey: flowRowKey(flow, direction),
         endpointKind: endpoint.kind,
-        endpointLabel: endpointDisplayName(dataset, project, endpoint),
+        endpointLabel: endpointDisplayName(dataset, project, result, endpoint),
       };
     })
     .toSorted((left, right) => right.amountPerMinute - left.amountPerMinute);
@@ -794,6 +867,8 @@ function endpointMatchesNode(
       return endpoint.kind === 'assumedInput' && endpoint.id === selectedNode.itemId;
     case 'recipe':
       return endpoint.kind === 'recipe' && endpoint.id === selectedNode.recipeId;
+    case 'power':
+      return endpoint.kind === 'power' && endpoint.id === selectedNode.powerTargetId;
     case 'output':
       return endpoint.kind === 'output' && endpoint.id === selectedNode.targetId;
     case 'byproduct':
@@ -806,6 +881,7 @@ function endpointMatchesNode(
 function endpointDisplayName(
   dataset: GameDataset,
   project: PlannerProject,
+  result: ProductionPlanResult | null,
   endpoint: ItemFlowEndpoint,
 ): string {
   switch (endpoint.kind) {
@@ -818,6 +894,13 @@ function endpointDisplayName(
       return 'Awesome Sink';
     case 'recipe':
       return dataset.recipes[endpoint.id]?.displayName ?? endpoint.id;
+    case 'power':
+      return (
+        result?.powerGeneratorUsage?.find((usage) => usage.powerTargetId === endpoint.id)
+          ?.generatorDisplayName ??
+        project.powerTargets.find((target) => target.id === endpoint.id)?.generatorId ??
+        endpoint.id
+      );
     case 'output': {
       const target = project.targets.find((candidate) => candidate.id === endpoint.id);
       return target ? (dataset.items[target.itemId]?.displayName ?? target.itemId) : endpoint.id;
@@ -833,7 +916,9 @@ function relatedWarnings(
     (result?.warnings ?? []).filter(
       (warning) =>
         (selectedNode.itemId !== undefined && warning.itemId === selectedNode.itemId) ||
-        (selectedNode.recipeId !== undefined && warning.recipeId === selectedNode.recipeId),
+        (selectedNode.recipeId !== undefined && warning.recipeId === selectedNode.recipeId) ||
+        (selectedNode.powerTargetId !== undefined &&
+          warning.powerTargetId === selectedNode.powerTargetId),
     ),
   );
 }

@@ -93,6 +93,7 @@
           [class.production-node--external-input]="node.kind === 'externalInput'"
           [class.production-node--assumed-input]="node.kind === 'assumedInput'"
           [class.production-node--recipe]="node.kind === 'recipe'"
+          [class.production-node--power]="node.kind === 'power'"
           [class.production-node--output]="node.kind === 'output'"
           [class.production-node--byproduct]="node.kind === 'byproduct'"
           [class.production-node--sink]="node.kind === 'sink'"
@@ -237,7 +238,7 @@
   </f-flow>
 } @else {
   <div class="empty-graph">
-    <strong>Add a product target to build a plan.</strong>
-    <span>The production graph will appear here when the plan has an output.</span>
+    <strong>Add a target to build a plan.</strong>
+    <span>The production graph will appear here when the plan has an output or power target.</span>
   </div>
 }

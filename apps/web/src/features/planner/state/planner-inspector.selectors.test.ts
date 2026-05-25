@@ -683,6 +683,125 @@ describe('planner inspector selectors', () => {
     ]);
   });
 
+  it('builds power generator node details with fuel and byproduct flow labels', () => {
+    const dataset = powerInspectorDataset();
+    const project = createPlannerProject({
+      id: 'project-power',
+      name: 'Power Factory',
+      dataset,
+      targets: [],
+      powerTargets: [
+        {
+          id: 'power-fuel',
+          mode: 'power',
+          generatorId: 'Build_GeneratorFuel_C',
+          fuelItemId: 'Desc_LiquidFuel_C',
+          powerMw: 10_000,
+          sortOrder: 0,
+        },
+      ],
+      now: NOW,
+    });
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {
+        Desc_LiquidFuel_C: 800,
+      },
+      itemFlows: [
+        {
+          itemId: 'Desc_LiquidFuel_C',
+          amountPerMinute: 800,
+          source: { kind: 'externalInput', id: 'Desc_LiquidFuel_C' },
+          target: { kind: 'power', id: 'power-fuel' },
+        },
+        {
+          itemId: 'Desc_NuclearWaste_C',
+          amountPerMinute: 10,
+          source: { kind: 'power', id: 'power-fuel' },
+          target: { kind: 'byproduct', id: 'Desc_NuclearWaste_C' },
+        },
+      ],
+      outputs: {},
+      surplus: {
+        Desc_NuclearWaste_C: 10,
+      },
+      machineUsage: [],
+      powerGeneratorUsage: [
+        {
+          powerTargetId: 'power-fuel',
+          optionId: 'Build_GeneratorFuel_C:Desc_LiquidFuel_C',
+          generatorId: 'Build_GeneratorFuel_C',
+          generatorDisplayName: 'Fuel-Powered Generator',
+          fuelItemId: 'Desc_LiquidFuel_C',
+          fuelItemDisplayName: 'Fuel',
+          generatorCount: 40,
+          powerMw: 10_000,
+          fuelConsumedPerMinute: 800,
+          supplementalInputs: [],
+          byproducts: [{ itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 }],
+        },
+      ],
+      powerMw: 0,
+      generatedPowerMw: 10_000,
+      warnings: [],
+    };
+    const graph = buildProductionGraph(dataset, [], result);
+    const context: InspectorTestContext = {
+      dataset,
+      project,
+      result,
+      graph,
+      nodes: graph.nodes,
+    };
+
+    const selection = selectSelection(context, nodeById(context, 'power:power-fuel'));
+
+    expect(selection.kindLabel).toBe('Power');
+    expect(selection.metrics).toEqual([
+      { label: 'Generated', value: '10,000 MW', detail: null },
+      { label: 'Generators', value: '40x', detail: '100% clock equivalent' },
+      { label: 'Physical generators', value: '40', detail: 'whole generators to place' },
+      { label: 'Fuel', value: '800/min', detail: null },
+    ]);
+    if (selection.details.kind !== 'power') {
+      throw new Error('Expected power details');
+    }
+    expect(selection.details).toMatchObject({
+      generatorName: 'Fuel-Powered Generator',
+      generatorCountLabel: '40x',
+      physicalGeneratorCountLabel: '40',
+      generatedPowerLabel: '10,000 MW',
+      fuel: {
+        itemId: 'Desc_LiquidFuel_C',
+        displayName: 'Fuel',
+        amountPerMinuteLabel: '800/min',
+      },
+      byproducts: [
+        {
+          itemId: 'Desc_NuclearWaste_C',
+          displayName: 'Uranium Waste',
+          amountPerMinuteLabel: '10/min',
+        },
+      ],
+    });
+    expect(selection.incomingFlows).toMatchObject([
+      {
+        endpointKindLabel: 'External input',
+        endpointLabel: 'Fuel',
+        amountPerMinuteLabel: '800/min',
+      },
+    ]);
+    expect(selection.outgoingFlows).toMatchObject([
+      {
+        endpointKindLabel: 'Byproduct',
+        endpointLabel: 'Uranium Waste',
+        amountPerMinuteLabel: '10/min',
+      },
+    ]);
+  });
+
   it('builds byproduct node details with surplus and potential sink points', () => {
     const context = createInspectorContext();
     const node = nodeById(context, 'byproduct:Desc_Screw_C');
@@ -955,6 +1074,32 @@ function datasetWithSinkPoints(): GameDataset {
         className: 'Desc_PlutoniumWaste_C',
         displayName: 'Plutonium Waste',
         form: 'solid',
+      },
+    },
+  };
+}
+
+function powerInspectorDataset(): GameDataset {
+  const base = datasetWithSinkPoints();
+  return {
+    ...base,
+    items: {
+      ...base.items,
+      Desc_LiquidFuel_C: {
+        id: 'Desc_LiquidFuel_C',
+        className: 'Desc_LiquidFuel_C',
+        displayName: 'Fuel',
+        form: 'liquid',
+      },
+    },
+    machines: {
+      ...base.machines,
+      Build_GeneratorFuel_C: {
+        id: 'Build_GeneratorFuel_C',
+        className: 'Build_GeneratorFuel_C',
+        displayName: 'Fuel-Powered Generator',
+        type: 'generator',
+        powerMw: 250,
       },
     },
   };

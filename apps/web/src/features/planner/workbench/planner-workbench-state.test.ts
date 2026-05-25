@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import { createPlannerProject, type PlannerProject } from '@beltwise/planner-core';
-import {
-  PlannerWorkbenchSlice,
-  selectProjectWorkbenchFocusMode,
-} from './planner-workbench-state';
+import { PlannerWorkbenchSlice, selectProjectWorkbenchFocusMode } from './planner-workbench-state';
 
 const NOW = '2026-05-20T00:00:00.000Z';
 
@@ -46,6 +43,23 @@ describe('selectProjectWorkbenchFocusMode', () => {
     expect(
       selectProjectWorkbenchFocusMode(createProject('project-configured', 'Desc_IronRod_C')),
     ).toBe('focus-graph');
+  });
+
+  it('treats configured power-only projects as graph-ready', () => {
+    const project = createProject('project-power-only');
+    project.targets = [];
+    project.powerTargets = [
+      {
+        id: 'power-fuel',
+        mode: 'power',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        powerMw: 15_000,
+        sortOrder: 0,
+      },
+    ];
+
+    expect(selectProjectWorkbenchFocusMode(project)).toBe('focus-graph');
   });
 });
 

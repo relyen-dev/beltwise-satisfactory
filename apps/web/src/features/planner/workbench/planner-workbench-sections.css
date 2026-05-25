@@ -235,16 +235,60 @@
 }
 
 .planner-shell .power-target-row {
+  grid-template-areas:
+    'drag generator fuel mode amount actions'
+    'drag summary summary summary summary actions';
   grid-template-columns:
-    28px minmax(142px, 0.95fr) minmax(142px, 0.95fr) minmax(124px, 0.58fr)
-    minmax(94px, 0.42fr) minmax(220px, 1.2fr) auto;
-  min-height: 64px;
+    28px minmax(156px, 1fr) minmax(156px, 1fr) minmax(124px, 0.72fr)
+    minmax(108px, 0.62fr) auto;
+  align-items: start;
+  min-height: 88px;
 }
 
 .planner-shell .power-target-row--head {
+  grid-template-areas:
+    'drag generator fuel mode amount actions'
+    '. summary summary summary summary .';
   grid-template-columns:
-    28px minmax(142px, 0.95fr) minmax(142px, 0.95fr) minmax(124px, 0.58fr)
-    minmax(94px, 0.42fr) minmax(220px, 1.2fr) auto;
+    28px minmax(156px, 1fr) minmax(156px, 1fr) minmax(124px, 0.72fr)
+    minmax(108px, 0.62fr) auto;
+  min-height: 0;
+  row-gap: 3px;
+}
+
+.planner-shell .power-target-cell--drag,
+.planner-shell .power-target-row > .target-drag-handle {
+  grid-area: drag;
+}
+
+.planner-shell .power-target-row > .target-drag-handle {
+  align-self: stretch;
+  height: auto;
+}
+
+.planner-shell .power-target-cell--generator {
+  grid-area: generator;
+}
+
+.planner-shell .power-target-cell--fuel {
+  grid-area: fuel;
+}
+
+.planner-shell .power-target-cell--mode {
+  grid-area: mode;
+}
+
+.planner-shell .power-target-cell--amount {
+  grid-area: amount;
+}
+
+.planner-shell .power-target-cell--summary {
+  grid-area: summary;
+}
+
+.planner-shell .power-target-cell--actions,
+.planner-shell .power-target-row > .row-tools {
+  grid-area: actions;
 }
 
 .planner-shell :is(.target-row select, .target-row input, .input-row select, .input-row input) {
@@ -2367,6 +2411,13 @@
   }
 
   .planner-shell .power-target-row {
+    grid-template-areas:
+      'drag generator'
+      'drag fuel'
+      'drag mode'
+      'drag amount'
+      'drag summary'
+      'drag actions';
     grid-template-columns: 28px minmax(0, 1fr);
   }
 

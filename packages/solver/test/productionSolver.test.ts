@@ -515,6 +515,7 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.powerMw).toBe(0);
     expect(result.powerGeneratorUsage).toHaveLength(1);
     expect(result.powerGeneratorUsage?.[0]).toMatchObject({
+      powerTargetId: 'power-coal',
       optionId: 'Build_GeneratorCoal_C:Desc_Coal_C',
       generatorId: 'Build_GeneratorCoal_C',
       fuelItemId: 'Desc_Coal_C',
@@ -525,6 +526,15 @@ describe('solveProductionPlan real LP solver', () => {
     });
     expect(result.rawInputs['Desc_Coal_C']).toBeCloseTo(240, 6);
     expect(result.rawInputs['Desc_Water_C']).toBeCloseTo(720, 6);
+    expect(flowAmount(result, 'Desc_Coal_C', 'Desc_Coal_C', 'power-coal')).toBeCloseTo(240, 6);
+    expect(flowAmount(result, 'Desc_Water_C', 'Desc_Water_C', 'power-coal')).toBeCloseTo(720, 6);
+    expect(result.itemFlows).toContainEqual(
+      expect.objectContaining({
+        itemId: 'Desc_Coal_C',
+        source: { kind: 'resource', id: 'Desc_Coal_C' },
+        target: { kind: 'power', id: 'power-coal' },
+      }),
+    );
   });
 
   it('solves selected fuel-generator MW targets through upstream fuel production', async () => {
@@ -551,6 +561,9 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.powerGeneratorUsage?.[0]?.fuelConsumedPerMinute).toBeCloseTo(800, 6);
     expect(result.recipeRates['Recipe_FuelFromOil_C']).toBeCloseTo(200, 6);
     expect(result.rawInputs['Desc_LiquidOil_C']).toBeCloseTo(400, 6);
+    expect(
+      flowAmount(result, 'Desc_LiquidFuel_C', 'Recipe_FuelFromOil_C', 'power-fuel'),
+    ).toBeCloseTo(800, 6);
   });
 
   it('reports nuclear generator waste as surplus byproduct', async () => {
@@ -579,6 +592,19 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.powerGeneratorUsage?.[0]?.byproducts).toEqual([
       { itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 },
     ]);
+    expect(
+      flowAmount(result, 'Desc_NuclearFuelRod_C', 'Desc_NuclearFuelRod_C', 'power-nuclear'),
+    ).toBeCloseTo(0.2, 6);
+    expect(
+      flowAmount(result, 'Desc_NuclearWaste_C', 'power-nuclear', 'Desc_NuclearWaste_C'),
+    ).toBeCloseTo(10, 6);
+    expect(result.itemFlows).toContainEqual(
+      expect.objectContaining({
+        itemId: 'Desc_NuclearWaste_C',
+        source: { kind: 'power', id: 'power-nuclear' },
+        target: { kind: 'byproduct', id: 'Desc_NuclearWaste_C' },
+      }),
+    );
   });
 
   it('ignores invalid selected power targets without crashing', async () => {
@@ -1076,8 +1102,7 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.assumedInputs?.['Desc_NuclearWaste_C']).toBeGreaterThan(0);
     expect(
       result.itemFlows.some(
-        (flow) =>
-          flow.itemId === 'Desc_NuclearWaste_C' && flow.source.kind === 'assumedInput',
+        (flow) => flow.itemId === 'Desc_NuclearWaste_C' && flow.source.kind === 'assumedInput',
       ),
     ).toBe(true);
   });
@@ -1102,8 +1127,7 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.assumedInputs?.['Desc_PlutoniumWaste_C']).toBeGreaterThan(0);
     expect(
       result.itemFlows.some(
-        (flow) =>
-          flow.itemId === 'Desc_PlutoniumWaste_C' && flow.source.kind === 'assumedInput',
+        (flow) => flow.itemId === 'Desc_PlutoniumWaste_C' && flow.source.kind === 'assumedInput',
       ),
     ).toBe(true);
   });

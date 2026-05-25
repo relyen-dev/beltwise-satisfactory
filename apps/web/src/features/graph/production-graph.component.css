@@ -33,7 +33,7 @@
 }
 
 .beltwise-flow::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   z-index: 35;
@@ -228,6 +228,11 @@
 .production-node--recipe {
   --node-accent: var(--color-machine);
   --node-border: color-mix(in srgb, var(--color-machine) 46%, var(--color-border));
+}
+
+.production-node--power {
+  --node-accent: var(--color-power);
+  --node-border: color-mix(in srgb, var(--color-power) 56%, var(--color-border));
 }
 
 .production-node--output {

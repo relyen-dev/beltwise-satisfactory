@@ -79,7 +79,7 @@ export function buildProductionPlanResultFromSolution(
     rawInputs: solvedValues.rawInputs,
     externalInputs: solvedValues.externalInputs,
     assumedInputs: solvedValues.assumedInputs,
-    itemFlows: buildItemFlows(input, solvedValues),
+    itemFlows: buildItemFlows(input, solvedValues, powerGeneratorUsage),
     outputs: solvedValues.outputs,
     surplus: solvedValues.surplus,
     machineUsage,
@@ -199,6 +199,7 @@ function buildPowerGeneratorUsage(
         return undefined;
       }
       return {
+        powerTargetId: targetId,
         optionId: option.id,
         generatorId: option.generatorId,
         generatorDisplayName:
@@ -248,6 +249,7 @@ function buildOutputs(
 function buildItemFlows(
   input: ProductionPlanInput,
   solvedValues: SolvedProductionValues,
+  powerGeneratorUsage: readonly PowerGeneratorUsage[],
 ): ItemFlow[] {
   const itemIds = new Set<ItemId>();
   const allocationContext = buildItemFlowAllocationContext(input.dataset, solvedValues.recipeRates);
@@ -266,6 +268,15 @@ function buildItemFlows(
   for (const target of input.project.targets) {
     itemIds.add(target.itemId);
   }
+  for (const usage of powerGeneratorUsage) {
+    itemIds.add(usage.fuelItemId);
+    for (const input of usage.supplementalInputs) {
+      itemIds.add(input.itemId);
+    }
+    for (const byproduct of usage.byproducts) {
+      itemIds.add(byproduct.itemId);
+    }
+  }
 
   for (const [recipeId, recipeRatePerMinute] of Object.entries(solvedValues.recipeRates)) {
     const recipe = input.dataset.recipes[recipeId];
@@ -282,8 +293,14 @@ function buildItemFlows(
 
   const flows: ItemFlow[] = [];
   for (const itemId of Array.from(itemIds).sort()) {
-    const sources = buildItemSources(input.dataset, itemId, solvedValues);
-    const demands = buildItemDemands(input.dataset, input.project.targets, itemId, solvedValues);
+    const sources = buildItemSources(input.dataset, itemId, solvedValues, powerGeneratorUsage);
+    const demands = buildItemDemands(
+      input.dataset,
+      input.project.targets,
+      itemId,
+      solvedValues,
+      powerGeneratorUsage,
+    );
     flows.push(...matchItemFlows(itemId, sources, demands, allocationContext));
   }
 
@@ -339,6 +356,7 @@ function buildItemSources(
   dataset: GameDataset,
   itemId: ItemId,
   solvedValues: SolvedProductionValues,
+  powerGeneratorUsage: readonly PowerGeneratorUsage[],
 ): ItemSource[] {
   const sources: ItemSource[] = [];
   const rawInputAmount = solvedValues.rawInputs[itemId] ?? 0;
@@ -382,6 +400,19 @@ function buildItemSources(
     });
   }
 
+  for (const usage of powerGeneratorUsage.toSorted((left, right) =>
+    left.powerTargetId.localeCompare(right.powerTargetId),
+  )) {
+    const byproductAmountPerMinute = sumItemRate(usage.byproducts, itemId);
+    if (byproductAmountPerMinute <= EPSILON) {
+      continue;
+    }
+    sources.push({
+      endpoint: { kind: 'power', id: usage.powerTargetId },
+      amountPerMinute: byproductAmountPerMinute,
+    });
+  }
+
   return sources;
 }
 
@@ -390,6 +421,7 @@ function buildItemDemands(
   targets: ProductTarget[],
   itemId: ItemId,
   solvedValues: SolvedProductionValues,
+  powerGeneratorUsage: readonly PowerGeneratorUsage[],
 ): ItemDemand[] {
   const demands: ItemDemand[] = [];
 
@@ -400,6 +432,21 @@ function buildItemDemands(
     if (recipeDemand) {
       demands.push(recipeDemand);
     }
+  }
+
+  for (const usage of powerGeneratorUsage.toSorted((left, right) =>
+    left.powerTargetId.localeCompare(right.powerTargetId),
+  )) {
+    const fuelAmountPerMinute = usage.fuelItemId === itemId ? usage.fuelConsumedPerMinute : 0;
+    const supplementalAmountPerMinute = sumItemRate(usage.supplementalInputs, itemId);
+    const amountPerMinute = fuelAmountPerMinute + supplementalAmountPerMinute;
+    if (amountPerMinute <= EPSILON) {
+      continue;
+    }
+    demands.push({
+      endpoint: { kind: 'power', id: usage.powerTargetId },
+      amountPerMinute,
+    });
   }
 
   for (const target of targets.toSorted((left, right) => left.sortOrder - right.sortOrder)) {
@@ -572,6 +619,15 @@ function sumItemAmount(
   return amounts
     .filter((amount) => amount.itemId === itemId)
     .reduce((total, amount) => total + amount.amount, 0);
+}
+
+function sumItemRate(
+  rates: ReadonlyArray<{ itemId: ItemId; amountPerMinute: number }>,
+  itemId: ItemId,
+): number {
+  return rates
+    .filter((rate) => rate.itemId === itemId)
+    .reduce((total, rate) => total + rate.amountPerMinute, 0);
 }
 
 function emptyResult(

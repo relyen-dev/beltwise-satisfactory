@@ -124,6 +124,7 @@ export type SelectedNodeDetails =
   | ResourceNodeDetails
   | ExternalInputNodeDetails
   | AssumedInputNodeDetails
+  | PowerNodeDetails
   | OutputNodeDetails
   | ByproductNodeDetails
   | SinkNodeDetails;
@@ -159,6 +160,18 @@ export interface AssumedInputNodeDetails {
   kind: 'assumedInput';
   item: InspectorItemRateRow;
   sourceNote: string;
+}
+
+export interface PowerNodeDetails {
+  kind: 'power';
+  generatorName: string;
+  generatorIcon: InspectorIcon | null;
+  generatorCountLabel: string;
+  physicalGeneratorCountLabel: string;
+  generatedPowerLabel: string;
+  fuel: InspectorItemRateRow | null;
+  supplementalInputs: InspectorItemRateRow[];
+  byproducts: InspectorItemRateRow[];
 }
 
 export interface OutputNodeDetails {
@@ -376,6 +389,8 @@ function selectedNodeDetails(
       return externalInputNodeDetails(details);
     case 'assumedInput':
       return assumedInputNodeDetails(details);
+    case 'power':
+      return powerNodeDetails(details);
     case 'output':
       return outputNodeDetails(details, dataset, project);
     case 'byproduct':
@@ -441,6 +456,29 @@ function assumedInputNodeDetails(
     kind: 'assumedInput',
     item: itemRateRow(details.item),
     sourceNote: details.sourceNote,
+  };
+}
+
+function powerNodeDetails(
+  details: Extract<SelectedNodeReportDetails, { kind: 'power' }>,
+): PowerNodeDetails {
+  return {
+    kind: 'power',
+    generatorName: details.generatorName,
+    generatorIcon:
+      details.generatorId === null
+        ? null
+        : {
+            src: gameIconPathForMachineId(details.generatorId),
+            label: details.generatorName,
+            kind: 'machine',
+          },
+    generatorCountLabel: `${formatPlannerNumber(details.generatorCount)}x`,
+    physicalGeneratorCountLabel: formatPlannerInteger(details.physicalGeneratorCount),
+    generatedPowerLabel: formatPower(details.generatedPowerMw),
+    fuel: details.fuel === null ? null : itemRateRow(details.fuel),
+    supplementalInputs: details.supplementalInputs.map(itemRateRow),
+    byproducts: details.byproducts.map(itemRateRow),
   };
 }
 
@@ -543,6 +581,17 @@ function selectedNodeMetrics(details: SelectedNodeDetails): InspectorMetric[] {
       return [metric('Supplied', details.item.amountPerMinuteLabel), metric('Source', 'Manual')];
     case 'assumedInput':
       return [metric('Supplied', details.item.amountPerMinuteLabel), metric('Source', 'Assumed')];
+    case 'power':
+      return [
+        metric('Generated', details.generatedPowerLabel),
+        metric('Generators', details.generatorCountLabel, '100% clock equivalent'),
+        metric(
+          'Physical generators',
+          details.physicalGeneratorCountLabel,
+          'whole generators to place',
+        ),
+        metric('Fuel', details.fuel?.amountPerMinuteLabel ?? '0/min'),
+      ];
     case 'output':
       return [
         metric('Mode', details.targetModeLabel),
@@ -693,7 +742,7 @@ function fuelPowerNote(noteKind: OutputFuelPowerNoteKind): string {
     case 'water-logistics-not-modeled':
       return 'Gross estimate. Water logistics are not modeled here.';
     case 'pipe-logistics-not-modeled':
-      return 'Gross estimate. Pipe throughput and generator nodes are not modeled here.';
+      return 'Gross estimate. Pipe throughput is not modeled here.';
     case 'nuclear-byproducts-shown':
       return 'Gross estimate. Water logistics are not modeled here; nuclear byproducts are shown for planning.';
     case 'clean-ficsonium':
@@ -724,6 +773,8 @@ function nodeKindLabel(kind: ProductionGraphNode['kind']): string {
       return 'External input';
     case 'assumedInput':
       return 'Assumed input';
+    case 'power':
+      return 'Power';
     case 'recipe':
       return 'Recipe';
     case 'output':
@@ -743,6 +794,8 @@ function endpointKindLabel(kind: PlanReportFlow['endpointKind']): string {
       return 'External input';
     case 'assumedInput':
       return 'Assumed input';
+    case 'power':
+      return 'Power';
     case 'recipe':
       return 'Recipe';
     case 'output':

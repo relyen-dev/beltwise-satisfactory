@@ -170,13 +170,13 @@
     } @else {
       <div class="target-table power-target-table" role="table" aria-label="Power target rows">
         <div class="target-row target-row--head power-target-row power-target-row--head" role="row">
-          <span aria-hidden="true"></span>
-          <span>Generator</span>
-          <span>Fuel</span>
-          <span>Mode</span>
-          <span>Amount</span>
-          <span>Summary</span>
-          <span>Actions</span>
+          <span class="power-target-cell--drag" aria-hidden="true"></span>
+          <span class="power-target-cell--generator">Generator</span>
+          <span class="power-target-cell--fuel">Fuel</span>
+          <span class="power-target-cell--mode">Mode</span>
+          <span class="power-target-cell--amount">Amount</span>
+          <span class="power-target-cell--summary">Summary</span>
+          <span class="power-target-cell--actions">Actions</span>
         </div>
 
         @for (row of powerTargetRows; track row.target.id) {
@@ -210,7 +210,7 @@
               <span aria-hidden="true"></span>
             </button>
 
-            <label>
+            <label class="power-target-cell--generator">
               <span class="sr-only">Power target generator</span>
               <select
                 [ngModel]="row.target.generatorId ?? ''"
@@ -227,21 +227,21 @@
               </select>
             </label>
 
-            <label>
+            <label class="power-target-cell--fuel">
               <span class="sr-only">Power target fuel</span>
               <select
                 [ngModel]="row.target.fuelItemId ?? ''"
                 [disabled]="row.target.generatorId === undefined || planConfig.editingLocked()"
                 (ngModelChange)="updatePowerTargetFuel(row.target.id, $event)"
               >
-                <option value="">Fuel</option>
+                <option value="">Choose fuel source</option>
                 @for (fuel of row.fuelOptions; track fuel.optionId) {
                   <option [value]="fuel.fuelItemId">{{ fuel.displayName }}</option>
                 }
               </select>
             </label>
 
-            <label>
+            <label class="power-target-cell--mode">
               <span class="sr-only">Power target mode</span>
               <select
                 [ngModel]="row.target.mode"
@@ -253,7 +253,7 @@
               </select>
             </label>
 
-            <label>
+            <label class="power-target-cell--amount">
               <span class="sr-only">{{ row.amountLabel }}</span>
               <input
                 type="number"
@@ -267,7 +267,7 @@
             </label>
 
             <div
-              class="power-target-summary"
+              class="power-target-summary power-target-cell--summary"
               [class.power-target-summary--incomplete]="!row.isComplete"
             >
               <strong>{{ row.summary.label }}</strong>

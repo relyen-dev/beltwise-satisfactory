@@ -3,6 +3,7 @@ import { tinySatisfactoryDataset } from '@beltwise/game-data';
 import {
   applyGraphLayout,
   buildProductionGraph,
+  powerNodeId,
   toGraphPresentationModel,
   type GraphPresentationModel,
   type ProductionGraph,
@@ -522,6 +523,138 @@ describe('production graph conversion', () => {
     ).toMatchObject({
       kind: 'assumedInput',
     });
+  });
+
+  it('creates power generator nodes with incoming fuel and outgoing byproduct flows', () => {
+    const dataset = {
+      ...tinySatisfactoryDataset,
+      items: {
+        ...tinySatisfactoryDataset.items,
+        Desc_LiquidFuel_C: {
+          id: 'Desc_LiquidFuel_C',
+          className: 'Desc_LiquidFuel_C',
+          displayName: 'Fuel',
+          form: 'liquid' as const,
+        },
+        Desc_NuclearWaste_C: {
+          id: 'Desc_NuclearWaste_C',
+          className: 'Desc_NuclearWaste_C',
+          displayName: 'Uranium Waste',
+          form: 'solid' as const,
+          sinkPoints: 1,
+        },
+      },
+      machines: {
+        ...tinySatisfactoryDataset.machines,
+        Build_GeneratorFuel_C: {
+          id: 'Build_GeneratorFuel_C',
+          className: 'Build_GeneratorFuel_C',
+          displayName: 'Fuel-Powered Generator',
+          type: 'generator' as const,
+          powerMw: 250,
+        },
+      },
+    };
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {
+        Recipe_IronPlate_C: 800,
+      },
+      rawInputs: {},
+      externalInputs: {},
+      outputs: {},
+      surplus: {
+        Desc_NuclearWaste_C: 10,
+      },
+      powerMw: 0,
+      generatedPowerMw: 10_000,
+      warnings: [],
+      machineUsage: [
+        {
+          recipeId: 'Recipe_IronPlate_C',
+          machineId: 'Build_ConstructorMk1_C',
+          machineDisplayName: 'Constructor',
+          recipeDisplayName: 'Fuel production',
+          recipeRatePerMinute: 800,
+          machineCount: 40,
+          powerMw: 160,
+        },
+      ],
+      powerGeneratorUsage: [
+        {
+          powerTargetId: 'power-fuel',
+          optionId: 'Build_GeneratorFuel_C:Desc_LiquidFuel_C',
+          generatorId: 'Build_GeneratorFuel_C',
+          generatorDisplayName: 'Fuel-Powered Generator',
+          fuelItemId: 'Desc_LiquidFuel_C',
+          fuelItemDisplayName: 'Fuel',
+          generatorCount: 40,
+          powerMw: 10_000,
+          fuelConsumedPerMinute: 800,
+          supplementalInputs: [],
+          byproducts: [{ itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 }],
+        },
+      ],
+      itemFlows: [
+        {
+          itemId: 'Desc_LiquidFuel_C',
+          amountPerMinute: 800,
+          source: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+          target: { kind: 'power', id: 'power-fuel' },
+        },
+        {
+          itemId: 'Desc_NuclearWaste_C',
+          amountPerMinute: 10,
+          source: { kind: 'power', id: 'power-fuel' },
+          target: { kind: 'byproduct', id: 'Desc_NuclearWaste_C' },
+        },
+      ],
+    };
+
+    const graph = buildProductionGraph(dataset, [], result);
+
+    expect(graph.nodes).toContainEqual(
+      expect.objectContaining({
+        id: powerNodeId('power-fuel'),
+        kind: 'power',
+        label: 'Fuel-Powered Generator',
+        subtitle: '40x, 10000 MW generated',
+        powerTargetId: 'power-fuel',
+        generatorId: 'Build_GeneratorFuel_C',
+        machineCount: 40,
+      }),
+    );
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'recipe:Recipe_IronPlate_C',
+        targetNodeId: powerNodeId('power-fuel'),
+        itemId: 'Desc_LiquidFuel_C',
+        amountPerMinute: 800,
+      }),
+    );
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: powerNodeId('power-fuel'),
+        targetNodeId: 'byproduct:Desc_NuclearWaste_C',
+        itemId: 'Desc_NuclearWaste_C',
+        amountPerMinute: 10,
+      }),
+    );
+
+    const sinkGraph = buildProductionGraph(dataset, [], result, {
+      sinkRules: [
+        { id: 'sink-waste', itemId: 'Desc_NuclearWaste_C', mode: 'surplus', sortOrder: 0 },
+      ],
+    });
+    expect(sinkGraph.nodes.some((node) => node.id === 'byproduct:Desc_NuclearWaste_C')).toBe(false);
+    expect(sinkGraph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: powerNodeId('power-fuel'),
+        targetNodeId: 'sink:Desc_NuclearWaste_C',
+        itemId: 'Desc_NuclearWaste_C',
+        amountPerMinute: 10,
+      }),
+    );
   });
 });
 

@@ -81,6 +81,8 @@ export function formatGraphNodeKindDisplayValue(kind: ProductionGraphNode['kind'
       return 'assumed input';
     case 'recipe':
       return 'recipe';
+    case 'power':
+      return 'power';
     case 'output':
       return 'output';
     case 'byproduct':
