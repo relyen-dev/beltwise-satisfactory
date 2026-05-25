@@ -83,12 +83,17 @@ function selectedGeneratorFuelOption(
     return undefined;
   }
 
-  return Object.values(dataset.generatorFuelOptions)
-    .toSorted((left, right) => left.id.localeCompare(right.id))
-    .find(
-      (option) =>
-        option.generatorId === target.generatorId && option.fuelItemId === target.fuelItemId,
-    );
+  const optionId = `${target.generatorId}:${target.fuelItemId}`;
+  const option = dataset.generatorFuelOptions[optionId];
+  if (
+    !option ||
+    option.generatorId !== target.generatorId ||
+    option.fuelItemId !== target.fuelItemId
+  ) {
+    return undefined;
+  }
+
+  return option;
 }
 
 function activeAmount(value: number | undefined): number | undefined {
