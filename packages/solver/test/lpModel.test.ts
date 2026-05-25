@@ -10,6 +10,7 @@ import {
   buildMachineUsage,
   buildProductionLpModel,
   DEFAULT_RAW_RESOURCE_OPINION_MULTIPLIERS,
+  powerGeneratorVariable,
   rawInputVariable,
   rawResourceCost,
   recipeVariable,
@@ -105,6 +106,67 @@ function wasteInputDataset(): GameDataset {
         isAlternate: false,
         isHandCraftOnly: false,
         tags: [],
+      },
+    },
+  };
+}
+
+function powerFixtureDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Coal_C: {
+        id: 'Desc_Coal_C',
+        className: 'Desc_Coal_C',
+        displayName: 'Coal',
+        form: 'solid',
+      },
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_GeneratorCoal_C: {
+        id: 'Build_GeneratorCoal_C',
+        className: 'Build_GeneratorCoal_C',
+        displayName: 'Coal-Powered Generator',
+        type: 'generator',
+        powerMw: 75,
+      },
+    },
+    generatorFuelOptions: {
+      'Build_GeneratorCoal_C:Desc_Coal_C': {
+        id: 'Build_GeneratorCoal_C:Desc_Coal_C',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        powerMw: 75,
+        fuelConsumedPerMinute: 15,
+        supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 45 }],
+        byproducts: [],
+      },
+    },
+    resources: {
+      ...tinySatisfactoryDataset.resources,
+      Desc_Coal_C: {
+        itemId: 'Desc_Coal_C',
+        displayName: 'Coal',
+        extraction: {
+          allowedExtractors: ['Build_MinerMk1_C'],
+          baselineMaxPerMinute: 1200,
+        },
+      },
+      Desc_Water_C: {
+        itemId: 'Desc_Water_C',
+        displayName: 'Water',
+        extraction: {
+          allowedExtractors: [],
+          baselineMaxPerMinute: 10_000,
+        },
       },
     },
   };
@@ -344,6 +406,59 @@ describe('buildProductionLpModel', () => {
       'surplus',
       'recipe-activity',
     ]);
+  });
+
+  it('adds selected generator variables and item balances for coal power targets', () => {
+    const dataset = powerFixtureDataset();
+    const project = {
+      ...createPlannerProject({
+        id: 'project-power',
+        name: 'Power',
+        dataset,
+        now: '2026-05-12T00:00:00.000Z',
+      }),
+      powerTargets: [
+        {
+          id: 'power-coal',
+          mode: 'generator-count' as const,
+          generatorId: 'Build_GeneratorCoal_C',
+          fuelItemId: 'Desc_Coal_C',
+          generatorCount: 16,
+          sortOrder: 0,
+        },
+      ],
+    };
+
+    const model = buildProductionLpModel({
+      dataset,
+      project,
+    });
+    const variableName = powerGeneratorVariable('power-coal');
+    const generatorConstraint = model.constraints.find(
+      (constraint) => constraint.name === 'power-target-generators:power-coal',
+    );
+    const coalBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:Desc_Coal_C',
+    );
+    const waterBalance = model.constraints.find(
+      (constraint) => constraint.name === 'balance:Desc_Water_C',
+    );
+
+    expect(model.variables.find((variable) => variable.name === variableName)).toMatchObject({
+      lowerBound: 0,
+    });
+    expect(model.metadata.powerGeneratorVariableByTargetId['power-coal']).toBe(variableName);
+    expect(generatorConstraint).toMatchObject({
+      coefficients: { [variableName]: 1 },
+      sense: 'eq',
+      rhs: 16,
+    });
+    expect(coalBalance?.coefficients[variableName]).toBe(-15);
+    expect(coalBalance?.coefficients[rawInputVariable('Desc_Coal_C')]).toBe(1);
+    expect(waterBalance?.coefficients[variableName]).toBe(-45);
+    expect(waterBalance?.coefficients[rawInputVariable('Desc_Water_C')]).toBe(1);
+    expect(Math.abs((coalBalance?.coefficients[variableName] ?? 0) * 16)).toBe(240);
+    expect(Math.abs((waterBalance?.coefficients[variableName] ?? 0) * 16)).toBe(720);
   });
 });
 

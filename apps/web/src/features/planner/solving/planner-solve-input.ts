@@ -1,5 +1,15 @@
-import { stableStringify, type GameDataset, type ItemId } from '@beltwise/game-data';
-import { solveReadyProject, type PlannerProject, type ProductTarget } from '@beltwise/planner-core';
+import {
+  stableStringify,
+  type GameDataset,
+  type ItemId,
+  type MachineId,
+} from '@beltwise/game-data';
+import {
+  solveReadyProject,
+  type PlannerProject,
+  type PowerTarget,
+  type ProductTarget,
+} from '@beltwise/planner-core';
 
 export type PlannerSolveKey = string;
 
@@ -17,6 +27,15 @@ interface PlannerSolveKeyState {
     itemId: ItemId;
     mode: ProductTarget['mode'];
     amountPerMinute?: number;
+    sortOrder: number;
+  }>;
+  powerTargets: ReadonlyArray<{
+    id: string;
+    mode: PowerTarget['mode'];
+    generatorId?: MachineId;
+    fuelItemId?: ItemId;
+    generatorCount?: number;
+    powerMw?: number;
     sortOrder: number;
   }>;
   recipeOverrides: PlannerProject['recipeOverrides'];
@@ -83,6 +102,9 @@ function selectPlannerSolveKeyState(
     version: SOLVE_KEY_VERSION,
     datasetKey,
     targets: project.targets.map(solveTargetKeyPart),
+    powerTargets: project.powerTargets
+      .toSorted((left, right) => left.sortOrder - right.sortOrder)
+      .map(solvePowerTargetKeyPart),
     recipeOverrides: project.recipeOverrides,
     machineOverrides: project.machineOverrides,
     resourceOverrides: project.resourceOverrides,
@@ -99,4 +121,23 @@ function solveTargetKeyPart(target: ProductTarget): PlannerSolveKeyState['target
     ...(target.mode === 'fixed' ? { amountPerMinute: target.amountPerMinute ?? 0 } : {}),
     sortOrder: target.sortOrder,
   };
+}
+
+function solvePowerTargetKeyPart(
+  target: PowerTarget,
+): PlannerSolveKeyState['powerTargets'][number] {
+  return {
+    id: target.id,
+    mode: target.mode,
+    ...(target.generatorId !== undefined ? { generatorId: target.generatorId } : {}),
+    ...(target.fuelItemId !== undefined ? { fuelItemId: target.fuelItemId } : {}),
+    ...(target.mode === 'generator-count'
+      ? { generatorCount: safePowerTargetAmount(target.generatorCount) }
+      : { powerMw: safePowerTargetAmount(target.powerMw) }),
+    sortOrder: target.sortOrder,
+  };
+}
+
+function safePowerTargetAmount(value: number | undefined): number {
+  return value !== undefined && Number.isFinite(value) && value >= 0 ? value : 0;
 }

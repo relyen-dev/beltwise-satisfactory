@@ -200,6 +200,7 @@ export const tinySatisfactoryDataset = gameDatasetSchema.parse({
       manufacturingSpeed: 1
     }
   },
+  generatorFuelOptions: {},
   resources: {
     Desc_OreCopper_C: {
       itemId: 'Desc_OreCopper_C',

@@ -31,7 +31,16 @@ export class PlannerWorkbenchSlice {
 }
 
 export function selectProjectWorkbenchFocusMode(project: PlannerProject): WorkbenchFocusMode {
-  return project.targets.some((target) => target.itemId.trim().length > 0)
+  return project.targets.some((target) => target.itemId.trim().length > 0) ||
+    project.powerTargets.some(hasConfiguredPowerTarget)
     ? 'focus-graph'
     : 'open-plan';
+}
+
+function hasConfiguredPowerTarget(target: PlannerProject['powerTargets'][number]): boolean {
+  if (target.generatorId === undefined || target.fuelItemId === undefined) {
+    return false;
+  }
+  const amount = target.mode === 'power' ? target.powerMw : target.generatorCount;
+  return amount !== undefined && Number.isFinite(amount) && amount > 0;
 }

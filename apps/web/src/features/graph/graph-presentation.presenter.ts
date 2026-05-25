@@ -12,7 +12,7 @@ export interface GraphTooltipFlowLine {
   machineCount?: string;
 }
 
-export type GraphTooltipFlowSection = 'input' | 'output';
+export type GraphTooltipFlowSection = 'input' | 'output' | 'loopback';
 
 export function isGraphNodeSelected(nodeId: string, selectedNodeId: string | null): boolean {
   return selectedNodeId === nodeId;
@@ -81,6 +81,8 @@ export function formatGraphNodeKindDisplayValue(kind: ProductionGraphNode['kind'
       return 'assumed input';
     case 'recipe':
       return 'recipe';
+    case 'power':
+      return 'power';
     case 'output':
       return 'output';
     case 'byproduct':

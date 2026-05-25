@@ -57,6 +57,22 @@ describe('encodePlannerPersistenceState', () => {
               sortOrder: 1,
             },
           ],
+          powerTargets: [
+            {
+              id: 'power-generators',
+              mode: 'generator-count',
+              generatorId: 'Build_GeneratorFuel_C',
+              fuelItemId: 'Desc_LiquidFuel_C',
+              generatorCount: 40,
+              sortOrder: 0,
+            },
+            {
+              id: 'power-mw',
+              mode: 'power',
+              powerMw: 10_000,
+              sortOrder: 1,
+            },
+          ],
           sinkRules: [
             {
               id: 'sink-screw',
@@ -266,6 +282,7 @@ describe('decodePlannerPersistenceState', () => {
         },
       },
     });
+    expect(project.powerTargets).toEqual([]);
     expect('solverResult' in project).toBe(false);
   });
 
@@ -371,6 +388,7 @@ describe('decodePlannerPersistenceState', () => {
     const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
 
     expect(decoded?.projects[0]?.notes).toBe(project.notes);
+    expect(decoded?.projects[0]?.powerTargets).toEqual(project.powerTargets);
     expect(decoded?.projects[0]?.sinkRules).toEqual(project.sinkRules);
     expect(decoded?.projects[0]?.buildState.nodeStates).toEqual(project.buildState.nodeStates);
   });
@@ -408,6 +426,7 @@ describe('decodePlannerPersistenceState', () => {
         Desc_OreIron_C: 1.5,
       },
     });
+    expect(state?.projects[0]?.powerTargets).toEqual([]);
   });
 
   it('normalizes persisted zero caps for unlimited resources but keeps finite zero caps', () => {
@@ -625,6 +644,22 @@ function createDomainPlannerProject(): PlannerProject {
         itemId: 'Desc_Screw_C',
         mode: 'surplus',
         sortOrder: 0,
+      },
+    ],
+    powerTargets: [
+      {
+        id: 'power-generators',
+        mode: 'generator-count',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        generatorCount: 40,
+        sortOrder: 0,
+      },
+      {
+        id: 'power-mw',
+        mode: 'power',
+        powerMw: 10_000,
+        sortOrder: 1,
       },
     ],
     recipeOverrides: {

@@ -8,6 +8,7 @@ import {
   createPlannerProject,
   type PlannerProject,
   type ProductTarget,
+  type PowerTarget,
 } from '@beltwise/planner-core';
 import { solveProductionPlan } from '@beltwise/solver';
 
@@ -271,6 +272,154 @@ function wasteInputDataset(): GameDataset {
   };
 }
 
+function powerFixtureDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Coal_C: {
+        id: 'Desc_Coal_C',
+        className: 'Desc_Coal_C',
+        displayName: 'Coal',
+        form: 'solid',
+      },
+      Desc_LiquidFuel_C: {
+        id: 'Desc_LiquidFuel_C',
+        className: 'Desc_LiquidFuel_C',
+        displayName: 'Fuel',
+        form: 'liquid',
+      },
+      Desc_LiquidOil_C: {
+        id: 'Desc_LiquidOil_C',
+        className: 'Desc_LiquidOil_C',
+        displayName: 'Crude Oil',
+        form: 'liquid',
+      },
+      Desc_NuclearFuelRod_C: {
+        id: 'Desc_NuclearFuelRod_C',
+        className: 'Desc_NuclearFuelRod_C',
+        displayName: 'Uranium Fuel Rod',
+        form: 'solid',
+      },
+      Desc_NuclearWaste_C: {
+        id: 'Desc_NuclearWaste_C',
+        className: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        form: 'solid',
+      },
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_GeneratorCoal_C: {
+        id: 'Build_GeneratorCoal_C',
+        className: 'Build_GeneratorCoal_C',
+        displayName: 'Coal-Powered Generator',
+        type: 'generator',
+        powerMw: 75,
+      },
+      Build_GeneratorFuel_C: {
+        id: 'Build_GeneratorFuel_C',
+        className: 'Build_GeneratorFuel_C',
+        displayName: 'Fuel-Powered Generator',
+        type: 'generator',
+        powerMw: 250,
+      },
+      Build_GeneratorNuclear_C: {
+        id: 'Build_GeneratorNuclear_C',
+        className: 'Build_GeneratorNuclear_C',
+        displayName: 'Nuclear Power Plant',
+        type: 'generator',
+        powerMw: 2500,
+      },
+      Build_Refinery_C: {
+        id: 'Build_Refinery_C',
+        className: 'Build_Refinery_C',
+        displayName: 'Refinery',
+        type: 'manufacturer',
+        powerMw: 30,
+        manufacturingSpeed: 1,
+      },
+    },
+    recipes: {
+      ...tinySatisfactoryDataset.recipes,
+      Recipe_FuelFromOil_C: {
+        id: 'Recipe_FuelFromOil_C',
+        className: 'Recipe_FuelFromOil_C',
+        displayName: 'Fuel from Oil',
+        ingredients: [{ itemId: 'Desc_LiquidOil_C', amount: 2 }],
+        products: [{ itemId: 'Desc_LiquidFuel_C', amount: 4 }],
+        durationSeconds: 6,
+        producedIn: ['Build_Refinery_C'],
+        isAlternate: false,
+        isHandCraftOnly: false,
+        tags: [],
+      },
+    },
+    generatorFuelOptions: {
+      'Build_GeneratorCoal_C:Desc_Coal_C': {
+        id: 'Build_GeneratorCoal_C:Desc_Coal_C',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        powerMw: 75,
+        fuelConsumedPerMinute: 15,
+        supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 45 }],
+        byproducts: [],
+      },
+      'Build_GeneratorFuel_C:Desc_LiquidFuel_C': {
+        id: 'Build_GeneratorFuel_C:Desc_LiquidFuel_C',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        powerMw: 250,
+        fuelConsumedPerMinute: 20,
+        supplementalInputs: [],
+        byproducts: [],
+      },
+      'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C': {
+        id: 'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C',
+        generatorId: 'Build_GeneratorNuclear_C',
+        fuelItemId: 'Desc_NuclearFuelRod_C',
+        powerMw: 2500,
+        fuelConsumedPerMinute: 0.2,
+        supplementalInputs: [],
+        byproducts: [{ itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 }],
+      },
+    },
+    resources: {
+      ...tinySatisfactoryDataset.resources,
+      Desc_Coal_C: {
+        itemId: 'Desc_Coal_C',
+        displayName: 'Coal',
+        extraction: {
+          allowedExtractors: ['Build_MinerMk1_C'],
+          baselineMaxPerMinute: 1200,
+        },
+      },
+      Desc_LiquidOil_C: {
+        itemId: 'Desc_LiquidOil_C',
+        displayName: 'Crude Oil',
+        extraction: {
+          allowedExtractors: [],
+          baselineMaxPerMinute: 1200,
+        },
+      },
+      Desc_Water_C: {
+        itemId: 'Desc_Water_C',
+        displayName: 'Water',
+        extraction: {
+          allowedExtractors: [],
+          baselineMaxPerMinute: 10_000,
+        },
+      },
+    },
+  };
+}
+
 function fullDataset(): GameDataset {
   const datasetPath = fileURLToPath(
     new URL('../../../apps/web/public/data/satisfactory-current.json', import.meta.url),
@@ -299,6 +448,13 @@ function flowAmount(
 
 function totalMachineCount(result: Awaited<ReturnType<typeof solveProductionPlan>>): number {
   return result.machineUsage.reduce((total, usage) => total + usage.machineCount, 0);
+}
+
+function setPowerTargets(project: PlannerProject, powerTargets: PowerTarget[]): PlannerProject {
+  return {
+    ...project,
+    powerTargets,
+  };
 }
 
 describe('solveProductionPlan real LP solver', () => {
@@ -334,6 +490,155 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.recipeRates['Recipe_IronIngot_C']).toBeCloseTo(50, 6);
     expect(result.rawInputs['Desc_OreIron_C']).toBeCloseTo(50, 6);
     expect(result.outputs['Desc_IronPlate_C']).toBeCloseTo(25, 6);
+  });
+
+  it('solves selected coal generator counts as generated power with fuel and water demand', async () => {
+    const dataset = powerFixtureDataset();
+    const project = setPowerTargets(fixtureProject([], dataset), [
+      {
+        id: 'power-coal',
+        mode: 'generator-count',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        generatorCount: 16,
+        sortOrder: 0,
+      },
+    ]);
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.generatedPowerMw).toBeCloseTo(1200, 6);
+    expect(result.powerMw).toBe(0);
+    expect(result.powerGeneratorUsage).toHaveLength(1);
+    expect(result.powerGeneratorUsage?.[0]).toMatchObject({
+      powerTargetId: 'power-coal',
+      optionId: 'Build_GeneratorCoal_C:Desc_Coal_C',
+      generatorId: 'Build_GeneratorCoal_C',
+      fuelItemId: 'Desc_Coal_C',
+      generatorCount: 16,
+      powerMw: 1200,
+      fuelConsumedPerMinute: 240,
+      supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 720 }],
+    });
+    expect(result.rawInputs['Desc_Coal_C']).toBeCloseTo(240, 6);
+    expect(result.rawInputs['Desc_Water_C']).toBeCloseTo(720, 6);
+    expect(flowAmount(result, 'Desc_Coal_C', 'Desc_Coal_C', 'power-coal')).toBeCloseTo(240, 6);
+    expect(flowAmount(result, 'Desc_Water_C', 'Desc_Water_C', 'power-coal')).toBeCloseTo(720, 6);
+    expect(result.itemFlows).toContainEqual(
+      expect.objectContaining({
+        itemId: 'Desc_Coal_C',
+        source: { kind: 'resource', id: 'Desc_Coal_C' },
+        target: { kind: 'power', id: 'power-coal' },
+      }),
+    );
+  });
+
+  it('solves selected fuel-generator MW targets through upstream fuel production', async () => {
+    const dataset = powerFixtureDataset();
+    const project = setPowerTargets(fixtureProject([], dataset), [
+      {
+        id: 'power-fuel',
+        mode: 'power',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        powerMw: 10_000,
+        sortOrder: 0,
+      },
+    ]);
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.generatedPowerMw).toBeCloseTo(10_000, 6);
+    expect(result.powerGeneratorUsage?.[0]?.generatorCount).toBeCloseTo(40, 6);
+    expect(result.powerGeneratorUsage?.[0]?.fuelConsumedPerMinute).toBeCloseTo(800, 6);
+    expect(result.recipeRates['Recipe_FuelFromOil_C']).toBeCloseTo(200, 6);
+    expect(result.rawInputs['Desc_LiquidOil_C']).toBeCloseTo(400, 6);
+    expect(
+      flowAmount(result, 'Desc_LiquidFuel_C', 'Recipe_FuelFromOil_C', 'power-fuel'),
+    ).toBeCloseTo(800, 6);
+  });
+
+  it('reports nuclear generator waste as surplus byproduct', async () => {
+    const dataset = powerFixtureDataset();
+    const project = setPowerTargets(fixtureProject([], dataset), [
+      {
+        id: 'power-nuclear',
+        mode: 'generator-count',
+        generatorId: 'Build_GeneratorNuclear_C',
+        fuelItemId: 'Desc_NuclearFuelRod_C',
+        generatorCount: 1,
+        sortOrder: 0,
+      },
+    ]);
+    project.itemInputs['Desc_NuclearFuelRod_C'] = { amountPerMinute: 1 };
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.generatedPowerMw).toBeCloseTo(2500, 6);
+    expect(result.externalInputs?.['Desc_NuclearFuelRod_C']).toBeCloseTo(0.2, 6);
+    expect(result.surplus['Desc_NuclearWaste_C']).toBeCloseTo(10, 6);
+    expect(result.powerGeneratorUsage?.[0]?.byproducts).toEqual([
+      { itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 },
+    ]);
+    expect(
+      flowAmount(result, 'Desc_NuclearFuelRod_C', 'Desc_NuclearFuelRod_C', 'power-nuclear'),
+    ).toBeCloseTo(0.2, 6);
+    expect(
+      flowAmount(result, 'Desc_NuclearWaste_C', 'power-nuclear', 'Desc_NuclearWaste_C'),
+    ).toBeCloseTo(10, 6);
+    expect(result.itemFlows).toContainEqual(
+      expect.objectContaining({
+        itemId: 'Desc_NuclearWaste_C',
+        source: { kind: 'power', id: 'power-nuclear' },
+        target: { kind: 'byproduct', id: 'Desc_NuclearWaste_C' },
+      }),
+    );
+  });
+
+  it('ignores invalid selected power targets without crashing', async () => {
+    const dataset = powerFixtureDataset();
+    const project = setPowerTargets(fixtureProject([], dataset), [
+      {
+        id: 'power-invalid-option',
+        mode: 'power',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        powerMw: 100,
+        sortOrder: 0,
+      },
+      {
+        id: 'power-draft',
+        mode: 'generator-count',
+        sortOrder: 1,
+      },
+    ]);
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+
+    expect(result.status).toBe('optimal');
+    expect(result.generatedPowerMw).toBeUndefined();
+    expect(result.powerGeneratorUsage).toBeUndefined();
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'power-target-invalid-option',
+        powerTargetId: 'power-invalid-option',
+      }),
+    ]);
   });
 
   it('solves multiple fixed outputs through shared intermediates', async () => {
@@ -574,6 +879,52 @@ describe('solveProductionPlan real LP solver', () => {
     expect(graph.nodes.some((node) => node.id === 'recipe:Recipe_Rubber_C')).toBe(false);
   });
 
+  it('keeps recipe-internal recycled fluids as self-loop item flows', async () => {
+    const dataset = fullDataset();
+    const project = fixtureProject([fixedTarget('target-cell', 'Desc_UraniumCell_C', 5)], dataset);
+
+    const result = await solveProductionPlan({
+      dataset,
+      project,
+    });
+    const graph = buildProductionGraph(dataset, project.targets, result);
+
+    expect(result.status).toBe('optimal');
+    expect(result.recipeRates['Recipe_UraniumCell_C']).toBeCloseTo(1, 6);
+    expect(
+      flowAmount(
+        result,
+        'Desc_SulfuricAcid_C',
+        'Recipe_UraniumCell_C',
+        'Recipe_UraniumCell_C',
+      ),
+    ).toBeCloseTo(2, 6);
+    expect(
+      flowAmount(
+        result,
+        'Desc_SulfuricAcid_C',
+        'Recipe_SulfuricAcid_C',
+        'Recipe_UraniumCell_C',
+      ),
+    ).toBeCloseTo(6, 6);
+    expect(result.itemFlows).toContainEqual(
+      expect.objectContaining({
+        itemId: 'Desc_SulfuricAcid_C',
+        amountPerMinute: 2,
+        source: { kind: 'recipe', id: 'Recipe_UraniumCell_C' },
+        target: { kind: 'recipe', id: 'Recipe_UraniumCell_C' },
+      }),
+    );
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        sourceNodeId: 'recipe:Recipe_UraniumCell_C',
+        targetNodeId: 'recipe:Recipe_UraniumCell_C',
+        itemId: 'Desc_SulfuricAcid_C',
+        amountPerMinute: 2,
+      }),
+    );
+  });
+
   it('routes byproduct rubber into recycled plastic before assigning rubber to output', async () => {
     const dataset = fullDataset();
     const project = fixtureProject([fixedTarget('target-rubber', 'Desc_Rubber_C', 900)], dataset);
@@ -797,8 +1148,7 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.assumedInputs?.['Desc_NuclearWaste_C']).toBeGreaterThan(0);
     expect(
       result.itemFlows.some(
-        (flow) =>
-          flow.itemId === 'Desc_NuclearWaste_C' && flow.source.kind === 'assumedInput',
+        (flow) => flow.itemId === 'Desc_NuclearWaste_C' && flow.source.kind === 'assumedInput',
       ),
     ).toBe(true);
   });
@@ -823,8 +1173,7 @@ describe('solveProductionPlan real LP solver', () => {
     expect(result.assumedInputs?.['Desc_PlutoniumWaste_C']).toBeGreaterThan(0);
     expect(
       result.itemFlows.some(
-        (flow) =>
-          flow.itemId === 'Desc_PlutoniumWaste_C' && flow.source.kind === 'assumedInput',
+        (flow) => flow.itemId === 'Desc_PlutoniumWaste_C' && flow.source.kind === 'assumedInput',
       ),
     ).toBe(true);
   });

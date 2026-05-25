@@ -1,9 +1,11 @@
 import {
   type GameDataset,
   type GeneratedDatasetOptions,
+  type GeneratorFuelOption,
   type IngredientAmount,
   type Item,
   type ItemId,
+  type ItemRate,
   type Machine,
   type MachineExtraction,
   type MachineId,
@@ -124,6 +126,16 @@ export function normalizeDocs(rawDocs: unknown, rawText: string, options: Genera
     ),
   );
 
+  const generatorFuelOptions = sortRecord(
+    Object.fromEntries(
+      machineGroups.flatMap((group) =>
+        getClasses(group).flatMap((rawClass) =>
+          normalizeGeneratorFuelOptions(rawClass, allItems).map((option) => [option.id, option] as const),
+        ),
+      ),
+    ),
+  );
+
   const recipes = sortRecord(
     Object.fromEntries(
       recipeGroups.flatMap((group) =>
@@ -139,7 +151,11 @@ export function normalizeDocs(rawDocs: unknown, rawText: string, options: Genera
     ),
   );
 
-  const itemIdsUsedByProduction = itemIdsForProduction(Object.values(recipes), Object.keys(rawResourceItems));
+  const itemIdsUsedByProduction = itemIdsForProduction(
+    Object.values(recipes),
+    Object.keys(rawResourceItems),
+    itemIdsForGeneratorFuelOptions(Object.values(generatorFuelOptions)),
+  );
   const items = sortRecord(
     Object.fromEntries(
       [...itemIdsUsedByProduction].flatMap((itemId) => {
@@ -200,6 +216,7 @@ export function normalizeDocs(rawDocs: unknown, rawText: string, options: Genera
     items,
     recipes,
     machines,
+    generatorFuelOptions,
     resources,
     schematics
   });
@@ -296,6 +313,105 @@ function normalizeMachine(rawClass: RawRecord, nativeClassName: string): Machine
     ...(manufacturingSpeed !== undefined ? { manufacturingSpeed } : {}),
     ...(extraction ? { extraction } : {})
   };
+}
+
+function normalizeGeneratorFuelOptions(
+  rawClass: RawRecord,
+  items: Record<ItemId, Item>,
+): GeneratorFuelOption[] {
+  const generatorId = requiredString(rawClass, 'ClassName');
+  const powerMw = positiveNumberField(rawClass, 'mPowerProduction');
+  if (powerMw === undefined) {
+    return [];
+  }
+
+  const supplementalToPowerRatio = positiveNumberField(rawClass, 'mSupplementalToPowerRatio');
+  return parseGeneratorFuelEntries(rawClass['mFuel']).flatMap((entry) => {
+    const fuelItemId = classNameField(entry, 'mFuelClass');
+    const fuelItem = fuelItemId ? items[fuelItemId] : undefined;
+    const fuelEnergyValue = fuelItem ? generatorFuelEnergyValue(fuelItem) : undefined;
+    if (!fuelItemId || fuelEnergyValue === undefined) {
+      return [];
+    }
+
+    const fuelConsumedPerMinute = (powerMw * 60) / fuelEnergyValue;
+    return [
+      {
+        id: generatorFuelOptionId(generatorId, fuelItemId),
+        generatorId,
+        fuelItemId,
+        powerMw,
+        fuelConsumedPerMinute,
+        supplementalInputs: normalizeGeneratorSupplementalInputs(
+          entry,
+          items,
+          powerMw,
+          supplementalToPowerRatio,
+        ),
+        byproducts: normalizeGeneratorByproducts(entry, items, fuelConsumedPerMinute)
+      }
+    ];
+  });
+}
+
+function generatorFuelEnergyValue(item: Item): number | undefined {
+  const energyValue = item.energyValue;
+  if (energyValue === undefined || energyValue <= 0) {
+    return undefined;
+  }
+  return item.form === 'liquid' || item.form === 'gas' ? energyValue * 1000 : energyValue;
+}
+
+function parseGeneratorFuelEntries(rawValue: unknown): RawRecord[] {
+  if (Array.isArray(rawValue)) {
+    return rawValue.filter(isRawRecord);
+  }
+
+  if (typeof rawValue === 'string') {
+    return tupleValueAsRecords(parseTupleField(rawValue)).filter(isRawRecord);
+  }
+
+  return [];
+}
+
+function normalizeGeneratorSupplementalInputs(
+  fuelEntry: RawRecord,
+  items: Record<ItemId, Item>,
+  powerMw: number,
+  supplementalToPowerRatio: number | undefined,
+): ItemRate[] {
+  const supplementalItemId = classNameField(fuelEntry, 'mSupplementalResourceClass');
+  const supplementalItem = supplementalItemId ? items[supplementalItemId] : undefined;
+  if (!supplementalItemId || !supplementalItem || supplementalToPowerRatio === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      itemId: supplementalItemId,
+      amountPerMinute: normalizeRecipeAmount(powerMw * 60 * supplementalToPowerRatio, supplementalItem)
+    }
+  ];
+}
+
+function normalizeGeneratorByproducts(
+  fuelEntry: RawRecord,
+  items: Record<ItemId, Item>,
+  fuelConsumedPerMinute: number,
+): ItemRate[] {
+  const byproductItemId = classNameField(fuelEntry, 'mByproduct');
+  const byproductItem = byproductItemId ? items[byproductItemId] : undefined;
+  const byproductAmount = positiveNumberField(fuelEntry, 'mByproductAmount');
+  if (!byproductItemId || !byproductItem || byproductAmount === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      itemId: byproductItemId,
+      amountPerMinute: normalizeRecipeAmount(byproductAmount * fuelConsumedPerMinute, byproductItem)
+    }
+  ];
 }
 
 function normalizeSchematic(rawClass: RawRecord): Schematic {
@@ -405,14 +521,35 @@ function numericTupleValue(value: UnrealTupleValue | undefined): number | undefi
   return undefined;
 }
 
-function itemIdsForProduction(recipes: Recipe[], resourceItemIds: string[]): Set<ItemId> {
+function itemIdsForProduction(
+  recipes: Recipe[],
+  resourceItemIds: string[],
+  additionalItemIds: Iterable<ItemId> = [],
+): Set<ItemId> {
   const itemIds = new Set<ItemId>(resourceItemIds);
+  for (const itemId of additionalItemIds) {
+    itemIds.add(itemId);
+  }
   for (const recipe of recipes) {
     for (const ingredient of recipe.ingredients) {
       itemIds.add(ingredient.itemId);
     }
     for (const product of recipe.products) {
       itemIds.add(product.itemId);
+    }
+  }
+  return itemIds;
+}
+
+function itemIdsForGeneratorFuelOptions(options: GeneratorFuelOption[]): Set<ItemId> {
+  const itemIds = new Set<ItemId>();
+  for (const option of options) {
+    itemIds.add(option.fuelItemId);
+    for (const input of option.supplementalInputs) {
+      itemIds.add(input.itemId);
+    }
+    for (const byproduct of option.byproducts) {
+      itemIds.add(byproduct.itemId);
     }
   }
   return itemIds;
@@ -566,6 +703,15 @@ function requiredString(record: RawRecord, key: string): string {
     throw new Error(`Expected ${key} on raw docs class`);
   }
   return value;
+}
+
+function classNameField(record: RawRecord, key: string): string | undefined {
+  const value = stringField(record, key);
+  return value ? extractClassNameFromReference(value) : undefined;
+}
+
+function generatorFuelOptionId(generatorId: MachineId, fuelItemId: ItemId): string {
+  return `${generatorId}:${fuelItemId}`;
 }
 
 function stringField(record: RawRecord, key: string): string | undefined {

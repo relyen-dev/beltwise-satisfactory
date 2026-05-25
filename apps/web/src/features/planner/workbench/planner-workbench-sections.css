@@ -161,7 +161,18 @@
     0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
-.planner-shell :is(.target-table, .input-table) {
+.planner-shell .target-group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.planner-shell .target-group--power {
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 74%, black);
+}
+
+.planner-shell :is(.target-table, .input-table, .power-target-list) {
   display: grid;
   gap: 7px;
 }
@@ -207,6 +218,40 @@
   grid-template-columns: minmax(300px, 1fr) minmax(140px, 180px) auto;
 }
 
+.planner-shell .subsection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.planner-shell .subsection-heading span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.planner-shell .assumed-input-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 74%, black);
+}
+
+.planner-shell .assumed-input-row {
+  grid-template-columns: auto minmax(0, 1fr) minmax(82px, auto) auto;
+}
+
+.planner-shell .assumed-input-add-button {
+  justify-self: end;
+  min-height: 30px;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
 .planner-shell :is(.target-row--head, .input-row--head) {
   min-height: 0;
   padding: 0 8px;
@@ -223,8 +268,65 @@
   padding: 0 8px 0 6px;
 }
 
+.planner-shell .power-target-row {
+  grid-template-areas:
+    'drag fields actions'
+    'drag summary actions';
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  min-height: 0;
+}
+
+.planner-shell .power-target-row > .target-drag-handle {
+  grid-area: drag;
+}
+
+.planner-shell .power-target-row > .target-drag-handle {
+  align-self: stretch;
+  height: auto;
+}
+
+.planner-shell .power-target-fields {
+  grid-area: fields;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+
+.planner-shell .power-target-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planner-shell .power-target-field__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.planner-shell .power-target-actions {
+  grid-area: actions;
+  align-self: start;
+}
+
 .planner-shell :is(.target-row select, .target-row input, .input-row select, .input-row input) {
   min-width: 0;
+}
+
+.planner-shell .power-target-row label {
+  min-width: 0;
+}
+
+.planner-shell .power-target-row label :is(select, input) {
+  width: 100%;
 }
 
 .planner-shell :is(.target-row--needs-item, .input-row--needs-item) {
@@ -432,6 +534,65 @@
   min-height: 42px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.planner-shell .power-target-summary {
+  grid-area: summary;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.planner-shell .power-target-summary > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .power-target-summary--incomplete > strong {
+  color: var(--color-text-muted);
+}
+
+.planner-shell .power-target-summary__lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planner-shell .power-target-summary__line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 5px 2px 3px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, black);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-panel) 58%, black);
+}
+
+.planner-shell .power-target-summary__line > span:not(.game-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-shell .power-target-summary__line strong {
+  flex: 0 0 auto;
+  color: var(--color-text);
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .planner-shell .row-tools {
@@ -2277,14 +2438,41 @@
     grid-template-columns: 28px minmax(0, 1fr);
   }
 
+  .planner-shell .power-target-row {
+    grid-template-areas:
+      'drag fields'
+      'drag summary'
+      'drag actions';
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .planner-shell .power-target-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .planner-shell .target-drag-handle {
     grid-row: 1 / span 4;
     align-self: stretch;
     height: auto;
   }
 
-  .planner-shell .target-row :is(.target-item-picker, label, .row-tools) {
+  .planner-shell .power-target-row .target-drag-handle {
+    grid-row: 1 / span 3;
+  }
+
+  .planner-shell
+    .target-row
+    > :is(.target-item-picker, label, .power-target-fields, .power-target-summary, .row-tools) {
     grid-column: 2;
+  }
+
+  .planner-shell .assumed-input-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .planner-shell .assumed-input-row :is(.inspector-row__value, .assumed-input-add-button) {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .planner-shell :is(.target-row--head, .input-row--head, .recipe-row--head) {

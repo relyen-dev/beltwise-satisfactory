@@ -39,6 +39,7 @@ export interface BeltwiseFoblexFlowModel extends Omit<GraphRendererModel, 'nodes
 }
 
 export interface BeltwiseFoblexFlowNode extends GraphRendererNode {
+  loopbacks: BeltwiseFoblexEdgeLabelLines[];
   tooltip: BeltwiseFoblexNodeTooltip | null;
 }
 
@@ -76,7 +77,7 @@ export function toFoblexFlowModel(
   return {
     ...model,
     nodes: toFoblexFlowNodes(model, edges, options.displaySettings),
-    edges,
+    edges: edges.filter((edge) => !isSelfLoopEdge(edge)),
   };
 }
 
@@ -93,8 +94,11 @@ function toFoblexFlowNodes(
   edges: BeltwiseFoblexFlowEdge[],
   displaySettings: GraphDisplaySettings,
 ): BeltwiseFoblexFlowNode[] {
+  const loopbacksByNodeId = loopbackLinesByNodeId(edges);
+
   return model.nodes.map((node) => ({
     ...node,
+    loopbacks: loopbacksByNodeId.get(node.id) ?? [],
     tooltip: buildNodeTooltip(node, edges, displaySettings),
   }));
 }
@@ -128,6 +132,28 @@ function toFoblexFlowEdges(
       transport,
     };
   });
+}
+
+function loopbackLinesByNodeId(
+  edges: readonly BeltwiseFoblexFlowEdge[],
+): ReadonlyMap<string, BeltwiseFoblexEdgeLabelLines[]> {
+  const loopbacksByNodeId = new Map<string, BeltwiseFoblexEdgeLabelLines[]>();
+
+  for (const edge of edges) {
+    if (!isSelfLoopEdge(edge)) {
+      continue;
+    }
+
+    const loopbacks = loopbacksByNodeId.get(edge.sourceNodeId) ?? [];
+    loopbacks.push(edge.labelLines);
+    loopbacksByNodeId.set(edge.sourceNodeId, loopbacks);
+  }
+
+  return loopbacksByNodeId;
+}
+
+function isSelfLoopEdge(edge: Pick<GraphRendererEdge, 'sourceNodeId' | 'targetNodeId'>): boolean {
+  return edge.sourceNodeId === edge.targetNodeId;
 }
 
 function edgeLabelOffset(

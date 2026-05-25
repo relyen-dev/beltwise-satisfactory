@@ -8,6 +8,7 @@ import {
   mutatePlanMetadata,
   mutatePlanObjective,
   mutatePlanOverrides,
+  mutatePlanPowerTargets,
   mutatePlanSinkRules,
   mutatePlanTargets,
   type PlannerProject,
@@ -113,6 +114,93 @@ describe('plan intent mutations', () => {
       Desc_IronPlate_C: { amountPerMinute: 13 },
     });
     expect(project.itemInputs['Desc_IngotIron_C']).toEqual({ amountPerMinute: 5 });
+  });
+
+  it('adds, updates, duplicates, reorders, and removes power targets', () => {
+    const project = createProject();
+
+    const withDraft = mutatePlanPowerTargets(project, {
+      type: 'add-draft-power-target',
+      powerTargetId: 'power-draft',
+    });
+    expect(withDraft.powerTargets).toEqual([
+      {
+        id: 'power-draft',
+        mode: 'generator-count',
+        generatorCount: 1,
+        sortOrder: 0,
+      },
+    ]);
+
+    const configured = mutatePlanPowerTargets(withDraft, {
+      type: 'set-power-target-generator',
+      powerTargetId: 'power-draft',
+      generatorId: 'Build_GeneratorFuel_C',
+    });
+    const fueled = mutatePlanPowerTargets(configured, {
+      type: 'set-power-target-fuel',
+      powerTargetId: 'power-draft',
+      fuelItemId: 'Desc_LiquidFuel_C',
+    });
+    const counted = mutatePlanPowerTargets(fueled, {
+      type: 'set-power-target-generator-count',
+      powerTargetId: 'power-draft',
+      generatorCount: Number.NaN,
+    });
+    const powerMode = mutatePlanPowerTargets(counted, {
+      type: 'set-power-target-mode',
+      powerTargetId: 'power-draft',
+      mode: 'power',
+    });
+    const powered = mutatePlanPowerTargets(powerMode, {
+      type: 'set-power-target-power-mw',
+      powerTargetId: 'power-draft',
+      powerMw: 10_000,
+    });
+    const duplicated = mutatePlanPowerTargets(powered, {
+      type: 'duplicate-power-target',
+      powerTarget: powered.powerTargets[0]!,
+      powerTargetId: 'power-copy',
+    });
+    const reordered = mutatePlanPowerTargets(duplicated, {
+      type: 'reorder-power-targets',
+      powerTargetIds: ['power-copy', 'missing-target', 'power-draft', 'power-copy'],
+    });
+    const removed = mutatePlanPowerTargets(reordered, {
+      type: 'remove-power-target',
+      powerTargetId: 'power-copy',
+    });
+
+    expect(counted.powerTargets[0]).toMatchObject({
+      generatorId: 'Build_GeneratorFuel_C',
+      fuelItemId: 'Desc_LiquidFuel_C',
+      generatorCount: 0,
+    });
+    expect(powerMode.powerTargets[0]).toEqual({
+      id: 'power-draft',
+      mode: 'power',
+      generatorId: 'Build_GeneratorFuel_C',
+      fuelItemId: 'Desc_LiquidFuel_C',
+      powerMw: 100,
+      sortOrder: 0,
+    });
+    expect(powered.powerTargets[0]?.powerMw).toBe(10_000);
+    expect(duplicated.powerTargets).toHaveLength(2);
+    expect(reordered.powerTargets.map((target) => [target.id, target.sortOrder])).toEqual([
+      ['power-copy', 0],
+      ['power-draft', 1],
+    ]);
+    expect(removed.powerTargets).toEqual([
+      {
+        id: 'power-draft',
+        mode: 'power',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        powerMw: 10_000,
+        sortOrder: 0,
+      },
+    ]);
+    expect(project.powerTargets).toEqual([]);
   });
 
   it('adds unique surplus sink rules and re-sorts after removal', () => {

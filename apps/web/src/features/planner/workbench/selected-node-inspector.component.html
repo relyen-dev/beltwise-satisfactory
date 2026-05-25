@@ -273,6 +273,116 @@
         </div>
       </section>
     }
+    @case ('power') {
+      <section class="inspector-section" aria-labelledby="selected-power-heading">
+        <div class="inspector-section-heading">
+          <h3 id="selected-power-heading">Power Generator</h3>
+          @if (selectedNode.details.generatorIcon) {
+            <bw-game-icon
+              [src]="selectedNode.details.generatorIcon.src"
+              [label]="selectedNode.details.generatorIcon.label"
+              [size]="'sm'"
+              [kind]="'machine'"
+              [showTitle]="true"
+            />
+          }
+        </div>
+        <div class="inspector-fact-list">
+          <div>
+            <span>Generator</span>
+            <strong>{{ selectedNode.details.generatorName }}</strong>
+          </div>
+          <div>
+            <span>Effective generators</span>
+            <strong>{{ selectedNode.details.generatorCountLabel }}</strong>
+          </div>
+          <div>
+            <span>Physical generators</span>
+            <strong>{{ selectedNode.details.physicalGeneratorCountLabel }}</strong>
+          </div>
+          <div>
+            <span>Generated power</span>
+            <strong>{{ selectedNode.details.generatedPowerLabel }}</strong>
+          </div>
+        </div>
+
+        @if (selectedNode.details.fuel; as fuel) {
+          <div class="inspector-subsection">
+            <h4>Fuel</h4>
+            <div class="inspector-list">
+              <div class="inspector-row">
+                <bw-game-icon
+                  [src]="fuel.iconSrc"
+                  [label]="fuel.displayName"
+                  [size]="'sm'"
+                  [kind]="'item'"
+                  [showTitle]="true"
+                />
+                <span class="inspector-row__copy">
+                  <strong>{{ fuel.displayName }}</strong>
+                  @if (fuel.detail) {
+                    <span>{{ fuel.detail }}</span>
+                  }
+                </span>
+                <span class="inspector-row__value">{{ fuel.amountPerMinuteLabel }}</span>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (selectedNode.details.supplementalInputs.length > 0) {
+          <div class="inspector-subsection">
+            <h4>Supplemental Inputs</h4>
+            <div class="inspector-list">
+              @for (row of selectedNode.details.supplementalInputs; track row.itemId) {
+                <div class="inspector-row">
+                  <bw-game-icon
+                    [src]="row.iconSrc"
+                    [label]="row.displayName"
+                    [size]="'sm'"
+                    [kind]="'item'"
+                    [showTitle]="true"
+                  />
+                  <span class="inspector-row__copy">
+                    <strong>{{ row.displayName }}</strong>
+                    @if (row.detail) {
+                      <span>{{ row.detail }}</span>
+                    }
+                  </span>
+                  <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (selectedNode.details.byproducts.length > 0) {
+          <div class="inspector-subsection">
+            <h4>Byproducts</h4>
+            <div class="inspector-list">
+              @for (row of selectedNode.details.byproducts; track row.itemId) {
+                <div class="inspector-row">
+                  <bw-game-icon
+                    [src]="row.iconSrc"
+                    [label]="row.displayName"
+                    [size]="'sm'"
+                    [kind]="'item'"
+                    [showTitle]="true"
+                  />
+                  <span class="inspector-row__copy">
+                    <strong>{{ row.displayName }}</strong>
+                    @if (row.detail) {
+                      <span>{{ row.detail }}</span>
+                    }
+                  </span>
+                  <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </section>
+    }
     @case ('output') {
       <section class="inspector-section" aria-labelledby="selected-output-heading">
         <div class="inspector-section-heading">
@@ -517,6 +627,33 @@
             <span class="inspector-row__copy">
               <strong>{{ flow.displayName }}</strong>
               <span>to {{ flow.endpointKindLabel }}: {{ flow.endpointLabel }}</span>
+            </span>
+            <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (selectedNode.loopbackFlows.length > 0) {
+    <section class="inspector-section" aria-labelledby="selected-loopback-heading">
+      <div class="inspector-section-heading">
+        <h3 id="selected-loopback-heading">Loopback Flow</h3>
+        <span>{{ selectedNode.loopbackFlows.length }}</span>
+      </div>
+      <div class="inspector-list">
+        @for (flow of selectedNode.loopbackFlows; track flow.flowKey) {
+          <div class="inspector-row">
+            <bw-game-icon
+              [src]="flow.iconSrc"
+              [label]="flow.displayName"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ flow.displayName }}</strong>
+              <span>recycled inside this node</span>
             </span>
             <span class="inspector-row__value">{{ flow.amountPerMinuteLabel }}</span>
           </div>

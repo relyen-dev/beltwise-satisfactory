@@ -1,11 +1,19 @@
-import type { GameDataset, ItemId, RecipeId } from '@beltwise/game-data';
+import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import type { ProductTarget, RateDecimalPlaces, SinkRule } from './plan';
 import { isSinkableItem, sinkPointsPerMinute, surplusSinkRuleForItem } from './sinkRules';
 
 export type ProductionPlanStatus = 'optimal' | 'infeasible' | 'unbounded' | 'error';
 
 export interface ItemFlowEndpoint {
-  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct' | 'sink';
+  kind:
+    | 'resource'
+    | 'externalInput'
+    | 'assumedInput'
+    | 'recipe'
+    | 'power'
+    | 'output'
+    | 'byproduct'
+    | 'sink';
   id: string;
 }
 
@@ -26,11 +34,26 @@ export interface MachineUsage {
   powerMw: number;
 }
 
+export interface PowerGeneratorUsage {
+  powerTargetId: string;
+  optionId: string;
+  generatorId: MachineId;
+  generatorDisplayName: string;
+  fuelItemId: ItemId;
+  fuelItemDisplayName: string;
+  generatorCount: number;
+  powerMw: number;
+  fuelConsumedPerMinute: number;
+  supplementalInputs: { itemId: ItemId; amountPerMinute: number }[];
+  byproducts: { itemId: ItemId; amountPerMinute: number }[];
+}
+
 export interface PlanWarning {
   code: string;
   message: string;
   itemId?: ItemId;
   recipeId?: RecipeId;
+  powerTargetId?: string;
 }
 
 export interface ProductionPlanResult {
@@ -43,7 +66,9 @@ export interface ProductionPlanResult {
   outputs: Record<ItemId, number>;
   surplus: Record<ItemId, number>;
   machineUsage: MachineUsage[];
+  powerGeneratorUsage?: PowerGeneratorUsage[];
   powerMw: number;
+  generatedPowerMw?: number;
   warnings: PlanWarning[];
 }
 
@@ -70,11 +95,21 @@ export interface ProductionGraph {
 
 export interface ProductionGraphNode {
   id: string;
-  kind: 'resource' | 'externalInput' | 'assumedInput' | 'recipe' | 'output' | 'byproduct' | 'sink';
+  kind:
+    | 'resource'
+    | 'externalInput'
+    | 'assumedInput'
+    | 'recipe'
+    | 'power'
+    | 'output'
+    | 'byproduct'
+    | 'sink';
   label: string;
   subtitle: string;
   itemId?: ItemId;
   recipeId?: RecipeId;
+  powerTargetId?: string;
+  generatorId?: MachineId;
   targetId?: string;
   sinkRuleId?: string;
   targetMode?: ProductTarget['mode'];
@@ -173,6 +208,25 @@ export function buildProductionGraph(
     });
   }
 
+  for (const usage of result.powerGeneratorUsage ?? []) {
+    if (usage.generatorCount <= MIN_GRAPH_RATE || usage.powerMw <= MIN_GRAPH_RATE) {
+      continue;
+    }
+    nodes.set(powerNodeId(usage.powerTargetId), {
+      id: powerNodeId(usage.powerTargetId),
+      kind: 'power',
+      label: usage.generatorDisplayName,
+      subtitle: `${formatMachineCount(
+        usage.generatorCount,
+        rateDecimalPlaces,
+      )}x, ${formatRate(usage.powerMw, rateDecimalPlaces)} MW generated`,
+      powerTargetId: usage.powerTargetId,
+      generatorId: usage.generatorId,
+      amountPerMinute: usage.powerMw,
+      machineCount: usage.generatorCount,
+    });
+  }
+
   for (const target of targets.toSorted((left, right) => left.sortOrder - right.sortOrder)) {
     const item = dataset.items[target.itemId];
     const amountPerMinute =
@@ -266,6 +320,10 @@ export function recipeNodeId(recipeId: RecipeId): string {
   return `recipe:${recipeId}`;
 }
 
+export function powerNodeId(powerTargetId: string): string {
+  return `power:${powerTargetId}`;
+}
+
 export function outputNodeId(targetId: string): string {
   return `output:${targetId}`;
 }
@@ -325,6 +383,8 @@ function endpointNodeId(endpoint: ItemFlowEndpoint): string {
       return assumedInputNodeId(endpoint.id);
     case 'recipe':
       return recipeNodeId(endpoint.id);
+    case 'power':
+      return powerNodeId(endpoint.id);
     case 'output':
       return outputNodeId(endpoint.id);
     case 'byproduct':

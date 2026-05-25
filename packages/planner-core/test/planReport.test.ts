@@ -200,6 +200,46 @@ describe('plan report module', () => {
     });
   });
 
+  it('reports selected self-loop flows separately from incoming and outgoing flows', () => {
+    const context = createReportContext();
+    const result: ProductionPlanResult = {
+      ...context.result,
+      itemFlows: [
+        ...context.result.itemFlows,
+        {
+          itemId: 'Desc_IronPlate_C',
+          amountPerMinute: 5,
+          source: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+          target: { kind: 'recipe', id: 'Recipe_IronPlate_C' },
+        },
+      ],
+    };
+    const graph = buildProductionGraph(context.dataset, context.project.targets, result);
+    const report = buildSelectedNodeReport(
+      context.dataset,
+      context.project,
+      result,
+      nodeById({ ...context, graph, nodes: graph.nodes }, 'recipe:Recipe_IronPlate_C'),
+    );
+
+    expect(report.incomingFlows.map((flow) => flow.flowKey)).not.toContain(
+      'incoming:Desc_IronPlate_C:recipe:Recipe_IronPlate_C:recipe:Recipe_IronPlate_C',
+    );
+    expect(report.outgoingFlows.map((flow) => flow.flowKey)).not.toContain(
+      'outgoing:Desc_IronPlate_C:recipe:Recipe_IronPlate_C:recipe:Recipe_IronPlate_C',
+    );
+    expect(report.loopbackFlows).toMatchObject([
+      {
+        flowKey: 'loopback:Desc_IronPlate_C:recipe:Recipe_IronPlate_C:recipe:Recipe_IronPlate_C',
+        itemId: 'Desc_IronPlate_C',
+        displayName: 'Iron Plate',
+        amountPerMinute: 5,
+        endpointKind: 'recipe',
+        endpointLabel: 'Iron Plate',
+      },
+    ]);
+  });
+
   it('reports assumed input streams without counting them as raw resources', () => {
     const dataset = datasetWithPowerItems();
     const targets: ProductTarget[] = [

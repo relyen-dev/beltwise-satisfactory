@@ -5,6 +5,7 @@ import type {
   MachineUsage,
   PlanWarning,
   ProductTarget,
+  PowerGeneratorUsage,
   ProductionPlanResult,
 } from '@beltwise/planner-core';
 import type { LinearSolverResult } from './SolverAdapter';
@@ -22,6 +23,7 @@ interface SolvedProductionValues {
   surplus: Record<ItemId, number>;
   outputs: Record<ItemId, number>;
   maximizeOutputsByTargetId: Record<string, number>;
+  powerGeneratorCountsByTargetId: Record<string, number>;
 }
 
 interface ItemSource {
@@ -45,6 +47,7 @@ export function buildProductionPlanResultFromSolution(
 ): ProductionPlanResult {
   if (linearResult.status !== 'optimal') {
     return emptyResult(linearResult.status, [
+      ...model.metadata.powerTargetWarnings,
       {
         code: `solver-${linearResult.status}`,
         message:
@@ -55,6 +58,20 @@ export function buildProductionPlanResultFromSolution(
 
   const solvedValues = collectSolvedValues(input, model, linearResult.variables);
   const machineUsage = buildMachineUsage(input.dataset, input.project, solvedValues.recipeRates);
+  const powerGeneratorUsage = buildPowerGeneratorUsage(
+    input.dataset,
+    model,
+    solvedValues.powerGeneratorCountsByTargetId,
+  );
+  const powerGeneratorFields =
+    powerGeneratorUsage.length > 0
+      ? {
+          powerGeneratorUsage,
+          generatedPowerMw: cleanNumber(
+            powerGeneratorUsage.reduce((total, usage) => total + usage.powerMw, 0),
+          ),
+        }
+      : {};
 
   return {
     status: 'optimal',
@@ -62,12 +79,13 @@ export function buildProductionPlanResultFromSolution(
     rawInputs: solvedValues.rawInputs,
     externalInputs: solvedValues.externalInputs,
     assumedInputs: solvedValues.assumedInputs,
-    itemFlows: buildItemFlows(input, solvedValues),
+    itemFlows: buildItemFlows(input, solvedValues, powerGeneratorUsage),
     outputs: solvedValues.outputs,
     surplus: solvedValues.surplus,
     machineUsage,
+    ...powerGeneratorFields,
     powerMw: cleanNumber(machineUsage.reduce((total, usage) => total + usage.powerMw, 0)),
-    warnings: [],
+    warnings: [...model.metadata.powerTargetWarnings],
   };
 }
 
@@ -148,6 +166,13 @@ function collectSolvedValues(
     maximizeOutputsByTargetId[targetId] = variableValue(variables, variableName);
   }
 
+  const powerGeneratorCountsByTargetId: Record<string, number> = {};
+  for (const [targetId, variableName] of Object.entries(
+    model.metadata.powerGeneratorVariableByTargetId,
+  )) {
+    powerGeneratorCountsByTargetId[targetId] = variableValue(variables, variableName);
+  }
+
   return {
     recipeRates: cleanPositiveRecord(recipeRates, relativeNoiseThreshold(recipeRates)),
     rawInputs: cleanPositiveRecord(rawInputs, relativeNoiseThreshold(rawInputs)),
@@ -156,7 +181,51 @@ function collectSolvedValues(
     surplus: cleanPositiveRecord(surplus, relativeNoiseThreshold(surplus)),
     outputs: buildOutputs(input.project.targets, maximizeOutputsByTargetId),
     maximizeOutputsByTargetId: cleanPositiveRecord(maximizeOutputsByTargetId),
+    powerGeneratorCountsByTargetId: cleanPositiveRecord(powerGeneratorCountsByTargetId),
   };
+}
+
+function buildPowerGeneratorUsage(
+  dataset: GameDataset,
+  model: ProductionLpModel,
+  generatorCountsByTargetId: Record<string, number>,
+): PowerGeneratorUsage[] {
+  return Object.entries(generatorCountsByTargetId)
+    .filter(([, generatorCount]) => generatorCount > EPSILON)
+    .map(([targetId, generatorCount]) => {
+      const metadata = model.metadata.activePowerTargetById[targetId];
+      const option = metadata ? dataset.generatorFuelOptions[metadata.optionId] : undefined;
+      if (!metadata || !option) {
+        return undefined;
+      }
+      return {
+        powerTargetId: targetId,
+        optionId: option.id,
+        generatorId: option.generatorId,
+        generatorDisplayName:
+          dataset.machines[option.generatorId]?.displayName ?? option.generatorId,
+        fuelItemId: option.fuelItemId,
+        fuelItemDisplayName: dataset.items[option.fuelItemId]?.displayName ?? option.fuelItemId,
+        generatorCount: cleanNumber(generatorCount),
+        powerMw: cleanNumber(generatorCount * option.powerMw),
+        fuelConsumedPerMinute: cleanNumber(generatorCount * option.fuelConsumedPerMinute),
+        supplementalInputs: scaleItemRates(option.supplementalInputs, generatorCount),
+        byproducts: scaleItemRates(option.byproducts, generatorCount),
+      } satisfies PowerGeneratorUsage;
+    })
+    .filter((usage): usage is PowerGeneratorUsage => usage !== undefined);
+}
+
+function scaleItemRates(
+  rates: ReadonlyArray<{ itemId: ItemId; amountPerMinute: number }>,
+  multiplier: number,
+): { itemId: ItemId; amountPerMinute: number }[] {
+  return rates
+    .map((rate) => ({
+      itemId: rate.itemId,
+      amountPerMinute: cleanNumber(rate.amountPerMinute * multiplier),
+    }))
+    .filter((rate) => rate.amountPerMinute > EPSILON);
 }
 
 function buildOutputs(
@@ -180,6 +249,7 @@ function buildOutputs(
 function buildItemFlows(
   input: ProductionPlanInput,
   solvedValues: SolvedProductionValues,
+  powerGeneratorUsage: readonly PowerGeneratorUsage[],
 ): ItemFlow[] {
   const itemIds = new Set<ItemId>();
   const allocationContext = buildItemFlowAllocationContext(input.dataset, solvedValues.recipeRates);
@@ -198,6 +268,15 @@ function buildItemFlows(
   for (const target of input.project.targets) {
     itemIds.add(target.itemId);
   }
+  for (const usage of powerGeneratorUsage) {
+    itemIds.add(usage.fuelItemId);
+    for (const input of usage.supplementalInputs) {
+      itemIds.add(input.itemId);
+    }
+    for (const byproduct of usage.byproducts) {
+      itemIds.add(byproduct.itemId);
+    }
+  }
 
   for (const [recipeId, recipeRatePerMinute] of Object.entries(solvedValues.recipeRates)) {
     const recipe = input.dataset.recipes[recipeId];
@@ -214,8 +293,14 @@ function buildItemFlows(
 
   const flows: ItemFlow[] = [];
   for (const itemId of Array.from(itemIds).sort()) {
-    const sources = buildItemSources(input.dataset, itemId, solvedValues);
-    const demands = buildItemDemands(input.dataset, input.project.targets, itemId, solvedValues);
+    const sources = buildItemSources(input.dataset, itemId, solvedValues, powerGeneratorUsage);
+    const demands = buildItemDemands(
+      input.dataset,
+      input.project.targets,
+      itemId,
+      solvedValues,
+      powerGeneratorUsage,
+    );
     flows.push(...matchItemFlows(itemId, sources, demands, allocationContext));
   }
 
@@ -271,6 +356,7 @@ function buildItemSources(
   dataset: GameDataset,
   itemId: ItemId,
   solvedValues: SolvedProductionValues,
+  powerGeneratorUsage: readonly PowerGeneratorUsage[],
 ): ItemSource[] {
   const sources: ItemSource[] = [];
   const rawInputAmount = solvedValues.rawInputs[itemId] ?? 0;
@@ -314,6 +400,19 @@ function buildItemSources(
     });
   }
 
+  for (const usage of powerGeneratorUsage.toSorted((left, right) =>
+    left.powerTargetId.localeCompare(right.powerTargetId),
+  )) {
+    const byproductAmountPerMinute = sumItemRate(usage.byproducts, itemId);
+    if (byproductAmountPerMinute <= EPSILON) {
+      continue;
+    }
+    sources.push({
+      endpoint: { kind: 'power', id: usage.powerTargetId },
+      amountPerMinute: byproductAmountPerMinute,
+    });
+  }
+
   return sources;
 }
 
@@ -322,6 +421,7 @@ function buildItemDemands(
   targets: ProductTarget[],
   itemId: ItemId,
   solvedValues: SolvedProductionValues,
+  powerGeneratorUsage: readonly PowerGeneratorUsage[],
 ): ItemDemand[] {
   const demands: ItemDemand[] = [];
 
@@ -332,6 +432,21 @@ function buildItemDemands(
     if (recipeDemand) {
       demands.push(recipeDemand);
     }
+  }
+
+  for (const usage of powerGeneratorUsage.toSorted((left, right) =>
+    left.powerTargetId.localeCompare(right.powerTargetId),
+  )) {
+    const fuelAmountPerMinute = usage.fuelItemId === itemId ? usage.fuelConsumedPerMinute : 0;
+    const supplementalAmountPerMinute = sumItemRate(usage.supplementalInputs, itemId);
+    const amountPerMinute = fuelAmountPerMinute + supplementalAmountPerMinute;
+    if (amountPerMinute <= EPSILON) {
+      continue;
+    }
+    demands.push({
+      endpoint: { kind: 'power', id: usage.powerTargetId },
+      amountPerMinute,
+    });
   }
 
   for (const target of targets.toSorted((left, right) => left.sortOrder - right.sortOrder)) {
@@ -504,6 +619,15 @@ function sumItemAmount(
   return amounts
     .filter((amount) => amount.itemId === itemId)
     .reduce((total, amount) => total + amount.amount, 0);
+}
+
+function sumItemRate(
+  rates: ReadonlyArray<{ itemId: ItemId; amountPerMinute: number }>,
+  itemId: ItemId,
+): number {
+  return rates
+    .filter((rate) => rate.itemId === itemId)
+    .reduce((total, rate) => total + rate.amountPerMinute, 0);
 }
 
 function emptyResult(

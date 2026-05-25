@@ -44,11 +44,175 @@ describe('PlannerPlanConfigStore', () => {
     expect(planConfig.planNotes()).toBe('Bring power shards');
   });
 
+  it('exposes assumed input rows from the latest solve result', () => {
+    const { planConfig } = createPlanConfigHarness({
+      solveResult: {
+        status: 'optimal',
+        recipeRates: {},
+        rawInputs: {},
+        externalInputs: {},
+        assumedInputs: {
+          Desc_Wire_C: 4.5,
+        },
+        itemFlows: [],
+        outputs: {},
+        surplus: {},
+        machineUsage: [],
+        powerMw: 0,
+        warnings: [],
+      },
+    });
+
+    expect(planConfig.assumedInputRows()).toEqual([
+      {
+        item: tinySatisfactoryDataset.items['Desc_Wire_C'],
+        amountPerMinute: 4.5,
+        amountPerMinuteLabel: '4.5/min',
+        iconSrc: '/game-icons/Desc_Wire_C.png',
+      },
+    ]);
+  });
+
+  it('exposes catalog-backed power target rows and commands', () => {
+    const dataset = withPowerDataset();
+    const { activeProject, planConfig } = createPlanConfigHarness({
+      dataset,
+      project: createProject(dataset),
+    });
+
+    expect(planConfig.powerTargetGeneratorOptions().map((option) => option.displayName)).toEqual([
+      'Coal Generator',
+      'Nuclear Power Plant',
+    ]);
+
+    planConfig.powerTargetCommands.add();
+    const addedTarget = requiredProject(activeProject).powerTargets[0];
+    if (!addedTarget) {
+      throw new Error('Expected a power target');
+    }
+
+    expect(addedTarget).toMatchObject({
+      id: expect.stringMatching(/^power-target-/),
+      mode: 'generator-count',
+      generatorCount: 1,
+      sortOrder: 0,
+    });
+    expect(planConfig.powerTargetRows()[0]).toMatchObject({
+      isComplete: false,
+      summary: {
+        label: 'Select generator and fuel',
+      },
+    });
+
+    planConfig.powerTargetCommands.updateGenerator(addedTarget.id, 'Build_GeneratorCoal_C');
+    planConfig.powerTargetCommands.updateFuel(addedTarget.id, 'Desc_NuclearFuelRod_C');
+    expect(requiredProject(activeProject).powerTargets[0]?.fuelItemId).toBeUndefined();
+
+    planConfig.powerTargetCommands.updateFuel(addedTarget.id, 'Desc_Coal_C');
+    planConfig.powerTargetCommands.updateAmount(addedTarget.id, 4);
+
+    expect(requiredProject(activeProject).powerTargets[0]).toMatchObject({
+      generatorId: 'Build_GeneratorCoal_C',
+      fuelItemId: 'Desc_Coal_C',
+      generatorCount: 4,
+    });
+    expect(planConfig.powerTargetRows()[0]).toMatchObject({
+      fuelOptions: [
+        {
+          fuelItemId: 'Desc_Coal_C',
+          displayName: 'Coal',
+        },
+      ],
+      summary: {
+        label: '300 MW total',
+        lines: [
+          {
+            label: 'Coal fuel',
+            value: '60/min',
+          },
+          {
+            label: 'Water input',
+            value: '180/min',
+          },
+        ],
+      },
+    });
+
+    planConfig.powerTargetCommands.updateMode(addedTarget.id, 'power');
+    planConfig.powerTargetCommands.updateAmount(addedTarget.id, 150);
+
+    expect(requiredProject(activeProject).powerTargets[0]).toMatchObject({
+      mode: 'power',
+      powerMw: 150,
+    });
+    expect(requiredProject(activeProject).powerTargets[0]?.generatorCount).toBeUndefined();
+    expect(planConfig.powerTargetRows()[0]).toMatchObject({
+      amountValue: 150,
+      amountStep: 10,
+      summary: {
+        label: '150 MW total',
+        lines: [
+          {
+            label: 'Coal fuel',
+            value: '30/min',
+          },
+          {
+            label: 'Water input',
+            value: '90/min',
+          },
+        ],
+      },
+    });
+
+    const targetBeforeDuplicate = requiredProject(activeProject).powerTargets[0];
+    if (!targetBeforeDuplicate) {
+      throw new Error('Expected a configured power target');
+    }
+    planConfig.powerTargetCommands.duplicate(targetBeforeDuplicate);
+    const [firstTarget, secondTarget] = requiredProject(activeProject).powerTargets;
+    if (!firstTarget || !secondTarget) {
+      throw new Error('Expected duplicated power targets');
+    }
+
+    expect(secondTarget).toMatchObject({
+      id: expect.stringMatching(/^power-target-/),
+      mode: 'power',
+      generatorId: 'Build_GeneratorCoal_C',
+      fuelItemId: 'Desc_Coal_C',
+      powerMw: 150,
+      sortOrder: 1,
+    });
+
+    planConfig.powerTargetCommands.reorder([secondTarget.id, firstTarget.id]);
+    expect(requiredProject(activeProject).powerTargets.map((target) => target.id)).toEqual([
+      secondTarget.id,
+      firstTarget.id,
+    ]);
+
+    planConfig.powerTargetCommands.remove(firstTarget.id);
+    expect(requiredProject(activeProject).powerTargets).toEqual([
+      {
+        ...secondTarget,
+        sortOrder: 0,
+      },
+    ]);
+  });
+
   it('blocks solve-relevant edits while locked but still allows notes and display settings', () => {
     const project = createProject();
     const { activeProject, planConfig } = createPlanConfigHarness({
       project: {
         ...project,
+        powerTargets: [
+          {
+            id: 'power-a',
+            mode: 'generator-count',
+            generatorId: 'Build_GeneratorCoal_C',
+            fuelItemId: 'Desc_Coal_C',
+            generatorCount: 1,
+            sortOrder: 0,
+          },
+        ],
         objectiveProfile: {
           ...project.objectiveProfile,
           rawResourceMultipliers: {
@@ -67,9 +231,20 @@ describe('PlannerPlanConfigStore', () => {
     if (!target) {
       throw new Error('Expected a target');
     }
+    const powerTarget = lockedProject.powerTargets[0];
+    if (!powerTarget) {
+      throw new Error('Expected a power target');
+    }
 
     planConfig.targetCommands.add();
     planConfig.targetCommands.updateAmount(target.id, 999);
+    planConfig.powerTargetCommands.add();
+    planConfig.powerTargetCommands.updateMode(powerTarget.id, 'power');
+    planConfig.powerTargetCommands.updateGenerator(powerTarget.id, 'Build_GeneratorNuclear_C');
+    planConfig.powerTargetCommands.updateFuel(powerTarget.id, 'Desc_NuclearFuelRod_C');
+    planConfig.powerTargetCommands.updateAmount(powerTarget.id, 999);
+    planConfig.powerTargetCommands.duplicate(powerTarget);
+    planConfig.powerTargetCommands.remove(powerTarget.id);
     planConfig.recipeCommands.setEnabled('Recipe_IronPlate_C', false);
     planConfig.inputCommands.set('Desc_IngotIron_C', 25);
     planConfig.resourceCommands.setCap('Desc_OreIron_C', 120);
@@ -82,6 +257,7 @@ describe('PlannerPlanConfigStore', () => {
 
     expect(requiredProject(activeProject)).toMatchObject({
       targets: lockedProject.targets,
+      powerTargets: lockedProject.powerTargets,
       recipeOverrides: lockedProject.recipeOverrides,
       itemInputs: lockedProject.itemInputs,
       sinkRules: lockedProject.sinkRules,
@@ -201,9 +377,7 @@ describe('PlannerPlanConfigStore', () => {
       },
     });
 
-    expect(planConfig.availableSurplusSinkItems().map((item) => item.id)).toEqual([
-      'Desc_Screw_C',
-    ]);
+    expect(planConfig.availableSurplusSinkItems().map((item) => item.id)).toEqual(['Desc_Screw_C']);
 
     planConfig.sinkCommands.addSurplus('Desc_Screw_C');
 
@@ -376,6 +550,76 @@ function withSinkableScrewsDataset(): GameDataset {
       Desc_Screw_C: {
         ...tinySatisfactoryDataset.items['Desc_Screw_C']!,
         sinkPoints: 2,
+      },
+    },
+  };
+}
+
+function withPowerDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Coal_C: {
+        id: 'Desc_Coal_C',
+        className: 'Desc_Coal_C',
+        displayName: 'Coal',
+        form: 'solid',
+      },
+      Desc_NuclearFuelRod_C: {
+        id: 'Desc_NuclearFuelRod_C',
+        className: 'Desc_NuclearFuelRod_C',
+        displayName: 'Uranium Fuel Rod',
+        form: 'solid',
+      },
+      Desc_NuclearWaste_C: {
+        id: 'Desc_NuclearWaste_C',
+        className: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        form: 'solid',
+      },
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_GeneratorCoal_C: {
+        id: 'Build_GeneratorCoal_C',
+        className: 'Build_GeneratorCoal_C',
+        displayName: 'Coal Generator',
+        type: 'generator',
+        powerMw: 75,
+      },
+      Build_GeneratorNuclear_C: {
+        id: 'Build_GeneratorNuclear_C',
+        className: 'Build_GeneratorNuclear_C',
+        displayName: 'Nuclear Power Plant',
+        type: 'generator',
+        powerMw: 2500,
+      },
+    },
+    generatorFuelOptions: {
+      'Build_GeneratorCoal_C:Desc_Coal_C': {
+        id: 'Build_GeneratorCoal_C:Desc_Coal_C',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        powerMw: 75,
+        fuelConsumedPerMinute: 15,
+        supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 45 }],
+        byproducts: [],
+      },
+      'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C': {
+        id: 'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C',
+        generatorId: 'Build_GeneratorNuclear_C',
+        fuelItemId: 'Desc_NuclearFuelRod_C',
+        powerMw: 2500,
+        fuelConsumedPerMinute: 0.2,
+        supplementalInputs: [],
+        byproducts: [{ itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 }],
       },
     },
   };

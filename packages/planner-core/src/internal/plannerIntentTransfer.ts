@@ -10,6 +10,7 @@ import {
   type PlanBuildState,
   type PlannerProject,
   type PlannerUserDefaults,
+  type PowerTarget,
   type ProductTarget,
   type RecipeOverride,
   type MachineOverride,
@@ -30,6 +31,7 @@ import {
   copyItemInputsForTransfer,
   copyNumberRecordForTransfer,
   copyPlanBuildStateForTransfer,
+  copyPowerTargetsForTransfer,
   copyProductTargetForTransfer,
   copyResourceOverridesForTransfer,
   copySinkRulesForTransfer,
@@ -41,6 +43,7 @@ import {
 export interface PlannerProjectIntentSnapshot {
   notes: string;
   targets: ProductTarget[];
+  powerTargets: PowerTarget[];
   sinkRules: SinkRule[];
   recipeOverrides: Record<RecipeId, RecipeOverride>;
   machineOverrides: Record<MachineId, MachineOverride>;
@@ -55,6 +58,7 @@ export interface PlannerProjectIntentSnapshot {
 export interface PlannerProjectIntentOverlay {
   notes?: string;
   targets?: ProductTarget[];
+  powerTargets?: PowerTarget[];
   sinkRules?: SinkRule[];
   recipeOverrides?: Record<RecipeId, RecipeOverride>;
   machineOverrides?: Record<MachineId, MachineOverride>;
@@ -79,6 +83,7 @@ export function copyPlannerProjectIntentSnapshot(
   return {
     notes: project.notes,
     targets: project.targets.map(copyProductTargetForTransfer),
+    powerTargets: copyPowerTargetsForTransfer(project.powerTargets),
     sinkRules: copySinkRulesForTransfer(project.sinkRules),
     recipeOverrides: copyBooleanOverridesForTransfer(project.recipeOverrides),
     machineOverrides: copyBooleanOverridesForTransfer(project.machineOverrides),
@@ -120,6 +125,10 @@ export function applyPlannerProjectIntentToCanonicalDefaults(
     ...defaults,
     notes: overlay.notes ?? defaults.notes,
     targets: overlay.targets?.map(copyProductTargetForTransfer) ?? defaults.targets,
+    powerTargets:
+      overlay.powerTargets === undefined
+        ? defaults.powerTargets
+        : copyPowerTargetsForTransfer(overlay.powerTargets),
     sinkRules:
       overlay.sinkRules === undefined
         ? defaults.sinkRules

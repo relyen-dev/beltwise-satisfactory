@@ -6,6 +6,7 @@ import {
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import {
+  selectAssumedInputRows,
   selectAvailableSurplusSinkItems,
   selectCompletedGraphNodeIds,
   selectExternalInputRows,
@@ -14,6 +15,8 @@ import {
   selectMachinePanelSummary,
   selectMachineRows,
   selectMachineUsageRows,
+  selectPowerTargetGeneratorOptions,
+  selectPowerTargetRows,
   selectRecipeRows,
   selectRawResourceMultiplierRows,
   selectResourceRows,
@@ -212,6 +215,158 @@ describe('planner store selectors', () => {
     ]);
   });
 
+  it('filters missing assumed input items and formats visible solved rates', () => {
+    const result: ProductionPlanResult = {
+      status: 'optimal',
+      recipeRates: {},
+      rawInputs: {},
+      externalInputs: {},
+      assumedInputs: {
+        Desc_Wire_C: 12.345,
+        Desc_Missing_C: 99,
+        Desc_IngotIron_C: 5,
+        Desc_IronPlate_C: 0,
+      },
+      itemFlows: [],
+      outputs: {},
+      surplus: {},
+      machineUsage: [],
+      powerMw: 0,
+      warnings: [],
+    };
+
+    expect(selectAssumedInputRows(tinySatisfactoryDataset, result)).toEqual([
+      {
+        item: tinySatisfactoryDataset.items['Desc_IngotIron_C'],
+        amountPerMinute: 5,
+        amountPerMinuteLabel: '5/min',
+        iconSrc: '/game-icons/Desc_IngotIron_C.png',
+      },
+      {
+        item: tinySatisfactoryDataset.items['Desc_Wire_C'],
+        amountPerMinute: 12.345,
+        amountPerMinuteLabel: '12.35/min',
+        iconSrc: '/game-icons/Desc_Wire_C.png',
+      },
+    ]);
+    expect(selectAssumedInputRows(tinySatisfactoryDataset, null)).toEqual([]);
+  });
+
+  it('builds power target options and summaries from the generator fuel catalog', () => {
+    const dataset = withPowerDataset();
+    const project: PlannerProject = {
+      ...createProject(dataset),
+      powerTargets: [
+        {
+          id: 'power-invalid',
+          mode: 'power',
+          generatorId: 'Build_GeneratorCoal_C',
+          fuelItemId: 'Desc_NuclearFuelRod_C',
+          powerMw: 300,
+          sortOrder: 0,
+        },
+        {
+          id: 'power-coal',
+          mode: 'generator-count',
+          generatorId: 'Build_GeneratorCoal_C',
+          fuelItemId: 'Desc_Coal_C',
+          generatorCount: 16,
+          sortOrder: 1,
+        },
+        {
+          id: 'power-nuclear',
+          mode: 'generator-count',
+          generatorId: 'Build_GeneratorNuclear_C',
+          fuelItemId: 'Desc_NuclearFuelRod_C',
+          generatorCount: 2,
+          sortOrder: 2,
+        },
+      ],
+    };
+
+    expect(selectPowerTargetGeneratorOptions(dataset)).toEqual([
+      {
+        generatorId: 'Build_GeneratorCoal_C',
+        displayName: 'Coal Generator',
+        iconSrc: '/game-icons/Desc_GeneratorCoal_C.png',
+      },
+      {
+        generatorId: 'Build_GeneratorNuclear_C',
+        displayName: 'Nuclear Power Plant',
+        iconSrc: '/game-icons/Desc_GeneratorNuclear_C.png',
+      },
+    ]);
+
+    const rows = selectPowerTargetRows(dataset, project);
+
+    expect(rows.map((row) => row.target.id)).toEqual([
+      'power-invalid',
+      'power-coal',
+      'power-nuclear',
+    ]);
+    expect(rows[0]).toMatchObject({
+      isComplete: false,
+      amountValue: 300,
+      amountStep: 10,
+      amountLabel: 'Power target in MW',
+      fuelOptions: [
+        {
+          optionId: 'Build_GeneratorCoal_C:Desc_Coal_C',
+          fuelItemId: 'Desc_Coal_C',
+          displayName: 'Coal',
+          iconSrc: '/game-icons/Desc_Coal_C.png',
+        },
+      ],
+      summary: {
+        state: 'incomplete',
+        label: 'Select generator and fuel',
+        lines: [],
+      },
+    });
+    expect(rows[1]).toMatchObject({
+      isComplete: true,
+      amountValue: 16,
+      amountStep: 1,
+      amountLabel: 'Generator count',
+      summary: {
+        state: 'complete',
+        label: '1,200 MW total',
+        lines: [
+          {
+            key: 'fuel:Desc_Coal_C',
+            label: 'Coal fuel',
+            value: '240/min',
+            iconSrc: '/game-icons/Desc_Coal_C.png',
+            role: 'fuel',
+          },
+          {
+            key: 'input:Desc_Water_C',
+            label: 'Water input',
+            value: '720/min',
+            iconSrc: '/game-icons/Desc_Water_C.png',
+            role: 'supplemental-input',
+          },
+        ],
+      },
+    });
+    expect(rows[2]?.summary).toMatchObject({
+      label: '5,000 MW total',
+      lines: [
+        {
+          key: 'fuel:Desc_NuclearFuelRod_C',
+          label: 'Uranium Fuel Rod fuel',
+          value: '0.4/min',
+        },
+        {
+          key: 'byproduct:Desc_NuclearWaste_C',
+          label: 'Uranium Waste waste',
+          value: '20/min',
+          role: 'byproduct',
+        },
+      ],
+    });
+  });
+
   it('builds sink rule rows with solved rates and sink points', () => {
     const dataset: GameDataset = {
       ...tinySatisfactoryDataset,
@@ -310,9 +465,9 @@ describe('planner store selectors', () => {
     };
 
     expect(selectAvailableSurplusSinkItems(dataset, project).map((item) => item.id)).toEqual([]);
-    expect(selectAvailableSurplusSinkItems(dataset, project, result).map((item) => item.id)).toEqual(
-      ['Desc_Wire_C'],
-    );
+    expect(
+      selectAvailableSurplusSinkItems(dataset, project, result).map((item) => item.id),
+    ).toEqual(['Desc_Wire_C']);
   });
 
   it('keeps machine rows to solve-relevant automated machines', () => {
@@ -616,11 +771,11 @@ describe('planner store selectors', () => {
   });
 });
 
-function createProject(): PlannerProject {
+function createProject(dataset: GameDataset = tinySatisfactoryDataset): PlannerProject {
   return createPlannerProject({
     id: 'project-a',
     name: 'Factory',
-    dataset: tinySatisfactoryDataset,
+    dataset,
     now: NOW,
     targets: [],
   });
@@ -647,6 +802,76 @@ function withUnlimitedWaterDataset(): GameDataset {
           allowedExtractors: ['Build_WaterPump_C'],
           baselineMaxPerMinute: Number.MAX_SAFE_INTEGER,
         },
+      },
+    },
+  };
+}
+
+function withPowerDataset(): GameDataset {
+  return {
+    ...tinySatisfactoryDataset,
+    items: {
+      ...tinySatisfactoryDataset.items,
+      Desc_Coal_C: {
+        id: 'Desc_Coal_C',
+        className: 'Desc_Coal_C',
+        displayName: 'Coal',
+        form: 'solid',
+      },
+      Desc_NuclearFuelRod_C: {
+        id: 'Desc_NuclearFuelRod_C',
+        className: 'Desc_NuclearFuelRod_C',
+        displayName: 'Uranium Fuel Rod',
+        form: 'solid',
+      },
+      Desc_NuclearWaste_C: {
+        id: 'Desc_NuclearWaste_C',
+        className: 'Desc_NuclearWaste_C',
+        displayName: 'Uranium Waste',
+        form: 'solid',
+      },
+      Desc_Water_C: {
+        id: 'Desc_Water_C',
+        className: 'Desc_Water_C',
+        displayName: 'Water',
+        form: 'liquid',
+      },
+    },
+    machines: {
+      ...tinySatisfactoryDataset.machines,
+      Build_GeneratorCoal_C: {
+        id: 'Build_GeneratorCoal_C',
+        className: 'Build_GeneratorCoal_C',
+        displayName: 'Coal Generator',
+        type: 'generator',
+        powerMw: 75,
+      },
+      Build_GeneratorNuclear_C: {
+        id: 'Build_GeneratorNuclear_C',
+        className: 'Build_GeneratorNuclear_C',
+        displayName: 'Nuclear Power Plant',
+        type: 'generator',
+        powerMw: 2500,
+      },
+    },
+    generatorFuelOptions: {
+      'Build_GeneratorCoal_C:Desc_Coal_C': {
+        id: 'Build_GeneratorCoal_C:Desc_Coal_C',
+        generatorId: 'Build_GeneratorCoal_C',
+        fuelItemId: 'Desc_Coal_C',
+        powerMw: 75,
+        fuelConsumedPerMinute: 15,
+        supplementalInputs: [{ itemId: 'Desc_Water_C', amountPerMinute: 45 }],
+        byproducts: [],
+      },
+      'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C': {
+        id: 'Build_GeneratorNuclear_C:Desc_NuclearFuelRod_C',
+        generatorId: 'Build_GeneratorNuclear_C',
+        fuelItemId: 'Desc_NuclearFuelRod_C',
+        powerMw: 2500,
+        fuelConsumedPerMinute: 0.2,
+        supplementalInputs: [],
+        byproducts: [{ itemId: 'Desc_NuclearWaste_C', amountPerMinute: 10 }],
       },
     },
   };

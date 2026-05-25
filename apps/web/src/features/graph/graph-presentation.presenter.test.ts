@@ -51,6 +51,7 @@ describe('graph presentation presenter', () => {
     expect(formatTargetAmountDisplayValue(undefined, 3)).toBe('0');
     expect(formatMachineCountDisplayValue(1.25, 2)).toBe('1.25');
     expect(formatGraphNodeKindDisplayValue('assumedInput')).toBe('assumed input');
+    expect(formatGraphNodeKindDisplayValue('power')).toBe('power');
     expect(formatGraphNodeKindDisplayValue('sink')).toBe('sink');
     expect(graphTooltipStatKey('4x Constructor', 0)).toBe('stat:0:4x Constructor');
     expect(

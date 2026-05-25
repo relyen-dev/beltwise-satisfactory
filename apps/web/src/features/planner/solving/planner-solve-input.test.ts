@@ -2,6 +2,7 @@ import { tinySatisfactoryDataset, type GameDataset } from '@beltwise/game-data';
 import {
   createPlannerProject,
   type PlannerProject,
+  type PowerTarget,
   type ProductTarget,
 } from '@beltwise/planner-core';
 import { describe, expect, it } from 'vitest';
@@ -66,6 +67,20 @@ describe('selectPlannerSolveInput', () => {
         },
       },
       {
+        name: 'powerTargets',
+        project: {
+          ...project,
+          powerTargets: [
+            powerTarget({
+              id: 'power-coal',
+              generatorId: 'Build_GeneratorCoal_C',
+              fuelItemId: 'Desc_Coal_C',
+              generatorCount: 4,
+            }),
+          ],
+        },
+      },
+      {
         name: 'recipeOverrides',
         project: {
           ...project,
@@ -119,6 +134,72 @@ describe('selectPlannerSolveInput', () => {
 
     for (const change of changes) {
       expect(solveKey(change.project), change.name).not.toBe(baseSolveKey);
+    }
+  });
+
+  it('changes the solve key when power target solve fields change', () => {
+    const project: PlannerProject = {
+      ...createProject(),
+      powerTargets: [
+        powerTarget({
+          id: 'power-coal',
+          generatorId: 'Build_GeneratorCoal_C',
+          fuelItemId: 'Desc_Coal_C',
+          generatorCount: 4,
+          sortOrder: 0,
+        }),
+        powerTarget({
+          id: 'power-nuclear',
+          generatorId: 'Build_GeneratorNuclear_C',
+          fuelItemId: 'Desc_NuclearFuelRod_C',
+          generatorCount: 2,
+          sortOrder: 1,
+        }),
+      ],
+    };
+    const baseSolveKey = solveKey(project);
+    const [coalTarget, nuclearTarget] = project.powerTargets;
+    if (!coalTarget || !nuclearTarget) {
+      throw new Error('Expected power targets');
+    }
+    const changes: ReadonlyArray<{ name: string; powerTargets: PowerTarget[] }> = [
+      {
+        name: 'remove',
+        powerTargets: [coalTarget],
+      },
+      {
+        name: 'reorder',
+        powerTargets: [
+          { ...nuclearTarget, sortOrder: 0 },
+          { ...coalTarget, sortOrder: 1 },
+        ],
+      },
+      {
+        name: 'generator',
+        powerTargets: [{ ...coalTarget, generatorId: 'Build_GeneratorFuel_C' }, nuclearTarget],
+      },
+      {
+        name: 'fuel',
+        powerTargets: [{ ...coalTarget, fuelItemId: 'Desc_CompactedCoal_C' }, nuclearTarget],
+      },
+      {
+        name: 'generator-count amount',
+        powerTargets: [{ ...coalTarget, generatorCount: 5 }, nuclearTarget],
+      },
+      {
+        name: 'mode',
+        powerTargets: [{ ...coalTarget, mode: 'power', powerMw: 300 }, nuclearTarget],
+      },
+      {
+        name: 'power amount',
+        powerTargets: [{ ...coalTarget, mode: 'power', powerMw: 450 }, nuclearTarget],
+      },
+    ];
+
+    for (const change of changes) {
+      expect(solveKey({ ...project, powerTargets: change.powerTargets }), change.name).not.toBe(
+        baseSolveKey,
+      );
     }
   });
 
@@ -226,4 +307,14 @@ function firstTarget(project: PlannerProject): ProductTarget {
     throw new Error('Expected a target');
   }
   return target;
+}
+
+function powerTarget(overrides: Partial<PowerTarget>): PowerTarget {
+  return {
+    id: 'power-target',
+    mode: 'generator-count',
+    generatorCount: 1,
+    sortOrder: 0,
+    ...overrides,
+  };
 }

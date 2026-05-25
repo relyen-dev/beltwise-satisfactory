@@ -1,4 +1,4 @@
-import type { GameDataset, ItemId } from '@beltwise/game-data';
+import type { GameDataset, ItemId, MachineId } from '@beltwise/game-data';
 import {
   createDefaultGraphDisplaySettings,
   createDefaultObjectiveProfile,
@@ -14,6 +14,7 @@ import {
   type ObjectiveStrategy,
   type PlanBuildState,
   type PlannerProject,
+  type PowerTarget,
   type ProductTarget,
   resolveObjectivePresetId,
   type SinkRule,
@@ -74,6 +75,7 @@ export interface CompactPlannerProjectV1 {
   n: string;
   no?: string;
   t?: CompactProductTargetV1[];
+  pt?: CompactPowerTargetV1[];
   sk?: CompactSinkRuleV1[];
   r?: CompactBooleanOverrideV1[];
   m?: CompactBooleanOverrideV1[];
@@ -97,6 +99,16 @@ export interface CompactSinkRuleV1 {
   id: string;
   i: ItemId;
   m: 's';
+  s: number;
+}
+
+export interface CompactPowerTargetV1 {
+  id: string;
+  m: 'g' | 'p';
+  g?: MachineId;
+  f?: ItemId;
+  c?: number;
+  w?: number;
   s: number;
 }
 
@@ -248,6 +260,9 @@ function encodeCompactPlannerProject(
   if (project.targets.length > 0) {
     compact.t = project.targets.map(encodeTarget);
   }
+  if (project.powerTargets.length > 0) {
+    compact.pt = project.powerTargets.map(encodePowerTarget);
+  }
   if (project.sinkRules.length > 0) {
     compact.sk = project.sinkRules.map(encodeSinkRule);
   }
@@ -304,6 +319,7 @@ function applyCompactProjectToCanonicalDefaults(
     {
       notes: normalizePlanTransferNote(compact.no ?? ''),
       targets: decodeTargets(compact.t),
+      powerTargets: decodePowerTargets(compact.pt),
       sinkRules: decodeSinkRules(compact.sk),
       recipeOverrides: decodeBooleanOverrides(compact.r),
       machineOverrides: decodeBooleanOverrides(compact.m),
@@ -329,6 +345,18 @@ function encodeTarget(target: ProductTarget): CompactProductTargetV1 {
     i: target.itemId,
     m: target.mode === 'fixed' ? 'f' : 'x',
     ...(target.mode === 'fixed' ? { a: target.amountPerMinute ?? 0 } : {}),
+    s: target.sortOrder,
+  };
+}
+
+function encodePowerTarget(target: PowerTarget): CompactPowerTargetV1 {
+  return {
+    id: target.id,
+    m: target.mode === 'generator-count' ? 'g' : 'p',
+    ...(target.generatorId !== undefined ? { g: target.generatorId } : {}),
+    ...(target.fuelItemId !== undefined ? { f: target.fuelItemId } : {}),
+    ...(target.mode === 'generator-count' ? { c: target.generatorCount ?? 0 } : {}),
+    ...(target.mode === 'power' ? { w: target.powerMw ?? 0 } : {}),
     s: target.sortOrder,
   };
 }
@@ -363,6 +391,35 @@ function decodeTargets(value: CompactProductTargetV1[] | undefined): ProductTarg
           sortOrder: target.s,
         },
   );
+}
+
+function decodePowerTargets(value: CompactPowerTargetV1[] | undefined): PowerTarget[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .map((target) =>
+      target.m === 'g'
+        ? {
+            id: target.id,
+            mode: 'generator-count' as const,
+            ...(target.g !== undefined ? { generatorId: target.g } : {}),
+            ...(target.f !== undefined ? { fuelItemId: target.f } : {}),
+            generatorCount: target.c ?? 0,
+            sortOrder: target.s,
+          }
+        : {
+            id: target.id,
+            mode: 'power' as const,
+            ...(target.g !== undefined ? { generatorId: target.g } : {}),
+            ...(target.f !== undefined ? { fuelItemId: target.f } : {}),
+            powerMw: target.w ?? 0,
+            sortOrder: target.s,
+          },
+    )
+    .toSorted((left, right) => left.sortOrder - right.sortOrder)
+    .map((target, index) => ({ ...target, sortOrder: index }));
 }
 
 function decodeSinkRules(value: CompactSinkRuleV1[] | undefined): SinkRule[] {
@@ -663,11 +720,15 @@ function readCompactPlannerProject(value: unknown): CompactPlannerProjectV1 | nu
   }
 
   const sinkRules = readArray(value['sk'], readCompactSinkRule);
-  if (sinkRules === null) {
+  const powerTargets = readArray(value['pt'], readCompactPowerTarget);
+  if (sinkRules === null || powerTargets === null) {
     return null;
   }
   if (sinkRules.length > 0) {
     compact.sk = sinkRules;
+  }
+  if (powerTargets.length > 0) {
+    compact.pt = powerTargets;
   }
 
   const recipeOverrides = readArray(value['r'], readCompactBooleanOverride);
@@ -764,6 +825,54 @@ function readCompactSinkRule(value: unknown): CompactSinkRuleV1 | null {
     id,
     i: itemId,
     m: mode,
+    s: sortOrder,
+  };
+}
+
+function readCompactPowerTarget(value: unknown): CompactPowerTargetV1 | null {
+  if (!isPlanTransferRecord(value)) {
+    return null;
+  }
+  const id = readSafePlanTransferRecordKey(value['id']);
+  const mode = value['m'];
+  const generatorId = readOptionalSafeCompactId(value['g']);
+  const fuelItemId = readOptionalSafeCompactId(value['f']);
+  const sortOrder = readTransferFiniteNumber(value['s']);
+  if (
+    id === undefined ||
+    (mode !== 'g' && mode !== 'p') ||
+    generatorId === null ||
+    fuelItemId === null ||
+    sortOrder === undefined
+  ) {
+    return null;
+  }
+
+  if (mode === 'g') {
+    const generatorCount = readTransferNonNegativeFiniteNumber(value['c']);
+    if (value['c'] !== undefined && generatorCount === undefined) {
+      return null;
+    }
+    return {
+      id,
+      m: mode,
+      ...(generatorId !== undefined ? { g: generatorId } : {}),
+      ...(fuelItemId !== undefined ? { f: fuelItemId } : {}),
+      c: generatorCount ?? 0,
+      s: sortOrder,
+    };
+  }
+
+  const powerMw = readTransferNonNegativeFiniteNumber(value['w']);
+  if (value['w'] !== undefined && powerMw === undefined) {
+    return null;
+  }
+  return {
+    id,
+    m: mode,
+    ...(generatorId !== undefined ? { g: generatorId } : {}),
+    ...(fuelItemId !== undefined ? { f: fuelItemId } : {}),
+    w: powerMw ?? 0,
     s: sortOrder,
   };
 }
@@ -1029,4 +1138,11 @@ function readCompactObjectiveStageOrder(
     }
   }
   return stageOrder.length > 0 ? stageOrder : null;
+}
+
+function readOptionalSafeCompactId(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return readSafePlanTransferRecordKey(value) ?? null;
 }

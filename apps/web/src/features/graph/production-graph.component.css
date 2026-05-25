@@ -33,7 +33,7 @@
 }
 
 .beltwise-flow::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   z-index: 35;
@@ -228,6 +228,11 @@
 .production-node--recipe {
   --node-accent: var(--color-machine);
   --node-border: color-mix(in srgb, var(--color-machine) 46%, var(--color-border));
+}
+
+.production-node--power {
+  --node-accent: var(--color-power);
+  --node-border: color-mix(in srgb, var(--color-power) 56%, var(--color-border));
 }
 
 .production-node--output {
@@ -444,6 +449,86 @@
 .node-badge--done {
   border-color: color-mix(in srgb, var(--color-output) 48%, var(--color-border));
   color: var(--color-output);
+}
+
+.production-node--has-loopbacks {
+  overflow: visible;
+}
+
+.node-loopbacks {
+  position: absolute;
+  right: 12px;
+  bottom: -25px;
+  left: 12px;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.node-loopback {
+  position: relative;
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 5px;
+  min-height: 24px;
+  max-width: 100%;
+  padding: 4px 7px 5px;
+  border: 1px solid color-mix(in srgb, var(--node-accent) 44%, var(--color-border));
+  border-top-color: color-mix(in srgb, var(--node-accent) 30%, transparent);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--node-accent) 12%, transparent), transparent),
+    rgba(11, 15, 18, 0.92);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--node-accent) 24%, transparent),
+    0 8px 18px rgba(0, 0, 0, 0.3);
+  color: var(--color-text);
+  font-size: 11px;
+  line-height: 1.12;
+}
+
+.node-loopback::before {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  left: 8px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--node-accent) 68%, white),
+    transparent
+  );
+  content: '';
+  opacity: 0.7;
+}
+
+.node-loopback__kind {
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--node-accent) 38%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--node-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--node-accent) 74%, white);
+  font-size: 9px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.node-loopback__item {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-loopback strong {
+  overflow: hidden;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .production-node--recipe .node-meta {

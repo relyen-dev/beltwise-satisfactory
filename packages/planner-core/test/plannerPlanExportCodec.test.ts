@@ -70,6 +70,22 @@ describe('Beltwise plan export files', () => {
             sortOrder: 1,
           },
         ],
+        powerTargets: [
+          {
+            id: 'power-generators',
+            mode: 'generator-count',
+            generatorId: 'Build_GeneratorFuel_C',
+            fuelItemId: 'Desc_LiquidFuel_C',
+            generatorCount: 40,
+            sortOrder: 0,
+          },
+          {
+            id: 'power-mw',
+            mode: 'power',
+            powerMw: 10_000,
+            sortOrder: 1,
+          },
+        ],
         sinkRules: [
           {
             id: 'sink-screw',
@@ -159,6 +175,7 @@ describe('Beltwise plan export files', () => {
     expect(decoded.project.graphLayout).toEqual(project.graphLayout);
     expect(decoded.project.buildState).toEqual(project.buildState);
     expect(decoded.project.notes).toBe(project.notes);
+    expect(decoded.project.powerTargets).toEqual(project.powerTargets);
     expect(decoded.project.sinkRules).toEqual(project.sinkRules);
     expect(decoded.project.objectiveProfile).toEqual(project.objectiveProfile);
   });
@@ -217,6 +234,7 @@ describe('Beltwise plan export files', () => {
         sortOrder: 0,
       },
     ]);
+    expect(prepared.powerTargets).toEqual(createDomainPlannerProject().powerTargets);
     expect(prepared.notes).toBe('Check belts\nBring power shards');
     expect(prepared.graphLayout.nodePositions).toEqual({
       'recipe:Recipe_IronPlate_C': { x: 25, y: 50 },
@@ -368,6 +386,22 @@ function createDomainPlannerProject(): PlannerProject {
         itemId: 'Desc_Screw_C',
         mode: 'surplus',
         sortOrder: 0,
+      },
+    ],
+    powerTargets: [
+      {
+        id: 'power-generators',
+        mode: 'generator-count',
+        generatorId: 'Build_GeneratorFuel_C',
+        fuelItemId: 'Desc_LiquidFuel_C',
+        generatorCount: 40,
+        sortOrder: 0,
+      },
+      {
+        id: 'power-mw',
+        mode: 'power',
+        powerMw: 10_000,
+        sortOrder: 1,
       },
     ],
     recipeOverrides: {

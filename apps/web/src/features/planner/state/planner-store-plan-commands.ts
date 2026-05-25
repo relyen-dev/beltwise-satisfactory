@@ -7,6 +7,7 @@ import {
   type RecipeId,
 } from '@beltwise/game-data';
 import {
+  buildGeneratorFuelCatalog,
   createStableId,
   defaultResourceCapPerMinute,
   mutatePlanGraph,
@@ -14,6 +15,7 @@ import {
   mutatePlanMetadata,
   mutatePlanObjective,
   mutatePlanOverrides,
+  mutatePlanPowerTargets,
   mutatePlanSinkRules,
   mutatePlanTargets,
   type ConveyorBeltTier,
@@ -23,6 +25,7 @@ import {
   type ObjectiveWeightKey,
   type PipelineTier,
   type PlannerProject,
+  type PowerTarget,
   type ProductTarget,
   type RateDecimalPlaces,
 } from '@beltwise/planner-core';
@@ -103,6 +106,133 @@ export class PlannerPlanCommandSlice {
     this.options.updateActiveProject((project) =>
       mutatePlanTargets(project, { type: 'set-target-amount', targetId, amountPerMinute }),
     );
+  }
+
+  public addPowerTarget(): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanPowerTargets(project, {
+        type: 'add-draft-power-target',
+        powerTargetId: createStablePowerTargetId(),
+      }),
+    );
+  }
+
+  public duplicatePowerTarget(powerTarget: PowerTarget): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanPowerTargets(project, {
+        type: 'duplicate-power-target',
+        powerTarget,
+        powerTargetId: createStablePowerTargetId(),
+      }),
+    );
+  }
+
+  public removePowerTarget(powerTargetId: string): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanPowerTargets(project, { type: 'remove-power-target', powerTargetId }),
+    );
+  }
+
+  public reorderPowerTargets(powerTargetIds: readonly string[]): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanPowerTargets(project, { type: 'reorder-power-targets', powerTargetIds }),
+    );
+  }
+
+  public updatePowerTargetMode(powerTargetId: string, mode: PowerTarget['mode']): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) =>
+      mutatePlanPowerTargets(project, { type: 'set-power-target-mode', powerTargetId, mode }),
+    );
+  }
+
+  public updatePowerTargetGenerator(
+    powerTargetId: string,
+    generatorId: MachineId | undefined,
+  ): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) => {
+      const currentTarget = project.powerTargets.find((target) => target.id === powerTargetId);
+      if (!currentTarget) {
+        return project;
+      }
+
+      const nextProject = mutatePlanPowerTargets(project, {
+        type: 'set-power-target-generator',
+        powerTargetId,
+        generatorId,
+      });
+      if (
+        currentTarget.fuelItemId === undefined ||
+        this.powerFuelMatchesGenerator(generatorId, currentTarget.fuelItemId)
+      ) {
+        return nextProject;
+      }
+
+      return mutatePlanPowerTargets(nextProject, {
+        type: 'set-power-target-fuel',
+        powerTargetId,
+        fuelItemId: undefined,
+      });
+    });
+  }
+
+  public updatePowerTargetFuel(powerTargetId: string, fuelItemId: ItemId | undefined): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+
+    const target = this.options
+      .activeProject()
+      ?.powerTargets.find((candidate) => candidate.id === powerTargetId);
+    if (
+      fuelItemId !== undefined &&
+      !this.powerFuelMatchesGenerator(target?.generatorId, fuelItemId)
+    ) {
+      return;
+    }
+
+    this.options.updateActiveProject((project) =>
+      mutatePlanPowerTargets(project, {
+        type: 'set-power-target-fuel',
+        powerTargetId,
+        fuelItemId,
+      }),
+    );
+  }
+
+  public updatePowerTargetAmount(powerTargetId: string, amount: number): void {
+    if (this.options.planLocked()) {
+      return;
+    }
+    this.options.updateActiveProject((project) => {
+      const target = project.powerTargets.find((candidate) => candidate.id === powerTargetId);
+      if (!target) {
+        return project;
+      }
+      return mutatePlanPowerTargets(
+        project,
+        target.mode === 'power'
+          ? { type: 'set-power-target-power-mw', powerTargetId, powerMw: amount }
+          : { type: 'set-power-target-generator-count', powerTargetId, generatorCount: amount },
+      );
+    });
   }
 
   public setRecipeEnabled(recipeId: RecipeId, enabled: boolean): void {
@@ -403,10 +533,32 @@ export class PlannerPlanCommandSlice {
     const dataset = this.options.dataset();
     return dataset !== null && isSinkableItem(dataset, itemId);
   }
+
+  private powerFuelMatchesGenerator(
+    generatorId: MachineId | undefined,
+    fuelItemId: ItemId,
+  ): boolean {
+    if (generatorId === undefined) {
+      return false;
+    }
+
+    const dataset = this.options.dataset();
+    if (!dataset) {
+      return true;
+    }
+
+    return buildGeneratorFuelCatalog(dataset).some(
+      (row) => row.generatorId === generatorId && row.fuelItemId === fuelItemId,
+    );
+  }
 }
 
 function createStableTargetId(): string {
   return createStableId('target');
+}
+
+function createStablePowerTargetId(): string {
+  return createStableId('power-target');
 }
 
 function createStableSinkRuleId(): string {
