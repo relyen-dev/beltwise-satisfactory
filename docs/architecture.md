@@ -106,7 +106,12 @@ Feature code should depend on the capability that owns the use case instead of r
 
 Do not reintroduce broad convenience command forwards on `PlannerStoreService`. New tests should cover the capability interface used by the consumer; runtime-store tests should stay focused on composition, persistence/solver wiring, lifecycle hooks, and workspace initialization.
 
-Future optional capabilities should consider plugin-shaped extension seams before they become built-in planner behavior. See [Plugin-Shaped Extension Seams](./rfc/plugin-extension-seams.md) for the current guidance. Runtime third-party plugins are not an accepted architecture decision.
+Future session-scale features, such as linked plan contracts, should add focused
+session/link capabilities instead of expanding `PlannerStoreService` back into a
+feature facade. Future optional capabilities should consider plugin-shaped
+extension seams before they become built-in planner behavior. See
+[Plugin-Shaped Extension Seams](./rfc/plugin-extension-seams.md) for the current
+guidance. Runtime third-party plugins are not an accepted architecture decision.
 
 The generated data pipeline is build-time only. Raw `en-US.json` is read by `scripts/extract-satisfactory-data` and normalized into `apps/web/public/data/satisfactory-current.json`, which is what the Angular app serves.
 

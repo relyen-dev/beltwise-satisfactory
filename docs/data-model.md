@@ -58,14 +58,23 @@ Sessions currently group plans only. Session defaults, save metadata, linked
 plans, logistics routes, map pins/locations, session-wide production balance,
 and session import/export are future extensions.
 
+The planned linked-plan model should store links on the session rather than on
+individual plan exports. A destination plan should keep its normal external
+input requirement by item and rate; session links can cover all or part of that
+requirement by reserving output from another plan. This keeps standalone plan
+JSON/share payloads portable while letting a session explain where an external
+input is expected to come from. Link health, source shortages, destination
+overcoverage, and session-wide balance remain derived state.
+
 Individual plans can be exported as readable Beltwise JSON files with `kind:
 beltwise.plan` and `formatVersion: 1`. A plan export contains one persisted
 project payload plus dataset metadata for mismatch warnings, including product
 targets, power targets, sink rules, recipe/machine/resource settings, external
 inputs, objective settings, graph display/layout, notes, and build state. It
 does not include global user defaults, whole-session state, save-game data,
-share links, or solver output. Imported plans are added as separate local
-projects in the active session and are solved again with the current app dataset.
+share links, linked-plan contracts, or solver output. Imported plans are added
+as separate local projects in the active session and are solved again with the
+current app dataset.
 
 Plan sharing uses a separate compact `bw.p` payload. It stores deltas against
 Beltwise's schema-defined defaults for the current dataset, then compresses that

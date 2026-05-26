@@ -94,6 +94,7 @@ Remaining questions:
 - Should target sinking also be editable directly on the target row, or should the Sinks panel remain the only add/edit surface for now?
 - Should the UI add an `all remaining target output` mode, or keep the current amount-based rule only?
 - How should target-output sink allocations interact with future linked-plan exports, local-use reservations, and session balance?
+- Should target-output sink allocations and linked-plan exports eventually share one output reservation model, or remain separate rules with shared overcommit warnings?
 
 ## Conversion-To-Sink
 
@@ -212,6 +213,7 @@ Node action drawer idea:
 - Initial actions might include sink surplus, mark done, and note.
 - Future actions could include move node to its own plan, create linked export, focus path, or open disposal conversion.
 - The drawer should complement the inspector, not replace it.
+- Link and extraction actions should follow the [linked-plan contract RFC](./linked-plan-contracts.md) so the graph surface does not own session domain state.
 
 ## Suggested Sequence
 

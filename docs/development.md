@@ -30,6 +30,12 @@ Run focused web app tests:
 npm.cmd run test:web
 ```
 
+Run browser smoke tests:
+
+```powershell
+npm.cmd run test:smoke
+```
+
 Run workspace typechecks:
 
 ```powershell
@@ -75,6 +81,7 @@ docs                             architecture, ADRs, RFCs, and product notes
 - Keep `planner-core` graph and project models renderer-neutral.
 - Persist user configuration, not solver output.
 - Add focused tests when changing parser, solver, resource-limit, graph-model, transfer, persistence, or planner capability behavior.
+- Use `npm.cmd run test:smoke` for shallow browser coverage of the assembled Angular planner, graph shell, simple solving path, and local persistence.
 - Test Angular planner behavior through the owning capability (`PlannerWorkspaceSlice`, `PlannerPlanConfigStore`, `PlannerDefaultsStore`, `PlannerGraphStore`, transfer, solving, or workbench) instead of rebuilding broad root-store coverage.
 - Run `npm.cmd test`, `npm.cmd run typecheck`, and `npm.cmd run build` before handing off meaningful changes.
 - If a sandboxed run of `npm.cmd test` fails while loading `vitest.config.mjs` with `Access is denied`, rerun the same command with the appropriate permissions before changing test configuration.

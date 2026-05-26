@@ -35,6 +35,7 @@ The first supporting layer is now in place: stronger panels, icons, defaults, pl
 - [Workbench UX Polish](./workbench-ux-polish.md) covers existing recipe/resource panel polish notes.
 - [Resource Providers, Save Imports, And Randomized Nodes](./resource-providers.md) covers save-file import and randomized-node research.
 - [Sinks, Disposal, And Power Targets](./sinks-disposal-and-power-targets.md) captures the shipped first passes for direct sinks, target-output sinks, and explicit power targets, plus follow-up work for conversion-to-sink, nuclear waste, solver-selected fuels, and maximize-power planning.
+- [Linked Plan Contracts And Node Extraction](./linked-plan-contracts.md) defines the proposed session link contract, partial export/import behavior, selected-node action tray, and split-node-into-plan workflow.
 - [Plugin-Shaped Extension Seams](./plugin-extension-seams.md) captures when expanded features should become optional extension seams instead of built-in planner behavior.
 - [Product Spec](../product-spec.md) remains the north star for current scope and MVP boundaries.
 - [Architecture](../architecture.md) defines current package boundaries and renderer isolation.
@@ -74,14 +75,16 @@ The initial workspace-priority set is implemented:
 
 These are plausible next steps before the larger save/logistics systems. Some are cleanup passes that can reduce risk before adding more stateful features.
 
-1. Design a workspace dashboard/navigation entry point that can lead to factory plans, session views, defaults, transfer actions, and future save-wide planning.
-2. Add browser smoke tests for graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
-3. Improve graph connection display controls.
-4. Add drill-in graph views for special production loops.
-5. Design the linked-plan contract model before implementing logistics.
-6. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
-7. Continue sink/disposal/power planning from the shipped first passes toward conversion-to-sink, nuclear waste handling, solver-selected fuel sets, and maximize-power objectives.
-8. Keep doing small technical refactors only where a capability or workbench slice has become hard to test or review; avoid recreating a broad planner facade.
+1. Add browser smoke tests for graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states before adding more cross-plan state.
+2. Add a selected-node action tray that exposes existing safe actions first: done state, notes, path focus, open relevant controls, and current sink actions.
+3. Design and implement the linked-plan contract model for partial output reservations and destination external-input coverage before implementing logistics.
+4. Add manual linked-plan editing between output targets and external inputs, including partial amounts and overcommit warnings.
+5. Add recipe-node extraction into a new or existing plan once manual links are stable.
+6. Design a workspace dashboard/navigation entry point that can lead to factory plans, session views, defaults, transfer actions, and future save-wide planning.
+7. Improve graph connection display controls and add drill-in graph views for special production loops.
+8. Extend sessions with only the metadata needed for save imports, linked plans, or notes once one of those features is pulled forward.
+9. Continue sink/disposal/power planning from the shipped first passes toward conversion-to-sink, nuclear waste handling, solver-selected fuel sets, and maximize-power objectives.
+10. Keep doing small technical refactors only where a capability or workbench slice has become hard to test or review; avoid recreating a broad planner facade.
 
 ## Future Systems
 
@@ -112,7 +115,9 @@ This index keeps the original brainstorm traceable while the rest of the RFC gro
 | Save importing for defaults/plan settings | Sessions/save import       | [Sessions And Saves](#sessions-and-saves)                                                      |
 | Randomized node maps                      | Resource providers         | [Sessions And Saves](#sessions-and-saves) and [resource-provider RFC](./resource-providers.md) |
 | Game sessions                             | Persistence/product model  | [Sessions And Saves](#sessions-and-saves)                                                      |
-| Linked plans                              | Session-scale planning     | [Linked Plans](#linked-plans)                                                                  |
+| Linked plans                              | Session-scale planning     | [Linked Plans](#linked-plans) and [linked-plan RFC](./linked-plan-contracts.md)                |
+| Node action tray                          | Graph UX/session planning  | [Inspector](#inspector) and [linked-plan RFC](./linked-plan-contracts.md)                      |
+| Pull recipe node into another plan        | Session-scale planning UX  | [Linked Plans](#linked-plans) and [linked-plan RFC](./linked-plan-contracts.md)                |
 | Train/vehicle logistics                   | Session-scale logistics    | [Logistics](#logistics)                                                                        |
 | Save-wide logistics overview              | Session-scale logistics UX | [Session Logistics Overview](#session-logistics-overview)                                      |
 | Solver priorities                         | Solver/UI                  | [Solver Objectives](#solver-objectives)                                                        |
@@ -317,6 +322,19 @@ Concept:
 - A linked export can supply all or part of another plan's demand.
 - Session-level balance can show surplus, shortages, and overcommitted production.
 
+The first implementation should treat links as session-scoped contracts layered
+over existing plan intent:
+
+- Destination plans keep normal external input requirements.
+- Links satisfy all or part of those requirements.
+- Any input amount not covered by links remains manual or unlinked external supply.
+- Source plans reserve part of a target output or solved surplus without
+  changing the source production target.
+- Fixed targets can export from the configured amount; maximize targets and
+  surplus exports depend on the latest solved amount.
+- Links and target-output sink rules should be shown as competing reservations
+  against the same available output when they touch the same item.
+
 Possible link types:
 
 - Manual link: user says `Plan A exports 120 Rubber/min to Plan B`.
@@ -332,6 +350,11 @@ Rules to protect clarity:
 - Recompute linked balances when source or destination plans change.
 - Warn when downstream demand exceeds upstream available export.
 - Avoid circular dependency solving at first; detect cycles and explain them.
+
+The dedicated [Linked Plan Contracts And Node Extraction](./linked-plan-contracts.md)
+RFC is the working contract for partial links, destination input coverage,
+selected-node action tray behavior, and the workflow that extracts a solved
+production node into a new or existing plan.
 
 ## Logistics
 
@@ -607,17 +630,20 @@ Recommended path:
 
 ## Suggested Sequence
 
-1. Design and implement a workspace dashboard/navigation entry point so users can choose plans, defaults, session-level surfaces, and future save views without landing directly in the last graph.
-2. Add browser smoke tests around graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
-3. Add graph connection display controls and drill-in views.
-4. Write a focused RFC for linked-plan contracts: exports, imports, item pools, and how those should interact with manual external inputs.
-5. Continue power planning with solver-selected fuel sets and maximize-power objectives once manual generator/fuel targets have enough UX mileage.
-6. Extend the session data model only with fields needed by the linked-plan or save-import feature selected next.
-7. Add session import/export after session-scoped data exists beyond plan grouping.
-8. Prototype linked plans with manual links before logistics-backed links.
-9. Add a schematic session logistics overview once linked plans exist.
-10. Research save-derived logistics only after save import has a reliable parser boundary.
-11. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
+1. Add browser smoke tests around graph rendering, planner editing, persistence reload, plan transfer, and infeasible/error states.
+2. Build a selected-node action tray with existing safe graph actions so the interaction pattern is proven before link creation depends on it.
+3. Add session-scoped linked-plan contracts, persistence migration, hydration, and pure balance selectors.
+4. Add manual partial links from source output targets to destination external inputs, with source and destination warning states.
+5. Extend links to solved surplus/byproduct outputs after target-output links are stable.
+6. Add node-driven link creation from selected output and external input nodes.
+7. Add recipe-node extraction into a new plan, then into an existing plan, starting with straightforward single-product recipe nodes.
+8. Design and implement a workspace dashboard/navigation entry point once sessions have link status worth summarizing.
+9. Add graph connection display controls and drill-in views.
+10. Continue power planning with solver-selected fuel sets and maximize-power objectives once manual generator/fuel targets have enough UX mileage.
+11. Add session import/export after session-scoped data exists beyond plan grouping.
+12. Add a schematic session logistics overview once linked plans exist.
+13. Research save-derived logistics only after save import has a reliable parser boundary.
+14. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
 
 ## Open Questions
 
@@ -627,7 +653,9 @@ Recommended path:
 - Which icon sizes should be committed: `64x64`, `128x128`, or both?
 - How should the extracted map PNG and default node catalog be schema-validated and versioned before session/map planning uses them?
 - How should public distribution handle extracted game icons and asset licensing/community guidelines?
-- Should plan links be one-to-one explicit connections, named item pools, or both?
+- Should plan links start as one-to-one explicit connections and add named item pools later, or should both ship together?
+- Should target-output sink rules and linked exports share one generalized output reservation model?
+- Should extracting a production node also disable that recipe in the original plan when valid, or should Beltwise leave that choice to the user?
 - How much save-derived data should be allowed to update an existing plan automatically?
 - Are logistics routes best modeled as capacities first, or as physical objects first?
 - Should the inspector own navigation actions into panels, or should panel controls remain independent and merely react to selection?
