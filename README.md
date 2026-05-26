@@ -47,6 +47,7 @@ The Angular app is intentionally thin around domain work. `PlannerStoreService` 
 
 Good starting points:
 
+- [docs/user-guide.md](./docs/user-guide.md) for beta user-facing help.
 - [docs/architecture.md](./docs/architecture.md) for package boundaries.
 - [docs/product-spec.md](./docs/product-spec.md) for product direction and roadmap.
 - [packages/planner-core/src/plan.ts](./packages/planner-core/src/plan.ts) for saved project shape.
@@ -103,6 +104,8 @@ apps/web/src/features/planner
 
 ## Project Docs
 
+- [docs/user-guide.md](./docs/user-guide.md) is the beta user guide.
+- [docs/beta-notes.md](./docs/beta-notes.md) sets beta expectations and feedback guidance.
 - [docs/product-spec.md](./docs/product-spec.md) captures the product direction and MVP scope.
 - [docs/architecture.md](./docs/architecture.md) summarizes package ownership and data flow.
 - [docs/data-model.md](./docs/data-model.md) describes generated data and persisted project data.
