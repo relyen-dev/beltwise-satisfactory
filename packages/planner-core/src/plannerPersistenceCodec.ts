@@ -1,5 +1,6 @@
 import type { GameDataset, ItemId, MachineId, RecipeId } from '@beltwise/game-data';
 import {
+  copyPlannerSessionLinksForTransfer,
   createPlannerSession,
   hydratePlannerProject,
   hydratePlannerUserDefaults,
@@ -13,6 +14,9 @@ import {
   type PipelineTier,
   type PlannerProject,
   type PlannerSession,
+  type PlannerSessionLink,
+  type PlannerSessionLinkDestination,
+  type PlannerSessionLinkSource,
   type PlannerUserDefaults,
   type PowerTarget,
   type ProductTarget,
@@ -23,6 +27,9 @@ import { uniqueStrings } from './internal/uniqueStrings';
 import {
   isPlanTransferRecord,
   normalizePlanTransferNote,
+  readPlanTransferNote,
+  readSafePlanTransferRecordKey,
+  readTransferNonNegativeFiniteNumber,
   readTransferString,
 } from './planTransferFieldCodecs';
 import {
@@ -80,6 +87,29 @@ export interface StoredPlannerSessionV3 {
   updatedAt: string;
   projectIds: string[];
   activeProjectId?: string;
+  links?: StoredPlannerSessionLinkV3[];
+}
+
+export interface StoredPlannerSessionLinkV3 {
+  id: string;
+  itemId: ItemId;
+  amountPerMinute: number;
+  source: StoredPlannerSessionLinkSourceV3;
+  destination: StoredPlannerSessionLinkDestinationV3;
+  note?: string;
+  paused?: boolean;
+}
+
+export interface StoredPlannerSessionLinkSourceV3 {
+  kind: 'target-output';
+  projectId: string;
+  targetId: string;
+}
+
+export interface StoredPlannerSessionLinkDestinationV3 {
+  kind: 'external-input';
+  projectId: string;
+  itemId: ItemId;
 }
 
 export interface StoredPlannerProjectV1 {
@@ -420,8 +450,9 @@ function hydrateStoredSessions(
   }
 
   const projectIds = new Set(projects.map((project) => project.id));
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
   const hydratedSessions = (storedSessions ?? [])
-    .map((session) => decodeStoredPlannerSession(session, dataset, projectIds))
+    .map((session) => decodeStoredPlannerSession(session, dataset, projectsById, projectIds))
     .filter((session): session is PlannerSession => session !== null);
 
   return ensureAllProjectsBelongToSessions(hydratedSessions, projects, storedActiveProjectId);
@@ -430,6 +461,7 @@ function hydrateStoredSessions(
 function decodeStoredPlannerSession(
   session: unknown,
   dataset: GameDataset,
+  projectsById: ReadonlyMap<string, PlannerProject>,
   validProjectIds: ReadonlySet<string>,
 ): PlannerSession | null {
   if (!isPlanTransferRecord(session)) {
@@ -458,6 +490,7 @@ function decodeStoredPlannerSession(
     updatedAt: readTransferString(session['updatedAt']) ?? createdAt,
     projectIds,
     ...(activeProjectId !== undefined ? { activeProjectId } : {}),
+    links: decodeStoredPlannerSessionLinks(session['links'], projectsById, new Set(projectIds)),
   });
 }
 
@@ -519,8 +552,9 @@ function normalizeSessionsForStorage(
   }
 
   const validProjectIds = new Set(projects.map((project) => project.id));
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
   const normalizedSessions = (sessions ?? [])
-    .map((session) => normalizeSessionForStorage(session, validProjectIds))
+    .map((session) => normalizeSessionForStorage(session, projectsById, validProjectIds))
     .filter((session): session is PlannerSession => session !== null);
 
   if (normalizedSessions.length === 0) {
@@ -563,6 +597,7 @@ function mergeOrphanProjectsIntoSessions(
 
 function normalizeSessionForStorage(
   session: PlannerSession,
+  projectsById: ReadonlyMap<string, PlannerProject>,
   validProjectIds: ReadonlySet<string>,
 ): PlannerSession | null {
   const projectIds = uniqueStrings(session.projectIds).filter((projectId) =>
@@ -584,6 +619,11 @@ function normalizeSessionForStorage(
     updatedAt: session.updatedAt,
     projectIds,
     ...(activeProjectId !== undefined ? { activeProjectId } : {}),
+    links: normalizePlannerSessionLinksForStorage(
+      session.links ?? [],
+      projectsById,
+      new Set(projectIds),
+    ),
   };
 }
 
@@ -659,10 +699,12 @@ function copyPlannerSession(session: PlannerSession): PlannerSession {
   return {
     ...session,
     projectIds: [...session.projectIds],
+    links: copyPlannerSessionLinksForTransfer(session.links ?? []),
   };
 }
 
 function toStoredPlannerSessionV3(session: PlannerSession): StoredPlannerSessionV3 {
+  const links = copyPlannerSessionLinksForTransfer(session.links ?? []);
   return {
     id: session.id,
     name: normalizePlannerName(session.name),
@@ -671,6 +713,131 @@ function toStoredPlannerSessionV3(session: PlannerSession): StoredPlannerSession
     updatedAt: session.updatedAt,
     projectIds: [...session.projectIds],
     ...(session.activeProjectId !== undefined ? { activeProjectId: session.activeProjectId } : {}),
+    ...(links.length > 0 ? { links: links.map(toStoredPlannerSessionLinkV3) } : {}),
+  };
+}
+
+function decodeStoredPlannerSessionLinks(
+  value: unknown,
+  projectsById: ReadonlyMap<string, PlannerProject>,
+  sessionProjectIds: ReadonlySet<string>,
+): PlannerSessionLink[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const links: PlannerSessionLink[] = [];
+  const seenIds = new Set<string>();
+  for (const link of value) {
+    const decoded = decodeStoredPlannerSessionLink(link, projectsById, sessionProjectIds);
+    if (!decoded || seenIds.has(decoded.id)) {
+      continue;
+    }
+    seenIds.add(decoded.id);
+    links.push(decoded);
+  }
+  return links;
+}
+
+function normalizePlannerSessionLinksForStorage(
+  links: readonly PlannerSessionLink[],
+  projectsById: ReadonlyMap<string, PlannerProject>,
+  sessionProjectIds: ReadonlySet<string>,
+): PlannerSessionLink[] {
+  const normalizedLinks = links.flatMap((link) => {
+    const normalized = decodeStoredPlannerSessionLink(link, projectsById, sessionProjectIds);
+    return normalized ? [normalized] : [];
+  });
+  const seenIds = new Set<string>();
+  return normalizedLinks.filter((link) => {
+    if (seenIds.has(link.id)) {
+      return false;
+    }
+    seenIds.add(link.id);
+    return true;
+  });
+}
+
+function decodeStoredPlannerSessionLink(
+  link: unknown,
+  projectsById: ReadonlyMap<string, PlannerProject>,
+  sessionProjectIds: ReadonlySet<string>,
+): PlannerSessionLink | null {
+  if (!isPlanTransferRecord(link)) {
+    return null;
+  }
+
+  const id = readSafePlanTransferRecordKey(link['id']);
+  const itemId = readSafePlanTransferRecordKey(link['itemId']) as ItemId | undefined;
+  const amountPerMinute = readTransferNonNegativeFiniteNumber(link['amountPerMinute']);
+  const source = readStoredPlannerSessionLinkSource(link['source']);
+  const destination = readStoredPlannerSessionLinkDestination(link['destination']);
+  if (
+    id === undefined ||
+    itemId === undefined ||
+    amountPerMinute === undefined ||
+    source === null ||
+    destination === null ||
+    destination.itemId !== itemId ||
+    !sessionProjectIds.has(source.projectId) ||
+    !sessionProjectIds.has(destination.projectId)
+  ) {
+    return null;
+  }
+
+  const sourceProject = projectsById.get(source.projectId);
+  const sourceTarget = sourceProject?.targets.find((target) => target.id === source.targetId);
+  const destinationProject = projectsById.get(destination.projectId);
+  const destinationInput = destinationProject?.itemInputs[destination.itemId];
+  if (!sourceTarget || sourceTarget.itemId !== itemId || destinationInput === undefined) {
+    return null;
+  }
+
+  const note = readPlanTransferNote(link['note']);
+  return {
+    id,
+    itemId,
+    amountPerMinute,
+    source,
+    destination,
+    ...(note.length > 0 ? { note } : {}),
+    ...(link['paused'] === true ? { paused: true } : {}),
+  };
+}
+
+function readStoredPlannerSessionLinkSource(value: unknown): PlannerSessionLinkSource | null {
+  if (!isPlanTransferRecord(value) || value['kind'] !== 'target-output') {
+    return null;
+  }
+  const projectId = readSafePlanTransferRecordKey(value['projectId']);
+  const targetId = readSafePlanTransferRecordKey(value['targetId']);
+  return projectId !== undefined && targetId !== undefined
+    ? { kind: 'target-output', projectId, targetId }
+    : null;
+}
+
+function readStoredPlannerSessionLinkDestination(
+  value: unknown,
+): PlannerSessionLinkDestination | null {
+  if (!isPlanTransferRecord(value) || value['kind'] !== 'external-input') {
+    return null;
+  }
+  const projectId = readSafePlanTransferRecordKey(value['projectId']);
+  const itemId = readSafePlanTransferRecordKey(value['itemId']) as ItemId | undefined;
+  return projectId !== undefined && itemId !== undefined
+    ? { kind: 'external-input', projectId, itemId }
+    : null;
+}
+
+function toStoredPlannerSessionLinkV3(link: PlannerSessionLink): StoredPlannerSessionLinkV3 {
+  return {
+    id: link.id,
+    itemId: link.itemId,
+    amountPerMinute: link.amountPerMinute,
+    source: { ...link.source },
+    destination: { ...link.destination },
+    ...(link.note !== undefined ? { note: link.note } : {}),
+    ...(link.paused === true ? { paused: true } : {}),
   };
 }
 

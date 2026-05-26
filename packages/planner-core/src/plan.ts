@@ -54,6 +54,29 @@ export interface PlannerSession {
   updatedAt: string;
   projectIds: string[];
   activeProjectId?: string;
+  links: PlannerSessionLink[];
+}
+
+export interface PlannerSessionLink {
+  id: string;
+  itemId: ItemId;
+  amountPerMinute: number;
+  source: PlannerSessionLinkSource;
+  destination: PlannerSessionLinkDestination;
+  note?: string;
+  paused?: boolean;
+}
+
+export interface PlannerSessionLinkSource {
+  kind: 'target-output';
+  projectId: string;
+  targetId: string;
+}
+
+export interface PlannerSessionLinkDestination {
+  kind: 'external-input';
+  projectId: string;
+  itemId: ItemId;
 }
 
 export interface PlannerProjectSummary {
@@ -230,6 +253,7 @@ export interface PlannerSessionCreateOptions {
   datasetId: string;
   projectIds?: readonly string[];
   activeProjectId?: string;
+  links?: readonly PlannerSessionLink[];
   createdAt?: string;
   updatedAt?: string;
   now?: string;
@@ -580,7 +604,32 @@ export function createPlannerSession(options: PlannerSessionCreateOptions): Plan
     updatedAt,
     projectIds,
     ...(activeProjectId !== undefined ? { activeProjectId } : {}),
+    links: copyPlannerSessionLinksForTransfer(options.links ?? []),
   };
+}
+
+export function copyPlannerSessionLinksForTransfer(
+  links: readonly PlannerSessionLink[],
+): PlannerSessionLink[] {
+  return links.flatMap((link) => {
+    const amountPerMinute = readTransferNonNegativeFiniteNumber(link.amountPerMinute);
+    if (amountPerMinute === undefined) {
+      return [];
+    }
+
+    const note = normalizePlainTextNote(link.note ?? '');
+    return [
+      {
+        id: link.id,
+        itemId: link.itemId,
+        amountPerMinute,
+        source: { ...link.source },
+        destination: { ...link.destination },
+        ...(note.length > 0 ? { note } : {}),
+        ...(link.paused === true ? { paused: true } : {}),
+      },
+    ];
+  });
 }
 
 export function hydratePlannerProject(value: unknown, dataset: GameDataset): PlannerProject | null {

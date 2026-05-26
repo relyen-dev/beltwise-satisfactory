@@ -219,6 +219,7 @@ export function selectPlannerSessionInWorkspace(
     ...session,
     projectIds: [replacementProject.id],
     activeProjectId: replacementProject.id,
+    links: [],
     updatedAt: options.now,
   });
   return workspaceResult({
@@ -388,6 +389,7 @@ export function deletePlannerSessionFromWorkspace(
     ...nextSession,
     projectIds: [replacementProject.id],
     activeProjectId: replacementProject.id,
+    links: [],
     updatedAt: options.now,
   });
   return workspaceResult({
@@ -712,6 +714,7 @@ function replaceProjectInSession(
     ...session,
     projectIds,
     activeProjectId: replacementProject.id,
+    links: filterPlannerSessionLinksForProjects(session, projectIds),
     updatedAt: now,
   };
 }
@@ -734,6 +737,18 @@ function removeProjectFromSession(
     ...session,
     projectIds,
     activeProjectId,
+    links: filterPlannerSessionLinksForProjects(session, projectIds),
     updatedAt: session.projectIds.length === projectIds.length ? session.updatedAt : now,
   };
+}
+
+function filterPlannerSessionLinksForProjects(
+  session: PlannerSession,
+  projectIds: readonly string[],
+): PlannerSession['links'] {
+  const projectIdSet = new Set(projectIds);
+  return (session.links ?? []).filter(
+    (link) =>
+      projectIdSet.has(link.source.projectId) && projectIdSet.has(link.destination.projectId),
+  );
 }

@@ -4,10 +4,12 @@ import {
   createDefaultUserDefaults,
   createObjectiveProfileFromPreset,
   createPlannerProject,
+  createPlannerSession,
   decodePlannerPersistenceState,
   encodePlannerPersistenceState,
   PLANNER_STORAGE_SCHEMA_VERSION,
   type PlannerProject,
+  type PlannerSessionLink,
   type PlannerUserDefaults,
   type StoredPlannerProjectV1,
 } from '@beltwise/planner-core';
@@ -355,6 +357,143 @@ describe('decodePlannerPersistenceState', () => {
       [projectA.id],
       [projectB.id],
     ]);
+    expect(decoded?.sessions.map((session) => session.links)).toEqual([[], []]);
+  });
+
+  it('round-trips session links through workspace persistence', () => {
+    const sourceProject = createDomainPlannerProject();
+    const destinationProject: PlannerProject = {
+      ...createDomainPlannerProject(),
+      id: 'project-linked-inputs',
+      name: 'Linked inputs',
+      itemInputs: {
+        Desc_IronPlate_C: { amountPerMinute: 8 },
+      },
+    };
+    const link: PlannerSessionLink = {
+      id: 'link-plates',
+      itemId: 'Desc_IronPlate_C',
+      amountPerMinute: 5,
+      source: {
+        kind: 'target-output',
+        projectId: sourceProject.id,
+        targetId: 'target-fixed',
+      },
+      destination: {
+        kind: 'external-input',
+        projectId: destinationProject.id,
+        itemId: 'Desc_IronPlate_C',
+      },
+      note: 'Feed the next floor',
+    };
+    const session = createPlannerSession({
+      id: 'session-linked',
+      name: 'Linked session',
+      datasetId: tinySatisfactoryDataset.id,
+      projectIds: [sourceProject.id, destinationProject.id],
+      activeProjectId: destinationProject.id,
+      links: [link],
+      now: '2026-05-12T00:00:00.000Z',
+    });
+
+    const encoded = encodePlannerPersistenceState(
+      [sourceProject, destinationProject],
+      destinationProject.id,
+      createDomainUserDefaults(),
+      [session],
+      session.id,
+    );
+    const decoded = decodePlannerPersistenceState(encoded, tinySatisfactoryDataset);
+
+    expect(encoded.sessions[0]?.links).toEqual([link]);
+    expect(decoded?.sessions[0]?.links).toEqual([link]);
+    expect('links' in encoded.projects[0]!).toBe(false);
+  });
+
+  it('drops invalid or stale persisted session links during hydration', () => {
+    const validLink = rawSessionLink();
+    const state = decodePlannerPersistenceState(
+      {
+        schemaVersion: PLANNER_STORAGE_SCHEMA_VERSION,
+        activeSessionId: 'session-linked',
+        activeProjectId: 'project-linked-inputs',
+        sessions: [
+          {
+            id: 'session-linked',
+            name: 'Linked session',
+            datasetId: tinySatisfactoryDataset.id,
+            createdAt: '2026-05-12T00:00:00.000Z',
+            updatedAt: '2026-05-12T00:00:00.000Z',
+            projectIds: ['project-a', 'project-linked-inputs'],
+            activeProjectId: 'project-linked-inputs',
+            links: [
+              validLink,
+              { ...validLink, id: undefined },
+              { ...validLink, id: 'link-negative', amountPerMinute: -1 },
+              { ...validLink, id: 'link-infinite', amountPerMinute: Number.POSITIVE_INFINITY },
+              {
+                ...validLink,
+                id: 'link-missing-source-project',
+                source: { ...validLink.source, projectId: 'missing-project' },
+              },
+              {
+                ...validLink,
+                id: 'link-missing-source-target',
+                source: { ...validLink.source, targetId: 'missing-target' },
+              },
+              {
+                ...validLink,
+                id: 'link-missing-destination-project',
+                destination: { ...validLink.destination, projectId: 'missing-project' },
+              },
+              {
+                ...validLink,
+                id: 'link-mismatched-destination-item',
+                destination: { ...validLink.destination, itemId: 'Desc_Wire_C' },
+              },
+              {
+                ...validLink,
+                id: 'link-missing-destination-input',
+                itemId: 'Desc_Wire_C',
+                source: { ...validLink.source, targetId: 'target-wire' },
+                destination: { ...validLink.destination, itemId: 'Desc_Wire_C' },
+              },
+            ],
+          },
+        ],
+        projects: [
+          rawPlannerProject({
+            id: 'project-a',
+            targets: [
+              {
+                id: 'target-fixed',
+                itemId: 'Desc_IronPlate_C',
+                mode: 'fixed',
+                amountPerMinute: 20,
+                sortOrder: 0,
+              },
+              {
+                id: 'target-wire',
+                itemId: 'Desc_Wire_C',
+                mode: 'fixed',
+                amountPerMinute: 20,
+                sortOrder: 1,
+              },
+            ],
+          }),
+          rawPlannerProject({
+            id: 'project-linked-inputs',
+            itemInputs: {
+              Desc_IronPlate_C: { amountPerMinute: 8 },
+            },
+          }),
+        ],
+        userDefaults: createDomainUserDefaults(),
+      },
+      tinySatisfactoryDataset,
+    );
+
+    expect(state?.sessions[0]?.links).toEqual([validLink]);
   });
 
   it('round-trips objective preset strategy and stage order through persistence', () => {
@@ -783,6 +922,41 @@ function rawPlannerProject(overrides: Record<string, unknown> = {}): Record<stri
     itemInputs: {},
     machineOverrides: {},
     graphLayout: { nodePositions: {} },
+    ...overrides,
+  };
+}
+
+interface RawSessionLinkRecord extends Record<string, unknown> {
+  id?: unknown;
+  itemId?: unknown;
+  amountPerMinute?: unknown;
+  source: Record<string, unknown> & {
+    kind?: unknown;
+    projectId?: unknown;
+    targetId?: unknown;
+  };
+  destination: Record<string, unknown> & {
+    kind?: unknown;
+    projectId?: unknown;
+    itemId?: unknown;
+  };
+}
+
+function rawSessionLink(overrides: Partial<RawSessionLinkRecord> = {}): RawSessionLinkRecord {
+  return {
+    id: 'link-plates',
+    itemId: 'Desc_IronPlate_C',
+    amountPerMinute: 5,
+    source: {
+      kind: 'target-output',
+      projectId: 'project-a',
+      targetId: 'target-fixed',
+    },
+    destination: {
+      kind: 'external-input',
+      projectId: 'project-linked-inputs',
+      itemId: 'Desc_IronPlate_C',
+    },
     ...overrides,
   };
 }

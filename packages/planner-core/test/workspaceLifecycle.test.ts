@@ -175,6 +175,7 @@ describe('workspace lifecycle', () => {
       updatedAt: NOW,
       projectIds: ['missing-project'],
       activeProjectId: 'missing-project',
+      links: [],
     };
 
     const result = selectPlannerSessionInWorkspace(

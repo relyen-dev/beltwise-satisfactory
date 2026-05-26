@@ -48,6 +48,7 @@ describe('PlannerWorkspaceSlice', () => {
       updatedAt: NOW,
       projectIds: ['missing-project'],
       activeProjectId: 'missing-project',
+      links: [],
     };
     const { store } = createWorkspaceHarness();
 
