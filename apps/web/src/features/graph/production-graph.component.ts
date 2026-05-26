@@ -338,6 +338,28 @@ export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDe
     this.handleTargetAmountChange(node, event);
   }
 
+  public doneTrayLabel(nodeId: string): string {
+    return this.isNodeDone(nodeId) ? 'Undo' : 'Done';
+  }
+
+  public doneTrayTitle(node: BeltwiseFoblexFlowNode): string {
+    return this.isNodeDone(node.id)
+      ? `Mark ${node.data.label} as not done`
+      : `Mark ${node.data.label} as done`;
+  }
+
+  public toggleNodeDoneFromTray(nodeId: string, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.nodeDoneToggled.emit(nodeId);
+  }
+
+  public clearNodeSelectionFromTray(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.nodeSelectionSet.emit(null);
+  }
+
   public stopNodeControlEvent(event: Event): void {
     event.stopPropagation();
   }

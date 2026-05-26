@@ -106,6 +106,40 @@
           [attr.aria-pressed]="isNodeSelected(node.id)"
           (fNodePositionChange)="handleNodePosition(node.id, $event)"
         >
+          @if (isNodeSelected(node.id)) {
+            <div
+              class="selected-node-tray"
+              role="group"
+              aria-label="Selected node actions"
+              (pointerdown)="stopNodeControlEvent($event)"
+              (pointerup)="stopNodeControlEvent($event)"
+              (mousedown)="stopNodeControlEvent($event)"
+              (mouseup)="stopNodeControlEvent($event)"
+              (touchstart)="stopNodeControlEvent($event)"
+              (touchend)="stopNodeControlEvent($event)"
+              (dblclick)="stopNodeControlEvent($event)"
+            >
+              <button
+                type="button"
+                class="selected-node-tray__button"
+                [title]="doneTrayTitle(node)"
+                [attr.aria-label]="doneTrayTitle(node)"
+                [attr.aria-pressed]="isNodeDone(node.id)"
+                (click)="toggleNodeDoneFromTray(node.id, $event)"
+              >
+                {{ doneTrayLabel(node.id) }}
+              </button>
+              <button
+                type="button"
+                class="selected-node-tray__button"
+                title="Clear selected node"
+                aria-label="Clear selected node"
+                (click)="clearNodeSelectionFromTray($event)"
+              >
+                Clear
+              </button>
+            </div>
+          }
           <div
             fDragHandle
             class="node-drag-surface"

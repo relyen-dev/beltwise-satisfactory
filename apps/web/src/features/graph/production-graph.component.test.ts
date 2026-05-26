@@ -405,6 +405,59 @@ describe('ProductionGraphComponent template', () => {
     expect(targetAmountChanged).toEqual([{ targetId: 'target-plate', amountPerMinute: 42 }]);
   });
 
+  it('renders a compact selected-node tray for done and clear actions', async () => {
+    const { controls, fixture, nodeDoneToggled, nodeSelectionSet } =
+      await createRenderedGraphHarness();
+
+    expect(selectedNodeTray(fixture)).toBeNull();
+
+    controls.selectedNodeId.set(OUTPUT_NODE_ID);
+    fixture.detectChanges();
+
+    let tray = requiredSelectedNodeTray(fixture);
+    expect(tray.getAttribute('role')).toBe('group');
+    expect(tray.getAttribute('aria-label')).toBe('Selected node actions');
+    let buttons = Array.from(tray.querySelectorAll('button'));
+    expect(buttons).toHaveLength(2);
+
+    const doneButton = requiredSelectedNodeTrayButton(fixture, 'Done');
+    expect(doneButton.getAttribute('aria-label')).toBe('Mark Iron Plate as done');
+    expect(doneButton.getAttribute('aria-pressed')).toBe('false');
+
+    const documentClick = vi.fn();
+    document.addEventListener('click', documentClick);
+    doneButton.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    document.removeEventListener('click', documentClick);
+
+    expect(documentClick).not.toHaveBeenCalled();
+    expect(nodeDoneToggled).toEqual([OUTPUT_NODE_ID]);
+
+    controls.completedNodeIds.set(new Set([OUTPUT_NODE_ID]));
+    fixture.detectChanges();
+
+    const undoButton = requiredSelectedNodeTrayButton(fixture, 'Undo');
+    expect(undoButton.getAttribute('aria-label')).toBe('Mark Iron Plate as not done');
+    expect(undoButton.getAttribute('aria-pressed')).toBe('true');
+
+    requiredSelectedNodeTrayButton(fixture, 'Clear').dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+
+    expect(nodeSelectionSet).toEqual([null]);
+
+    controls.selectedNodeId.set(null);
+    fixture.detectChanges();
+
+    expect(selectedNodeTray(fixture)).toBeNull();
+
+    controls.selectedNodeId.set(OUTPUT_NODE_ID);
+    fixture.detectChanges();
+
+    tray = requiredSelectedNodeTray(fixture);
+    buttons = Array.from(tray.querySelectorAll('button'));
+    expect(buttons).toHaveLength(2);
+  });
+
   it('fits a freshly rendered graph into the canvas', async () => {
     const { controls, fixture } = await createRenderedGraphHarness();
     const canvas = { fitToScreen: vi.fn() };
@@ -747,13 +800,17 @@ async function createRenderedGraphHarness(): Promise<RenderedProductionGraphHarn
   await TestBed.compileComponents();
   const fixture = TestBed.createComponent(ProductionGraphComponent);
   const controls = installRenderedGraphInputs(fixture.componentInstance);
+  const nodeDoneToggled: string[] = [];
+  const nodeSelectionSet: Array<string | null> = [];
   const targetAmountChanged: Array<{ targetId: string; amountPerMinute: number }> = [];
+  fixture.componentInstance.nodeDoneToggled.subscribe((nodeId) => nodeDoneToggled.push(nodeId));
+  fixture.componentInstance.nodeSelectionSet.subscribe((nodeId) => nodeSelectionSet.push(nodeId));
   fixture.componentInstance.targetAmountChanged.subscribe((change) =>
     targetAmountChanged.push(change),
   );
   fixture.detectChanges();
 
-  return { controls, fixture, targetAmountChanged };
+  return { controls, fixture, nodeDoneToggled, nodeSelectionSet, targetAmountChanged };
 }
 
 function installRenderedGraphInputs(
@@ -874,6 +931,36 @@ function requiredZoomControlButtons(
   return { zoomIn, zoomOut };
 }
 
+function selectedNodeTray(
+  fixture: ComponentFixture<ProductionGraphComponent>,
+): HTMLElement | null {
+  return fixture.nativeElement.querySelector('.selected-node-tray') as HTMLElement | null;
+}
+
+function requiredSelectedNodeTray(
+  fixture: ComponentFixture<ProductionGraphComponent>,
+): HTMLElement {
+  const tray = selectedNodeTray(fixture);
+  if (!tray) {
+    throw new Error('Expected the selected-node tray to render');
+  }
+  return tray;
+}
+
+function requiredSelectedNodeTrayButton(
+  fixture: ComponentFixture<ProductionGraphComponent>,
+  label: string,
+): HTMLButtonElement {
+  const buttons = Array.from(
+    requiredSelectedNodeTray(fixture).querySelectorAll('button'),
+  ) as HTMLButtonElement[];
+  const button = buttons.find((candidate) => candidate.textContent?.trim() === label);
+  if (!button) {
+    throw new Error(`Expected the selected-node tray ${label} button to render`);
+  }
+  return button;
+}
+
 function installGraphCanvas(
   component: ProductionGraphComponent,
   canvas: Pick<FCanvasComponent, 'fitToScreen'>,
@@ -975,6 +1062,8 @@ interface ProductionGraphHarness {
 interface RenderedProductionGraphHarness {
   controls: RenderedProductionGraphControls;
   fixture: ComponentFixture<ProductionGraphComponent>;
+  nodeDoneToggled: string[];
+  nodeSelectionSet: Array<string | null>;
   targetAmountChanged: Array<{ targetId: string; amountPerMinute: number }>;
 }
 
