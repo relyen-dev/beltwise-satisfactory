@@ -1093,12 +1093,14 @@ Completed baseline:
 
 Near-term follow-up:
 
-1. Design a workspace dashboard/navigation entry point for sessions, plans, defaults, transfer, and future save-wide views.
-2. Add browser smoke tests for graph rendering, planner editing, persistence reload, share/import flows, and infeasible/error states.
-3. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
-4. Improve graph connection display controls and selected-flow readability behind renderer-neutral display settings.
-5. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
-6. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
-7. Continue power planning from explicit generator/fuel targets toward solver-selected fuels, maximize-power objectives, and richer nuclear waste handling.
-8. Draft the linked-plan contract model before adding logistics-backed links or session-wide production balance.
-9. Keep save-file import, randomized node seeds, session-scale logistics/map planning, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
+1. Add browser smoke tests for graph rendering, planner editing, persistence reload, share/import flows, and infeasible/error states.
+2. Add a selected-node action tray for existing safe actions such as done state, notes, path focus, relevant workbench controls, and current sink actions.
+3. Implement session-scoped linked-plan contracts for partial output reservations and destination external-input coverage before adding logistics-backed links.
+4. Add manual linked-plan editing, then node-driven plan extraction once manual partial links are stable.
+5. Design a workspace dashboard/navigation entry point for sessions, plans, defaults, transfer, and future save-wide views once sessions have link status worth summarizing.
+6. Improve responsive workbench behavior on narrow screens without trying to make the full graph experience equivalent to desktop.
+7. Improve graph connection display controls and selected-flow readability behind renderer-neutral display settings.
+8. Profile full-data solves and larger graph layout; move solver/layout work to Web Workers only if the UI visibly stalls.
+9. Decide whether Dagre remains sufficient or whether ELK should replace it behind the existing renderer-neutral graph boundary.
+10. Continue power planning from explicit generator/fuel targets toward solver-selected fuels, maximize-power objectives, and richer nuclear waste handling.
+11. Keep save-file import, randomized node seeds, session-scale logistics/map planning, and assistant/tooling integrations in RFC/future-work space unless explicitly pulled forward.
