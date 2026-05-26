@@ -8,6 +8,7 @@ import {
   type Signal,
 } from '@angular/core';
 import { createEmptyProductionPlanResult, type ProductionPlanResult } from '@beltwise/planner-core';
+import { isApplicationUpdateRequiredError } from '../../../app/application-update-notice.service';
 import type { PlannerSolveInput } from './planner-solve-input';
 import { PlannerProductionSolverService } from './planner-production-solver.service';
 
@@ -97,6 +98,12 @@ export class PlannerSolverService {
       })
       .catch((error: unknown) => {
         if (serial !== this.solveSerial) {
+          return;
+        }
+        if (isApplicationUpdateRequiredError(error)) {
+          this.solveResult.set(null);
+          this.solveError.set(null);
+          this.solveStatus.set('idle');
           return;
         }
         this.solveResult.set(null);

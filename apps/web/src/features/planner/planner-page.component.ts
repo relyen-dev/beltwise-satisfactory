@@ -17,6 +17,7 @@ import {
 import { NgClass, NgComponentOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MAX_PLANNER_NAME_LENGTH, type ProductionPlanStatus } from '@beltwise/planner-core';
+import { ApplicationUpdateNoticeService } from '../../app/application-update-notice.service';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
 import { PlannerDefaultsPanelComponent } from './workbench/planner-defaults-panel.component';
 import { PlannerInspectorComponent } from './workbench/planner-inspector.component';
@@ -95,6 +96,7 @@ export class PlannerPageComponent implements OnInit {
   public readonly workbench = inject(PlannerWorkbenchSlice);
   public readonly workspace = inject(PlannerWorkspaceSlice);
   private readonly injector = inject(Injector);
+  private readonly updateNotice = inject(ApplicationUpdateNoticeService);
   private readonly planTransfer = inject(PlannerPlanTransferService);
   private readonly shell = new PlannerShellOverlayCoordinator();
   private lastProcessedShareCode: string | null = null;
@@ -582,7 +584,15 @@ export class PlannerPageComponent implements OnInit {
   }
 
   private async loadWorkbenchPanelComponent(panel: WorkbenchPanelDefinition): Promise<void> {
-    const component = await panel.loadComponent();
+    let component: Type<unknown>;
+    try {
+      component = await panel.loadComponent();
+    } catch (error: unknown) {
+      if (this.updateNotice.notifyIfApplicationUpdateError(error)) {
+        return;
+      }
+      throw error;
+    }
 
     if (!this.workPanelOpen() || this.workbench.activePanelId() !== panel.id) {
       return;

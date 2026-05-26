@@ -9,6 +9,7 @@ import {
   type ProductionPlanResult,
 } from '@beltwise/planner-core';
 import { type ProductionPlanInput } from '@beltwise/solver';
+import { ApplicationUpdateRequiredError } from '../../../app/application-update-notice.service';
 import { selectPlannerSolveInput, type PlannerSolveInput } from './planner-solve-input';
 import { PlannerProductionSolverService } from './planner-production-solver.service';
 import {
@@ -253,6 +254,25 @@ describe('PlannerSolverService', () => {
 
     expect(service.solveStatus()).toBe('error');
     expect(service.solveError()).toBe('LP failed');
+    expect(service.solveResult()).toBeNull();
+  });
+
+  it('suppresses stale application update failures after the notice is shown', async () => {
+    vi.useFakeTimers();
+    const solve: PlannerSolveFunction = () =>
+      Promise.reject(
+        new ApplicationUpdateRequiredError(
+          new TypeError('Failed to fetch dynamically imported module: /chunk-SOLVER.js'),
+        ),
+      );
+    const { service } = createSolverHarness({ solve });
+
+    service.requestSolve(createSolveInput(createProject([{ itemId: 'Desc_IronPlate_C' }])));
+    vi.advanceTimersByTime(PLANNER_SOLVE_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(service.solveStatus()).toBe('idle');
+    expect(service.solveError()).toBeNull();
     expect(service.solveResult()).toBeNull();
   });
 });

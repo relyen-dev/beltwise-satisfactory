@@ -9,6 +9,10 @@ import {
 import { type ProductionPlanInput, type ProductionSolverAdapter } from '@beltwise/solver';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  ApplicationUpdateNoticeService,
+  ApplicationUpdateRequiredError,
+} from '../../../app/application-update-notice.service';
+import {
   PLANNER_SOLVER_MODULE_LOADER,
   PlannerProductionSolverService,
   type PlannerSolverModule,
@@ -84,13 +88,33 @@ describe('PlannerProductionSolverService', () => {
     expect(loader).toHaveBeenCalledTimes(2);
     expect(solverModule.solveProductionPlan).toHaveBeenCalledTimes(1);
   });
+
+  it('notifies the update notice service when the solver chunk is missing', async () => {
+    const updateNotice = { notifyIfApplicationUpdateError: vi.fn(() => true) };
+    const loader: PlannerSolverModuleLoader = vi.fn(() =>
+      Promise.reject(
+        new TypeError('Failed to fetch dynamically imported module: /chunk-SOLVER.js'),
+      ),
+    );
+    const service = createSolverHarness(loader, updateNotice);
+
+    await expect(service.solve(createInput('Desc_IronPlate_C'))).rejects.toBeInstanceOf(
+      ApplicationUpdateRequiredError,
+    );
+
+    expect(updateNotice.notifyIfApplicationUpdateError).toHaveBeenCalledOnce();
+  });
 });
 
-function createSolverHarness(loader: PlannerSolverModuleLoader): PlannerProductionSolverService {
+function createSolverHarness(
+  loader: PlannerSolverModuleLoader,
+  updateNotice = { notifyIfApplicationUpdateError: vi.fn(() => false) },
+): PlannerProductionSolverService {
   const injector = Injector.create({
     providers: [
       PlannerProductionSolverService,
       { provide: PLANNER_SOLVER_MODULE_LOADER, useValue: loader },
+      { provide: ApplicationUpdateNoticeService, useValue: updateNotice },
     ],
   });
 

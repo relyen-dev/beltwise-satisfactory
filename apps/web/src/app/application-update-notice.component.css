@@ -1,0 +1,65 @@
+:host {
+  display: contents;
+}
+
+.application-update-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(7, 10, 12, 0.72);
+  pointer-events: auto;
+}
+
+.application-update-notice__panel {
+  width: min(440px, 100%);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 48%, var(--color-border));
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-panel-raised) 96%, white),
+      color-mix(in srgb, var(--color-panel) 88%, black)
+    ),
+    var(--color-panel);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  padding: 20px;
+}
+
+.application-update-notice__kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.application-update-notice h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.35rem;
+  line-height: 1.18;
+}
+
+.application-update-notice p {
+  margin: 10px 0 18px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.application-update-notice button {
+  width: 100%;
+  border-color: color-mix(in srgb, var(--color-accent) 72%, var(--color-border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent) 26%, var(--color-panel-raised)),
+    color-mix(in srgb, var(--color-panel-raised) 88%, black)
+  );
+  color: var(--color-accent-strong);
+}

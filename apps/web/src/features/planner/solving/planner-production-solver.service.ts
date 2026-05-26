@@ -1,6 +1,10 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import type { ProductionPlanResult } from '@beltwise/planner-core';
 import type { ProductionPlanInput, ProductionSolverAdapter } from '@beltwise/solver';
+import {
+  ApplicationUpdateNoticeService,
+  ApplicationUpdateRequiredError,
+} from '../../../app/application-update-notice.service';
 
 export interface PlannerSolverModule {
   readonly HighsProductionSolverAdapter: new () => ProductionSolverAdapter;
@@ -23,6 +27,7 @@ export const PLANNER_SOLVER_MODULE_LOADER = new InjectionToken<PlannerSolverModu
 @Injectable({ providedIn: 'root' })
 export class PlannerProductionSolverService {
   private readonly loadSolverModule = inject(PLANNER_SOLVER_MODULE_LOADER);
+  private readonly updateNotice = inject(ApplicationUpdateNoticeService);
   private solverModulePromise: Promise<PlannerSolverModule> | undefined;
   private solverAdapter: ProductionSolverAdapter | undefined;
 
@@ -40,6 +45,9 @@ export class PlannerProductionSolverService {
     const solverModulePromise = this.loadSolverModule().catch((error: unknown) => {
       if (this.solverModulePromise === solverModulePromise) {
         this.solverModulePromise = undefined;
+      }
+      if (this.updateNotice.notifyIfApplicationUpdateError(error)) {
+        throw new ApplicationUpdateRequiredError(error);
       }
       throw error;
     });
