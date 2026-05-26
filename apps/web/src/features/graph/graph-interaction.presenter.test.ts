@@ -45,9 +45,13 @@ describe('graph interaction presenter', () => {
     expect(parseTargetAmount('1,200.5')).toBe(1200.5);
     expect(parseTargetAmount('-4')).toBe(0);
     expect(parseTargetAmount('not a number')).toBe(0);
+    expect(parseTargetAmount('39.999999')).toBe(40);
+    expect(parseTargetAmount('39.9999')).toBe(39.9999);
     expect(normalizeTargetAmount(Number.NaN)).toBe(0);
     expect(normalizeTargetAmount(undefined)).toBe(0);
+    expect(formatTargetAmountInputValue(39.999999)).toBe('40');
     expect(formatTargetAmountInputValue(42.5)).toBe('42.5');
+    expect(formatTargetAmountInputValue(42.125)).toBe('42.125');
   });
 
   it('identifies editable fixed output targets', () => {
@@ -78,6 +82,20 @@ describe('graph interaction presenter', () => {
 
     expect(prepareTargetAmountEdit(targetNode(), '25.00', false)).toEqual({
       inputValue: '25',
+      change: null,
+    });
+
+    expect(
+      prepareTargetAmountEdit(
+        {
+          ...targetNode(),
+          data: { ...targetNode().data, amountPerMinute: 39.999999 },
+        },
+        '40',
+        false,
+      ),
+    ).toEqual({
+      inputValue: '40',
       change: null,
     });
 

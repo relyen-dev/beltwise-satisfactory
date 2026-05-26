@@ -36,6 +36,8 @@ export interface GraphTargetAmountEdit {
   change: GraphTargetAmountChange | null;
 }
 
+const TARGET_AMOUNT_INTEGER_TOLERANCE = 0.000001;
+
 export function buildDirectFocusScope(
   flow: GraphFocusModel,
   selectedNodeId: string,
@@ -110,7 +112,7 @@ export function prepareTargetAmountEdit(
 
 export function parseTargetAmount(value: string): number {
   const parsed = Number(value.replace(/,/g, ''));
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  return normalizeTargetAmount(parsed);
 }
 
 export function formatTargetAmountInputValue(amountPerMinute: number | undefined): string {
@@ -118,7 +120,13 @@ export function formatTargetAmountInputValue(amountPerMinute: number | undefined
 }
 
 export function normalizeTargetAmount(amountPerMinute: number | undefined): number {
-  return amountPerMinute !== undefined && Number.isFinite(amountPerMinute)
-    ? Math.max(0, amountPerMinute)
-    : 0;
+  if (amountPerMinute === undefined || !Number.isFinite(amountPerMinute)) {
+    return 0;
+  }
+
+  const nonNegativeAmountPerMinute = Math.max(0, amountPerMinute);
+  const nearestInteger = Math.round(nonNegativeAmountPerMinute);
+  return Math.abs(nonNegativeAmountPerMinute - nearestInteger) < TARGET_AMOUNT_INTEGER_TOLERANCE
+    ? nearestInteger
+    : nonNegativeAmountPerMinute;
 }

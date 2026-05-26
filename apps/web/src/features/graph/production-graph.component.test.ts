@@ -306,6 +306,20 @@ describe('ProductionGraphComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('formats near-whole output target edits without floating-point noise', () => {
+    const { component, targetAmountChanged } = createComponentHarness();
+    const event = controlEvent('39.999999');
+
+    expect(component.targetAmountInputValue(outputNode({ amountPerMinute: 39.999999 }))).toBe('40');
+
+    component.handleTargetAmountChange(outputNode(), event);
+
+    expect(event.control.value).toBe('40');
+    expect(targetAmountChanged).toEqual([{ targetId: 'target-plate', amountPerMinute: 40 }]);
+
+    component.ngOnDestroy();
+  });
+
   it('only exposes the output target input after the node is selected', () => {
     const { component } = createComponentHarness();
     const node = outputNode();
