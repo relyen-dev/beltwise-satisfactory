@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 import { NgClass, NgComponentOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MAX_PLANNER_NAME_LENGTH, type ProductionPlanStatus } from '@beltwise/planner-core';
 import { ApplicationUpdateNoticeService } from '../../app/application-update-notice.service';
 import { ProductionGraphComponent } from '../graph/production-graph.component';
@@ -78,6 +79,7 @@ const RECENT_PLAN_MEMORY_LIMIT = 12;
     FormsModule,
     NgClass,
     NgComponentOutlet,
+    RouterLink,
     PlannerDefaultsPanelComponent,
     GameIconComponent,
     PlannerInspectorComponent,

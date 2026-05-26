@@ -300,6 +300,34 @@
                       Plan defaults
                     </button>
                   </div>
+                  <div class="command-menu__section">
+                    <span class="command-menu__section-title">Community</span>
+                    <a routerLink="/about" title="About Beltwise">About Beltwise</a>
+                    <a
+                      href="https://github.com/relyen-dev/beltwise-satisfactory"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open the Beltwise GitHub repository"
+                    >
+                      GitHub
+                    </a>
+                    <a
+                      href="https://discord.gg/4RRUq4HmU"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Join the Beltwise Discord"
+                    >
+                      Discord
+                    </a>
+                    <a
+                      href="https://www.youtube.com/@relyengaming"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open the Relyen Gaming YouTube channel"
+                    >
+                      YouTube
+                    </a>
+                  </div>
                 </div>
               </details>
               @if (sessionNameEditing()) {
@@ -613,12 +641,19 @@
 
   <footer class="app-footer">
     <span>Beltwise is unofficial and not affiliated with Coffee Stain Studios.</span>
-    <a
-      href="https://github.com/relyen-dev/beltwise-satisfactory/issues"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Report issues on GitHub
-    </a>
+    <nav class="app-footer__links" aria-label="Beltwise project links">
+      <a routerLink="/about">About</a>
+      <a
+        href="https://github.com/relyen-dev/beltwise-satisfactory"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        GitHub
+      </a>
+      <a href="https://discord.gg/4RRUq4HmU" target="_blank" rel="noopener noreferrer"> Discord </a>
+      <a href="https://www.youtube.com/@relyengaming" target="_blank" rel="noopener noreferrer">
+        YouTube
+      </a>
+    </nav>
   </footer>
 </div>
