@@ -109,6 +109,7 @@
           @if (isNodeSelected(node.id)) {
             <div
               class="selected-node-tray"
+              role="group"
               aria-label="Selected node actions"
               (pointerdown)="stopNodeControlEvent($event)"
               (pointerup)="stopNodeControlEvent($event)"

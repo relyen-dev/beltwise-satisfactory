@@ -415,6 +415,8 @@ describe('ProductionGraphComponent template', () => {
     fixture.detectChanges();
 
     let tray = requiredSelectedNodeTray(fixture);
+    expect(tray.getAttribute('role')).toBe('group');
+    expect(tray.getAttribute('aria-label')).toBe('Selected node actions');
     let buttons = Array.from(tray.querySelectorAll('button'));
     expect(buttons).toHaveLength(2);
 
