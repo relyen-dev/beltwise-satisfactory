@@ -118,7 +118,7 @@ This index keeps the original brainstorm traceable while the rest of the RFC gro
 | Linked plans                              | Session-scale planning     | [Linked Plans](#linked-plans) and [linked-plan RFC](./linked-plan-contracts.md)                |
 | Node action tray                          | Graph UX/session planning  | [Inspector](#inspector) and [linked-plan RFC](./linked-plan-contracts.md)                      |
 | Pull recipe node into another plan        | Session-scale planning UX  | [Linked Plans](#linked-plans) and [linked-plan RFC](./linked-plan-contracts.md)                |
-| Train/vehicle logistics                   | Session-scale logistics    | [Logistics](#logistics)                                                                        |
+| Train/vehicle logistics                   | Session-scale logistics    | [Logistics](#logistics) and [logistics route RFC](./logistics-route-planning.md)               |
 | Save-wide logistics overview              | Session-scale logistics UX | [Session Logistics Overview](#session-logistics-overview)                                      |
 | Solver priorities                         | Solver/UI                  | [Solver Objectives](#solver-objectives)                                                        |
 | Inspector overhaul                        | UX                         | [Inspector](#inspector)                                                                        |
@@ -358,29 +358,31 @@ production node into a new or existing plan.
 
 ## Logistics
 
-Logistics can eventually answer whether a session-wide plan is physically supportable, not just mathematically producible.
+Logistics can eventually answer whether a session-wide plan is physically supportable, not just mathematically producible. The detailed working model lives in [Logistics Route Planning](./logistics-route-planning.md).
 
 Manual logistics first:
 
-- Let users create a route with a name, mode, item, capacity per minute, and optional notes.
-- Modes could include belt, pipe, truck, train, drone, or generic transport.
-- A route can connect plan exports to plan inputs.
-- Show warnings when linked plans request more throughput than the route capacity.
+- Let users create a route with a name, mode, stops, allocations, and optional notes.
+- Modes could include belt, pipe, vehicle, train, drone, or manual transport.
+- Treat routes as moving buffers that can be loaded and unloaded by multiple factories.
+- Show per-item loaded, unloaded, net surplus, net shortage, and optional capacity warning.
+- Allow imbalanced routes; report the state instead of blocking the user's plan.
 
 Save-derived logistics later:
 
-- Research whether saves contain enough train timetable, station, vehicle, inventory, and travel-time data for useful throughput estimates.
+- Research whether saves contain enough train timetable, station, platform, vehicle, drone, inventory, and travel-time data for useful throughput estimates.
 - Treat imported logistics as a draft model that users can correct.
 - Avoid promising exact in-game performance unless the save data and assumptions support it.
 - Keep train and vehicle parsing separate from the core solver.
 
 Potential calculations:
 
-- Train route round-trip time.
-- Freight car item stack capacity.
-- Route capacity by item per minute.
-- Station loading or unloading bottlenecks.
-- Planned demand versus route capacity.
+- Route loaded, unloaded, and net rate by item.
+- Train route round-trip time and per-car capacity.
+- Vehicle route cycle time and inventory capacity.
+- Drone port pair or route throughput.
+- Station, platform, or port loading and unloading bottlenecks.
+- Planned demand versus route capacity, as a warning rather than a hard rule.
 
 ## Session Logistics Overview
 
@@ -642,7 +644,7 @@ Recommended path:
 10. Continue power planning with solver-selected fuel sets and maximize-power objectives once manual generator/fuel targets have enough UX mileage.
 11. Add session import/export after session-scoped data exists beyond plan grouping.
 12. Add a schematic session logistics overview once linked plans exist.
-13. Research save-derived logistics only after save import has a reliable parser boundary.
+13. Research save-derived logistics with a train/vehicle save after save import has a reliable parser boundary.
 14. Treat planned locations and top-down factory layout as separate future RFCs before implementation.
 
 ## Open Questions
@@ -657,6 +659,6 @@ Recommended path:
 - Should target-output sink rules and linked exports share one generalized output reservation model?
 - Should extracting a production node also disable that recipe in the original plan when valid, or should Beltwise leave that choice to the user?
 - How much save-derived data should be allowed to update an existing plan automatically?
-- Are logistics routes best modeled as capacities first, or as physical objects first?
+- Are logistics routes best modeled as balances first, capacities first, or physical objects first?
 - Should the inspector own navigation actions into panels, or should panel controls remain independent and merely react to selection?
 - What is the smallest useful planned-location feature that does not become a map clone?

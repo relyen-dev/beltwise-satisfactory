@@ -14,6 +14,8 @@ logistics, save imports, route capacity, or automatic session-wide solving. A
 link is user intent stored at the session layer. It references plans and item
 rates, then derives its current healthy, short, or overcommitted state from the
 latest solves. It must not persist copied solver output as authoritative state.
+See [Logistics Route Planning](./logistics-route-planning.md) for the future
+route layer; this RFC treats links as supply contracts, not transport routes.
 
 This RFC also covers the selected-node action tray and the "extract this
 production node into another plan" workflow, because those actions are likely
@@ -46,6 +48,10 @@ solved graph.
 Current plans already have `itemInputs`, which represent materials supplied by
 another factory. Linked plans should build on that mental model instead of
 inventing a second kind of destination demand.
+
+A link should not imply a belt, pipe, train, vehicle, or drone. It only says
+that one plan's output is expected to cover another plan's external input.
+Future logistics routes can explain how that material moves.
 
 Recommended first model:
 
@@ -111,7 +117,7 @@ already aggregated by item.
 Likely later extensions:
 
 - `name` or `label` for user-facing logistics names.
-- `routeId` once logistics capacity exists.
+- `routeId` or `routeAllocationId` once logistics tracking exists.
 - `poolId` for named item pools or depots.
 - `sourceNodeId` for graph-node-derived links if stable enough.
 - `createdAt` and `updatedAt` if session history becomes useful.
@@ -271,8 +277,8 @@ something the user can address through recipe, input, or target settings.
    single-product nodes.
 8. Add `Send to existing plan` and multi-output handling.
 9. Add a schematic session overview after users can create meaningful links.
-10. Add logistics route capacity and route nodes after manual links have proven
-    the contract.
+10. Add logistics route tracking after manual links have proven the contract,
+    following [Logistics Route Planning](./logistics-route-planning.md).
 
 ## Open Questions
 
@@ -283,6 +289,8 @@ something the user can address through recipe, input, or target settings.
   reservation model?
 - Should links reserve output before sinks, after sinks, or only report
   overcommit without choosing a priority?
+- Should logistics-backed links attach directly to a route, or to one
+  route allocation among many loads and unloads?
 - What is the smallest useful session balance view before a full session graph?
 - Should extracting a recipe node also disable that recipe in the original plan
   when doing so is valid, or should it leave that decision to the user?
