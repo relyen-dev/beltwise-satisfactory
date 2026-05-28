@@ -107,6 +107,49 @@ describe('PlannerWorkspaceSlice', () => {
     ]);
   });
 
+  it('duplicates plans without copying session links to the clone', () => {
+    const projectA = createProject('project-a', 'Factory A');
+    const projectB = createProject('project-b', 'Factory B');
+    const linkedSession: PlannerSession = {
+      ...createSession([projectA, projectB], projectA.id),
+      links: [
+        {
+          id: 'link-a-b',
+          itemId: 'Desc_IronPlate_C',
+          amountPerMinute: 10,
+          source: { kind: 'target-output', projectId: projectA.id, targetId: 'project-a-target' },
+          destination: {
+            kind: 'external-input',
+            projectId: projectB.id,
+            itemId: 'Desc_IronPlate_C',
+          },
+        },
+      ],
+    };
+    const { store } = createInitializedWorkspace(
+      [projectA, projectB],
+      projectA.id,
+      createDefaultUserDefaults(tinySatisfactoryDataset),
+      [linkedSession],
+      linkedSession.id,
+    );
+
+    store.duplicateProject();
+
+    const duplicatedProject = requiredProject(store);
+    expect(duplicatedProject.id).not.toBe(projectA.id);
+    expect(store.activeSession()?.links).toEqual(linkedSession.links);
+    expect(
+      store
+        .activeSession()
+        ?.links.some(
+          (link) =>
+            link.source.projectId === duplicatedProject.id ||
+            link.destination.projectId === duplicatedProject.id,
+        ),
+    ).toBe(false);
+  });
+
   it('caps active plan and session renames', () => {
     const project = createProject('project-a', 'Factory A');
     const { store } = createInitializedWorkspace([project], project.id);

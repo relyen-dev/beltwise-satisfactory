@@ -3,18 +3,29 @@ import { type PlannerProject } from '@beltwise/planner-core';
 import {
   type WorkbenchFocusMode,
   type WorkbenchFocusRequest,
+  type WorkbenchPanelOpenRequest,
   type WorkbenchPanelId,
 } from './planner-workbench.models';
 
 @Injectable({ providedIn: 'root' })
 export class PlannerWorkbenchSlice {
   private focusRequestSequence = 0;
+  private panelOpenRequestSequence = 0;
 
   public readonly activePanelId = signal<WorkbenchPanelId>('plan');
   public readonly focusRequest = signal<WorkbenchFocusRequest | null>(null);
+  public readonly panelOpenRequest = signal<WorkbenchPanelOpenRequest | null>(null);
 
   public setActivePanel(panelId: WorkbenchPanelId): void {
     this.activePanelId.set(panelId);
+  }
+
+  public requestOpenPanel(panelId: WorkbenchPanelId): void {
+    this.activePanelId.set(panelId);
+    this.panelOpenRequest.set({
+      panelId,
+      sequence: ++this.panelOpenRequestSequence,
+    });
   }
 
   public activateProject(project: PlannerProject): void {

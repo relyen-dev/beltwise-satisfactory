@@ -202,6 +202,7 @@ export interface PowerNodeReportDetails {
 
 export interface OutputNodeReportDetails {
   readonly kind: 'output';
+  readonly targetId: string | null;
   readonly item: PlanReportItemRate;
   readonly targetMode: ProductTarget['mode'];
   readonly requestedAmountPerMinute: number | null;
@@ -299,9 +300,7 @@ export function buildPlanOverviewReport(
     result === null
       ? []
       : buildTargetOutputSinkAllocations(dataset, project.targets, result, project.sinkRules);
-  const targetSinkAmountByTargetId = targetOutputSinkAmountByTargetId(
-    targetOutputSinkAllocations,
-  );
+  const targetSinkAmountByTargetId = targetOutputSinkAmountByTargetId(targetOutputSinkAllocations);
 
   return {
     status: result?.status ?? null,
@@ -315,9 +314,7 @@ export function buildPlanOverviewReport(
     notes: buildPlanNotesSummary(project, graph),
     targets: project.targets
       .toSorted((left, right) => left.sortOrder - right.sortOrder)
-      .map((target) =>
-        targetSummary(dataset, project, result, target, targetSinkAmountByTargetId),
-      ),
+      .map((target) => targetSummary(dataset, project, result, target, targetSinkAmountByTargetId)),
     sinks: sinkSummaries(dataset, project, result, targetOutputSinkAllocations),
     rawInputs,
     externalInputs: itemRateRows(dataset, result?.externalInputs ?? {}),
@@ -675,6 +672,7 @@ function outputNodeDetails(
 
   return {
     kind: 'output',
+    targetId: selectedNode.targetId ?? target?.id ?? null,
     item: itemRateRow(
       dataset,
       itemId,

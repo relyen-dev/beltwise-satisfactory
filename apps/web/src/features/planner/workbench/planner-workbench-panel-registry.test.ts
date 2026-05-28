@@ -1,4 +1,5 @@
 import '@angular/compiler';
+import { PlannerFactoryLinksSectionComponent } from './planner-factory-links-section.component';
 import { describe, expect, it } from 'vitest';
 import { PlannerRecipesSectionComponent } from './planner-recipes-section.component';
 import { PlannerSinksSectionComponent } from './planner-sinks-section.component';
@@ -43,6 +44,15 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
         id: 'inputs',
         label: 'Inputs',
         navHint: 'Supply',
+        navGroup: 'primary',
+        width: 'standard',
+        panelClass: null,
+        hasLazyLoader: true,
+      },
+      {
+        id: 'links',
+        label: 'Links',
+        navHint: 'Factory',
         navGroup: 'primary',
         width: 'standard',
         panelClass: null,
@@ -121,6 +131,9 @@ describe('PLANNER_WORKBENCH_PANELS', () => {
     );
     await expect(getPlannerWorkbenchPanel('recipes').loadComponent()).resolves.toBe(
       PlannerRecipesSectionComponent,
+    );
+    await expect(getPlannerWorkbenchPanel('links').loadComponent()).resolves.toBe(
+      PlannerFactoryLinksSectionComponent,
     );
     await expect(getPlannerWorkbenchPanel('sinks').loadComponent()).resolves.toBe(
       PlannerSinksSectionComponent,

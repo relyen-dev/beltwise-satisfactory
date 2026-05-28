@@ -129,6 +129,17 @@
               >
                 {{ doneTrayLabel(node.id) }}
               </button>
+              @if (canLinkOutputTarget(node)) {
+                <button
+                  type="button"
+                  class="selected-node-tray__button"
+                  title="Create a factory link from this output"
+                  aria-label="Create a factory link from this output"
+                  (click)="linkOutputTargetFromTray(node, $event)"
+                >
+                  Link
+                </button>
+              }
               <button
                 type="button"
                 class="selected-node-tray__button"

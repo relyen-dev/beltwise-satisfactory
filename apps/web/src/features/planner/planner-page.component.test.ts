@@ -26,6 +26,7 @@ import {
 } from './transfer/planner-transfer-browser-adapters';
 import { PlannerStoreService } from './state/planner-store.service';
 import { PlannerGraphStore } from './state/planner-graph.store';
+import { PlannerFactoryLinksStore } from './state/planner-factory-links.store';
 import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
 import { PlannerWorkspaceSlice } from './state/planner-store.workspace';
 import { DatasetService } from './dataset.service';
@@ -58,6 +59,22 @@ describe('PlannerPageComponent', () => {
 
     expect(workbench.activePanelId()).toBe('recipes');
     expect(component.workPanelOpen()).toBe(false);
+  });
+
+  it('starts a factory link draft from the graph tray and opens Links', () => {
+    const { component, factoryLinks, workbench } = createComponentHarness();
+
+    component.startFactoryLinkFromGraph({
+      targetId: 'target-plate',
+      itemId: 'Desc_IronPlate_C',
+    });
+
+    expect(factoryLinks.startDraftFromTarget).toHaveBeenCalledWith({
+      targetId: 'target-plate',
+      itemId: 'Desc_IronPlate_C',
+    });
+    expect(workbench.activePanelId()).toBe('links');
+    expect(workbench.panelOpenRequest()).toEqual({ panelId: 'links', sequence: 1 });
   });
 
   it('collapses and reopens the inspector panel', () => {
@@ -667,6 +684,7 @@ function createComponentHarness(): {
   duplicateProject: ReturnType<typeof vi.fn>;
   exportActivePlan: ReturnType<typeof vi.fn>;
   exportActivePlanSharePayload: ReturnType<typeof vi.fn>;
+  factoryLinks: PlannerPageFactoryLinksHarness;
   flushGraphNodePositions: ReturnType<typeof vi.fn>;
   graph: PlannerPageGraphHarness;
   importPlanJson: ReturnType<typeof vi.fn>;
@@ -741,6 +759,9 @@ function createComponentHarness(): {
       updateAmount: vi.fn(),
     },
   };
+  const factoryLinks: PlannerPageFactoryLinksHarness = {
+    startDraftFromTarget: vi.fn(),
+  };
   let workspace: PlannerPageWorkspaceHarness;
   const selectProject = vi.fn((projectId: string) => {
     workspace.activeProjectId.set(projectId);
@@ -761,8 +782,13 @@ function createComponentHarness(): {
   const workbench: PlannerPageWorkbenchHarness = {
     activePanelId: signal<WorkbenchPanelId>('plan'),
     focusRequest: signal(null),
+    panelOpenRequest: signal(null),
     setActivePanel: (panelId: WorkbenchPanelId) => {
       workbench.activePanelId.set(panelId);
+    },
+    requestOpenPanel: (panelId: WorkbenchPanelId) => {
+      workbench.activePanelId.set(panelId);
+      workbench.panelOpenRequest.set({ panelId, sequence: 1 });
     },
   };
   workspace = {
@@ -806,6 +832,7 @@ function createComponentHarness(): {
         },
       },
       { provide: PlannerGraphStore, useValue: graph },
+      { provide: PlannerFactoryLinksStore, useValue: factoryLinks },
       { provide: PlannerPlanConfigStore, useValue: planConfig },
       {
         provide: ApplicationUpdateNoticeService,
@@ -829,6 +856,7 @@ function createComponentHarness(): {
     duplicateProject,
     exportActivePlan,
     exportActivePlanSharePayload,
+    factoryLinks,
     flushGraphNodePositions,
     graph,
     importPlanJson,
@@ -876,7 +904,9 @@ interface PlannerPageSolverHarness {
 interface PlannerPageWorkbenchHarness {
   activePanelId: WritableSignal<WorkbenchPanelId>;
   focusRequest: WritableSignal<null>;
+  panelOpenRequest: WritableSignal<{ panelId: WorkbenchPanelId; sequence: number } | null>;
   setActivePanel: (panelId: WorkbenchPanelId) => void;
+  requestOpenPanel: (panelId: WorkbenchPanelId) => void;
 }
 
 interface PlannerPageWorkspaceHarness {
@@ -914,6 +944,10 @@ interface PlannerPagePlanConfigHarness {
   readonly targetCommands: {
     readonly updateAmount: ReturnType<typeof vi.fn>;
   };
+}
+
+interface PlannerPageFactoryLinksHarness {
+  readonly startDraftFromTarget: ReturnType<typeof vi.fn>;
 }
 
 interface PlannerPageSolveResult {

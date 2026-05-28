@@ -33,6 +33,18 @@ describe('PlannerWorkbenchSlice', () => {
       sequence: 1,
     });
   });
+
+  it('opens a requested workbench panel without changing project focus mode', () => {
+    const workbench = new PlannerWorkbenchSlice();
+
+    workbench.requestOpenPanel('links');
+
+    expect(workbench.activePanelId()).toBe('links');
+    expect(workbench.panelOpenRequest()).toEqual({
+      panelId: 'links',
+      sequence: 1,
+    });
+  });
 });
 
 describe('selectProjectWorkbenchFocusMode', () => {

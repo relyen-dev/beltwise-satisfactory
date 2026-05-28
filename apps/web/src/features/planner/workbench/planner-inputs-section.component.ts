@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ItemId } from '@beltwise/game-data';
+import { PlannerFactoryLinksStore } from '../state/planner-factory-links.store';
 import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import type { AssumedInputRow } from '../state/planner-store.selectors';
 import { GameIconComponent } from '../shared-ui/game-icon.component';
@@ -35,6 +36,7 @@ let nextDraftExternalInputId = 0;
 })
 export class PlannerInputsSectionComponent {
   public readonly planConfig = inject(PlannerPlanConfigStore);
+  public readonly factoryLinks = inject(PlannerFactoryLinksStore);
   private readonly draftInputRows = signal<readonly DraftExternalInputRow[]>([]);
 
   public readonly inputRows = computed<ExternalInputViewRow[]>(() => {
@@ -53,6 +55,10 @@ export class PlannerInputsSectionComponent {
   });
 
   public readonly assumedInputRows = computed(() => this.planConfig.assumedInputRows());
+
+  public linkedCoverageForItem(itemId: ItemId) {
+    return this.factoryLinks.inputCoverageRows().find((row) => row.itemId === itemId) ?? null;
+  }
 
   public readonly canAddInput = computed(() => {
     if (this.planConfig.editingLocked() || !this.planConfig.hasActivePlan()) {

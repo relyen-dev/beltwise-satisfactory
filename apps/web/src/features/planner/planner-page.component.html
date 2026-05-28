@@ -581,6 +581,7 @@
               (nodeMoved)="graph.layoutCommands.setNodePosition($event.nodeId, $event.position)"
               (nodeMoveEnded)="graph.layoutCommands.flushNodePositions()"
               (nodeMoveCanceled)="graph.layoutCommands.cancelNodePositions()"
+              (factoryLinkRequested)="startFactoryLinkFromGraph($event)"
               (targetAmountChanged)="
                 planConfig.targetCommands.updateAmount($event.targetId, $event.amountPerMinute)
               "

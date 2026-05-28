@@ -1,0 +1,188 @@
+<section class="work-section">
+  <div class="section-heading">
+    <div>
+      <h3>Factory Links</h3>
+      <span>Direct supply contracts in this session</span>
+    </div>
+  </div>
+
+  <div class="factory-link-add">
+    <span class="factory-link-add__label">Add link</span>
+    <label class="factory-link-field">
+      <span>Source output</span>
+      <select
+        [ngModel]="sourceTargetId()"
+        [disabled]="links.sourceTargetOptions().length === 0"
+        (ngModelChange)="selectSourceTarget($event)"
+      >
+        <option value="">Choose output</option>
+        @for (target of links.sourceTargetOptions(); track target.targetId) {
+          <option [ngValue]="target.targetId">
+            {{ target.displayName }} · {{ target.amountPerMinuteLabel }}
+          </option>
+        }
+      </select>
+    </label>
+
+    <label class="factory-link-field">
+      <span>Destination plan</span>
+      <select
+        [ngModel]="destinationProjectId()"
+        [disabled]="links.destinationProjectOptions().length === 0"
+        (ngModelChange)="destinationProjectId.set($event)"
+      >
+        @for (project of links.destinationProjectOptions(); track project.projectId) {
+          <option [ngValue]="project.projectId">{{ project.name }}</option>
+        }
+      </select>
+    </label>
+
+    <div class="factory-link-add__amount">
+      <bw-target-item-picker
+        [items]="destinationItems()"
+        [selectedItemId]="destinationItemId()"
+        [disabled]="sourceTargetId().length === 0"
+        [allowEmptySelection]="false"
+        emptyLabel="Match source item"
+        searchLabel="Search destination input"
+        searchPlaceholder="Search destination input"
+        (itemSelected)="setDestinationItem($event)"
+      />
+      <label>
+        <span>Amount/min</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          [ngModel]="amountPerMinute()"
+          (ngModelChange)="amountPerMinute.set($event)"
+        />
+      </label>
+      <button
+        type="button"
+        class="primary-action"
+        [disabled]="!canCreateLink()"
+        (click)="createLink()"
+      >
+        Create
+      </button>
+    </div>
+  </div>
+
+  <section class="factory-link-list-section" aria-labelledby="factory-links-supplying-heading">
+    <div class="subsection-heading">
+      <h4 id="factory-links-supplying-heading">Supplying</h4>
+      <span>{{ links.supplyingRows().length }} links</span>
+    </div>
+    @if (links.supplyingRows().length === 0) {
+      <div class="empty-state empty-state--compact">No output reservations from this plan.</div>
+    } @else {
+      <div class="compact-list" aria-label="Supplying factory links">
+        @for (row of links.supplyingRows(); track row.link.id) {
+          <div class="inspector-row factory-link-row">
+            <bw-game-icon
+              [src]="row.iconSrc"
+              [label]="row.itemLabel"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ row.itemLabel }}</strong>
+              <span>to {{ row.otherPlanLabel }} · {{ row.statusLabel }}</span>
+              @if (
+                row.sourceCommittedAmountPerMinuteLabel && row.sourceAvailableAmountPerMinuteLabel
+              ) {
+                <span>
+                  reserved {{ row.sourceCommittedAmountPerMinuteLabel }} of
+                  {{ row.sourceAvailableAmountPerMinuteLabel }}
+                </span>
+              }
+              @if (row.warningLabel) {
+                <span>{{ row.warningLabel }}</span>
+              }
+            </span>
+            <label class="factory-link-row__amount">
+              <span class="sr-only">Factory link amount for {{ row.itemLabel }}</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                [ngModel]="linkAmountInputValue(row.link.id, row.link.amountPerMinute)"
+                (ngModelChange)="updateLinkAmount(row.link.id, $event)"
+                (blur)="finishLinkAmountEdit(row.link.id)"
+              />
+            </label>
+            <label class="check-row factory-link-row__pause">
+              <input
+                type="checkbox"
+                [ngModel]="row.paused"
+                (ngModelChange)="links.setPaused(row.link.id, $event)"
+              />
+              <span>Pause</span>
+            </label>
+            <button
+              type="button"
+              class="row-icon-button row-icon-button--remove"
+              title="Remove factory link"
+              aria-label="Remove factory link"
+              (click)="links.removeLink(row.link.id)"
+            >
+              <span aria-hidden="true"></span>
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="factory-link-list-section" aria-labelledby="factory-links-receiving-heading">
+    <div class="subsection-heading">
+      <h4 id="factory-links-receiving-heading">Receiving</h4>
+      <span>{{ links.receivingRows().length }} links</span>
+    </div>
+    @if (links.receivingRows().length === 0) {
+      <div class="empty-state empty-state--compact">No linked inputs into this plan.</div>
+    } @else {
+      <div class="compact-list" aria-label="Receiving factory links">
+        @for (row of links.receivingRows(); track row.link.id) {
+          <div class="inspector-row factory-link-row">
+            <bw-game-icon
+              [src]="row.iconSrc"
+              [label]="row.itemLabel"
+              [size]="'sm'"
+              [kind]="'item'"
+              [showTitle]="true"
+            />
+            <span class="inspector-row__copy">
+              <strong>{{ row.itemLabel }}</strong>
+              <span>from {{ row.otherPlanLabel }} · {{ row.statusLabel }}</span>
+              @if (
+                row.destinationCoveredAmountPerMinuteLabel &&
+                row.destinationRequiredAmountPerMinuteLabel
+              ) {
+                <span>
+                  linked {{ row.destinationCoveredAmountPerMinuteLabel }} of
+                  {{ row.destinationRequiredAmountPerMinuteLabel }}
+                </span>
+              }
+              @if (row.warningLabel) {
+                <span>{{ row.warningLabel }}</span>
+              }
+            </span>
+            <span class="inspector-row__value">{{ row.amountPerMinuteLabel }}</span>
+            <button
+              type="button"
+              class="row-icon-button row-icon-button--remove"
+              title="Remove factory link"
+              aria-label="Remove factory link"
+              (click)="links.removeLink(row.link.id)"
+            >
+              <span aria-hidden="true"></span>
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+</section>

@@ -444,6 +444,20 @@
             </button>
           </div>
         }
+        @if (selectedNode.details.targetId && selectedNode.details.item.itemId.length > 0) {
+          <div class="section-actions">
+            <button
+              type="button"
+              class="primary-action"
+              title="Create a factory link from this output"
+              (click)="
+                startFactoryLink(selectedNode.details.targetId, selectedNode.details.item.itemId)
+              "
+            >
+              Link
+            </button>
+          </div>
+        }
         @if (selectedNode.details.fuelPower; as fuelPower) {
           <div class="inspector-subsection">
             <div class="inspector-section-heading">

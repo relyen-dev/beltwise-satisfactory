@@ -223,6 +223,32 @@ export class PlannerWorkspaceSlice {
     this.projects.update((projects) => updateProjectInList(projects, activeId, now, mapper));
   }
 
+  public updateActiveSession(mapper: (session: PlannerSession) => PlannerSession): void {
+    const activeId = this.activeSessionId();
+    if (!activeId) {
+      return;
+    }
+    const now = new Date().toISOString();
+    this.sessions.update((sessions) => {
+      let changed = false;
+      const nextSessions = sessions.map((session) => {
+        if (session.id !== activeId) {
+          return session;
+        }
+        const nextSession = mapper(session);
+        if (nextSession === session) {
+          return session;
+        }
+        changed = true;
+        return {
+          ...nextSession,
+          updatedAt: now,
+        };
+      });
+      return changed ? nextSessions : sessions;
+    });
+  }
+
   public updateProjectById(
     projectId: string,
     mapper: (project: PlannerProject) => PlannerProject,

@@ -177,6 +177,7 @@ export interface PowerNodeDetails {
 
 export interface OutputNodeDetails {
   kind: 'output';
+  targetId: string | null;
   item: InspectorItemRateRow;
   targetModeLabel: string;
   requestedAmountPerMinuteLabel: string | null;
@@ -503,6 +504,7 @@ function outputNodeDetails(
 ): OutputNodeDetails {
   return {
     kind: 'output',
+    targetId: details.targetId,
     item: itemRateRow(details.item),
     targetModeLabel: details.targetMode === 'maximize' ? 'Maximize' : 'Fixed',
     requestedAmountPerMinuteLabel:

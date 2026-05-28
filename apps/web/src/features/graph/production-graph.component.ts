@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import type { GameDataset } from '@beltwise/game-data';
+import type { GameDataset, ItemId } from '@beltwise/game-data';
 import {
   applyGraphLayout,
   createDefaultGraphDisplaySettings,
@@ -106,6 +106,7 @@ export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDe
   public readonly nodeSelectionSet = output<string | null>();
   public readonly nodeSelectionToggled = output<string>();
   public readonly nodeDoneToggled = output<string>();
+  public readonly factoryLinkRequested = output<{ targetId: string; itemId: ItemId }>();
   public readonly targetAmountChanged = output<{ targetId: string; amountPerMinute: number }>();
   public readonly graphZoomMinimum = GRAPH_ZOOM_MINIMUM;
   public readonly graphZoomMaximum = GRAPH_ZOOM_MAXIMUM;
@@ -358,6 +359,27 @@ export class ProductionGraphComponent implements AfterViewChecked, DoCheck, OnDe
     event.preventDefault();
     event.stopPropagation();
     this.nodeSelectionSet.emit(null);
+  }
+
+  public canLinkOutputTarget(node: BeltwiseFoblexFlowNode): boolean {
+    return (
+      node.kind === 'output' &&
+      node.data.targetId !== undefined &&
+      node.data.itemId !== undefined &&
+      node.data.itemId.length > 0
+    );
+  }
+
+  public linkOutputTargetFromTray(node: BeltwiseFoblexFlowNode, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.canLinkOutputTarget(node) || !node.data.targetId || !node.data.itemId) {
+      return;
+    }
+    this.factoryLinkRequested.emit({
+      targetId: node.data.targetId,
+      itemId: node.data.itemId,
+    });
   }
 
   public stopNodeControlEvent(event: Event): void {

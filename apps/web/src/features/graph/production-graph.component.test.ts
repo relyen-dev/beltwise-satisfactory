@@ -419,8 +419,8 @@ describe('ProductionGraphComponent template', () => {
     expect(targetAmountChanged).toEqual([{ targetId: 'target-plate', amountPerMinute: 42 }]);
   });
 
-  it('renders a compact selected-node tray for done and clear actions', async () => {
-    const { controls, fixture, nodeDoneToggled, nodeSelectionSet } =
+  it('renders a compact selected-node tray for done, link, and clear actions', async () => {
+    const { controls, factoryLinkRequested, fixture, nodeDoneToggled, nodeSelectionSet } =
       await createRenderedGraphHarness();
 
     expect(selectedNodeTray(fixture)).toBeNull();
@@ -432,7 +432,7 @@ describe('ProductionGraphComponent template', () => {
     expect(tray.getAttribute('role')).toBe('group');
     expect(tray.getAttribute('aria-label')).toBe('Selected node actions');
     let buttons = Array.from(tray.querySelectorAll('button'));
-    expect(buttons).toHaveLength(2);
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(['Done', 'Link', 'Clear']);
 
     const doneButton = requiredSelectedNodeTrayButton(fixture, 'Done');
     expect(doneButton.getAttribute('aria-label')).toBe('Mark Iron Plate as done');
@@ -445,6 +445,14 @@ describe('ProductionGraphComponent template', () => {
 
     expect(documentClick).not.toHaveBeenCalled();
     expect(nodeDoneToggled).toEqual([OUTPUT_NODE_ID]);
+
+    requiredSelectedNodeTrayButton(fixture, 'Link').dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+
+    expect(factoryLinkRequested).toEqual([
+      { targetId: 'target-plate', itemId: 'Desc_IronPlate_C' },
+    ]);
 
     controls.completedNodeIds.set(new Set([OUTPUT_NODE_ID]));
     fixture.detectChanges();
@@ -469,7 +477,18 @@ describe('ProductionGraphComponent template', () => {
 
     tray = requiredSelectedNodeTray(fixture);
     buttons = Array.from(tray.querySelectorAll('button'));
-    expect(buttons).toHaveLength(2);
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(['Undo', 'Link', 'Clear']);
+  });
+
+  it('omits the selected-node link action for non-output nodes', async () => {
+    const { controls, fixture } = await createRenderedGraphHarness();
+    controls.graph.set(loopbackGraph());
+    controls.selectedNodeId.set('recipe:Recipe_IronPlate_C');
+    fixture.detectChanges();
+
+    const buttons = Array.from(requiredSelectedNodeTray(fixture).querySelectorAll('button'));
+
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(['Done', 'Clear']);
   });
 
   it('fits a freshly rendered graph into the canvas', async () => {
@@ -664,9 +683,11 @@ function createComponentHarness(): ProductionGraphHarness {
   const nodeMoved: Array<{ nodeId: string; position: { x: number; y: number } }> = [];
   const nodeSelectionSet: Array<string | null> = [];
   const nodeSelectionToggled: string[] = [];
+  const factoryLinkRequested: Array<{ targetId: string; itemId: string }> = [];
   const targetAmountChanged: Array<{ targetId: string; amountPerMinute: number }> = [];
 
   component.nodeDoneToggled.subscribe((nodeId) => nodeDoneToggled.push(nodeId));
+  component.factoryLinkRequested.subscribe((request) => factoryLinkRequested.push(request));
   component.nodeMoveCanceled.subscribe(() => nodeMoveCanceled.push(undefined));
   component.nodeMoveEnded.subscribe(() => nodeMoveEnded.push(undefined));
   component.nodeMoved.subscribe((move) => nodeMoved.push(move));
@@ -682,6 +703,7 @@ function createComponentHarness(): ProductionGraphHarness {
     nodeMoved,
     nodeSelectionSet,
     nodeSelectionToggled,
+    factoryLinkRequested,
     targetAmountChanged,
   };
 }
@@ -816,15 +838,26 @@ async function createRenderedGraphHarness(): Promise<RenderedProductionGraphHarn
   const controls = installRenderedGraphInputs(fixture.componentInstance);
   const nodeDoneToggled: string[] = [];
   const nodeSelectionSet: Array<string | null> = [];
+  const factoryLinkRequested: Array<{ targetId: string; itemId: string }> = [];
   const targetAmountChanged: Array<{ targetId: string; amountPerMinute: number }> = [];
   fixture.componentInstance.nodeDoneToggled.subscribe((nodeId) => nodeDoneToggled.push(nodeId));
+  fixture.componentInstance.factoryLinkRequested.subscribe((request) =>
+    factoryLinkRequested.push(request),
+  );
   fixture.componentInstance.nodeSelectionSet.subscribe((nodeId) => nodeSelectionSet.push(nodeId));
   fixture.componentInstance.targetAmountChanged.subscribe((change) =>
     targetAmountChanged.push(change),
   );
   fixture.detectChanges();
 
-  return { controls, fixture, nodeDoneToggled, nodeSelectionSet, targetAmountChanged };
+  return {
+    controls,
+    factoryLinkRequested,
+    fixture,
+    nodeDoneToggled,
+    nodeSelectionSet,
+    targetAmountChanged,
+  };
 }
 
 function installRenderedGraphInputs(
@@ -930,9 +963,10 @@ function requiredGraphSurface(fixture: ComponentFixture<ProductionGraphComponent
   return graphSurface;
 }
 
-function requiredZoomControlButtons(
-  fixture: ComponentFixture<ProductionGraphComponent>,
-): { zoomIn: HTMLButtonElement; zoomOut: HTMLButtonElement } {
+function requiredZoomControlButtons(fixture: ComponentFixture<ProductionGraphComponent>): {
+  zoomIn: HTMLButtonElement;
+  zoomOut: HTMLButtonElement;
+} {
   const zoomIn = fixture.nativeElement.querySelector(
     '.graph-zoom-button[aria-label="Zoom in graph"]',
   ) as HTMLButtonElement | null;
@@ -945,9 +979,7 @@ function requiredZoomControlButtons(
   return { zoomIn, zoomOut };
 }
 
-function selectedNodeTray(
-  fixture: ComponentFixture<ProductionGraphComponent>,
-): HTMLElement | null {
+function selectedNodeTray(fixture: ComponentFixture<ProductionGraphComponent>): HTMLElement | null {
   return fixture.nativeElement.querySelector('.selected-node-tray') as HTMLElement | null;
 }
 
@@ -1070,11 +1102,13 @@ interface ProductionGraphHarness {
   nodeMoved: Array<{ nodeId: string; position: { x: number; y: number } }>;
   nodeSelectionSet: Array<string | null>;
   nodeSelectionToggled: string[];
+  factoryLinkRequested: Array<{ targetId: string; itemId: string }>;
   targetAmountChanged: Array<{ targetId: string; amountPerMinute: number }>;
 }
 
 interface RenderedProductionGraphHarness {
   controls: RenderedProductionGraphControls;
+  factoryLinkRequested: Array<{ targetId: string; itemId: string }>;
   fixture: ComponentFixture<ProductionGraphComponent>;
   nodeDoneToggled: string[];
   nodeSelectionSet: Array<string | null>;

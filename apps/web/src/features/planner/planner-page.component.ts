@@ -37,6 +37,7 @@ import {
 } from './persistence/planner-session-delete.helpers';
 import { PlannerStoreService } from './state/planner-store.service';
 import { PlannerGraphStore } from './state/planner-graph.store';
+import { PlannerFactoryLinksStore } from './state/planner-factory-links.store';
 import { PlannerPlanConfigStore } from './state/planner-plan-config.store';
 import { PlannerWorkspaceSlice } from './state/planner-store.workspace';
 import { DatasetService } from './dataset.service';
@@ -93,6 +94,7 @@ export class PlannerPageComponent implements OnInit {
   private readonly runtime = inject(PlannerStoreService);
   public readonly datasetService = inject(DatasetService);
   public readonly graph = inject(PlannerGraphStore);
+  private readonly factoryLinks = inject(PlannerFactoryLinksStore);
   public readonly planConfig = inject(PlannerPlanConfigStore);
   public readonly solver = inject(PlannerSolverService);
   public readonly workbench = inject(PlannerWorkbenchSlice);
@@ -211,6 +213,18 @@ export class PlannerPageComponent implements OnInit {
 
     effect(
       () => {
+        const request = this.workbench.panelOpenRequest();
+        if (!request) {
+          return;
+        }
+        this.workPanelOpen.set(true);
+        void this.loadWorkbenchPanelComponent(getPlannerWorkbenchPanel(request.panelId));
+      },
+      { injector: this.injector },
+    );
+
+    effect(
+      () => {
         if (!this.datasetService.dataset()) {
           return;
         }
@@ -249,6 +263,11 @@ export class PlannerPageComponent implements OnInit {
 
     this.workbench.setActivePanel(section);
     this.workPanelOpen.set(true);
+  }
+
+  public startFactoryLinkFromGraph(event: { targetId: string; itemId: string }): void {
+    this.factoryLinks.startDraftFromTarget(event);
+    this.workbench.requestOpenPanel('links');
   }
 
   public closeWorkPanel(): void {

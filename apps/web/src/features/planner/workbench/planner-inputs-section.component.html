@@ -38,6 +38,12 @@
               searchLabel="Search external input items"
               (itemSelected)="updateInputItem(row, $event)"
             />
+            @if (row.kind === 'saved' && linkedCoverageForItem(row.itemId); as coverage) {
+              <span class="external-input-coverage">
+                linked {{ coverage.linkedAmountPerMinuteLabel }} · manual
+                {{ coverage.manualRemainderAmountPerMinuteLabel }}
+              </span>
+            }
           </div>
 
           <label>

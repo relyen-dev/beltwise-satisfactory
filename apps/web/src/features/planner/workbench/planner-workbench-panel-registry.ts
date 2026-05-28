@@ -23,9 +23,8 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'Targets',
     navGroup: 'primary',
     loadComponent: async () => {
-      const { PlannerTargetsSectionComponent } = await import(
-        './planner-targets-section.component'
-      );
+      const { PlannerTargetsSectionComponent } =
+        await import('./planner-targets-section.component');
       return PlannerTargetsSectionComponent;
     },
     width: 'standard',
@@ -37,9 +36,8 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'Rules',
     navGroup: 'primary',
     loadComponent: async () => {
-      const { PlannerRecipesSectionComponent } = await import(
-        './planner-recipes-section.component'
-      );
+      const { PlannerRecipesSectionComponent } =
+        await import('./planner-recipes-section.component');
       return PlannerRecipesSectionComponent;
     },
     width: 'wide',
@@ -51,10 +49,21 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'Supply',
     navGroup: 'primary',
     loadComponent: async () => {
-      const { PlannerInputsSectionComponent } = await import(
-        './planner-inputs-section.component'
-      );
+      const { PlannerInputsSectionComponent } = await import('./planner-inputs-section.component');
       return PlannerInputsSectionComponent;
+    },
+    width: 'standard',
+    panelClass: null,
+  },
+  {
+    id: 'links',
+    label: 'Links',
+    navHint: 'Factory',
+    navGroup: 'primary',
+    loadComponent: async () => {
+      const { PlannerFactoryLinksSectionComponent } =
+        await import('./planner-factory-links-section.component');
+      return PlannerFactoryLinksSectionComponent;
     },
     width: 'standard',
     panelClass: null,
@@ -77,9 +86,8 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'Build',
     navGroup: 'primary',
     loadComponent: async () => {
-      const { PlannerMachinesSectionComponent } = await import(
-        './planner-machines-section.component'
-      );
+      const { PlannerMachinesSectionComponent } =
+        await import('./planner-machines-section.component');
       return PlannerMachinesSectionComponent;
     },
     width: 'standard',
@@ -91,9 +99,8 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'Caps',
     navGroup: 'primary',
     loadComponent: async () => {
-      const { PlannerResourcesSectionComponent } = await import(
-        './planner-resources-section.component'
-      );
+      const { PlannerResourcesSectionComponent } =
+        await import('./planner-resources-section.component');
       return PlannerResourcesSectionComponent;
     },
     width: 'standard',
@@ -105,9 +112,8 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'Limits',
     navGroup: 'secondary',
     loadComponent: async () => {
-      const { PlannerObjectivesSectionComponent } = await import(
-        './planner-objectives-section.component'
-      );
+      const { PlannerObjectivesSectionComponent } =
+        await import('./planner-objectives-section.component');
       return PlannerObjectivesSectionComponent;
     },
     width: 'standard',
@@ -119,9 +125,8 @@ export const PLANNER_WORKBENCH_PANELS = [
     navHint: 'View',
     navGroup: 'secondary',
     loadComponent: async () => {
-      const { PlannerDisplaySectionComponent } = await import(
-        './planner-display-section.component'
-      );
+      const { PlannerDisplaySectionComponent } =
+        await import('./planner-display-section.component');
       return PlannerDisplaySectionComponent;
     },
     width: 'standard',

@@ -1,8 +1,12 @@
 import '@angular/compiler';
-import { Injector, runInInjectionContext, signal } from '@angular/core';
+import { Injector, runInInjectionContext, signal, type WritableSignal } from '@angular/core';
 import type { Item, ItemId } from '@beltwise/game-data';
 import { describe, expect, it } from 'vitest';
 import { PlannerInputsSectionComponent } from './planner-inputs-section.component';
+import {
+  PlannerFactoryLinksStore,
+  type FactoryLinkInputCoverageRow,
+} from '../state/planner-factory-links.store';
 import { PlannerPlanConfigStore } from '../state/planner-plan-config.store';
 import type { AssumedInputRow, ExternalInputRow } from '../state/planner-store.selectors';
 
@@ -59,12 +63,31 @@ describe('PlannerInputsSectionComponent', () => {
 
     expect(setItemInputCalls).toEqual([{ itemId: rotorItem.id, amountPerMinute: 6 }]);
   });
+
+  it('returns linked coverage rows for saved external inputs', () => {
+    const { component, factoryLinks } = createComponentHarness();
+    factoryLinks.inputCoverageRows.set([
+      {
+        itemId: rotorItem.id,
+        linkedAmountPerMinute: 4,
+        manualRemainderAmountPerMinute: 6,
+        linkedAmountPerMinuteLabel: '4/min',
+        manualRemainderAmountPerMinuteLabel: '6/min',
+      },
+    ]);
+
+    expect(component.linkedCoverageForItem(rotorItem.id)).toMatchObject({
+      linkedAmountPerMinuteLabel: '4/min',
+      manualRemainderAmountPerMinuteLabel: '6/min',
+    });
+  });
 });
 
 function createComponentHarness(): {
   component: PlannerInputsSectionComponent;
   setItemInputCalls: SetItemInputCall[];
   planConfig: PlannerInputsPlanConfigHarness;
+  factoryLinks: PlannerInputsFactoryLinksHarness;
 } {
   const setItemInputCalls: SetItemInputCall[] = [];
   const planConfig: PlannerInputsPlanConfigHarness = {
@@ -82,12 +105,18 @@ function createComponentHarness(): {
       move: () => undefined,
     },
   };
+  const factoryLinks: PlannerInputsFactoryLinksHarness = {
+    inputCoverageRows: signal<FactoryLinkInputCoverageRow[]>([]),
+  };
   const injector = Injector.create({
-    providers: [{ provide: PlannerPlanConfigStore, useValue: planConfig }],
+    providers: [
+      { provide: PlannerPlanConfigStore, useValue: planConfig },
+      { provide: PlannerFactoryLinksStore, useValue: factoryLinks },
+    ],
   });
   const component = runInInjectionContext(injector, () => new PlannerInputsSectionComponent());
 
-  return { component, planConfig, setItemInputCalls };
+  return { component, planConfig, setItemInputCalls, factoryLinks };
 }
 
 function draftInputRow(component: PlannerInputsSectionComponent) {
@@ -110,6 +139,10 @@ interface PlannerInputsPlanConfigHarness {
     set: (itemId: ItemId, amountPerMinute: number) => void;
     move: (previousItemId: ItemId, nextItemId: ItemId) => void;
   };
+}
+
+interface PlannerInputsFactoryLinksHarness {
+  inputCoverageRows: WritableSignal<FactoryLinkInputCoverageRow[]>;
 }
 
 interface SetItemInputCall {
