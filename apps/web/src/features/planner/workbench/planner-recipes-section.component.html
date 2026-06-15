@@ -12,7 +12,7 @@
       <input
         placeholder="Search recipes"
         [ngModel]="planConfig.recipeSearch()"
-        (ngModelChange)="planConfig.recipeSearch.set($event)"
+        (ngModelChange)="setRecipeSearch($event)"
       />
     </label>
   </div>
@@ -29,7 +29,7 @@
       class="recipe-mode-tab"
       [class.recipe-mode-tab--active]="activeRecipePanel() === 'base'"
       [attr.aria-pressed]="activeRecipePanel() === 'base' ? 'true' : 'false'"
-      (click)="activeRecipePanel.set('base')"
+      (click)="selectRecipePanel('base')"
     >
       <span>
         <strong>Base recipes</strong>
@@ -44,7 +44,7 @@
       class="recipe-mode-tab"
       [class.recipe-mode-tab--active]="activeRecipePanel() === 'alternate'"
       [attr.aria-pressed]="activeRecipePanel() === 'alternate' ? 'true' : 'false'"
-      (click)="activeRecipePanel.set('alternate')"
+      (click)="selectRecipePanel('alternate')"
     >
       <span>
         <strong>Alternates</strong>
@@ -55,7 +55,7 @@
   </div>
 
   @if (activeRecipePanel() === 'base') {
-    <section class="recipe-group" aria-labelledby="base-recipes-title">
+    <section class="recipe-group recipe-group--base" aria-labelledby="base-recipes-title">
       <div class="recipe-group-header">
         <div>
           <h4 id="base-recipes-title">Base recipes</h4>
@@ -86,7 +86,7 @@
             class="recipe-subtab"
             [class.recipe-subtab--active]="activeBaseRecipePanel() === panel.id"
             [attr.aria-pressed]="activeBaseRecipePanel() === panel.id ? 'true' : 'false'"
-            (click)="activeBaseRecipePanel.set(panel.id)"
+            (click)="selectBaseRecipePanel(panel.id)"
           >
             <span>{{ panel.label }}</span>
             <span>{{
@@ -96,7 +96,7 @@
         }
       </div>
 
-      <div class="recipe-list" aria-label="Base recipes">
+      <div #recipeList class="recipe-list" aria-label="Base recipes" (scroll)="hideRecipeTooltip()">
         @if (baseRows.length === 0) {
           @if (activeBaseRecipePanel() === 'converterResources') {
             <div class="recipe-empty">No converter resource recipes match the search.</div>
@@ -108,10 +108,15 @@
         } @else {
           @for (row of baseRows; track row.recipe.id) {
             <label
+              #recipeRow
               class="config-toggle-row recipe-row"
               [class.config-toggle-row--enabled]="row.enabled"
               [class.config-toggle-row--disabled]="!row.enabled"
               [class.config-toggle-row--locked]="planConfig.editingLocked()"
+              (mouseenter)="showRecipeTooltip(row, recipeRow)"
+              (mouseleave)="hideRecipeTooltip()"
+              (focusin)="showRecipeTooltip(row, recipeRow)"
+              (focusout)="hideRecipeTooltip()"
             >
               <input
                 class="config-toggle-row__control"
@@ -193,7 +198,7 @@
       </div>
     </section>
   } @else {
-    <section class="recipe-group" aria-labelledby="alternate-recipes-title">
+    <section class="recipe-group recipe-group--alternate" aria-labelledby="alternate-recipes-title">
       <div class="recipe-group-header">
         <div>
           <h4 id="alternate-recipes-title">Alternate recipes</h4>
@@ -219,16 +224,26 @@
 
       <div class="recipe-group-align-spacer" aria-hidden="true"></div>
 
-      <div class="recipe-list" aria-label="Alternate recipes">
+      <div
+        #recipeList
+        class="recipe-list"
+        aria-label="Alternate recipes"
+        (scroll)="hideRecipeTooltip()"
+      >
         @if (alternateRows.length === 0) {
           <div class="recipe-empty">No alternate recipes match the search.</div>
         } @else {
           @for (row of alternateRows; track row.recipe.id) {
             <label
+              #recipeRow
               class="config-toggle-row recipe-row"
               [class.config-toggle-row--enabled]="row.enabled"
               [class.config-toggle-row--disabled]="!row.enabled"
               [class.config-toggle-row--locked]="planConfig.editingLocked()"
+              (mouseenter)="showRecipeTooltip(row, recipeRow)"
+              (mouseleave)="hideRecipeTooltip()"
+              (focusin)="showRecipeTooltip(row, recipeRow)"
+              (focusout)="hideRecipeTooltip()"
             >
               <input
                 class="config-toggle-row__control"
@@ -303,5 +318,51 @@
         }
       </div>
     </section>
+  }
+
+  @if (activeRecipeTooltip(); as tooltip) {
+    <span
+      class="recipe-detail-tooltip recipe-detail-tooltip--floating"
+      [class.recipe-detail-tooltip--above]="tooltip.placement === 'above'"
+      role="tooltip"
+      [style.left.px]="tooltip.leftPx"
+      [style.top.px]="tooltip.topPx"
+      [style.width.px]="tooltip.widthPx"
+    >
+      <span class="recipe-detail-tooltip__title">{{ tooltip.row.recipe.displayName }}</span>
+      <span class="recipe-detail-tooltip__stat">
+        {{ tooltip.row.machineName }} &middot; {{ tooltip.row.details.durationLabel }}
+      </span>
+      @if (tooltip.row.details.ingredients.length > 0) {
+        <span class="recipe-detail-tooltip__section">Inputs</span>
+        @for (ingredient of tooltip.row.details.ingredients; track ingredient.itemId) {
+          <span class="recipe-detail-tooltip__flow">
+            <bw-game-icon
+              [src]="ingredient.iconSrc"
+              [label]="ingredient.displayName"
+              [size]="'xs'"
+              [kind]="'item'"
+            />
+            <span>{{ ingredient.displayName }}</span>
+            <strong>{{ ingredient.amountPerMinuteLabel }}</strong>
+          </span>
+        }
+      }
+      @if (tooltip.row.details.products.length > 0) {
+        <span class="recipe-detail-tooltip__section">Outputs</span>
+        @for (product of tooltip.row.details.products; track product.itemId) {
+          <span class="recipe-detail-tooltip__flow">
+            <bw-game-icon
+              [src]="product.iconSrc"
+              [label]="product.displayName"
+              [size]="'xs'"
+              [kind]="'item'"
+            />
+            <span>{{ product.displayName }}</span>
+            <strong>{{ product.amountPerMinuteLabel }}</strong>
+          </span>
+        }
+      }
+    </span>
   }
 </section>
